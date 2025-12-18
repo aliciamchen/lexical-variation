@@ -1,3 +1,8 @@
 /.quarto/
 **/*.quarto_ipynb
 _output/
+.Rproj.user
+scaffolding.R
+.Rhistory
+.Rprofile
+.DS_Store
