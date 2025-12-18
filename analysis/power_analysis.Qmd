@@ -1,0 +1,59 @@
+---
+title: Power analysis
+author: Alicia Chen
+date: 2025-12-17
+format:
+  html:
+    code-fold: true
+jupyter: python3
+---
+
+For the power analysis, we want to use the 6-person full-feedback data from the Boyce et al. (2024) dataset, to simulate the contrast between the `refer + mixed` and `refer + separate` conditions. 
+
+- For the `refer + mixed` condition, take entire 6-person games as is. 
+- For the `refer + separate` condition, we want to take two sets of 3 people who played together. So we will randomly select 3 people from one 6-person game, and then 3 people from another 6-person game.
+
+We can compute the metrics over these 'groups' to estimate how the behavior diverges between the conditions. This should be a ceiling for the effect size of our metrics, and then we can use this to determine how many groups we need to collect. 
+
+```{python}
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pyreadr
+import os
+```
+
+Load data
+
+```{python}
+chat_data = pd.read_csv("https://raw.githubusercontent.com/vboyce/multiparty-tangrams/refs/heads/main/data/study2b/filtered_chat.csv")
+
+round_url = "https://raw.githubusercontent.com/vboyce/multiparty-tangrams/refs/heads/main/data/study2b/round_results.rds?raw=true"
+dst_path = "boyce_round_results.rds"
+round_results_dict = pyreadr.read_r(pyreadr.download_file(round_url, dst_path))
+round_results = round_results_dict[list(round_results_dict.keys())[0]]
+os.remove(dst_path)
+```
+
+```{python}
+num_games = chat_data["gameId"].nunique()
+print(f"Number of unique games: {num_games}")
+
+num_players = chat_data["playerId"].nunique()
+print(f"Number of unique players: {num_players}")
+```
+
+Extract the chat data in the format we need. Make a dataframe with the following columns:
+
+- gameId
+- speaker
+- target
+- targetNum
+- repNum
+- trialNum
+- speaker_utt 
+- countCorrect
+
+where `speaker_utt` is the text that the speaker produced for the specific `gameId` `target` `targetNum` `repNum` `trialNum`, in sequence (i.e. each individual `text` entry in `chat_data` concatenated and separated by a comma). Make sure that the order of the utterances is correct (they should follow `rowNum`). 
+
