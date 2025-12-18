@@ -4,7 +4,7 @@ author: Alicia Chen
 date: 2025-12-17
 format:
   html:
-    code-fold: true
+    code-fold: false
 jupyter: python3
 ---
 
@@ -21,10 +21,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pyreadr
+from sentence_transformers import SentenceTransformer
 import os
+
+sns.set_context("talk", font_scale=1.2)
+sns.set_style("white")
+plt.rc('axes.spines', top=False, right=False)
 ```
 
-Load data
+# Load data
 
 ```{python}
 chat_data = pd.read_csv("https://raw.githubusercontent.com/vboyce/multiparty-tangrams/refs/heads/main/data/study2b/filtered_chat.csv")
@@ -55,5 +60,66 @@ Extract the chat data in the format we need. Make a dataframe with the following
 - speaker_utt 
 - countCorrect
 
-where `speaker_utt` is the text that the speaker produced for the specific `gameId` `target` `targetNum` `repNum` `trialNum`, in sequence (i.e. each individual `text` entry in `chat_data` concatenated and separated by a comma). Make sure that the order of the utterances is correct (they should follow `rowNum`). 
+where `speaker_utt` is the text that the speaker produced for the specific `gameId` `target` `targetNum` `repNum` `trialNum`, in sequence (i.e. each individual `text` entry in `chat_data` concatenated and separated by a comma). Make sure that the order of the utterances is correct (they should follow `rowNum`).
 
+```{python}
+chat_data['target_letter'] = chat_data['target'].str.extract(r'([A-Z])\.png')[0]
+
+speaker_data = (
+    chat_data[chat_data['is.chitchat'] == 0]
+    .sort_values('row num')
+    .groupby(['gameId', 'trialNum', 'repNum', 'targetNum', 'speaker', 'target_letter'])
+    .agg({
+        'text': lambda x: ', '.join(x.astype(str)),
+        'countCorrect': 'first'
+    })
+    .reset_index()
+    .rename(columns={'text': 'speaker_utt', 'target_letter': 'target'})
+)
+
+speaker_data.head()
+```
+
+Add utterance length (number of words) to the dataframe, compute SBERT embedding for each utterance
+
+```{python}
+speaker_data['utt_length'] = speaker_data['speaker_utt'].apply(lambda x: len(x.split()))
+
+sbert_model = SentenceTransformer("sentence-transformers/paraphrase-MiniLM-L12-v2")
+embeddings = sbert_model.encode(speaker_data['speaker_utt'].tolist(), show_progress_bar=True)
+np.save("boyce_sbert_embeddings.npy", embeddings)
+
+speaker_data["embedding_idx"] = range(len(speaker_data))
+```
+
+The SBERT embeddings are saved to `boyce_sbert_embeddings.npy`, the shape is `(1024, 384)`
+
+## Sanity check plots
+
+Is there generally reduction in utterance length across rounds? 
+
+```{python}
+sns.lineplot(x='repNum', y='utt_length', data=speaker_data)
+```
+
+Increase in accuracy across rounds?
+
+```{python}
+sns.lineplot(x='repNum', y='countCorrect', data=speaker_data)
+```
+
+
+# Metrics
+
+
+## Group-specificity
+
+If the emergent lexicons are group-specific, then a description a participant uses for a given tangram should be more similar to other descriptions produced by members of the same group, compared to descriptions produced by members of other groups. 
+For each game and tangram, will compute the pairwise similarities between each participant's utterances, and predict the similarity from whether they were produced by members of the same group, with random effects for tangram and participant pair. The coefficient for `same_group` corresponds to the group-specificity score for the game.  
+$$
+\texttt{similarity} \sim \texttt{same\_group} + \texttt{(1 | tangram)} + \texttt{(1 | participant\_pair)}
+$$
+
+As a complementary approach, for each game, we will also calculate the average similarity among members of the same group (within-group similarity) and among members of different groups (between-group similarity). Lexical differentiation corresponds to the difference between within-group and between-group similarity, with larger differences indicating more group-specific conventions and greater lexical differentiation. 
+
+As a sanity check, we will also permute the assignment of participants to groups and recalculate the group-specificity metrics, to check that the group-specificity scores are greater than would have arisen by chance. 
