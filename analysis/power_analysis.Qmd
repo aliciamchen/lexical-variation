@@ -23,6 +23,10 @@ import seaborn as sns
 import pyreadr
 from sentence_transformers import SentenceTransformer
 import os
+import random
+
+np.random.seed(67)
+random.seed(67)
 
 sns.set_context("talk", font_scale=1.2)
 sns.set_style("white")
@@ -108,9 +112,81 @@ Increase in accuracy across rounds?
 sns.lineplot(x='repNum', y='countCorrect', data=speaker_data)
 ```
 
+# Generate subgroups
+
+For each game in `speaker_data`, randomly partition it into two subgroups. (If the game has an an odd number of players, one subgroup will have one more player than the other.) And then randomly reassign the subgroups to 'groups' so that each bigger group has 2 subgroups (with the constraint that subgroups must be paired with another game's subgroup). 
+
+For each new 'group', create a new gameID that is an integer. Each subgroup within a game should have a groupID that is either 0 or 1. These should all be columns in the new dataframe.
+
+This should result in anew dataframe called `speaker_data_separate`. It should have the same columns as `speaker_data`, but with the additional column `groupID` (and also `gameID should be different)
+
+```{python}
+games = speaker_data['gameId'].unique()
+
+subgroups = []
+for game in games:
+    game_data = speaker_data[speaker_data['gameId'] == game]
+    players = game_data['speaker'].unique()
+
+    if len(players) < 4:
+        continue
+
+    players_shuffled = np.random.permutation(players)
+    mid = len(players_shuffled) // 2
+    subgroup_0_players = list(players_shuffled[:mid + len(players_shuffled) % 2])
+    subgroup_1_players = list(players_shuffled[mid + len(players_shuffled) % 2:])
+
+    if len(subgroup_0_players) > 0:
+        subgroups.append({'original_game': game, 'players': subgroup_0_players})
+    if len(subgroup_1_players) > 0:
+        subgroups.append({'original_game': game, 'players': subgroup_1_players})
+
+random.shuffle(subgroups)
+
+paired_groups = []
+used = set()
+new_game_id = 0
+
+for i in range(len(subgroups)):
+    if i in used:
+        continue
+    for j in range(i + 1, len(subgroups)):
+        if j in used:
+            continue
+        if subgroups[i]['original_game'] != subgroups[j]['original_game']:
+            paired_groups.append({
+                'new_game_id': new_game_id,
+                'subgroup_0': subgroups[i],
+                'subgroup_1': subgroups[j]
+            })
+            used.add(i)
+            used.add(j)
+            new_game_id += 1
+            break
+
+rows = []
+for group in paired_groups:
+    new_gid = group['new_game_id']
+
+    for group_id, subgroup_key in enumerate(['subgroup_0', 'subgroup_1']):
+        subgroup = group[subgroup_key]
+        for player in subgroup['players']:
+            mask = ((speaker_data['gameId'] == subgroup['original_game']) &
+                    (speaker_data['speaker'] == player))
+            player_data = speaker_data[mask].copy()
+            player_data['new_gameId'] = new_gid
+            player_data['groupID'] = group_id
+            rows.append(player_data)
+
+speaker_data_separate = pd.concat(rows, ignore_index=True)
+speaker_data_separate['gameId'] = speaker_data_separate['new_gameId']
+speaker_data_separate = speaker_data_separate.drop(columns=['new_gameId'])
+
+print(f"Number of new paired groups: {len(paired_groups)}")
+print(f"speaker_data_separate shape: {speaker_data_separate.shape}")
+```
 
 # Metrics
-
 
 ## Group-specificity
 
