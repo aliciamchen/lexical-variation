@@ -12,6 +12,7 @@ library(here)
 library(tidyverse)
 library(ggplot2)
 library(tidyboot)
+library(effectsize)
 
 theme_set(theme_classic(base_size = 20))
 ```
@@ -125,4 +126,110 @@ results_all %>%
   theme(legend.position = "bottom")
 ```
 # Power analysis
+
+How many games do we need to detect an effect between 'mixed' and 'separate' for group-specificity?
+
+What about for 75% and 50% of the effect above?
+
+## Observed effect size
+
+First, calculate the observed difference in group-specificity coefficients between conditions:
+
+```{r}
+# Calculate summary statistics by condition
+effect_stats <- results_all %>%
+  group_by(condition) %>%
+  summarise(
+    n = n(),
+    mean_coef = mean(coefficient),
+    sd_coef = sd(coefficient),
+    .groups = "drop"
+  )
+
+effect_stats
+
+d_result <- cohens_d(coefficient ~ condition, data = results_all)
+d_result
+
+mean_mixed <- effect_stats$mean_coef[effect_stats$condition == "Mixed"]
+mean_separate <- effect_stats$mean_coef[effect_stats$condition == "Separate"]
+observed_diff <- abs(mean_separate - mean_mixed)
+cohens_d_value <- abs(as.numeric(d_result$Cohens_d))
+pooled_sd <- observed_diff / cohens_d_value
+
+cat("Observed difference |Separate - Mixed|:", round(observed_diff, 4), "\n")
+cat("Pooled SD:", round(pooled_sd, 4), "\n")
+```
+
+## Power analysis
+
+Using a two-sample t-test with alpha = 0.05 and power = 0.80:
+
+```{r}
+# Function to calculate required n per group for a given effect size
+calc_required_n <- function(effect_size, pooled_sd, alpha = 0.05, power = 0.80) {
+  result <- power.t.test(
+    delta = effect_size,
+    sd = pooled_sd,
+    sig.level = alpha,
+    power = power,
+    type = "two.sample",
+    alternative = "two.sided"
+  )
+  return(ceiling(result$n))
+}
+
+# Calculate for 100%, 75%, and 50% of observed effect
+effect_proportions <- c(1.0, 0.75, 0.50)
+
+power_results <- tibble(
+  effect_proportion = effect_proportions,
+  effect_size = observed_diff * effect_proportions,
+  cohens_d = cohens_d_value * effect_proportions,
+  n_per_condition = sapply(observed_diff * effect_proportions,
+                            calc_required_n,
+                            pooled_sd = pooled_sd)
+)
+
+power_results
+```
+
+## Power curve
+
+Visualize power as a function of sample size:
+
+```{r}
+sample_sizes <- seq(2, 30, by = 1)
+
+power_curves <- expand_grid(
+  n = sample_sizes,
+  effect_proportion = effect_proportions
+) %>%
+  mutate(
+    effect_size = observed_diff * effect_proportion,
+    power = pmap_dbl(list(n, effect_size), function(n, es) {
+      power.t.test(
+        n = n,
+        delta = es,
+        sd = pooled_sd,
+        sig.level = 0.05,
+        type = "two.sample",
+        alternative = "two.sided"
+      )$power
+    }),
+    effect_label = paste0(effect_proportion * 100, "% effect")
+  )
+
+ggplot(power_curves, aes(x = n, y = power, color = effect_label)) +
+  geom_line(linewidth = 1.2) +
+  geom_hline(yintercept = 0.80, linetype = "dashed", color = "gray") +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+  labs(
+    title = "Power curves",
+    x = "Games per condition",
+    y = "Power",
+    color = "Effect size"
+  ) +
+  theme(legend.position = "bottom")
+```
 
