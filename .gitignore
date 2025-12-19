@@ -8,3 +8,5 @@ scaffolding.R
 .DS_Store
 *.Rproj
 *.pyc
+__pycache__
+.pytest_cache/

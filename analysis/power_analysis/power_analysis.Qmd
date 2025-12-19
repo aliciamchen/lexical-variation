@@ -397,9 +397,9 @@ print("\nSaved pairwise data to CSV files for R analysis")
 ```{python}
 import subprocess
 
-project_root = os.path.dirname(os.getcwd())
+project_root = os.path.dirname(os.path.dirname(os.getcwd()))
 result = subprocess.run(
-    ["Rscript", "analysis/fit_models.R"],
+    ["Rscript", "analysis/power_analysis/fit_models.R"],
     capture_output=True,
     text=True,
     cwd=project_root
