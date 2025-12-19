@@ -104,12 +104,41 @@ Is there generally reduction in utterance length across rounds?
 
 ```{python}
 sns.lineplot(x='repNum', y='utt_length', data=speaker_data)
+plt.tight_layout()
+plt.show()
 ```
 
 Increase in accuracy across rounds?
 
 ```{python}
 sns.lineplot(x='repNum', y='countCorrect', data=speaker_data)
+plt.tight_layout()
+plt.show()
+```
+
+Are successive utterances for the same tangram more similar? Add a column `sim_adjacent` to the dataframe, which is the cosine similarity between the current utterance and the previous utterance for the same tangram.
+
+```{python}
+def compute_adjacent_similarity(df, embeddings, model):
+    df = df.sort_values(['gameId', 'target', 'repNum']).copy()
+
+    df['prev_embedding_idx'] = df.groupby(['gameId', 'target'])['embedding_idx'].shift(1)
+
+    def get_similarity(row):
+        if pd.isna(row['prev_embedding_idx']):
+            return np.nan
+        curr_idx = int(row['embedding_idx'])
+        prev_idx = int(row['prev_embedding_idx'])
+        return model.similarity(embeddings[curr_idx], embeddings[prev_idx]).item()
+
+    df['sim_adjacent'] = df.apply(get_similarity, axis=1)
+    return df
+
+speaker_data = compute_adjacent_similarity(speaker_data, embeddings, sbert_model)
+
+sns.lineplot(x='repNum', y='sim_adjacent', data=speaker_data)
+plt.tight_layout()
+plt.show()
 ```
 
 # Generate subgroups
@@ -180,7 +209,8 @@ for group in paired_groups:
 
 speaker_data_separate = pd.concat(rows, ignore_index=True)
 speaker_data_separate['gameId'] = speaker_data_separate['new_gameId']
-speaker_data_separate = speaker_data_separate.drop(columns=['new_gameId'])
+speaker_data_separate = speaker_data_separate.drop(columns=['new_gameId', 'prev_embedding_idx', 'sim_adjacent'])
+speaker_data_separate = speaker_data_separate.sort_values(['gameId', 'groupID', 'target', 'repNum'])
 
 print(f"Number of new paired groups: {len(paired_groups)}")
 print(f"speaker_data_separate shape: {speaker_data_separate.shape}")
@@ -202,13 +232,10 @@ As a sanity check, we will also permute the assignment of participants to groups
 
 ### Assign arbitrary groups to speaker_data (mixed condition)
 
-For the mixed condition, we assign players within each game to arbitrary groups (0 or 1). Since everyone actually played together, any group-specificity should be close to zero.
+For the mixed condition, we assign players within each game to arbitrary groups (0 or 1). Since everyone played together, any group-specificity should be close to zero.
 
 ```{python}
 from itertools import combinations
-
-# Load embeddings
-embeddings = np.load("boyce_sbert_embeddings.npy")
 
 # For speaker_data (mixed condition): assign arbitrary groupIDs
 speaker_data_mixed = speaker_data.copy()
@@ -223,8 +250,7 @@ for game in speaker_data_mixed['gameId'].unique():
 speaker_data_mixed = speaker_data_mixed[speaker_data_mixed['gameId'].isin(games_with_enough_players)].copy()
 
 # Assign arbitrary groupIDs within each game
-def assign_arbitrary_groups(df, seed=67):
-    np.random.seed(seed)
+def assign_arbitrary_groups(df):
     df = df.copy()
     df['groupID'] = -1
 
@@ -245,6 +271,8 @@ def assign_arbitrary_groups(df, seed=67):
     return df
 
 speaker_data_mixed = assign_arbitrary_groups(speaker_data_mixed)
+speaker_data_mixed = speaker_data_mixed.drop(columns=['prev_embedding_idx', 'sim_adjacent'])
+speaker_data_mixed = speaker_data_mixed.sort_values(['gameId', 'groupID', 'target', 'repNum'])
 print(f"speaker_data_mixed shape: {speaker_data_mixed.shape}")
 print(f"Games in mixed condition: {speaker_data_mixed['gameId'].nunique()}")
 ```
@@ -257,7 +285,7 @@ For each game and tangram, compute the similarity between all pairs of speakers 
 def compute_pairwise_similarities(df, embeddings, model):
     """
     For each game and tangram, compute similarity between all pairs of speakers
-    who described that tangram (from different reps).
+    who described that tangram.
 
     Returns a DataFrame with columns:
     - gameId, target
@@ -271,18 +299,15 @@ def compute_pairwise_similarities(df, embeddings, model):
     rows = []
 
     for (game, target), group_data in df.groupby(['gameId', 'target']):
-        # Get unique speakers who described this tangram
         speakers = group_data['speaker'].unique()
 
         if len(speakers) < 2:
             continue
 
         for s1, s2 in combinations(speakers, 2):
-            # Get each speaker's description of this tangram
             s1_data = group_data[group_data['speaker'] == s1].iloc[0]
             s2_data = group_data[group_data['speaker'] == s2].iloc[0]
 
-            # Get embeddings and compute similarity using sentence_transformers
             emb1 = embeddings[s1_data['embedding_idx']]
             emb2 = embeddings[s2_data['embedding_idx']]
             sim = model.similarity(emb1, emb2).item()
@@ -300,7 +325,7 @@ def compute_pairwise_similarities(df, embeddings, model):
                 'speaker_1': s1,
                 'speaker_2': s2,
                 'repNum_1': s1_data['repNum'],
-                'repNum_2': s2_data['repNum'],
+                'repNum_2': s2_data['repNum'], # this is fine because repnums are always different between speakers
                 'groupID_1': s1_data['groupID'],
                 'groupID_2': s2_data['groupID'],
                 'same_group': same_group,
@@ -310,306 +335,42 @@ def compute_pairwise_similarities(df, embeddings, model):
 
     return pd.DataFrame(rows)
 
-# Compute for mixed condition
 pairwise_mixed = compute_pairwise_similarities(speaker_data_mixed, embeddings, sbert_model)
 print(f"Pairwise similarities (mixed): {len(pairwise_mixed)} pairs")
 print(f"Mean similarity: {pairwise_mixed['similarity'].mean():.3f}")
 print(f"Same group pairs: {pairwise_mixed['same_group'].sum()} / {len(pairwise_mixed)}")
 
-# Compute for separate condition
 pairwise_separate = compute_pairwise_similarities(speaker_data_separate, embeddings, sbert_model)
 print(f"\nPairwise similarities (separate): {len(pairwise_separate)} pairs")
 print(f"Mean similarity: {pairwise_separate['similarity'].mean():.3f}")
 print(f"Same group pairs: {pairwise_separate['same_group'].sum()} / {len(pairwise_separate)}")
+
+pairwise_mixed.to_csv("pairwise_mixed.csv", index=False)
+pairwise_separate.to_csv("pairwise_separate.csv", index=False)
+print("\nSaved pairwise data to CSV files for R analysis")
 ```
 
 ### Fit mixed effects models using R
 
 ```{python}
-import os
-from pathlib import Path
+import subprocess
 
-# Set R library path to use renv
-project_root = Path(__file__).parent.parent if '__file__' in dir() else Path.cwd().parent
-renv_lib = project_root / 'renv' / 'library' / 'macos' / 'R-4.5' / 'aarch64-apple-darwin20'
-if renv_lib.exists():
-    os.environ['R_LIBS'] = str(renv_lib)
+project_root = os.path.dirname(os.getcwd())
+result = subprocess.run(
+    ["Rscript", "analysis/fit_models.R"],
+    capture_output=True,
+    text=True,
+    cwd=project_root
+)
+print(result.stdout)
+if result.stderr:
+    print(result.stderr)
 
-import rpy2.robjects as ro
-from rpy2.robjects import pandas2ri
-from rpy2.robjects.packages import importr
-from rpy2.robjects.conversion import localconverter
+# Load results back into Python
+results_mixed = pd.read_csv("results_mixed.csv")
+results_separate = pd.read_csv("results_separate.csv")
 
-# Import R packages
-lme4 = importr('lme4')
-base = importr('base')
-
-def fit_group_specificity_by_game(pairwise_df, condition_name):
-    """
-    Fit the mixed effects model separately for each game:
-    similarity ~ same_group + (1 | target) + (1 | participant_pair)
-
-    Returns a DataFrame with group-specificity scores for each game.
-    """
-    results = []
-    games = pairwise_df['gameId'].unique()
-
-    for game in games:
-        game_data = pairwise_df[pairwise_df['gameId'] == game]
-
-        # Need at least some data to fit a model
-        if len(game_data) < 5:
-            continue
-
-        # Check we have both same_group and different_group pairs
-        if game_data['same_group'].nunique() < 2:
-            continue
-
-        try:
-            with localconverter(ro.default_converter + pandas2ri.converter):
-                r_df = ro.conversion.py2rpy(game_data)
-            ro.globalenv['pairwise_data'] = r_df
-
-            ro.r('''
-            library(lme4)
-            model <- lmer(similarity ~ same_group + (1 | target) + (1 | participant_pair),
-                          data = pairwise_data)
-            ''')
-
-            same_group_coef = ro.r('coef(summary(model))["same_group", "Estimate"]')[0]
-            same_group_se = ro.r('coef(summary(model))["same_group", "Std. Error"]')[0]
-            same_group_t = ro.r('coef(summary(model))["same_group", "t value"]')[0]
-
-            results.append({
-                'gameId': game,
-                'condition': condition_name,
-                'coefficient': same_group_coef,
-                'std_error': same_group_se,
-                't_value': same_group_t,
-                'n_pairs': len(game_data)
-            })
-        except Exception as e:
-            print(f"Warning: Could not fit model for game {game}: {e}")
-            continue
-
-    results_df = pd.DataFrame(results)
-
-    print(f"\n=== {condition_name} Condition ===")
-    print(f"Games with fitted models: {len(results_df)}")
-    print(f"Mean coefficient: {results_df['coefficient'].mean():.4f}")
-    print(f"SD coefficient: {results_df['coefficient'].std():.4f}")
-    print(f"Range: [{results_df['coefficient'].min():.4f}, {results_df['coefficient'].max():.4f}]")
-
-    return results_df
-
-# Fit models for each game in both conditions
-results_mixed = fit_group_specificity_by_game(pairwise_mixed, "Mixed")
-results_separate = fit_group_specificity_by_game(pairwise_separate, "Separate")
+print(f"\nLoaded {len(results_mixed)} mixed condition results")
+print(f"Loaded {len(results_separate)} separate condition results")
 ```
 
-### Complementary approach: within vs between group similarity
-
-```{python}
-def compute_within_between_similarity(pairwise_df):
-    """
-    Compute average within-group and between-group similarity.
-    """
-    within = pairwise_df[pairwise_df['same_group'] == 1]['similarity']
-    between = pairwise_df[pairwise_df['same_group'] == 0]['similarity']
-
-    return {
-        'within_mean': within.mean(),
-        'within_std': within.std(),
-        'between_mean': between.mean(),
-        'between_std': between.std(),
-        'difference': within.mean() - between.mean(),
-        'n_within': len(within),
-        'n_between': len(between)
-    }
-
-sim_mixed = compute_within_between_similarity(pairwise_mixed)
-sim_separate = compute_within_between_similarity(pairwise_separate)
-
-print("=== Within vs Between Group Similarity ===\n")
-print("Mixed condition:")
-print(f"  Within-group:  {sim_mixed['within_mean']:.3f} (SD: {sim_mixed['within_std']:.3f}, n={sim_mixed['n_within']})")
-print(f"  Between-group: {sim_mixed['between_mean']:.3f} (SD: {sim_mixed['between_std']:.3f}, n={sim_mixed['n_between']})")
-print(f"  Difference:    {sim_mixed['difference']:.3f}")
-
-print("\nSeparate condition:")
-print(f"  Within-group:  {sim_separate['within_mean']:.3f} (SD: {sim_separate['within_std']:.3f}, n={sim_separate['n_within']})")
-print(f"  Between-group: {sim_separate['between_mean']:.3f} (SD: {sim_separate['between_std']:.3f}, n={sim_separate['n_between']})")
-print(f"  Difference:    {sim_separate['difference']:.3f}")
-```
-
-### Visualize the results
-
-```{python}
-plot_data = pd.concat([
-    pairwise_mixed.assign(condition='Mixed'),
-    pairwise_separate.assign(condition='Separate')
-])
-plot_data['group_type'] = plot_data['same_group'].map({1: 'Within-group', 0: 'Between-group'})
-
-fig, ax = plt.subplots()
-sns.violinplot(data=plot_data, x='condition', y='similarity', hue='group_type')
-ax.set_xlabel('Condition')
-ax.set_ylabel('Cosine Similarity')
-ax.set_title('Pairwise cosine similarities')
-ax.legend(title='')
-plt.show()
-```
-
-```{python}
-coef_data = pd.concat([results_mixed, results_separate], ignore_index=True)
-
-fig, ax = plt.subplots()
-sns.boxplot(data=coef_data, x='condition', y='coefficient', ax=ax)
-sns.stripplot(data=coef_data, x='condition', y='coefficient', ax=ax, 
-              color='black', alpha=0.3, size=7)
-ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
-ax.set_xlabel('Condition')
-ax.set_ylabel('Group-specificity coefficient')
-ax.set_title('Group-specificity by Game')
-plt.show()
-```
-
-
-# Power Analysis
-
-Using the observed per-game group-specificity coefficients, we can estimate how many games are needed to detect a difference between conditions.
-
-**Key observations:**
-- Mixed condition: mean = {results_mixed['coefficient'].mean():.3f}, SD = {results_mixed['coefficient'].std():.3f}
-- Separate condition: mean = {results_separate['coefficient'].mean():.3f}, SD = {results_separate['coefficient'].std():.3f}
-
-The separate condition effect (0.19) is a **ceiling estimate** since subgroups come from completely different original games. In the actual experiment, the effect may be smaller since "separate" groups will still be playing the same game (just with separate communication).
-
-```{python}
-from scipy import stats
-
-# Observed effect size (Cohen's d)
-mean_diff = results_separate['coefficient'].mean() - results_mixed['coefficient'].mean()
-pooled_sd = np.sqrt((results_mixed['coefficient'].std()**2 + results_separate['coefficient'].std()**2) / 2)
-cohens_d = mean_diff / pooled_sd
-
-print(f"Observed effect size:")
-print(f"  Mean difference: {mean_diff:.4f}")
-print(f"  Pooled SD: {pooled_sd:.4f}")
-print(f"  Cohen's d: {cohens_d:.2f}")
-```
-
-## Simulation-based power analysis
-
-We simulate experiments with different numbers of games per condition, sampling from the observed distributions.
-
-```{python}
-def simulate_power(n_games_per_condition, n_simulations=1000, alpha=0.05,
-                   effect_fraction=1.0):
-    """
-    Simulate power for detecting a difference between conditions.
-
-    effect_fraction: Scale the effect size (1.0 = full observed effect,
-                     0.5 = half the effect, etc.)
-    """
-    # Parameters from observed data
-    mixed_mean = results_mixed['coefficient'].mean()
-    mixed_sd = results_mixed['coefficient'].std()
-
-    separate_mean = results_separate['coefficient'].mean()
-    separate_sd = results_separate['coefficient'].std()
-
-    # Scale the effect
-    scaled_separate_mean = mixed_mean + (separate_mean - mixed_mean) * effect_fraction
-
-    significant_count = 0
-
-    for _ in range(n_simulations):
-        # Sample from each condition
-        mixed_sample = np.random.normal(mixed_mean, mixed_sd, n_games_per_condition)
-        separate_sample = np.random.normal(scaled_separate_mean, separate_sd, n_games_per_condition)
-
-        # Two-sample t-test
-        t_stat, p_value = stats.ttest_ind(separate_sample, mixed_sample)
-
-        # One-sided test (we expect separate > mixed)
-        if t_stat > 0 and p_value / 2 < alpha:
-            significant_count += 1
-
-    return significant_count / n_simulations
-
-# Calculate power for different sample sizes
-sample_sizes = [5, 8, 10, 12, 15, 20, 25, 30, 40, 50]
-effect_fractions = [1.0, 0.75, 0.5, 0.25]
-
-print("Power analysis results (alpha = 0.05, one-sided test):\n")
-
-power_results = []
-for effect_frac in effect_fractions:
-    print(f"Effect fraction = {effect_frac} (d = {cohens_d * effect_frac:.2f}):")
-    for n in sample_sizes:
-        power = simulate_power(n, n_simulations=2000, effect_fraction=effect_frac)
-        power_results.append({
-            'n_per_condition': n,
-            'effect_fraction': effect_frac,
-            'cohens_d': cohens_d * effect_frac,
-            'power': power
-        })
-        if power >= 0.79 and power <= 0.81:
-            print(f"  n = {n:2d} per condition: power = {power:.2f} <-- ~80% power")
-        elif power >= 0.80:
-            print(f"  n = {n:2d} per condition: power = {power:.2f}")
-        else:
-            print(f"  n = {n:2d} per condition: power = {power:.2f}")
-    print()
-
-power_df = pd.DataFrame(power_results)
-```
-
-```{python}
-# Find minimum n for 80% power at each effect fraction
-print("=== Summary: Games needed for 80% power ===\n")
-
-for effect_frac in effect_fractions:
-    subset = power_df[power_df['effect_fraction'] == effect_frac]
-    # Find first n where power >= 0.80
-    sufficient = subset[subset['power'] >= 0.80]
-    if len(sufficient) > 0:
-        min_n = sufficient['n_per_condition'].min()
-        print(f"Effect = {effect_frac*100:.0f}% of observed (d = {cohens_d * effect_frac:.2f}): " +
-              f"need {min_n} games per condition ({min_n * 2} total)")
-    else:
-        print(f"Effect = {effect_frac*100:.0f}% of observed (d = {cohens_d * effect_frac:.2f}): " +
-              f"need > {sample_sizes[-1]} games per condition")
-```
-
-```{python}
-# Visualize power curves
-fig, ax = plt.subplots(figsize=(10, 6))
-
-for effect_frac in effect_fractions:
-    subset = power_df[power_df['effect_fraction'] == effect_frac]
-    label = f"{effect_frac*100:.0f}% effect (d = {cohens_d * effect_frac:.2f})"
-    ax.plot(subset['n_per_condition'], subset['power'], 'o-', label=label)
-
-ax.axhline(y=0.80, color='red', linestyle='--', alpha=0.7, label='80% power')
-ax.set_xlabel('Games per condition')
-ax.set_ylabel('Power')
-ax.set_title('Power Analysis: Games Needed to Detect Group-Specificity Difference')
-ax.legend()
-ax.set_ylim(0, 1)
-ax.grid(True, alpha=0.3)
-
-plt.tight_layout()
-plt.show()
-```
-
-## Recommendations
-
-Based on the power analysis:
-
-- **If the true effect is 100% of observed** (d = {cohens_d:.2f}, ceiling estimate): Very few games needed
-- **If the true effect is 50% of observed** (d = {cohens_d * 0.5:.2f}, conservative estimate): Moderate sample size
-- **If the true effect is 25% of observed** (d = {cohens_d * 0.25:.2f}, very conservative): Larger sample size needed
-
-Since the observed effect is a ceiling (subgroups from completely different games), a conservative estimate of 25-50% of the observed effect is recommended for planning.

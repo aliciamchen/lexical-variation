@@ -6,4 +6,5 @@ scaffolding.R
 .Rhistory
 .Rprofile
 .DS_Store
-.Rproj
+*.Rproj
+*.pyc
