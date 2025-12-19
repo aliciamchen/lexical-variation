@@ -250,7 +250,8 @@ for game in speaker_data_mixed['gameId'].unique():
 speaker_data_mixed = speaker_data_mixed[speaker_data_mixed['gameId'].isin(games_with_enough_players)].copy()
 
 # Assign arbitrary groupIDs within each game
-def assign_arbitrary_groups(df):
+def assign_arbitrary_groups(df, seed=67):
+    rng = np.random.default_rng(seed)
     df = df.copy()
     df['groupID'] = -1
 
@@ -258,7 +259,7 @@ def assign_arbitrary_groups(df):
         game_mask = df['gameId'] == game
         players = df.loc[game_mask, 'speaker'].unique()
 
-        players_shuffled = np.random.permutation(players)
+        players_shuffled = rng.permutation(players)
         mid = len(players_shuffled) // 2
         group_0_players = set(players_shuffled[:mid + len(players_shuffled) % 2])
 
@@ -270,11 +271,52 @@ def assign_arbitrary_groups(df):
 
     return df
 
-speaker_data_mixed = assign_arbitrary_groups(speaker_data_mixed)
+speaker_data_mixed = assign_arbitrary_groups(speaker_data_mixed, seed=67)
 speaker_data_mixed = speaker_data_mixed.drop(columns=['prev_embedding_idx', 'sim_adjacent'])
 speaker_data_mixed = speaker_data_mixed.sort_values(['gameId', 'groupID', 'target', 'repNum'])
 print(f"speaker_data_mixed shape: {speaker_data_mixed.shape}")
 print(f"Games in mixed condition: {speaker_data_mixed['gameId'].nunique()}")
+```
+
+### Validation checks
+
+```{python}
+def validate_dataframes(df_mixed, df_separate):
+    """Validate that both dataframes have correct structure."""
+    errors = []
+
+    # Check 1: Each gameId has exactly two groupIDs (0 and 1)
+    for name, df in [("mixed", df_mixed), ("separate", df_separate)]:
+        for game_id in df['gameId'].unique():
+            game_data = df[df['gameId'] == game_id]
+            group_ids = set(game_data['groupID'].unique())
+            if group_ids != {0, 1}:
+                errors.append(f"{name}: gameId {game_id} has groupIDs {group_ids}, expected {{0, 1}}")
+
+    # Check 2: For mixed condition only, each (gameId, target) should have unique repNums
+    # (In separate condition, subgroups come from different games so repNums may duplicate)
+    for (game_id, target), group_data in df_mixed.groupby(['gameId', 'target']):
+        rep_nums = group_data['repNum'].tolist()
+        if len(rep_nums) != len(set(rep_nums)):
+            errors.append(f"mixed: gameId {game_id}, target {target} has duplicate repNums: {rep_nums}")
+
+    # Check 3: For separate condition, verify each subgroup (groupID) has unique repNums within (gameId, target)
+    for (game_id, target, group_id), group_data in df_separate.groupby(['gameId', 'target', 'groupID']):
+        rep_nums = group_data['repNum'].tolist()
+        if len(rep_nums) != len(set(rep_nums)):
+            errors.append(f"separate: gameId {game_id}, target {target}, groupID {group_id} has duplicate repNums: {rep_nums}")
+
+    if errors:
+        for e in errors:
+            print(f"ERROR: {e}")
+        raise ValueError(f"Validation failed with {len(errors)} errors")
+    else:
+        print("All validation checks passed!")
+        print(f"  - Each gameId has exactly groupIDs {{0, 1}}")
+        print(f"  - Mixed: All speakers for each (gameId, target) have unique repNums")
+        print(f"  - Separate: Within each subgroup, speakers have unique repNums")
+
+validate_dataframes(speaker_data_mixed, speaker_data_separate)
 ```
 
 ### Compute pairwise similarities

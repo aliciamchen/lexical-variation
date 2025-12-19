@@ -393,3 +393,240 @@ class TestEdgeCases:
         different_games = (merged['gameId_1'] != merged['gameId_2']).any()
 
         assert different_assignments or different_games
+
+
+# ============================================================================
+# Tests for compute_pairwise_similarities
+# ============================================================================
+
+from itertools import combinations
+
+
+def compute_pairwise_similarities(df, embeddings, model):
+    """
+    For each game and tangram, compute similarity between all pairs of speakers
+    who described that tangram.
+
+    Returns a DataFrame with columns:
+    - gameId, target
+    - speaker_1, speaker_2
+    - repNum_1, repNum_2
+    - groupID_1, groupID_2
+    - same_group (1 if both speakers in same group, 0 otherwise)
+    - similarity (cosine similarity)
+    - participant_pair (unique identifier for the pair)
+    """
+    rows = []
+
+    for (game, target), group_data in df.groupby(['gameId', 'target']):
+        speakers = group_data['speaker'].unique()
+
+        if len(speakers) < 2:
+            continue
+
+        for s1, s2 in combinations(speakers, 2):
+            s1_data = group_data[group_data['speaker'] == s1].iloc[0]
+            s2_data = group_data[group_data['speaker'] == s2].iloc[0]
+
+            emb1 = embeddings[s1_data['embedding_idx']]
+            emb2 = embeddings[s2_data['embedding_idx']]
+            sim = model.similarity(emb1, emb2).item()
+
+            same_group = 1 if s1_data['groupID'] == s2_data['groupID'] else 0
+
+            pair = tuple(sorted([s1, s2]))
+            participant_pair = f"{pair[0]}_{pair[1]}"
+
+            rows.append({
+                'gameId': game,
+                'target': target,
+                'speaker_1': s1,
+                'speaker_2': s2,
+                'repNum_1': s1_data['repNum'],
+                'repNum_2': s2_data['repNum'],
+                'groupID_1': s1_data['groupID'],
+                'groupID_2': s2_data['groupID'],
+                'same_group': same_group,
+                'similarity': sim,
+                'participant_pair': participant_pair
+            })
+
+    return pd.DataFrame(rows)
+
+
+class MockSBERTModel:
+    """Mock SBERT model for testing."""
+    def similarity(self, emb1, emb2):
+        # Simple dot product similarity for testing
+        sim = np.dot(emb1, emb2) / (np.linalg.norm(emb1) * np.linalg.norm(emb2))
+        return MockTensor(sim)
+
+
+class MockTensor:
+    """Mock tensor with .item() method."""
+    def __init__(self, value):
+        self.value = value
+
+    def item(self):
+        return self.value
+
+
+@pytest.fixture
+def pairwise_test_data():
+    """Create test data with known structure for pairwise similarity testing."""
+    rows = []
+    embedding_idx = 0
+
+    # Game 1: 4 speakers, 2 targets, each speaker describes each target once
+    for speaker_idx, speaker in enumerate(['S1', 'S2', 'S3', 'S4']):
+        group_id = 0 if speaker_idx < 2 else 1  # S1, S2 in group 0; S3, S4 in group 1
+        for target in ['A', 'B']:
+            rows.append({
+                'gameId': 'game_1',
+                'speaker': speaker,
+                'target': target,
+                'repNum': speaker_idx,  # Each speaker has different repNum
+                'groupID': group_id,
+                'embedding_idx': embedding_idx,
+                'speaker_utt': f'utterance from {speaker} for {target}'
+            })
+            embedding_idx += 1
+
+    # Game 2: 3 speakers, 2 targets
+    for speaker_idx, speaker in enumerate(['P1', 'P2', 'P3']):
+        group_id = 0 if speaker_idx < 2 else 1
+        for target in ['A', 'B']:
+            rows.append({
+                'gameId': 'game_2',
+                'speaker': speaker,
+                'target': target,
+                'repNum': speaker_idx,
+                'groupID': group_id,
+                'embedding_idx': embedding_idx,
+                'speaker_utt': f'utterance from {speaker} for {target}'
+            })
+            embedding_idx += 1
+
+    return pd.DataFrame(rows)
+
+
+@pytest.fixture
+def mock_embeddings(pairwise_test_data):
+    """Create mock embeddings - same group speakers have more similar embeddings."""
+    n_embeddings = len(pairwise_test_data)
+    dim = 10
+    embeddings = np.random.randn(n_embeddings, dim)
+
+    # Make embeddings more similar within groups
+    for game_id in pairwise_test_data['gameId'].unique():
+        game_data = pairwise_test_data[pairwise_test_data['gameId'] == game_id]
+        for group_id in [0, 1]:
+            group_indices = game_data[game_data['groupID'] == group_id]['embedding_idx'].values
+            if len(group_indices) > 1:
+                # Add a common component to same-group embeddings
+                common = np.random.randn(dim) * 2
+                for idx in group_indices:
+                    embeddings[idx] += common
+
+    # Normalize embeddings
+    embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
+    return embeddings
+
+
+class TestComputePairwiseSimilarities:
+    """Tests for the compute_pairwise_similarities function."""
+
+    def test_returns_dataframe_with_correct_columns(self, pairwise_test_data, mock_embeddings):
+        model = MockSBERTModel()
+        result = compute_pairwise_similarities(pairwise_test_data, mock_embeddings, model)
+
+        expected_cols = {'gameId', 'target', 'speaker_1', 'speaker_2', 'repNum_1', 'repNum_2',
+                        'groupID_1', 'groupID_2', 'same_group', 'similarity', 'participant_pair'}
+        assert set(result.columns) == expected_cols
+
+    def test_correct_number_of_pairs(self, pairwise_test_data, mock_embeddings):
+        model = MockSBERTModel()
+        result = compute_pairwise_similarities(pairwise_test_data, mock_embeddings, model)
+
+        # Game 1: 4 speakers, 2 targets -> C(4,2) * 2 = 6 * 2 = 12 pairs
+        # Game 2: 3 speakers, 2 targets -> C(3,2) * 2 = 3 * 2 = 6 pairs
+        # Total: 18 pairs
+        assert len(result) == 18
+
+    def test_same_group_correctly_assigned(self, pairwise_test_data, mock_embeddings):
+        model = MockSBERTModel()
+        result = compute_pairwise_similarities(pairwise_test_data, mock_embeddings, model)
+
+        for _, row in result.iterrows():
+            expected_same = 1 if row['groupID_1'] == row['groupID_2'] else 0
+            assert row['same_group'] == expected_same, \
+                f"same_group mismatch for {row['speaker_1']}, {row['speaker_2']}"
+
+    def test_repnums_are_different_between_speakers(self, pairwise_test_data, mock_embeddings):
+        model = MockSBERTModel()
+        result = compute_pairwise_similarities(pairwise_test_data, mock_embeddings, model)
+
+        # All pairs should have different repNums (since each speaker has unique repNum per game)
+        for _, row in result.iterrows():
+            assert row['repNum_1'] != row['repNum_2'], \
+                f"Same repNum for speakers {row['speaker_1']} and {row['speaker_2']}: {row['repNum_1']}"
+
+    def test_participant_pair_is_consistent(self, pairwise_test_data, mock_embeddings):
+        model = MockSBERTModel()
+        result = compute_pairwise_similarities(pairwise_test_data, mock_embeddings, model)
+
+        for _, row in result.iterrows():
+            pair = tuple(sorted([row['speaker_1'], row['speaker_2']]))
+            expected = f"{pair[0]}_{pair[1]}"
+            assert row['participant_pair'] == expected
+
+    def test_similarity_values_are_valid(self, pairwise_test_data, mock_embeddings):
+        model = MockSBERTModel()
+        result = compute_pairwise_similarities(pairwise_test_data, mock_embeddings, model)
+
+        # Cosine similarities should be between -1 and 1
+        assert (result['similarity'] >= -1.0).all()
+        assert (result['similarity'] <= 1.0).all()
+
+    def test_no_self_comparisons(self, pairwise_test_data, mock_embeddings):
+        model = MockSBERTModel()
+        result = compute_pairwise_similarities(pairwise_test_data, mock_embeddings, model)
+
+        # No speaker should be compared with themselves
+        for _, row in result.iterrows():
+            assert row['speaker_1'] != row['speaker_2']
+
+    def test_each_pair_appears_once_per_target(self, pairwise_test_data, mock_embeddings):
+        model = MockSBERTModel()
+        result = compute_pairwise_similarities(pairwise_test_data, mock_embeddings, model)
+
+        # Check no duplicates within each (gameId, target)
+        for (game, target), group_data in result.groupby(['gameId', 'target']):
+            pairs = group_data['participant_pair'].tolist()
+            assert len(pairs) == len(set(pairs)), \
+                f"Duplicate pairs in game {game}, target {target}"
+
+    def test_handles_game_with_single_speaker(self):
+        """Game with only one speaker for a target should produce no pairs."""
+        rows = [
+            {'gameId': 'g1', 'speaker': 'S1', 'target': 'A', 'repNum': 0,
+             'groupID': 0, 'embedding_idx': 0, 'speaker_utt': 'test'}
+        ]
+        df = pd.DataFrame(rows)
+        embeddings = np.random.randn(1, 10)
+        model = MockSBERTModel()
+
+        result = compute_pairwise_similarities(df, embeddings, model)
+        assert len(result) == 0
+
+    def test_same_group_higher_similarity_on_average(self, pairwise_test_data, mock_embeddings):
+        """Within-group pairs should have higher similarity (given our mock embeddings)."""
+        model = MockSBERTModel()
+        result = compute_pairwise_similarities(pairwise_test_data, mock_embeddings, model)
+
+        within_group = result[result['same_group'] == 1]['similarity'].mean()
+        between_group = result[result['same_group'] == 0]['similarity'].mean()
+
+        # With our mock embeddings that add common component to same-group, within should be higher
+        assert within_group > between_group, \
+            f"Expected within-group ({within_group:.3f}) > between-group ({between_group:.3f})"
