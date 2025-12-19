@@ -1,0 +1,128 @@
+---
+title: Power analysis plots
+author: Alicia Chen
+date: 2025-12-19
+format:
+  html:
+    code-fold: false
+---
+
+```{r setup}
+library(here)
+library(tidyverse)
+library(ggplot2)
+library(tidyboot)
+
+theme_set(theme_classic(base_size = 20))
+```
+
+# Load data
+
+```{r}
+pairwise_mixed <- read.csv(here("analysis/power_analysis/pairwise_mixed.csv"))
+pairwise_separate <- read.csv(here("analysis/power_analysis/pairwise_separate.csv"))
+results_mixed <- read.csv(here("analysis/power_analysis/results_mixed.csv"))
+results_separate <- read.csv(here("analysis/power_analysis/results_separate.csv"))
+```
+
+Stack the pairwise dataframes, and the results dataframes, and add columns for condition
+
+```{r}
+pairwise_all <- bind_rows(
+  pairwise_mixed %>% mutate(condition = "Mixed", gameId = as.character(gameId)),
+  pairwise_separate %>% mutate(condition = "Separate", gameId = as.character(gameId))
+)
+
+results_all <- bind_rows(
+  results_mixed %>% mutate(gameId = as.character(gameId)),
+  results_separate %>% mutate(gameId = as.character(gameId))
+)
+
+head(pairwise_all)
+head(results_all)
+```
+
+# Plot results
+
+## Within-group vs Between-group similarity
+
+```{r}
+pairwise_all_summary <- pairwise_all |> 
+  group_by(condition, same_group) |> 
+  tidyboot_mean(similarity, na.rm = T)
+
+pairwise_all_summary_game <- pairwise_all |> 
+  group_by(gameId, condition, same_group) |> 
+  tidyboot_mean(similarity, na.rm = T)
+```
+
+Compare similarity distributions for within-group vs between-group pairs by condition:
+
+```{r}
+ggplot(pairwise_all, aes(x = condition, y = similarity, fill = factor(same_group))) +
+  geom_violin(alpha = 0.7, position = position_dodge(width = 0.6)) +
+  geom_errorbar(data = pairwise_all_summary,
+                aes(x = condition, y = mean, ymin = ci_lower, ymax = ci_upper, group = factor(same_group)),
+                position = position_dodge(width = 0.6),
+                width = 0.15,
+                inherit.aes = FALSE) +
+  scale_fill_brewer(palette = "Set2", labels = c("Between group", "Within group")) +
+  labs(
+    title = "Pairwise similarities",
+    x = "Condition",
+    y = "Cosine similarity",
+    fill = "Comparison"
+  ) +
+  theme(legend.position = "right")
+```
+
+## Group-specificity scores
+
+Distribution of same_group coefficients across simulated games
+
+```{r}
+group_specificity_summary <- results_all |> 
+  group_by(condition) |> 
+  tidyboot_mean(coefficient)
+```
+
+
+```{r}
+ggplot(results_all, aes(x = condition, y = coefficient)) +
+  geom_point(data = group_specificity_summary, aes(x = condition, y = empirical_stat)) +
+  geom_errorbar(data = group_specificity_summary, aes(x = condition, ymin = ci_lower, ymax = ci_upper), inherit.aes = F, width = 0.2) +
+  geom_jitter(alpha = 0.3, width = 0.2, height = 0) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") +
+  labs(
+    title = "Group-specificity scores",
+    x = "Condition",
+    y = "Coefficient"
+  ) +
+  theme(legend.position = "none")
+```
+
+## Individual game coefficients
+
+Show coefficient for each simulated game:
+
+```{r}
+results_all %>%
+  arrange(coefficient) %>%
+  mutate(game_rank = row_number(),
+         ci_lower = coefficient - std_error,
+         ci_upper = coefficient + std_error) %>%
+  ggplot(aes(x = game_rank, y = coefficient, color = condition)) +
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.3) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    title = "Group-specificity scores by game",
+    x = "Game (ranked by coefficient)",
+    y = "Coefficient",
+    color = "Condition"
+  ) +
+  theme(legend.position = "bottom")
+```
+# Power analysis
+
