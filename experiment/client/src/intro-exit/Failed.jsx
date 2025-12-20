@@ -3,7 +3,7 @@ import { usePlayer } from "@empirica/core/player/classic/react";
 import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
 
-export function Sorry({ next }) {
+export function Failed({ next }) {
   const player = usePlayer();
 
   function handleSubmit(event) {

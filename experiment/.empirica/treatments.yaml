@@ -2,7 +2,6 @@ factors:
     - name: playerCount
       desc: how many players?
       values:
-        - value: 2
         - value: 8
         - value: 4
 treatments:
@@ -10,10 +9,6 @@ treatments:
       desc: Eight-player Game
       factors:
         playerCount: 8
-    - name: Two Players
-      desc: Two-player Game (for testing)
-      factors:
-        playerCount: 2
     - name: Four Players
       desc: Four-player game (for testing)
       factors:

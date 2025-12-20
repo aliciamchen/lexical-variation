@@ -11,3 +11,5 @@ scaffolding.R
 __pycache__
 .pytest_cache/
 experiment/data
+tajriba.json
+CLAUDE.md
