@@ -130,11 +130,7 @@ for tangram in selected_tangrams:
 
 View the resulting 6 tangrams in a 2x3 grid
 
-NOTE: This requires Cairo to be installed; e.g. `brew install cairo`.
-
 ```{python}
-os.environ["DYLD_LIBRARY_PATH"] = "/opt/homebrew/opt/cairo/lib:" + os.environ.get("DYLD_LIBRARY_PATH", "")
-
 import cairosvg
 from PIL import Image
 from io import BytesIO
