@@ -1,0 +1,609 @@
+@layer utilities {
+  /* Chrome, Safari, Edge, Opera */
+  input.number-arrows-none::-webkit-outer-spin-button,
+  input.number-arrows-none::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Firefox */
+  input.number-arrows-none[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+h1, h2, h3, h4 {
+  /* text-align: center; */
+  font-weight: bold;
+}
+
+/* make headings in instructions left aligned
+.instructions h2, .instructions h3, .instructions h4 {
+  text-align: left;
+} */
+
+/* Make h1 bold and bigger */
+.instructions h1 {
+  font-size: 1.8em;
+  padding-top: 0.7em;
+}
+
+.instructions h2 {
+  font-size: 1.2em;
+  margin-top: 1em;
+}
+
+.standalone {
+  padding: 25vh 0;
+}
+
+.consent {
+  text-align: justify;
+  width: 70vw;
+  display: block;
+  background-color: #fff;
+  padding: 2.5%;
+  margin: 0 auto;
+}
+
+.consent p {
+  /* align text to left */
+  text-align: left;
+  /* add space between paragraphs */
+  margin: 0.7em 0;
+  /* increase text size */
+  font-size: 1.2em;
+}
+
+.consent h1 {
+  font-size: 1.8em;
+  padding-top: 0.7em;
+}
+
+.instructions {
+  text-align: justify;
+  width: 75vw;
+  display: block;
+  background-color: #fff;
+  padding: 2.5%;
+  margin: 0 auto;
+}
+
+.instructions p {
+   text-align: left;
+   margin: 0.7em 0;
+   font-size: 1.2em;
+}
+
+.players .player-group .player {
+  flex-direction: column;
+  margin: 0 10px;
+}
+
+.players .player-group .player .name {
+  text-align: center;
+  margin-top: 5px;
+}
+
+.feedback {
+  align-self: start;
+  padding: 0rem;
+  text-align: left;
+}
+
+.feedback img {
+  width: 3vw;
+  height: 3vw;
+  max-width: 4vh;
+  max-height: 4vh;
+  /* object-fit: cover; */
+  background-color: white;
+}
+
+.tangrams.grid {
+  display: grid;
+  width: 80%;
+  margin: 0 auto;
+  justify-content: center;
+}
+
+.prompt-container {
+  max-width: 40vw;
+  margin: 0 auto 3rem auto; /* Bottom margin of 3rem adds space between prompt and tangrams */
+  text-align: center;
+}
+
+.instruction-prompt {
+  font-size: 1.4rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.description-container {
+  width: 80%;
+  max-width: 800px;
+  margin: 3rem auto 1rem auto;
+}
+
+.description-input {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1rem;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
+  height: 60px;
+  min-height: 60px;
+  max-height: 150px;
+  font-family: inherit;
+}
+
+.description-input:focus {
+  border-color: #4299e1;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+}
+
+.submit-container {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.submit-button {
+  background-color: #4299e1;
+  color: white;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submit-button:hover {
+  background-color: #3182ce;
+}
+
+.submit-button:disabled {
+  background-color: #a0aec0;
+  cursor: not-allowed;
+}
+
+.players {
+  padding: 10px;
+  background-color: #f5f8fa;
+  border-radius: 3px;
+  /* box-shadow: 0 0 0 1px rgba(16, 22, 26, 0.1), 0 1px 1px rgba(16, 22, 26, 0.2); */
+  width: 80%;
+  margin: 0 auto 4rem auto;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.player img {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.trial-info {
+  display: flex;
+  justify-content: center;
+  color: #617186;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* .grid {
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.grid main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: 2rem;
+}
+
+.grid main .game {
+  height: 100%;
+}
+
+.transition {
+  width: 50%;
+  margin: 0 auto;
+}
+
+.transition h3 {
+  font-weight: 100;
+}
+
+.round {
+  display: flex;
+  height: 100%;
+  align-items: stretch;
+}
+
+.task {
+  display: flex;
+  flex-grow: 1;
+  flex-shrink: 1;
+}
+
+.task .left {
+  margin: 0 2rem 0 0;
+  height: 100%;
+  flex-grow: 1;
+  flex-shrink: 0;
+  width: 38rem;
+}
+
+.task .left > div {
+  margin: 3rem 0 0;
+}
+
+.task .board {
+  flex-grow: 3;
+  flex-shrink: 1;
+} */
+
+/* .task .board .roleIndicator {
+  text-align: center;
+} */
+
+/* .task .board .all-tangrams {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  align-items: center;
+}
+
+.task .board .all-tangrams .tangram {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.task .board .all-tangrams .tangrams {
+  display: grid;
+  flex-wrap: nowrap;
+  width: 100%;
+  grid-gap: 20px;
+  justify-content: center;
+}
+
+.task .board .all-tangrams .tangrams .tangram {
+  width: 15vw;
+  height: 15vw;
+  max-width: 20vh;
+  max-height: 20vh;
+  flex-grow: 0;
+  flex-shrink: 5;
+  margin: 1rem;
+  justify-content: start;
+  cursor: pointer;
+} */
+
+/* .task .board .all-tangrams .tangrams .tangram .feedback {
+  align-self: start;
+  padding: 0rem;
+  text-align: left;
+}
+
+
+
+.task .board .all-tangrams .tangrams .tangram .feedback img {
+  height: 3vw;
+  width: 3vw;
+  max-width: 4vh;
+  max-height: vh;
+  background-color: white;
+}
+
+.task .board .feedbackIndicator {
+  text-align: center;
+  font-weight: 100;
+}
+
+.task .board .response {
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.task .board .response .bp3-button {
+  margin: 2rem;
+} */
+/* 
+.social-interactions {
+  margin-left: 2rem;
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: 25%;
+  max-height: 100%;
+  height: 100%;
+}
+
+.social-interactions .status {
+  display: flex;
+  flex-shrink: 0;
+  padding: 0 0.5rem;
+  height: 11rem;
+  margin-bottom: 1rem;
+}
+
+.social-interactions .status .players {
+  padding: 0;
+  display: flex;
+  width: 100%;
+  overflow: auto;
+}
+
+.social-interactions .status .players .player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+}
+
+.social-interactions .status .players .player .image {
+  position: relative;
+}
+
+.social-interactions .status .players .player .image .satisfied {
+  position: absolute;
+  top: -0.6rem;
+  right: -0.8rem;
+}
+
+.social-interactions .status .players .player .image .satisfied .bp3-icon-standard {
+  font-size: 1.2rem;
+}
+
+.social-interactions .status .players .player:first-child .name {
+  padding-right: 2rem;
+  white-space: nowrap;
+}
+
+.social-interactions .status .players .player:first-child .image {
+  padding-right: 2rem;
+  border-right: 1px solid lightgrey;
+}
+
+.social-interactions .status .players .player:first-child .image .satisfied {
+  right: 1.2rem;
+}
+
+.social-interactions .status .players .player img {
+  width: 5rem;
+  height: 5rem;
+}
+
+.social-interactions .status .timer {
+  padding-top: 1.5rem;
+  text-align: center;
+  width: 50%;
+}
+
+.social-interactions .status .timer .seconds {
+  color: green;
+  font-size: 2.7rem;
+  font-weight: bold;
+}
+
+.social-interactions .status .timer.lessThan10 .seconds {
+  color: orange;
+}
+
+.social-interactions .status .timer.lessThan5 .seconds {
+  color: red;
+}
+
+.social-interactions .status .total-score {
+  padding-top: 1.5rem;
+  text-align: center;
+  width: 50%;
+}
+
+.social-interactions .eventlog {
+  height: calc(35% - 3.5rem);
+  padding: 0 2rem;
+  margin-bottom: 1rem;
+}
+
+.social-interactions .eventlog .events {
+  padding: 2rem 0 0;
+  overflow: auto;
+  height: 100%;
+  width: 100%;
+}
+
+.social-interactions .eventlog .events .event {
+  margin: 0 0 1rem;
+}
+
+.social-interactions .eventlog .events .event .timestamp {
+  display: inline-block;
+  margin-right: 0.4em;
+  font-size: 1.2rem;
+  color: grey;
+}
+
+.social-interactions .eventlog .events .event .content {
+  display: inline-block;
+}
+
+.social-interactions .eventlog .events .event .content > div {
+  display: inline-block;
+  font-weight: 800;
+}
+
+.social-interactions .eventlog .events .event .content .author {
+  font-weight: 700;
+  margin: 0 0.3em 0.4em 0;
+}
+
+.social-interactions .eventlog .events .event .content .author img {
+  position: relative;
+  top: 0.2em;
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 0.3em;
+}
+
+.social-interactions .chat {
+  height: calc(65% - 6.5rem);
+  position: relative;
+  padding-top: 0rem;
+  padding-bottom: 4rem;
+}
+
+.social-interactions .chat .messages {
+  overflow: auto;
+  height: 100%;
+  width: 100%;
+  padding-top: 2rem;
+}
+
+.social-interactions .chat .messages .empty {
+  color: grey;
+  text-align: center;
+}
+
+.social-interactions .chat .messages .message {
+  font-size: 1.7rem;
+  margin: 0 0 1rem;
+}
+
+.social-interactions .chat .messages .message .author {
+  font-weight: 700;
+  margin: 0 0.3em 0 0;
+  display: inline-block;
+}
+
+.social-interactions .chat .messages .message .author img {
+  position: relative;
+  top: 0.2em;
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 0.3em;
+}
+
+.social-interactions .chat form {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 5rem;
+  flex-shrink: 0;
+  flex-grow: 0;
+  padding: 1rem 1rem 0;
+}
+
+.consent button {
+  width: 16rem;
+}
+
+.instructions p {
+  font-size: 1.8rem;
+  line-height: 1.5;
+  margin-bottom: 1em;
+}
+
+.instructions .image {
+  max-width: 80%;
+}
+
+.instructions .image img {
+  width: 100%;
+}
+
+.instructions .smallimage {
+  max-width: 80%;
+}
+
+.instructions .players {
+  padding: 0;
+  display: flex;
+  margin: 0 auto;
+  width: 35%;
+}
+
+.instructions .players .player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+}
+
+.instructions .players .player .image {
+  position: relative;
+}
+
+.instructions .players .player .image .satisfied {
+  position: absolute;
+  top: -0.6rem;
+  right: -0.8rem;
+}
+
+.instructions .players .player .image .satisfied .bp3-icon-standard {
+  font-size: 1.2rem;
+}
+
+.instructions .players .player:first-child .name {
+  padding-right: 2rem;
+  white-space: nowrap;
+}
+
+.instructions .players .player:first-child .image {
+  padding-right: 2rem;
+  border-right: 1px solid lightgrey;
+}
+
+.instructions .players .player:first-child .image .satisfied {
+  right: 1.2rem;
+}
+
+.instructions .players .player img {
+  width: 5rem;
+  height: 5rem;
+}
+
+.exit-survey em {
+  color: blue;
+}
+
+.exit-survey .bold {
+  font-weight: bold;
+}
+
+.exit-survey .form-line {
+  display: flex;
+}
+
+.exit-survey .form-line .bp3-form-group {
+  margin-right: 30px;
+}
+
+.exit-survey .form-line .bp3-form-group textarea {
+  min-height: 90px;
+}
+
+.exit-survey .form-line.thirds .bp3-form-group {
+  flex-grow: 0;
+  flex-shrink: 0;
+  flex-basis: 50%;
+}
+
+.exit-survey .form-line.thirds .bp3-form-group .bp3-label {
+  min-height: 36px;
+} */

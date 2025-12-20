@@ -1,0 +1,91 @@
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00         612 100%  597.66kB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 38 bytes  received 729 bytes  511.33 bytes/sec
+total size is 612  speedup is 0.80
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00      15.63K 100%   14.91MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 44 bytes  received 15.76K bytes  31.60K bytes/sec
+total size is 15.63K  speedup is 0.99
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00      16.34K 100%   15.59MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 176 bytes  received 1.15K bytes  883.33 bytes/sec
+total size is 16.34K  speedup is 12.34
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00      49.55K 100%   47.26MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 182 bytes  received 33.67K bytes  22.57K bytes/sec
+total size is 49.55K  speedup is 1.46
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00      71.77K 100%   68.45MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 464 bytes  received 23.17K bytes  47.27K bytes/sec
+total size is 71.77K  speedup is 3.04
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00     129.81K 100%  123.80MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 656 bytes  received 58.94K bytes  39.73K bytes/sec
+total size is 129.81K  speedup is 2.18
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00     149.22K 100%  142.31MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 1.15K bytes  received 20.58K bytes  14.49K bytes/sec
+total size is 149.22K  speedup is 6.87
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00     220.00K 100%  209.81MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 1.32K bytes  received 71.88K bytes  48.80K bytes/sec
+total size is 220.00K  speedup is 3.01
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00     280.06K 100%  267.09MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 1.93K bytes  received 61.64K bytes  127.14K bytes/sec
+total size is 280.06K  speedup is 4.41
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00     314.94K 100%  300.35MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 2.44K bytes  received 36.66K bytes  26.07K bytes/sec
+total size is 314.94K  speedup is 8.05
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00       1.32M 100%   12.86MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 2.74K bytes  received 1.01M bytes  674.57K bytes/sec
+total size is 1.32M  speedup is 1.31
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00       1.72M 100%   48.14MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 6.97K bytes  received 400.77K bytes  271.83K bytes/sec
+total size is 1.72M  speedup is 4.21
+receiving file list ... 
+1 file to consider
+tajriba.json
+           0   0%    0.00kB/s    0:00:00       3.17M 100%   17.68MB/s    0:00:00 (xfer#1, to-check=0/1)
+
+sent 7.94K bytes  received 1.46M bytes  2.93M bytes/sec
+total size is 3.17M  speedup is 2.16

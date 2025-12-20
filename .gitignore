@@ -10,3 +10,4 @@ scaffolding.R
 *.pyc
 __pycache__
 .pytest_cache/
+experiment/data
