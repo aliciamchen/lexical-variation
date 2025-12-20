@@ -1,0 +1,167 @@
+---
+title: Pick tangrams
+author: Alicia Chen
+date: 2025-12-19
+format:
+  html:
+    code-fold: false
+---
+
+We want to pick 6 tangrams from Ji et al. (2022) with high Shape Naming Divergence (SND). These are the tangrams that are likely more opaque
+
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import json
+import requests
+from IPython.display import SVG, display, HTML
+
+sns.set_context("talk", font_scale=1.2)
+sns.set_style("white")
+plt.rc('axes.spines', top=False, right=False)
+
+snd_vals = requests.get("https://raw.githubusercontent.com/lil-lab/kilogram/refs/heads/main/analysis/behavior/measures/measures_data/dense_SND.json").json()
+```
+
+Sort SND values from low to high
+
+```{python}
+snd_vals_sorted = sorted(snd_vals.items(), key=lambda x: x[1])
+print(len(snd_vals_sorted))
+```
+
+Write a function that, given the key for tangram, retrieves and displays the SVG
+
+```{python}
+def show_tangram(key):
+    """Fetch and display the SVG for a tangram given its key."""
+    url = f"https://raw.githubusercontent.com/lil-lab/kilogram/main/dataset/tangrams-svg/{key}.svg"
+    response = requests.get(url)
+    response.raise_for_status()
+    display(SVG(response.content))
+    return SVG(response.content)
+```
+
+Show top 30 tangrams (highest SND) in a grid
+
+```{python}
+def show_tangram_grid(tangrams, cols=6):
+    """Display tangrams in a grid with their names and SND values."""
+    base_url = "https://raw.githubusercontent.com/lil-lab/kilogram/main/dataset/tangrams-svg"
+
+    html = '<div style="display: grid; grid-template-columns: repeat({}, 1fr); gap: 10px;">'.format(cols)
+
+    for key, snd in tangrams:
+        svg_url = f"{base_url}/{key}.svg"
+        html += f'''
+        <div style="text-align: center; padding: 10px; border: 1px solid #ddd;">
+            <img src="{svg_url}" style="width: 100px; height: 100px;">
+            <div style="font-size: 12px; margin-top: 5px;">{key}</div>
+            <div style="font-size: 10px; color: #666;">SND: {snd:.3f}</div>
+        </div>
+        '''
+
+    html += '</div>'
+    display(HTML(html))
+
+# Top 30 tangrams (highest SND values)
+top_30 = snd_vals_sorted[-30:][::-1]  # Reverse to show highest first
+show_tangram_grid(top_30, cols=6)
+```
+
+Convert selected tangrams to black silhouettes
+
+```{python}
+import xml.etree.ElementTree as ET
+import re
+import os
+
+def make_tangram_black(key, save_dir="tangrams"):
+    """Fetch a tangram SVG and convert to solid black silhouette."""
+    url = f"https://raw.githubusercontent.com/lil-lab/kilogram/main/dataset/tangrams-svg/{key}.svg"
+    response = requests.get(url)
+    response.raise_for_status()
+
+    # Parse SVG
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
+    root = ET.fromstring(response.content)
+
+    for elem in root.iter():
+        if 'fill' in elem.attrib:
+            elem.set('fill', 'black')
+        if 'stroke' in elem.attrib:
+            elem.set('stroke', 'black')
+        tag = elem.tag.split('}')[-1]  # Remove namespace
+        if tag in ('polygon', 'path', 'rect', 'circle', 'ellipse'):
+            elem.set('stroke', 'black')
+            elem.set('stroke-width', '1')
+        if 'style' in elem.attrib:
+            style = elem.get('style')
+            style = re.sub(r'fill:\s*[^;]+', 'fill:black', style)
+            style = re.sub(r'stroke:\s*[^;]+', 'stroke:black', style)
+            elem.set('style', style)
+
+    svg_str = ET.tostring(root, encoding='unicode')
+
+    os.makedirs(save_dir, exist_ok=True)
+    filepath = os.path.join(save_dir, f"{key}.svg")
+    with open(filepath, 'w') as f:
+        f.write(svg_str)
+
+    # display(HTML(f"<p><strong>{key}</strong></p>"))
+    # display(SVG(svg_str))
+
+    return svg_str
+
+selected_tangrams = [
+    "page3-182",
+    "page4-157",
+    "page1-129",
+    "page7-81",
+    "page1-119",
+    "page3-121"
+]
+
+for tangram in selected_tangrams:
+    make_tangram_black(tangram)
+```
+
+View the resulting 6 tangrams in a 2x3 grid
+
+NOTE: This requires Cairo to be installed; e.g. `brew install cairo`.
+
+```{python}
+os.environ["DYLD_LIBRARY_PATH"] = "/opt/homebrew/opt/cairo/lib:" + os.environ.get("DYLD_LIBRARY_PATH", "")
+
+import cairosvg
+from PIL import Image
+from io import BytesIO
+
+def save_tangram_grid(tangram_keys, save_dir="tangrams", cols=3, output_file="tangram_grid.png"):
+    """Save tangrams as a grid image."""
+    rows = (len(tangram_keys) + cols - 1) // cols
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 3, rows * 3))
+    axes = axes.flatten()
+
+    for i, key in enumerate(tangram_keys):
+        filepath = os.path.join(save_dir, f"{key}.svg")
+        # Convert SVG to PNG using cairosvg
+        png_data = cairosvg.svg2png(url=filepath)
+        img = Image.open(BytesIO(png_data))
+        axes[i].imshow(img)
+        axes[i].axis('off')
+
+    # Hide any unused subplots
+    for j in range(len(tangram_keys), len(axes)):
+        axes[j].axis('off')
+
+    plt.subplots_adjust(wspace=0.3, hspace=0.3)
+    plt.savefig(output_file, dpi=150, bbox_inches='tight', facecolor='white')
+    plt.show()
+    print(f"Saved grid to {output_file}")
+
+save_tangram_grid(selected_tangrams, cols=3, output_file="tangrams/tangram_grid.png")
+```
+
