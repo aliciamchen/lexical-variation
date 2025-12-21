@@ -112,11 +112,11 @@ Empirica.onGameStart(({ game }) => {
       });
       round.addStage({
         name: "Selection",
-        duration: 120,
+        duration: 45,
       });
       round.addStage({
         name: "Feedback",
-        duration: 15,
+        duration: 10,
       });
     });
   });
@@ -129,7 +129,7 @@ Empirica.onGameStart(({ game }) => {
 
   transition.addStage({
     name: "phase_2_transition",
-    duration: 60,
+    duration: 30,
   });
 
   // ============ PHASE 2: CONTINUED REFERENCE GAME ============
@@ -155,11 +155,11 @@ Empirica.onGameStart(({ game }) => {
       });
       round.addStage({
         name: "Selection",
-        duration: 120,
+        duration: 45,
       });
       round.addStage({
         name: "Feedback",
-        duration: 15,
+        duration: 10,
       });
     });
   });
@@ -172,7 +172,7 @@ Empirica.onGameStart(({ game }) => {
 
   finalTransition.addStage({
     name: "bonus_info",
-    duration: 60,
+    duration: 30,
   });
 });
 

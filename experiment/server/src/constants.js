@@ -21,7 +21,7 @@ export const LISTENERS_PER_TRIAL = 2;
 // Phase 1: Within-group reference game
 // Phase 2: Continued reference game (condition-dependent)
 export const PHASE_1_BLOCKS = TEST_MODE ? 2 : 6; // Each player speaks twice in production
-export const PHASE_2_BLOCKS = TEST_MODE ? 4 : 12;
+export const PHASE_2_BLOCKS = TEST_MODE ? 2 : 6;
 
 // ============ PLAYER NAMES ============
 export const names = [
