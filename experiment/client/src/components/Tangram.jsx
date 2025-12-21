@@ -44,24 +44,31 @@ export function Tangram(props) {
     const phase_num = round.get("phase_num");
     const isSocialMixed = condition === "social_mixed" && phase_num === 2;
 
+    // Check if tangram is clickable (listener in Selection stage, speaker has sent message)
+    const playerGroupChat = stage.get(`${playerGroup}_chat`) || [];
+    const speakerMsgs = _.filter(playerGroupChat, (msg) => {
+      return msg.sender.id == playerGroupSpeaker?.id;
+    });
+    const isClickable =
+      stage.get("name") === "Selection" &&
+      player.round.get("role") === "listener" &&
+      speakerMsgs.length > 0 &&
+      !player.round.get("clicked");
+
+    // Add pointer cursor when clickable
+    if (isClickable) {
+      _.extend(mystyle, { cursor: "pointer" });
+    }
+
     const handleClick = (e) => {
       console.log("click2");
       if (stage.get("name") == "Feedback") {
         return;
       }
 
-      const playerGroupChat = stage.get(`${playerGroup}_chat`) || [];
-      const speakerMsgs = _.filter(playerGroupChat, (msg) => {
-        return msg.sender.id == playerGroupSpeaker.id;
-      });
-
-      // only register click for listener and only after the speaker has sent a message
-      if (
-        (stage.get("name") === "Selection") &&
-        (speakerMsgs.length > 0) &&
-        !player.round.get("clicked") &&
-        (player.round.get("role") === "listener")
-      ) {
+      // Only register click for listener and only after the speaker has sent a message
+      // (isClickable already checks these conditions, but re-check for safety)
+      if (isClickable) {
         player.round.set("clicked", tangram);
 
         // Check if all listeners have now responded (only after registering a click)

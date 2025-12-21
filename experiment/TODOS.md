@@ -121,7 +121,7 @@ This is the major structural change. The old Phase 2 (production task) and Phase
 - [x] Remove old inactive player logic (2 consecutive non-submissions)
 - [x] Implement new idle detection:
   - [x] Track idle rounds per player
-  - [ ] Remove player after 2 consecutive idle rounds
+  - [x] Remove player after 2 consecutive idle rounds
 - [x] Implement group continuation rules:
   - [x] If 2 members of initial group remain active, continue
   - [x] If only 1 member remains (2 dropped), remove final member
@@ -177,7 +177,7 @@ We need to test the dropout handling with the new logic. How to test?
 - [x] Update for current_group instead of red/blue
 - [x] Handle social_mixed condition timing
 - [x] Fix auto-submit logic to only run during Selection stage
-- [ ] Add pointer cursor when hovering over tangrams
+- [x] Add pointer cursor when hovering over tangrams
 - [ ] In instructions, explain that tangrams are not clickable until the speaker has sent a message, and specify that they should only click when they want to submit their guess.
 
 #### Remove Old Stages
@@ -215,7 +215,7 @@ We need to test the dropout handling with the new logic. How to test?
 
 - [x] Works for both phases
 - [x] Updated for current_group
-- [ ] Add pointer/cursor style on hover
+- [x] Add pointer/cursor style on hover
 
 ### Intro/Exit (`intro-exit/`)
 
@@ -325,7 +325,7 @@ We need to test the dropout handling with the new logic. How to test?
 - [x] Test block counter shows correct totals
 - [x] Test feedback stage waits for all players
 - [ ] Test dropout handling:
-  - [ ] Player removed after 3 idle rounds
+  - [ ] Player removed after 2 idle rounds
   - [ ] Group continuation with 2 remaining
   - [ ] Final member removal when 2 drop
   - [ ] Game continuation with 2+ active groups
@@ -341,11 +341,15 @@ We need to test the dropout handling with the new logic. How to test?
 - [ ] Add transition screens before each reshuffling in mixed conditions
 - [ ] Fix "waiting for other group" in TEST_MODE Phase 2 (only 1 group)
 - [ ] Ensure anonymous avatars are unique per block (different each reshuffling)
-- [ ] Add pointer cursor when hovering over clickable tangrams
+- [x] Add pointer cursor when hovering over clickable tangrams
 
 ## Other things
 
 - [ ] Update to the new tangrams that we picked from Ji et al. (2022)
+- [ ] maybe get rid of original group indication
+- [ ] Check reassignment is correct when its the speaker that leaves (i.e. does it reassign someone else as speaker)
+- [ ] Make a specific sorry page for when you are kicked out because players left the game, another specific sorry page for when you are kicked out because you were idle for too long. Also write the messages for compensation and do the prolific logic thing for payment
+
 
 ---
 
