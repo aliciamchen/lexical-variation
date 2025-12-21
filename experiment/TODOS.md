@@ -11,10 +11,22 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 | Players per game | 8 (2×4) | 9 (3×3) |
 | Listeners per trial | 3 | 2 |
 | Phase 1 blocks | 8 | 6 |
-| Phase 2 | Production task | Continued ref game (12 blocks) |
+| Phase 2 | Production task | Continued ref game (6 blocks) |
 | Phase 3 | Listener interpretation | Removed |
 | Conditions | Within-subjects | Between-subjects |
 | Scoring | $0.02/point | $0.05/point |
+
+### Timing Configuration
+
+| Stage | Duration |
+|-------|----------|
+| Selection | 45s |
+| Feedback | 10s |
+| Transitions | 30s |
+
+**Estimated Duration:**
+- Test mode (2+2 blocks): ~15-20 min
+- Production (6+6 blocks): ~30-45 min (plus intro/exit)
 
 ---
 
@@ -34,7 +46,7 @@ This document tracks the changes needed to migrate from the old prereg (8 player
   - [ ] Update base pay from $12 to $10
   - [ ] Update max bonus calculation ($5.40 max)
 - [x] Update Phase 1 blocks from 8 to 6
-- [x] Add Phase 2 blocks constant (12 blocks)
+- [x] Add Phase 2 blocks constant (6 blocks)
 - [x] Remove old conditions array (`["social own", "refer own", "refer other"]`)
 - [x] Add TEST_MODE flag for reduced player testing
 
@@ -75,8 +87,8 @@ This is the major structural change. The old Phase 2 (production task) and Phase
   - [x] Hide original group membership
   - [x] Players cannot identify others across blocks
 - [x] Implement reshuffling logic
-- [ ] Add transition screen before each reshuffling explaining new group assignment
-- [ ] Ensure avatars are different after each reshuffling (unique seed per block)
+- [ ] Add transition screen before each reshuffling explaining new group assignment. It should just be a 5 second screen shown to participants, with no key press required.
+- [ ] Ensure avatars are different after each reshuffling (unique seed per block). Explain to participants that they will not be able to identify others across blocks.
 
 ##### Condition: `social_mixed`
 - [x] Same interaction structure and identity masking as `refer_mixed`
@@ -87,7 +99,7 @@ This is the major structural change. The old Phase 2 (production task) and Phase
   - [x] Listener: 2 points for correct group identification
   - [x] Speaker: 1 point per correct listener identification
 - [x] No feedback given for social guessing responses
-- [ ] Add transition screen before each reshuffling
+- [ ] Add transition screen before each reshuffling, following the `refer_mixed` transition screen.
 
 #### Remove Old Phase 2 (Production Task)
 
@@ -109,13 +121,15 @@ This is the major structural change. The old Phase 2 (production task) and Phase
 - [x] Remove old inactive player logic (2 consecutive non-submissions)
 - [x] Implement new idle detection:
   - [x] Track idle rounds per player
-  - [x] Remove player after 3 consecutive idle rounds
+  - [ ] Remove player after 2 consecutive idle rounds
 - [x] Implement group continuation rules:
   - [x] If 2 members of initial group remain active, continue
   - [x] If only 1 member remains (2 dropped), remove final member
 - [x] Game continuation rules:
   - [x] Continue if at least 2 groups remain active
   - [x] Each active group must have at least 2 people
+
+We need to test the dropout handling with the new logic. How to test? 
 
 #### Stage Transitions
 
@@ -164,7 +178,7 @@ This is the major structural change. The old Phase 2 (production task) and Phase
 - [x] Handle social_mixed condition timing
 - [x] Fix auto-submit logic to only run during Selection stage
 - [ ] Add pointer cursor when hovering over tangrams
-- [ ] Disable/gray out tangrams until listener is ready to click (after speaker sends message)
+- [ ] In instructions, explain that tangrams are not clickable until the speaker has sent a message, and specify that they should only click when they want to submit their guess.
 
 #### Remove Old Stages
 
@@ -180,6 +194,7 @@ This is the major structural change. The old Phase 2 (production task) and Phase
   - [x] `refer_separated`: [placeholder - continue with group]
   - [x] `refer_mixed`: [placeholder - shuffled groups, masked identities]
   - [x] `social_mixed`: [placeholder - shuffled + social guessing]
+- [ ] Write actual text for transition screens
 - [ ] Add transition screens before each reshuffling in mixed conditions (Phase 2)
 
 ### Profile (`Profile.jsx`)
@@ -201,7 +216,6 @@ This is the major structural change. The old Phase 2 (production task) and Phase
 - [x] Works for both phases
 - [x] Updated for current_group
 - [ ] Add pointer/cursor style on hover
-- [ ] Visual indication that tangram is not yet clickable (before speaker message)
 
 ### Intro/Exit (`intro-exit/`)
 
@@ -211,7 +225,7 @@ This is the major structural change. The old Phase 2 (production task) and Phase
 - [ ] Part 1: Overview of tangram reference game
 - [ ] Part 2: Explain groups of 3 (1 speaker, 2 listeners)
 - [ ] Part 3: Phase 1 explanation (6 blocks within groups)
-- [ ] Part 4: Phase 2 explanation (condition-dependent):
+- [ ] Part 4: Phase 2 explanation (condition-dependent, show to participants based on their condition):
   - [ ] For `refer_separated`: Continue with same group
   - [ ] For `refer_mixed`: Groups will be shuffled
   - [ ] For `social_mixed`: Shuffled + guess speaker's group
@@ -224,7 +238,6 @@ This is the major structural change. The old Phase 2 (production task) and Phase
 - [ ] Remove questions about old Phase 2/3
 - [ ] Add questions about:
   - [ ] Group size (3 people)
-  - [ ] Number of listeners (2)
   - [ ] Phase structure
   - [ ] Scoring (2 points listener, 1 point speaker per correct)
   - [ ] Condition-specific questions (if applicable)
@@ -319,6 +332,7 @@ This is the major structural change. The old Phase 2 (production task) and Phase
 - [ ] Test all intro screens and quiz
 - [ ] Test exit survey and debrief
 - [ ] Test with 9 players (production mode)
+- [ ] Test we have the data fields that we need
 
 ---
 
@@ -328,7 +342,10 @@ This is the major structural change. The old Phase 2 (production task) and Phase
 - [ ] Fix "waiting for other group" in TEST_MODE Phase 2 (only 1 group)
 - [ ] Ensure anonymous avatars are unique per block (different each reshuffling)
 - [ ] Add pointer cursor when hovering over clickable tangrams
-- [ ] Visual feedback: tangrams should appear disabled/unclickable until speaker sends a message
+
+## Other things
+
+- [ ] Update to the new tangrams that we picked from Ji et al. (2022)
 
 ---
 
@@ -337,7 +354,7 @@ This is the major structural change. The old Phase 2 (production task) and Phase
 - **No distinct group colors**: Groups should not be visually differentiated by color
 - **Identity masking in mixed conditions**: Other players' identities are fully hidden
 - **Anonymous avatars**: In mixed conditions, players get new anonymous avatars each block
-- **Timer duration**: Same as Phase 1 for Phase 2 trials
+- **Timer duration**: Selection 45s, Feedback 10s, Transitions 30s
 - **Transition screens**: Use filler/placeholder text for now (to be written later)
 - **DiceBear avatars**: Using identicon style (blue) for regular, shapes style (gray) for anonymous
 
