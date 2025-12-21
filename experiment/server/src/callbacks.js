@@ -6,53 +6,76 @@ import {
   names,
   name_colors,
   conditions,
-  avatar_names,
+  avatar_seeds,
+  getAvatarUrl,
+  getAnonymousAvatarUrl,
   bonus_per_point,
+  PLAYER_COUNT,
+  GROUP_COUNT,
+  GROUP_SIZE,
+  PHASE_1_BLOCKS,
+  PHASE_2_BLOCKS,
+  LISTENER_CORRECT_POINTS,
+  SPEAKER_POINTS_PER_CORRECT_LISTENER,
+  SOCIAL_GUESS_CORRECT_POINTS,
+  SOCIAL_SPEAKER_POINTS_PER_CORRECT,
+  MAX_IDLE_ROUNDS,
+  MIN_GROUP_SIZE,
+  MIN_ACTIVE_GROUPS,
+  TEST_MODE,
 } from "./constants";
+
+// Group names (no color distinction)
+const GROUP_NAMES = ["A", "B", "C"];
 
 Empirica.onGameStart(({ game }) => {
   console.log(`Game ${game.id} started`);
   game.set("justStarted", true);
+
+  // Get condition from game treatment
+  const treatment = game.get("treatment");
+  const condition = treatment?.condition || conditions[0];
+  game.set("condition", condition);
+  console.log(`Game condition: ${condition}, Treatment: ${JSON.stringify(treatment)}`);
+
   // Assign tangram set
   const tangram_set = _.random(0, 2);
   const context = tangram_sets[tangram_set];
   game.set("tangram_set", tangram_set);
   game.set("context", context);
 
-  game.players.forEach((player, i) => {
+  // Shuffle players for random group assignment
+  const shuffledPlayers = _.shuffle(game.players);
+
+  // Assign players to groups (3 groups of 3)
+  shuffledPlayers.forEach((player, i) => {
+    const groupIndex = Math.floor(i / GROUP_SIZE);
+    const groupName = GROUP_NAMES[groupIndex];
+    const playerIndexInGroup = i % GROUP_SIZE;
+
     player.set("name", names[i]);
+    player.set("original_name", names[i]);
     player.set("tangram_set", tangram_set);
     player.set("context", context);
-    player.set("score", 0); // Max score: 12 * 6 * 3 + 18 * 3 + 36 * 6 = 216 + 54 + 216 = 486
-    player.set("phase3score", 0);
+    player.set("score", 0);
     player.set("bonus", 0);
-    player.set("num_stages_inactive", 0);
-  });
+    player.set("idle_rounds", 0);
+    player.set("is_active", true);
 
-  // Randomly assign 4 of the players to the red group and the other 4 to the blue group
-  const red_players = _.sampleSize(game.players, game.players.length / 2);
-  const blue_players = _.difference(game.players, red_players);
-  red_players.forEach((player, i) => {
-    player.set("group", "red");
-    player.set("other_group", "blue");
-    player.set("player_index", i);
-    player.set("avatar_name", avatar_names["red"][i]);
-    player.set("avatar", `/${avatar_names["red"][i]}.png`);
-    player.set("name_color", name_colors["red"][i]);
-    const shuffled_tangrams = _.shuffle(context);
-    player.set("shuffled_tangrams", shuffled_tangrams);
-    player.set(
-      "tangramURLs",
-      shuffled_tangrams.map((tangram) => `/tangram_${tangram}.png`)
-    );
-  });
-  blue_players.forEach((player, i) => {
-    player.set("group", "blue");
-    player.set("other_group", "red");
-    player.set("player_index", i);
-    player.set("avatar_name", avatar_names["blue"][i]);
-    player.set("avatar", `/${avatar_names["blue"][i]}.png`);
-    player.set("name_color", name_colors["blue"][i]);
+    // Group assignment
+    player.set("original_group", groupName);
+    player.set("current_group", groupName);
+    player.set("player_index", playerIndexInGroup);
+
+    // Avatar assignment using DiceBear API (no group color distinction)
+    const avatarSeed = avatar_seeds[i];
+    player.set("avatar_seed", avatarSeed);
+    const avatarUrl = getAvatarUrl(avatarSeed);
+    player.set("avatar", avatarUrl);
+    player.set("original_avatar", avatarUrl);
+    player.set("name_color", name_colors[i]);
+
+    // Tangram shuffling
     const shuffled_tangrams = _.shuffle(context);
     player.set("shuffled_tangrams", shuffled_tangrams);
     player.set(
@@ -61,102 +84,93 @@ Empirica.onGameStart(({ game }) => {
     );
   });
 
-  // PHASE 1: REFERENCE GAME
-  // Players play a reference game within their group
-  // The speaker has to refer to each tangram in the context before the speaker role moves to the next player for the next block of trials.
-  // There are 8 blocks total (so each player will be in the speaker role twice, and each tangram will appear as the target exactly 8 times)
-  _.times(2, (i) => {
-    // loop through each speaker twice
-    _.times(4, (player_index) => {
-      // loop through each player in the group
-      const shuffled_context = _.shuffle(context);
-      _.times(shuffled_context.length, (target_num) => {
-        // in each round (repetition block), loop through each tangram in the context
-        const round = game.addRound({
-          name: `Phase 1: Reference Game`,
-          phase: "refgame",
-          speaker: player_index,
-          target_order: shuffled_context,
-          target: shuffled_context[target_num],
-          target_num: target_num,
-          rep_num: i * 4 + player_index,
-        });
-        round.addStage({
-          name: "Selection",
-          duration: 120,
-        });
-        round.addStage({
-          name: "Feedback",
-          duration: 15,
-        });
+  // Store active groups (just the names, not player objects)
+  game.set("active_groups", GROUP_NAMES.slice(0, GROUP_COUNT));
+
+  // Store block counts for client display
+  game.set("phase1Blocks", PHASE_1_BLOCKS);
+  game.set("phase2Blocks", PHASE_2_BLOCKS);
+
+  // ============ PHASE 1: REFERENCE GAME ============
+  // Players play within their original groups
+  // Production: 6 blocks (each of 3 players speaks twice)
+  // Test mode: 2 blocks
+
+  _.times(PHASE_1_BLOCKS, (blockNum) => {
+    const speakerIndex = blockNum % GROUP_SIZE; // Rotate through speakers
+    const shuffled_context = _.shuffle(context);
+    _.times(shuffled_context.length, (target_num) => {
+      const round = game.addRound({
+        name: `Phase 1: Block ${blockNum + 1}`,
+        phase: "refgame",
+        phase_num: 1,
+        block_num: blockNum,
+        speaker_index: speakerIndex,
+        target_order: shuffled_context,
+        target: shuffled_context[target_num],
+        target_num: target_num,
+      });
+      round.addStage({
+        name: "Selection",
+        duration: 120,
+      });
+      round.addStage({
+        name: "Feedback",
+        duration: 15,
       });
     });
   });
 
-  const transition_1 = game.addRound({
+  // ============ TRANSITION BETWEEN PHASES ============
+  const transition = game.addRound({
     phase: "transition",
+    transition_type: "phase_2",
   });
 
-  transition_1.addStage({
+  transition.addStage({
     name: "phase_2_transition",
     duration: 60,
   });
 
-  // PHASE 2: SPEAKER PRODUCTION
+  // ============ PHASE 2: CONTINUED REFERENCE GAME ============
+  // Behavior depends on condition:
+  // - refer_separated: Same groups as Phase 1
+  // - refer_mixed: Groups reshuffled each block, identities masked
+  // - social_mixed: Same as refer_mixed + social guessing question
+  // Production: 12 blocks, Test mode: 4 blocks
 
-  const phase_2 = game.addRound({
-    name: "Phase 2", // change later
-    phase: "speaker_prod",
-  });
-  const tangram_combos = _.flatten(
-    context.map((tangram) =>
-      conditions.map((condition) => [tangram, condition])
-    )
-  ); // all combos of tangrams and conditions
-  // for each player, add the randomized order of tangram-condition pairs
-  game.players.forEach((player) => {
-    player.set("phase_2_trial_order", _.shuffle(tangram_combos)); // TODO: change to object rather than indexing into list
-  });
-  _.times(tangram_combos.length, (i) => {
-    // _.times(2, (i) => {
-    // for testing
-    phase_2.addStage({
-      name: "Production",
-      duration: 30,
-      trial_num: i,
-    }); // each player sees a different order of tangram-condition pairs, so the trial number is used to index into the player's order in Stage.jsx
-  });
-
-  const transition_2 = game.addRound({
-    phase: "transition",
-  });
-
-  transition_2.addStage({
-    name: "phase_3_transition",
-    duration: 60,
-  });
-
-  // PHASE 3: LISTENER INTERPRETATION
-
-  // Create phase 3 trials
-  const phase_3 = game.addRound({
-    name: "Phase 3",
-    phase: "comprehension",
-  });
-  // add placeholder stages
-  _.times(36, (i) => {
-    phase_3.addStage({
-      name: "Comprehension",
-      duration: 30,
-      trial_num: i,
+  _.times(PHASE_2_BLOCKS, (blockNum) => {
+    const speakerIndex = blockNum % GROUP_SIZE; // Rotate through speakers
+    const shuffled_context = _.shuffle(context);
+    _.times(shuffled_context.length, (target_num) => {
+      const round = game.addRound({
+        name: `Phase 2: Block ${blockNum + 1}`,
+        phase: "refgame",
+        phase_num: 2,
+        block_num: blockNum,
+        speaker_index: speakerIndex,
+        target_order: shuffled_context,
+        target: shuffled_context[target_num],
+        target_num: target_num,
+      });
+      round.addStage({
+        name: "Selection",
+        duration: 120,
+      });
+      round.addStage({
+        name: "Feedback",
+        duration: 15,
+      });
     });
   });
 
-  const transition_3 = game.addRound({
+  // ============ FINAL TRANSITION (BONUS INFO) ============
+  const finalTransition = game.addRound({
     phase: "transition",
+    transition_type: "bonus_info",
   });
 
-  transition_3.addStage({
+  finalTransition.addStage({
     name: "bonus_info",
     duration: 60,
   });
@@ -164,491 +178,280 @@ Empirica.onGameStart(({ game }) => {
 
 Empirica.onRoundStart(({ round }) => {
   round.set("justStarted", true);
-  // On refgame round starts, set player roles
-  if (round.get("phase") == "refgame") {
-    const players = round.currentGame.players;
-    const red_players = players.filter(
-      (player) => player.get("group") == "red"
-    );
-    const blue_players = players.filter(
-      (player) => player.get("group") == "blue"
-    );
-    const speaker = round.get("speaker");
-    red_players.forEach((player, i) => {
-      player.round.set("role", i == speaker ? "speaker" : "listener");
-    });
-    blue_players.forEach((player, i) => {
-      player.round.set("role", i == speaker ? "speaker" : "listener");
+  const game = round.currentGame;
+  const condition = game.get("condition");
+  const phase_num = round.get("phase_num");
+
+  if (round.get("phase") === "refgame") {
+    const players = game.players.filter((p) => p.get("is_active"));
+    const speakerIndex = round.get("speaker_index");
+    const blockNum = round.get("block_num");
+
+    // In Phase 2 with mixed conditions, reshuffle groups at start of each block
+    if (
+      phase_num === 2 &&
+      (condition === "refer_mixed" || condition === "social_mixed")
+    ) {
+      // Check if this is the first round of a new block
+      const target_num = round.get("target_num");
+      if (target_num === 0) {
+        reshuffleGroups(game, players);
+      }
+    }
+
+    // Set roles for each group
+    const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
+
+    activeGroups.forEach((groupName) => {
+      const groupPlayers = players.filter(
+        (p) => p.get("current_group") === groupName
+      );
+
+      groupPlayers.forEach((player, i) => {
+        // In mixed conditions, use anonymous avatars for both display and chat
+        if (
+          phase_num === 2 &&
+          (condition === "refer_mixed" || condition === "social_mixed")
+        ) {
+          const anonIndex = activeGroups.indexOf(groupName) * GROUP_SIZE + i;
+          const anonSeed = `anon_block${blockNum}_player${anonIndex}`;
+          const anonAvatar = getAnonymousAvatarUrl(anonSeed);
+          const anonName = `Player ${anonIndex + 1}`;
+
+          // Set on round for display in header
+          player.round.set("display_avatar", anonAvatar);
+          player.round.set("display_name", anonName);
+
+          // Also set on player so Chat component uses masked identity
+          player.set("avatar", anonAvatar);
+          player.set("name", anonName);
+        } else {
+          // Use original avatar/name
+          player.round.set("display_avatar", player.get("original_avatar"));
+          player.round.set("display_name", player.get("original_name"));
+
+          // Restore original for chat
+          player.set("avatar", player.get("original_avatar"));
+          player.set("name", player.get("original_name"));
+        }
+
+        // Assign speaker/listener roles
+        const playerGroupIndex = i; // Position within current group
+        player.round.set("role", playerGroupIndex === speakerIndex ? "speaker" : "listener");
+      });
     });
 
-    // save group, target in player round
+    // Save round info to players
     players.forEach((player) => {
       player.round.set("name", player.get("name"));
       player.round.set("phase", "refgame");
-      player.round.set("group", player.get("group"));
-      player.round.set("rep_num", round.get("rep_num")); // TODO: change.. what is this doing
+      player.round.set("phase_num", phase_num);
+      player.round.set("current_group", player.get("current_group"));
+      player.round.set("original_group", player.get("original_group"));
+      player.round.set("block_num", blockNum);
       player.round.set("target", round.get("target"));
     });
   }
-
-  if (round.get("phase") == "speaker_prod") {
-    console.log(
-      `Speaker production round started for game ${round.currentGame.id}`
-    );
-  }
-
-  if (round.get("phase") == "comprehension") {
-    console.log(`Comprehension round started for game ${round.currentGame.id}`);
-  }
 });
+
+// Helper function to reshuffle groups for mixed conditions
+function reshuffleGroups(game, players) {
+  console.log("Reshuffling groups for mixed condition");
+
+  const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
+  const shuffledPlayers = _.shuffle(players);
+
+  // Assign players to groups randomly
+  shuffledPlayers.forEach((player, i) => {
+    const groupIndex = Math.floor(i / GROUP_SIZE);
+    if (groupIndex < activeGroups.length) {
+      player.set("current_group", activeGroups[groupIndex]);
+    }
+  });
+}
 
 Empirica.onStageStart(({ stage }) => {
   const game = stage.currentGame;
-  // const round = stage.round;
-  const players = game.players;
+  const players = game.players.filter((p) => p.get("is_active"));
+
+  // Handle players who have been kicked
   players.forEach((player) => {
     if (player.get("ended") === "player timeout") {
       player.stage.set("submit", "true");
-      if (player.round.get("role") == "speaker") {
+      if (player.round.get("role") === "speaker") {
+        // Auto-submit for listeners in same group if speaker is kicked
+        const playerGroup = player.get("current_group");
         players.forEach((p) => {
-          if (p.round.get("role") == "listener") {
+          if (
+            p.get("current_group") === playerGroup &&
+            p.round.get("role") === "listener"
+          ) {
             p.stage.set("submit", "true");
           }
         });
       }
     }
   });
-
-  // Each participant sees the trials in a different order, so we want to add that information to player stages
-  if (stage.get("name") === "Production") {
-    // const game = stage.currentGame;
-    // const players = game.players;
-
-    players.forEach((player) => {
-      const trial_num = stage.get("trial_num");
-      const trial = player.get("phase_2_trial_order")[trial_num];
-      player.stage.set("name", "production");
-      player.stage.set("target", trial[0]);
-      player.stage.set("condition", trial[1]);
-    });
-  }
-  if (stage.get("name") === "Comprehension") {
-    // const game = stage.currentGame;
-    // const players = game.players;
-
-    players.forEach((player) => {
-      const trial_num = stage.get("trial_num");
-      const trial = player.get("phase_3_trials")[trial_num];
-
-      player.stage.set("name", "comprehension");
-      player.stage.set("target", trial.target);
-      player.stage.set("condition", trial.condition);
-      player.stage.set("matched", trial.matched);
-      player.stage.set("speaker", trial.speaker);
-      player.stage.set("player_group", player.get("group"));
-      player.stage.set("speaker_group", trial.speaker_group);
-      player.stage.set("speaker_name", trial.speaker_name);
-      player.stage.set("description", trial.description);
-    });
-  }
 });
 
 Empirica.onStageEnded(({ stage }) => {
   const game = stage.currentGame;
   const players = game.players;
+  const condition = game.get("condition");
 
-  // handle inactive players
+  // Handle idle players
   players.forEach((player) => {
+    if (!player.get("is_active")) return;
+
     const isActive = player.stage.get("submit");
     if (!isActive) {
-      const consecutive_inactive = player.get("num_consecutive_inactive") || 0;
-      player.set("num_consecutive_inactive", consecutive_inactive + 1);
-      player.set("num_stages_inactive", player.get("num_stages_inactive") + 1);
-      if (consecutive_inactive >= 2) {
+      const idleRounds = (player.get("idle_rounds") || 0) + 1;
+      player.set("idle_rounds", idleRounds);
+
+      if (idleRounds >= MAX_IDLE_ROUNDS) {
         console.log(
-          `Player ${player.id} in Game ${game.id} was inactive for 2 consecutive stages and has been kicked`
+          `Player ${player.id} removed after ${MAX_IDLE_ROUNDS} idle rounds`
         );
+        player.set("is_active", false);
         player.set("ended", "player timeout");
+
+        // Check if group can continue
+        checkGroupViability(game);
       }
     } else {
-      player.set("num_consecutive_inactive", 0); // reset consecutive inactive count
+      player.set("idle_rounds", 0);
     }
   });
 
+  // ============ SCORING FOR SELECTION STAGE ============
   if (stage.get("name") === "Selection") {
-    // during refgame phase
-    // Calculate score for the current stage
-    // Listeners get 1 point when they correctly identify the target
-    // The speaker gets the average of the listeners' scores, in that group.
-
     const round = stage.round;
-
     const target = round.get("target");
-    const red_players = players.filter(
-      (player) => player.get("group") == "red"
-    );
-    const blue_players = players.filter(
-      (player) => player.get("group") == "blue"
-    );
+    const phase_num = round.get("phase_num");
+    const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
 
-    const red_listeners = red_players.filter(
-      (player) => player.round.get("role") == "listener"
-    );
-    const blue_listeners = blue_players.filter(
-      (player) => player.round.get("role") == "listener"
-    );
+    activeGroups.forEach((groupName) => {
+      const groupPlayers = players.filter(
+        (p) => p.get("is_active") && p.get("current_group") === groupName
+      );
 
-    const red_speaker = red_players.find(
-      (player) => player.round.get("role") == "speaker"
-    );
-    const blue_speaker = blue_players.find(
-      (player) => player.round.get("role") == "speaker"
-    );
+      const listeners = groupPlayers.filter(
+        (p) => p.round.get("role") === "listener"
+      );
+      const speaker = groupPlayers.find(
+        (p) => p.round.get("role") === "speaker"
+      );
 
-    const red_correct = red_listeners.filter(
-      (player) => player.round.get("clicked") == target
-    );
-    const blue_correct = blue_listeners.filter(
-      (player) => player.round.get("clicked") == target
-    );
+      if (!speaker) return;
 
-    red_correct.forEach((player) => {
-      player.set("score", player.get("score") + 3);
-    });
-    blue_correct.forEach((player) => {
-      player.set("score", player.get("score") + 3);
-    });
+      // Count correct listeners
+      const correctListeners = listeners.filter(
+        (p) => p.round.get("clicked") === target
+      );
 
-    const red_avg_score = red_listeners.length
-      ? (red_correct.length * 3) / red_listeners.length
-      : 0;
-    const blue_avg_score = blue_listeners.length
-      ? (blue_correct.length * 3) / blue_listeners.length
-      : 0;
+      // Award points to correct listeners
+      correctListeners.forEach((listener) => {
+        listener.set("score", listener.get("score") + LISTENER_CORRECT_POINTS);
+      });
 
-    red_speaker.set("score", red_speaker.get("score") + red_avg_score);
-    red_speaker.round.set("round_score", red_avg_score);
-    blue_speaker.set("score", blue_speaker.get("score") + blue_avg_score);
-    blue_speaker.round.set("round_score", blue_avg_score);
+      // Award points to speaker (1 point per correct listener)
+      const speakerPoints = correctListeners.length * SPEAKER_POINTS_PER_CORRECT_LISTENER;
+      speaker.set("score", speaker.get("score") + speakerPoints);
+      speaker.round.set("round_score", speakerPoints);
 
-    // save chat in round
-    red_players.forEach((player) => {
-      const chat = stage.get("red_chat");
-      player.round.set("chat", chat);
-    });
-    blue_players.forEach((player) => {
-      const chat = stage.get("blue_chat");
-      player.round.set("chat", chat);
-    });
-  }
+      // ============ SOCIAL GUESSING (for social_mixed condition in Phase 2) ============
+      if (condition === "social_mixed" && phase_num === 2) {
+        const speakerOriginalGroup = speaker.get("original_group");
+        let correctGuesses = 0;
+        let socialSpeakerPoints = 0;
 
-  // Add Phase 2 speaker utterances to player's round data (for collecting later)
-  if (stage.get("name") === "Production") {
-    const game = stage.currentGame;
-    const players = game.players;
+        listeners.forEach((listener) => {
+          const listenerOriginalGroup = listener.get("original_group");
+          const guess = listener.round.get("social_guess"); // "same_group" or "different_group"
 
-    players.forEach((player) => {
-      const utterance = player.stage.get("utterance");
-      // console.log(utterance);
+          if (guess) {
+            const wasInSameGroup = speakerOriginalGroup === listenerOriginalGroup;
+            const guessedSame = guess === "same_group";
+            const correct = wasInSameGroup === guessedSame;
 
-      if (!player.round.get("utterances")) {
-        player.round.set("utterances", {});
+            listener.round.set("social_guess_correct", correct);
+
+            if (correct) {
+              listener.set("score", listener.get("score") + SOCIAL_GUESS_CORRECT_POINTS);
+              correctGuesses++;
+            }
+          }
+        });
+
+        // Speaker gets points for each correct guess about them
+        socialSpeakerPoints = correctGuesses * SOCIAL_SPEAKER_POINTS_PER_CORRECT;
+        speaker.set("score", speaker.get("score") + socialSpeakerPoints);
+        speaker.round.set("social_round_score", socialSpeakerPoints);
       }
 
-      const player_utterances = player.round.get("utterances");
-      // PROBLEM - no utterances available, set to player...
-
-      const condition = player.stage.get("condition");
-      const tangram = player.stage.get("target");
-
-      if (utterance) {
-        // create condition, tangram keys if they don't exist
-        if (!player_utterances[condition]) {
-          player_utterances[condition] = {};
-        }
-        if (!player_utterances[condition][tangram]) {
-          player_utterances[condition][tangram] = {};
-        }
-
-        // add utterance to player's utterances
-        player_utterances[condition][tangram] = utterance;
-        player.round.set("utterances", player_utterances);
-        // console.log(player_utterances); // TODO: test
-      }
-    });
-  }
-
-  // TODO: for the comprehnsion phase, assess accuracy (one point for each correct answer)
-  // Assign score to both the listener and the speaker that had produced the utterance
-
-  if (stage.get("name") === "Comprehension") {
-    const players = stage.currentGame.players;
-    players.forEach((player) => {
-      const phase3score = player.get("phase3score") || 0;
-
-      const thisTrialScore =
-        (player.stage.get("correctTangram") ? 3 : 0) +
-        (player.stage.get("correctGroup") ? 3 : 0);
-
-      player.set("phase3score", phase3score + thisTrialScore);
-
-      // Find the speaker by ID
-      const speakerId = player.stage.get("speaker");
-      const speaker = players.find((p) => p.id === speakerId);
-
-      if (speaker) {
-        let speaker_phase3score = speaker.get("phase3score") || 0;
-        let speakerReward = 0;
-
-        // If condition is 'refer own' or 'refer other', reward speaker for correct tangram guess
-        // If condition is 'social own', reward speaker for correct group guess
-        const condition = player.stage.get("condition");
-
-        if (condition && condition.includes("refer")) {
-          speakerReward = player.stage.get("correctTangram") ? 3 : 0;
-        } else {
-          speakerReward = player.stage.get("correctGroup") ? 3 : 0;
-        }
-
-        // Update speaker's phase3score
-        speaker.set("phase3score", speaker_phase3score + speakerReward);
-      } else {
-        console.error(`Speaker with ID ${speakerId} not found`);
-      }
+      // Save chat
+      const chat = stage.get(`${groupName}_chat`);
+      groupPlayers.forEach((player) => {
+        player.round.set("chat", chat);
+      });
     });
   }
 });
 
-Empirica.onRoundEnded(({ round }) => {
-  // TODO: If we are at the end of phase 2, collect the utterances based on condition and group, and make the phase 3 trials.
+// Helper function to check if groups are still viable
+function checkGroupViability(game) {
+  const players = game.players;
+  const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
 
-  // In Phase 3, all participants will now be in the listener role, shown expressions from Phase 2 of the task, and,
-  // for each expression, asked to submit two responses: choose the corresponding tangram, and guess the
-  // correct speaker group. Listeners will be equally rewarded for all correct answers on all trials. In order to test the
-  // extent to which expressions are more informative for the intended audience (e.g. the in-group) relative to an
-  // unintended audience (e.g. the out-group), participants will be delivered expressions that were produced for
-  // both their own group and for the opposite group.
+  const viableGroups = activeGroups.filter((groupName) => {
+    const groupPlayers = players.filter(
+      (p) => p.get("is_active") && p.get("original_group") === groupName
+    );
+    return groupPlayers.length >= MIN_GROUP_SIZE;
+  });
 
-  // Thus, participants will see 6 expressions per tangram — one expression for each of the 3 conditions
-  // (social+own, refer+own, refer+other) x 2 speaker-recipient mappings (‘matched’ vs. ‘unmatched’). There are 6
-  // tangrams, so this results in a total of 36 trials in Phase 3. We will balance the assignment of players to
-  // condition so that each of the six expressions for each tangram will originate from a different player. There are 3
-  // other players from the participant's own group and 4 other players from the other group, so for the expressions
-  // that originate from the other group, one of the players will be excluded for each tangram. This exclusion will be
-  // balanced across tangrams to ensure even representation of other-group players. The order of the 36 trials will
-  // be randomized.
-
-  // Trial count:
-
-  // ‘Matched’ speaker-recipient (delivered to intended audience):
-  // 6 trials social+own (from own group)
-  // +  6 trials refer+own (from own group)
-  // +  6 trials refer+other (from other group)
-  // = 18 phase 3 ‘matched’ trials
-
-  // ‘Unmatched’ speaker-recipient (delivered to unintended audience):
-  // 6 trials social+own (from other group)
-  // +  6 trials refer+own (from other group)
-  // +  6 trials refer+other (from own group)
-  // = 18 phase 3 ‘unmatched’ trials
-
-  if (round.get("phase") == "speaker_prod") {
-    const game = round.currentGame;
-    const players = game.players;
-    const context = game.get("context");
-
-    // Collect the utterances from phase 2
-    let all_utterances = { red: {}, blue: {} };
-    players.forEach((player) => {
-      const utterances = player.round.get("utterances");
-      const player_group = player.get("group");
-      console.log(utterances);
-      if (utterances) {
-        if (!all_utterances[player_group]) {
-          all_utterances[player_group] = {};
-        }
-        all_utterances[player_group][player.id] = utterances;
-      }
-      player.set("all_utterances", all_utterances);
-    });
-    console.log(`Utterances collected for game ${game.id}:`);
-    console.log(all_utterances);
-
-    players.forEach((player) => {
-      const player_group = player.get("group");
-      const other_group = player_group == "red" ? "blue" : "red";
-      const own_group_players = players.filter(
-        (p) => p.get("group") == player_group && p.id !== player.id
+  // If a group is no longer viable, remove remaining member
+  activeGroups.forEach((groupName) => {
+    if (!viableGroups.includes(groupName)) {
+      const remainingPlayers = players.filter(
+        (p) => p.get("is_active") && p.get("original_group") === groupName
       );
-      const other_group_players = players.filter(
-        (p) => p.get("group") == other_group
-      );
-
-      // Create the 36 trials (6 tangrams x 3 conditions x 2 speaker-recipient mappings)
-      const phase_3_trials = [];
-      context.forEach((tangram, tangramIndex) => {
-        const shuffled_other_group_players = _.shuffle(other_group_players);
-        const shuffled_own_group_players = _.shuffle(own_group_players);
-        shuffled_other_group_players.pop(); // exclude one player from the other group
-
-        // Helper function to safely get utterance or provide fallback
-        const safeGetUtterance = (
-          groupId,
-          playerId,
-          condition,
-          targetTangram
-        ) => {
-          try {
-            if (
-              all_utterances[groupId] &&
-              all_utterances[groupId][playerId] &&
-              all_utterances[groupId][playerId][condition] &&
-              all_utterances[groupId][playerId][condition][targetTangram]
-            ) {
-              return all_utterances[groupId][playerId][condition][
-                targetTangram
-              ];
-            }
-            return `[No description provided]`;
-          } catch (e) {
-            console.error(`Error getting utterance: ${e.message}`);
-            return `[Error retrieving description]`;
-          }
-        };
-
-        // social + own, from own group
-        if (shuffled_own_group_players.length > 0) {
-          const speaker = shuffled_own_group_players[0];
-          phase_3_trials.push({
-            condition: "social own",
-            matched: "matched",
-            speaker: speaker.id,
-            speaker_group: player_group,
-            speaker_name: speaker.get("name"),
-            description: safeGetUtterance(
-              player_group,
-              speaker.id,
-              "social own",
-              tangram
-            ),
-            target: tangram,
-          });
-        }
-        // console.log(phase_3_trials);
-
-        // refer + own, from own group
-        if (shuffled_own_group_players.length > 0) {
-          const speaker = shuffled_own_group_players[1];
-          phase_3_trials.push({
-            condition: "refer own",
-            matched: "matched",
-            speaker: speaker.id,
-            speaker_group: player_group,
-            speaker_name: speaker.get("name"),
-            description: safeGetUtterance(
-              player_group,
-              speaker.id,
-              "refer own",
-              tangram
-            ),
-            target: tangram,
-          });
-        }
-
-        // refer + other, from other group
-        if (shuffled_other_group_players.length > 0) {
-          const speaker = shuffled_other_group_players[0];
-          phase_3_trials.push({
-            condition: "refer other",
-            matched: "matched",
-            speaker: speaker.id,
-            speaker_group: other_group,
-            speaker_name: speaker.get("name"),
-            description: safeGetUtterance(
-              other_group,
-              speaker.id,
-              "refer other",
-              tangram
-            ),
-            target: tangram,
-          });
-        }
-
-        // social + own, from other group
-        if (shuffled_other_group_players.length > 0) {
-          const speaker = shuffled_other_group_players[1];
-          phase_3_trials.push({
-            condition: "social own",
-            matched: "unmatched",
-            speaker: speaker.id,
-            speaker_group: other_group,
-            speaker_name: speaker.get("name"),
-            description: safeGetUtterance(
-              other_group,
-              speaker.id,
-              "social own",
-              tangram
-            ),
-            target: tangram,
-          });
-        }
-
-        // refer + own, from other group
-        if (shuffled_other_group_players.length > 0) {
-          const speaker = shuffled_other_group_players[2];
-          phase_3_trials.push({
-            condition: "refer own",
-            matched: "unmatched",
-            speaker: speaker.id,
-            speaker_group: other_group,
-            speaker_name: speaker.get("name"),
-            description: safeGetUtterance(
-              other_group,
-              speaker.id,
-              "refer own",
-              tangram
-            ),
-            target: tangram,
-          });
-        }
-
-        // refer + other, from own group
-        if (shuffled_own_group_players.length > 0) {
-          const speaker = shuffled_own_group_players[2];
-          phase_3_trials.push({
-            condition: "refer other",
-            matched: "unmatched",
-            speaker: speaker.id,
-            speaker_group: player_group,
-            speaker_name: speaker.get("name"),
-            description: safeGetUtterance(
-              player_group,
-              speaker.id,
-              "refer other",
-              tangram
-            ),
-            target: tangram,
-          });
-        }
+      remainingPlayers.forEach((player) => {
+        console.log(`Removing final member ${player.id} from disbanded group ${groupName}`);
+        player.set("is_active", false);
+        player.set("ended", "group disbanded");
       });
-      // console.log(phase_3_trials);
-      const shuffled_phase_3_trials = _.shuffle(phase_3_trials);
-      player.set("phase_3_trials", shuffled_phase_3_trials);
-    });
-  }
+    }
+  });
 
-  // Collect the phase 3 scores and add them to total score
-  if (round.get("phase") == "comprehension") {
-    const game = round.currentGame;
-    const players = game.players;
-    players.forEach((player) => {
-      const phase3score = player.get("phase3score") || 0;
-      player.set("score", player.get("score") + phase3score);
-      player.set("bonus", player.get("score") * bonus_per_point);
-    });
+  game.set("active_groups", viableGroups);
+
+  // Check if game can continue
+  if (viableGroups.length < MIN_ACTIVE_GROUPS) {
+    console.log("Not enough active groups, ending game");
+    // Game will end naturally when rounds complete
   }
+}
+
+Empirica.onRoundEnded(({ round }) => {
+  // Calculate and update bonuses at end of each round
+  const game = round.currentGame;
+  const players = game.players;
+
+  players.forEach((player) => {
+    player.set("bonus", player.get("score") * bonus_per_point);
+  });
 });
 
 Empirica.onGameEnded(({ game }) => {
   console.log(`Game ${game.id} ended`);
+
+  // Final bonus calculation
+  const players = game.players;
+  players.forEach((player) => {
+    player.set("bonus", player.get("score") * bonus_per_point);
+    console.log(
+      `Player ${player.id}: Score=${player.get("score")}, Bonus=$${player.get("bonus").toFixed(2)}`
+    );
+  });
 });

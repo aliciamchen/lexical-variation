@@ -30,14 +30,19 @@ export function Tangram(props) {
     margin: "0.8rem",
   };
 
-  // Phase 1: Refgame
+  // Phase 1 and Phase 2: Refgame
   if (round.get("phase") == "refgame") {
-    // Red group and blue groups play games separately
-    const playerGroup = player.get("group");
-    const playersInGroup = players.filter((p) => p.get("group") == playerGroup);
+    // Groups play games separately (use current_group for mixed conditions)
+    const playerGroup = player.get("current_group");
+    const playersInGroup = players.filter((p) => p.get("current_group") == playerGroup && p.get("is_active"));
     const playerGroupSpeaker = playersInGroup.filter(
       (p) => p.round.get("role") == "speaker"
     )[0];
+
+    // Get condition info for social_mixed handling
+    const condition = game.get("condition");
+    const phase_num = round.get("phase_num");
+    const isSocialMixed = condition === "social_mixed" && phase_num === 2;
 
     const handleClick = (e) => {
       console.log("click2");
@@ -52,26 +57,30 @@ export function Tangram(props) {
 
       // only register click for listener and only after the speaker has sent a message
       if (
-        (stage.get("name") == "Selection") &
-        (speakerMsgs.length > 0) &
-        !player.round.get("clicked") &
-        (player.round.get("role") == "listener")
+        (stage.get("name") === "Selection") &&
+        (speakerMsgs.length > 0) &&
+        !player.round.get("clicked") &&
+        (player.round.get("role") === "listener")
       ) {
         player.round.set("clicked", tangram);
-        setTimeout(() => player.stage.set("submit", true), 3000); 
-      }
-      // end stage if all listeners have clicked
-      const listeners = playersInGroup.filter(
-        (p) => p.round.get("role") == "listener"
-      );
-      const allClicked = _.every(listeners, (p) => p.round.get("clicked"));
 
-      if (allClicked) {
-        console.log(playersInGroup);
-        // end stage
-        playersInGroup.forEach((p) => {
-          p.stage.set("submit", true);
+        // Check if all listeners have now responded (only after registering a click)
+        const listeners = playersInGroup.filter(
+          (p) => p.round.get("role") === "listener"
+        );
+        const allResponded = _.every(listeners, (p) => {
+          const clicked = p.round.get("clicked");
+          const socialGuess = p.round.get("social_guess");
+          return clicked && (!isSocialMixed || socialGuess);
         });
+
+        // Double-check we're still in Selection before auto-submitting
+        if (allResponded && stage.get("name") === "Selection") {
+          console.log("All responded, submitting group:", playersInGroup);
+          playersInGroup.forEach((p) => {
+            p.stage.set("submit", true);
+          });
+        }
       }
     };
 
@@ -127,43 +136,7 @@ export function Tangram(props) {
     );
   }
 
-  // Phase 2: Production
-  // just show the tangram grid with target highlighted; no interaction
-  if (round.get("phase") == "speaker_prod") {
-    if (tangram == target) {
-      _.extend(mystyle, {
-        outline: `10px solid #000`,
-        zIndex: "9",
-      });
-    }
-    return <div style={mystyle}></div>;
-  }
-
-  // Phase 3: Comprehension
-  // participants click on the tangram they think the speaker is describing
-  if (round.get("phase") == "comprehension") {
-    const handleClick = (e) => {
-      console.log("click2");
-
-      const clickedTangram = player.stage.get("clicked_tangram");
-      if (clickedTangram === tangram) {
-        // if this is the same tangram that was clicked before, do nothing
-        return;
-      }
-
-      if (typeof onSelect === "function") {
-        onSelect(tangram);
-      }
-    };
-    if (tangram == player.stage.get("clicked_tangram")) {
-      mystyle = {
-        ...mystyle,
-        outline: `10px solid #A9A9A9`,
-        zIndex: "9",
-      };
-    }
-    return <div onClick={handleClick} style={mystyle}></div>;
-  }
+  // Old Phase 2 (Production) and Phase 3 (Comprehension) are removed in new experiment design
   
   // default case
   return <div style={mystyle}></div>;

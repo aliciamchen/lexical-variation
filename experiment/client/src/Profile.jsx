@@ -2,6 +2,7 @@ import {
   usePlayer,
   useRound,
   useStage,
+  useGame,
 } from "@empirica/core/player/classic/react";
 import React from "react";
 import { Avatar } from "./components/Avatar";
@@ -11,8 +12,11 @@ export function Profile() {
   const player = usePlayer();
   const round = useRound();
   const stage = useStage();
+  const game = useGame();
 
   const score = player.get("score") || 0;
+  const phase_num = round ? round.get("phase_num") : null;
+  const originalGroup = player.get("original_group");
 
   return (
     <div className="min-w-lg md:min-w-2xl mt-2 m-x-auto px-3 py-2 text-gray-500 rounded-md grid grid-cols-3 items-center border-.5">
@@ -23,6 +27,11 @@ export function Profile() {
         <div className="text-empirica-500 font-medium">
           {stage ? stage.get("name") : ""}
         </div>
+        {originalGroup && (
+          <div className="text-xs text-gray-400">
+            Original Group: {originalGroup}
+          </div>
+        )}
       </div>
 
       <Timer />

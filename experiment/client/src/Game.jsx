@@ -40,12 +40,28 @@ export function Game() {
     }
   }, [round?.get("justStarted")]);
 
-  // right now this is repeating code - fix later
-  const playerGroup = player.get("group");
-  const playersInGroup = players.filter((p) => p.get("group") === playerGroup);
-  const allGroupResponded = playersInGroup.every(
-    (p) => p.round.get("role") === "speaker" || p.round.get("clicked")
+  // Get current group for chat display
+  const playerGroup = player.get("current_group");
+  const condition = game.get("condition");
+  const phase_num = round?.get("phase_num");
+  const isSocialMixed = condition === "social_mixed" && phase_num === 2;
+
+  // Check if all players in group have responded
+  const playersInGroup = players.filter(
+    (p) => p.get("current_group") === playerGroup && p.get("is_active")
   );
+  const allGroupResponded = playersInGroup.every((p) => {
+    if (p.round.get("role") === "speaker") return true;
+    const clicked = p.round.get("clicked");
+    const socialGuess = p.round.get("social_guess");
+    return clicked && (!isSocialMixed || socialGuess);
+  });
+
+  // Show chat for any group during Selection stage (groups A, B, C)
+  const showChat =
+    stage?.get("name") === "Selection" &&
+    !allGroupResponded &&
+    playerGroup;
 
   return (
     <div className="h-full w-full flex">
@@ -62,21 +78,11 @@ export function Game() {
         </div>
       </div>
 
-      {player.get("group") == "red" &&
-        stage.get("name") == "Selection" &&
-        !allGroupResponded && (
-          <div className="h-full w-128 border-l flex justify-center items-center">
-            <Chat player={player} scope={stage} attribute="red_chat" />
-          </div>
-        )}
-
-      {player.get("group") == "blue" &&
-        stage.get("name") == "Selection" &&
-        !allGroupResponded && (
-          <div className="h-full w-128 border-l flex justify-center items-center">
-            <Chat player={player} scope={stage} attribute="blue_chat" />
-          </div>
-        )}
+      {showChat && (
+        <div className="h-full w-128 border-l flex justify-center items-center">
+          <Chat player={player} scope={stage} attribute={`${playerGroup}_chat`} />
+        </div>
+      )}
     </div>
   );
 }
