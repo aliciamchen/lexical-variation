@@ -416,3 +416,6 @@ print(f"\nLoaded {len(results_mixed)} mixed condition results")
 print(f"Loaded {len(results_separate)} separate condition results")
 ```
 
+Permutation test
+
+TODO: do permutation test to see if the group-specificity scores are greater than would have arisen by chance (i.e. does it get rid of the structure in the `separate` condition?)

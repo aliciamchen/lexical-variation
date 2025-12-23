@@ -163,11 +163,11 @@ cat("Pooled SD:", round(pooled_sd, 4), "\n")
 
 ## Power analysis
 
-Using a two-sample t-test with alpha = 0.05 and power = 0.80:
+Using a two-sample t-test with alpha = 0.05 and power = 0.95:
 
 ```{r}
 # Function to calculate required n per group for a given effect size
-calc_required_n <- function(effect_size, pooled_sd, alpha = 0.05, power = 0.80) {
+calc_required_n <- function(effect_size, pooled_sd, alpha = 0.05, power = 0.95) {
   result <- power.t.test(
     delta = effect_size,
     sd = pooled_sd,
@@ -222,7 +222,7 @@ power_curves <- expand_grid(
 
 ggplot(power_curves, aes(x = n, y = power, color = effect_label)) +
   geom_line(linewidth = 1.2) +
-  geom_hline(yintercept = 0.80, linetype = "dashed", color = "gray") +
+  geom_hline(yintercept = 0.95, linetype = "dashed", color = "gray") +
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
   labs(
     title = "Power curves",

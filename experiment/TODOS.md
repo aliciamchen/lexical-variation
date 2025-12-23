@@ -42,6 +42,8 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 - [ ] Fix "waiting for other group" message in TEST_MODE (only 1 group exists)
 - [ ] Check reassignment is correct when speaker leaves (does it reassign someone else as speaker?)
 - [ ] Ensure anonymous avatars are unique per block (different seed each reshuffling)
+- [ ] MAYBE: let games start if there are fewer than 9 people? For example, if there are 6 people in the waiting room, and then the waiting room time is up, rather than kicking all 6 people out and compensating them for the time they spent waiting, we could start the game anyway. This would lead to more uneven games, but it would save money
+- [ ] There are potential issues with dropout handling that we haven't handled or tested for. For example if a group only has 2 people, then each of those players is speaker more frequently right? But overall they do the same number of blocks so that the whole experiment is synchronized right? 
 
 ### Phase 3: Transition Screens
 - [ ] Add transition screen before each reshuffling (5 second screen, no key press required)
