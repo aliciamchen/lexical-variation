@@ -184,19 +184,14 @@ Empirica.onRoundStart(({ round }) => {
 
   if (round.get("phase") === "refgame") {
     const players = game.players.filter((p) => p.get("is_active"));
-    const speakerIndex = round.get("speaker_index");
     const blockNum = round.get("block_num");
 
-    // In Phase 2 with mixed conditions, reshuffle groups at start of each block
+    // In Phase 2 with mixed conditions, reshuffle groups at start of each trial
     if (
       phase_num === 2 &&
       (condition === "refer_mixed" || condition === "social_mixed")
     ) {
-      // Check if this is the first round of a new block
-      const target_num = round.get("target_num");
-      if (target_num === 0) {
-        reshuffleGroups(game, players);
-      }
+      reshuffleGroups(game, players);
     }
 
     // Set roles for each group
@@ -207,13 +202,17 @@ Empirica.onRoundStart(({ round }) => {
         (p) => p.get("current_group") === groupName
       );
 
-      // Adjust speaker index for groups with fewer than GROUP_SIZE players
-      // This ensures someone is always speaker even after dropouts
-      const adjustedSpeakerIndex = groupPlayers.length > 0
-        ? speakerIndex % groupPlayers.length
+      // Shuffle group players so speaker assignment is random within the group
+      // This ensures even speaker distribution across trials despite reshuffling
+      const shuffledGroupPlayers = _.shuffle(groupPlayers);
+
+      // Calculate speaker index based on block number and CURRENT group size
+      // This ensures even rotation even after dropouts (e.g., with 2 players: 0,1,0,1...)
+      const adjustedSpeakerIndex = shuffledGroupPlayers.length > 0
+        ? blockNum % shuffledGroupPlayers.length
         : 0;
 
-      groupPlayers.forEach((player, i) => {
+      shuffledGroupPlayers.forEach((player, i) => {
         // In mixed conditions, use anonymous avatars for both display and chat
         if (
           phase_num === 2 &&
