@@ -68,7 +68,6 @@ NOTE for claude: If you need it to figure out how to do something, the docs for 
 #### ExitSurvey.jsx
 
 - [ ] Update to reflect new experiment
-- [ ] Add condition-specific questions
 - [ ] Update bonus display calculation
 - [ ] Update base pay from $12 to $10
 - [ ] Update max bonus calculation ($5.40 max)
@@ -108,6 +107,7 @@ NOTE for claude: If you need it to figure out how to do something, the docs for 
 
 - [ ] Come up with a list of things to test for 9 players
 - [ ] Is the idling logic working correctly?
+- [ ] Check listener guessing speaker group logic
 
 ### 7. Optional / Nice-to-Have
 
