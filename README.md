@@ -24,5 +24,5 @@ The R version is `4.5.2`.
 ```bash
 conda env create -f environment.yml
 conda activate lexical-variation
-renv::restore()
+# In R: renv::restore()
 ```

@@ -1,5 +1,7 @@
 # TODOs
 
+Large scale
+
 - [x] Power analysis using Robert and Veronica's existing data, this also requires writing data analysis code for computing the metrics we want.
 - [ ] Choose and prep tangrams for experiment
 - [ ] Make experiment
@@ -9,3 +11,8 @@
 - [ ] Think about how to potentially extend their model to social signaling goals and decide whether to do it now or table
 - [ ] Figure out how to write about model
 - [ ] Decide whether to do RR, and if so, decide the set of analyses to include. Put all the supplementary / alternative / other analyses in a separate document
+
+Small scale or for later
+
+- [ ] Save rendered quarto notebooks and make them shareable for reviewers
+

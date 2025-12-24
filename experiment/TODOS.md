@@ -35,10 +35,10 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 ### Phase 1: Quick Cleanup
 - [ ] Delete or archive `stages/Production.jsx` file
 - [ ] Delete or archive `stages/Comprehension.jsx` file
-- [ ] Update base pay from $12 to $10
-- [ ] Update max bonus calculation ($5.40 max)
+- [ ] Remove original group indicator on the top left of the screen
 
 ### Phase 2: Core Functionality Fixes
+- [ ] Update to the new tangrams from Ji et al. (2022). They are in the `client/public/` folder under their respective names (e.g., `tangram_page1-129.svg`). Make sure that the data collection and the keys in the experiment are updated accordingly
 - [ ] Fix "waiting for other group" message in TEST_MODE (only 1 group exists)
 - [ ] Check reassignment is correct when speaker leaves (does it reassign someone else as speaker?)
 - [ ] Ensure anonymous avatars are unique per block (different seed each reshuffling)
@@ -50,6 +50,8 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 - [ ] Write actual text for transition screens (explain reshuffling to participants)
 
 ### Phase 4: Participant-Facing Content
+- [ ] Update base pay from $12 to $10
+- [ ] Update max bonus calculation ($5.40 max)
 - [ ] Rewrite Introduction.jsx:
   - [ ] Part 1: Overview of tangram reference game
   - [ ] Part 2: Explain groups of 3 (1 speaker, 2 listeners)
@@ -91,8 +93,7 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 - [ ] Verify we have the data fields we need
 
 ### Phase 6: Nice-to-haves
-- [ ] Update to the new tangrams from Ji et al. (2022)
-- [ ] Reconsider original group indicator (maybe replace with something else?)
+
 - [ ] Set up Jest unit tests for callbacks (optional)
 
 ---
