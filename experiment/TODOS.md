@@ -39,16 +39,24 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 
 ### Phase 2: Core Functionality Fixes
 - [x] Update to the new tangrams from Ji et al. (2022). They are in the `client/public/` folder under their respective names (e.g., `tangram_page1-129.svg`). Make sure that the data collection and the keys in the experiment are updated accordingly
-- [ ] What does it mean to be an idle player? It should include speakers that don't write anything in the chat or listeners that don't click anything. It should not include the "transitions" where the players are just waiting for the next trial to start. 
+  - [x] Normalized SVG viewBoxes to square for consistent display
+  - [x] Updated `pick_tangrams.Qmd` for reproducibility
+- [ ] What does it mean to be an idle player? It should include speakers that don't write anything in the chat or listeners that don't click anything. It should not include the "transitions" where the players are just waiting for the next trial to start.
 - [x] Fix "waiting for other group" message in TEST_MODE (only 1 group exists)
 - [x] Check reassignment is correct when speaker leaves (does it reassign someone else as speaker?)
+  - [x] Speaker index now uses `blockNum % currentGroupSize` for even distribution after dropout
+  - [x] Group players shuffled before speaker assignment for fair random distribution
 - [x] Ensure anonymous avatars are unique per block (different seed each reshuffling)
-- [ ] Make sure the participant reshuffling in Phase 2 mixed conditions is correct and that it works with participant removal logic. 
-- [x] There are potential issues with dropout handling that we haven't handled or tested for. For example if a group only has 2 people, then each of those players is speaker more frequently right? But overall they do the same number of blocks so that the whole experiment is synchronized right? 
-
+- [x] Make sure the participant reshuffling in Phase 2 mixed conditions is correct and that it works with participant removal logic.
+  - [x] Reshuffling uses round-robin distribution: `player[i] → group[i % numGroups]`
+  - [x] Handles uneven player counts (e.g., 7 players → 3+2+2)
+  - [x] MIN_ACTIVE_GROUPS adjusted for TEST_MODE (1 instead of 2)
+- [x] There are potential issues with dropout handling that we haven't handled or tested for. For example if a group only has 2 people, then each of those players is speaker more frequently right? But overall they do the same number of blocks so that the whole experiment is synchronized right?
+  - [x] Fixed: Speaker rotation is now `blockNum % groupSize` (not pre-computed), ensuring even distribution (2 players → 0,1,0,1...)
 - [x] Change "waiting for round to end" thing in phase 2 in test mode, make it advance when everyone responds right now it's just waiting for the timer to end because in test mode there's only one group so it's just waiting for the timer to end.
-- [ ] Check data is saving correctly 
-- [ ] In phase 2 of the task, reshuffling of participants to groups should happen after every trial, not just at the start of each block. 
+  - [x] Each player now auto-submits when all in group have responded
+- [ ] Check data is saving correctly
+- [x] In phase 2 of the task, reshuffling of participants to groups should happen after every trial, not just at the start of each block. 
 
 ### Phase 3: Transition Screens
 - [ ] Add transition screen before each reshuffling (5 second screen, no key press required)
@@ -93,7 +101,10 @@ This document tracks the changes needed to migrate from the old prereg (8 player
   - [ ] Group continuation with 2 remaining
   - [ ] Final member removal when 2 drop
   - [ ] Game continuation with 2+ active groups
-- [ ] Test reshuffling logic. Test that reshuffling with uneven players generally works. 
+- [x] Test reshuffling logic. Test that reshuffling with uneven players generally works.
+  - [x] Verified round-robin distribution (7 players → 3+2+2, 4 players → 2+2)
+  - [x] Verified speaker distribution is fair despite reshuffling (no systematic bias)
+- [x] Also test reshuffling happens after every trial, not just at the start of each block.
 - [ ] Test all intro screens and quiz
 - [ ] Test exit survey and debrief
 - [ ] Test with 9 players (production mode)
