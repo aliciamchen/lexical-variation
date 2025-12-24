@@ -41,7 +41,10 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 - [x] Update to the new tangrams from Ji et al. (2022). They are in the `client/public/` folder under their respective names (e.g., `tangram_page1-129.svg`). Make sure that the data collection and the keys in the experiment are updated accordingly
   - [x] Normalized SVG viewBoxes to square for consistent display
   - [x] Updated `pick_tangrams.Qmd` for reproducibility
-- [ ] What does it mean to be an idle player? It should include speakers that don't write anything in the chat or listeners that don't click anything. It should not include the "transitions" where the players are just waiting for the next trial to start.
+- [x] What does it mean to be an idle player? It should include speakers that don't write anything in the chat or listeners that don't write anything in the chat AND dont click a tangram on a trial. It should not include the "transitions" where the players are just waiting for the next trial to start.
+  - [x] Idle detection now only runs during Selection stage (not Feedback or transitions)
+  - [x] Speakers: idle if they don't send any chat message
+  - [x] Listeners: idle if they don't send a message AND don't click a tangram
 - [x] Fix "waiting for other group" message in TEST_MODE (only 1 group exists)
 - [x] Check reassignment is correct when speaker leaves (does it reassign someone else as speaker?)
   - [x] Speaker index now uses `blockNum % currentGroupSize` for even distribution after dropout
@@ -55,7 +58,6 @@ This document tracks the changes needed to migrate from the old prereg (8 player
   - [x] Fixed: Speaker rotation is now `blockNum % groupSize` (not pre-computed), ensuring even distribution (2 players → 0,1,0,1...)
 - [x] Change "waiting for round to end" thing in phase 2 in test mode, make it advance when everyone responds right now it's just waiting for the timer to end because in test mode there's only one group so it's just waiting for the timer to end.
   - [x] Each player now auto-submits when all in group have responded
-- [ ] Check data is saving correctly
 - [x] In phase 2 of the task, reshuffling of participants to groups should happen after every trial, not just at the start of each block. 
 
 ### Phase 3: Transition Screens
@@ -96,6 +98,7 @@ This document tracks the changes needed to migrate from the old prereg (8 player
   - [ ] Write compensation messages and Prolific payment logic
 
 ### Phase 5: Testing
+- [ ] Check data is saving correctly
 - [ ] Test dropout handling:
   - [ ] Player removed after 2 idle rounds
   - [ ] Group continuation with 2 remaining
@@ -108,10 +111,22 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 - [ ] Test all intro screens and quiz
 - [ ] Test exit survey and debrief
 - [ ] Test with 9 players (production mode)
+  - [ ] Come up with a list of things to test for here, because it will take a long time to start and run through for 9 players..
+  - [ ] E.g. is the idling logic working correctly?
 - [ ] Verify we have the data fields we need
+- [ ] GEnerally check timing
+- [ ] Check that on admin dashboard, the game marks finished when all players have finished. 
 
-### Phase 6: Nice-to-haves
+### Phase 6: other stuff
 - [ ] MAYBE: let games start if there are fewer than 9 people? For example, if there are 6 people in the waiting room, and then the waiting room time is up, rather than kicking all 6 people out and compensating them for the time they spent waiting, we could start the game anyway. This would lead to more uneven games, but it would save money
+- [ ] For the chat, save timestamps of messages sent. 
+- [ ] in player rounds, also save whether clicked tangram was correct. 
+- [ ] If someone in a group leaves, indicate to participants that the group is now smaller because someone left or idled. 
+- [ ] For the icons for who picked what tangram, add a bit of space between them when they are stacked (i.e. if two people pick the same tangram, there should be a bit of space between the two icons).
+- [ ] If speaker is idle and listeners aren't able to select, in the feedback indicate that the speaker was idle and that's why they couldn't select.
+- [ ] for the idle/ reassignment screens, check that the reassigned groups are saved correctly in the data.
+- [ ] what happens when someone leaves in the middle of block? it should just be reassigned to another speaker to finish the tangrams left to be described in the block, check it does that. 
+- [ ] Check that in mixed conditions the icons are different each time so people dont know who they are talking to
 - [ ] Set up Jest unit tests for callbacks (optional)
 
 ---

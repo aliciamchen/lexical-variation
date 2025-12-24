@@ -202,17 +202,22 @@ Empirica.onRoundStart(({ round }) => {
         (p) => p.get("current_group") === groupName
       );
 
-      // Shuffle group players so speaker assignment is random within the group
-      // This ensures even speaker distribution across trials despite reshuffling
-      const shuffledGroupPlayers = _.shuffle(groupPlayers);
+      // In Phase 1 (or Phase 2 separated): Use consistent player order so speaker stays same within block
+      // In Phase 2 mixed conditions: Shuffle for fair distribution since groups change each trial
+      const isMixedPhase2 = phase_num === 2 &&
+        (condition === "refer_mixed" || condition === "social_mixed");
+
+      const orderedGroupPlayers = isMixedPhase2
+        ? _.shuffle(groupPlayers)
+        : _.sortBy(groupPlayers, (p) => p.get("player_index"));
 
       // Calculate speaker index based on block number and CURRENT group size
       // This ensures even rotation even after dropouts (e.g., with 2 players: 0,1,0,1...)
-      const adjustedSpeakerIndex = shuffledGroupPlayers.length > 0
-        ? blockNum % shuffledGroupPlayers.length
+      const adjustedSpeakerIndex = orderedGroupPlayers.length > 0
+        ? blockNum % orderedGroupPlayers.length
         : 0;
 
-      shuffledGroupPlayers.forEach((player, i) => {
+      orderedGroupPlayers.forEach((player, i) => {
         // In mixed conditions, use anonymous avatars for both display and chat
         if (
           phase_num === 2 &&
@@ -313,30 +318,61 @@ Empirica.onStageEnded(({ stage }) => {
   const game = stage.currentGame;
   const players = game.players;
   const condition = game.get("condition");
+  const stageName = stage.get("name");
 
-  // Handle idle players
-  players.forEach((player) => {
-    if (!player.get("is_active")) return;
+  // ============ IDLE PLAYER DETECTION ============
+  // Only check idleness during Selection stage (not Feedback or transitions)
+  // Speakers are idle if they don't send any chat message
+  // Listeners are idle if they don't send any chat message AND don't click a tangram
+  if (stageName === "Selection") {
+    const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
 
-    const isActive = player.stage.get("submit");
-    if (!isActive) {
-      const idleRounds = (player.get("idle_rounds") || 0) + 1;
-      player.set("idle_rounds", idleRounds);
+    players.forEach((player) => {
+      if (!player.get("is_active")) return;
 
-      if (idleRounds >= MAX_IDLE_ROUNDS) {
-        console.log(
-          `Player ${player.id} removed after ${MAX_IDLE_ROUNDS} idle rounds`
-        );
-        player.set("is_active", false);
-        player.set("ended", "player timeout");
+      const playerGroup = player.get("current_group");
+      const role = player.round.get("role");
+      const chat = stage.get(`${playerGroup}_chat`) || [];
 
-        // Check if group can continue
-        checkGroupViability(game);
+      // Check if player sent any message
+      const sentMessage = chat.some((msg) => msg.sender?.id === player.id);
+
+      // Check if player clicked a tangram (only relevant for listeners)
+      const clickedTangram = player.round.get("clicked");
+
+      // Determine if player was idle this round
+      let wasIdle = false;
+      if (role === "speaker") {
+        // Speakers are idle if they didn't send any message
+        wasIdle = !sentMessage;
+      } else {
+        // Listeners are idle if they didn't send a message AND didn't click a tangram
+        wasIdle = !sentMessage && !clickedTangram;
       }
-    } else {
-      player.set("idle_rounds", 0);
-    }
-  });
+
+      if (wasIdle) {
+        const idleRounds = (player.get("idle_rounds") || 0) + 1;
+        player.set("idle_rounds", idleRounds);
+        console.log(
+          `Player ${player.id} (${role}) idle round ${idleRounds}/${MAX_IDLE_ROUNDS}`
+        );
+
+        if (idleRounds >= MAX_IDLE_ROUNDS) {
+          console.log(
+            `Player ${player.id} removed after ${MAX_IDLE_ROUNDS} idle rounds`
+          );
+          player.set("is_active", false);
+          player.set("ended", "player timeout");
+
+          // Check if group can continue
+          checkGroupViability(game);
+        }
+      } else {
+        // Reset idle counter when player is active
+        player.set("idle_rounds", 0);
+      }
+    });
+  }
 
   // ============ SCORING FOR SELECTION STAGE ============
   if (stage.get("name") === "Selection") {
