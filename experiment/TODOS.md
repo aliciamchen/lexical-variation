@@ -1,22 +1,10 @@
-# Todos for Experiment Migration (Old Prereg → New Prereg)
+# Empirica experiment todos
 
-This document tracks the changes needed to migrate from the old prereg (8 players, 2 groups, within-subjects conditions) to the new prereg (9 players, 3 groups, between-subjects conditions).
+This document tracks the changes needed to make the web experiment.
 
 ---
 
-## Overview of Key Changes
-
-| Aspect | Old | New |
-|--------|-----|-----|
-| Players per game | 8 (2×4) | 9 (3×3) |
-| Listeners per trial | 3 | 2 |
-| Phase 1 blocks | 8 | 6 |
-| Phase 2 | Production task | Continued ref game (6 blocks) |
-| Phase 3 | Listener interpretation | Removed |
-| Conditions | Within-subjects | Between-subjects |
-| Scoring | $0.02/point | $0.05/point |
-
-### Timing Configuration
+### Timing
 
 | Stage | Duration |
 |-------|----------|
@@ -35,7 +23,7 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 ### 1. Data Collection Improvements
 - [ ] For the chat, save timestamps of messages sent
 - [ ] In player rounds, also save whether clicked tangram was correct
-- [ ] For the idle/reassignment screens, check that the reassigned groups are saved correctly in the data
+- [ ] For the idle/reassignment cases, check that the reassigned groups are saved correctly in the data
 - [ ] Verify we have the data fields we need
 
 ### 2. Transition Screens
@@ -86,10 +74,7 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 - [ ] If speaker is idle and listeners aren't able to select, in the feedback indicate that the speaker was idle
 - [ ] Check that in mixed conditions the icons are different each time so people don't know who they are talking to
 
-### 5. Dropout Edge Cases
-- [ ] What happens when someone leaves in the middle of block? Should reassign to another speaker to finish the tangrams left to be described
-
-### 6. Testing
+### 5. Testing
 
 #### Test Mode (3 players)
 - [ ] Check data is saving correctly
@@ -103,6 +88,7 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 - [ ] Group continuation with 2 remaining
 - [ ] Final member removal when 2 drop
 - [ ] Game continuation with 2+ active groups
+- [ ] What happens when someone leaves in the middle of block? Should reassign to another speaker to finish the tangrams left to be described
 
 #### Production Mode (9 players)
 - [ ] Come up with a list of things to test for 9 players
@@ -110,30 +96,19 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 
 ### 7. Optional / Nice-to-Have
 - [ ] MAYBE: Let games start if there are fewer than 9 people in the waiting room
-- [ ] Set up Jest unit tests for callbacks
+- [ ] MAYBE: Set up Jest unit tests for callbacks
 
 ---
 
-## Design Decisions
+## Completed
+
+### Design Decisions
 
 - **No distinct group colors**: Groups should not be visually differentiated by color
 - **Identity masking in mixed conditions**: Other players' identities are fully hidden
 - **Anonymous avatars**: In mixed conditions, players get new anonymous avatars each block
 - **Timer duration**: Selection 45s, Feedback 10s, Transitions 30s
 - **DiceBear avatars**: Using identicon style (blue) for regular, shapes style (gray) for anonymous
-
----
-
-## Notes
-
-- The new experiment focuses on testing whether social signaling goals can resist linguistic convergence when groups mix
-- The old explicit goal conditions (social+own, refer+own, refer+other) are replaced by implicit social signaling incentives
-- Phase 3 listener interpretation is completely removed - no post-hoc evaluation
-- Data analysis will focus on emergent lexicons, group-specificity, and description length
-
----
-
-## Completed
 
 ### Server (`server/src/`)
 - Constants: 9 players, 3 groups of 3, TEST_MODE toggle, DiceBear avatars, updated scoring ($0.05/point)
