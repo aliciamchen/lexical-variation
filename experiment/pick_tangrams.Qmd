@@ -78,7 +78,7 @@ import xml.etree.ElementTree as ET
 import re
 import os
 
-def make_tangram_black(key, save_dir="tangrams"):
+def make_tangram_black(key, save_dir="client/public/"):
     """Fetch a tangram SVG and convert to solid black silhouette."""
     url = f"https://raw.githubusercontent.com/lil-lab/kilogram/main/dataset/tangrams-svg/{key}.svg"
     response = requests.get(url)
@@ -106,7 +106,7 @@ def make_tangram_black(key, save_dir="tangrams"):
     svg_str = ET.tostring(root, encoding='unicode')
 
     os.makedirs(save_dir, exist_ok=True)
-    filepath = os.path.join(save_dir, f"{key}.svg")
+    filepath = os.path.join(save_dir, f"tangram_{key}.svg")
     with open(filepath, 'w') as f:
         f.write(svg_str)
 
@@ -135,14 +135,14 @@ import cairosvg
 from PIL import Image
 from io import BytesIO
 
-def save_tangram_grid(tangram_keys, save_dir="tangrams", cols=3, output_file="tangram_grid.png"):
+def save_tangram_grid(tangram_keys, save_dir="client/public/", cols=3, output_file="tangram_grid.png"):
     """Save tangrams as a grid image."""
     rows = (len(tangram_keys) + cols - 1) // cols
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 3, rows * 3))
     axes = axes.flatten()
 
     for i, key in enumerate(tangram_keys):
-        filepath = os.path.join(save_dir, f"{key}.svg")
+        filepath = os.path.join(save_dir, f"tangram_{key}.svg")
         # Convert SVG to PNG using cairosvg
         png_data = cairosvg.svg2png(url=filepath)
         img = Image.open(BytesIO(png_data))
@@ -158,6 +158,6 @@ def save_tangram_grid(tangram_keys, save_dir="tangrams", cols=3, output_file="ta
     plt.show()
     print(f"Saved grid to {output_file}")
 
-save_tangram_grid(selected_tangrams, cols=3, output_file="tangrams/tangram_grid.png")
+save_tangram_grid(selected_tangrams, cols=3, output_file="tangram_grid.png")
 ```
 
