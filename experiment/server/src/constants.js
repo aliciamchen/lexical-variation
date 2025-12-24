@@ -3,10 +3,9 @@
 export const TEST_MODE = true;
 
 // ============ TANGRAM SETS ============
+// Using Ji et al. (2022) tangrams - single set of 6
 export const tangram_sets = {
-  0: ["A", "B", "C", "D", "H", "L"],
-  1: ["E", "F", "G", "I", "J", "K"],
-  2: ["A", "C", "E", "G", "I", "K"],
+  0: ["page1-129", "page3-121", "page3-182", "page4-157", "page6-149", "page7-81"],
 };
 
 // ============ PLAYER CONFIGURATION ============
@@ -87,7 +86,7 @@ export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 1;
 // ============ DROPOUT HANDLING ============
 export const MAX_IDLE_ROUNDS = 2; // Remove player after 2 consecutive idle rounds
 export const MIN_GROUP_SIZE = 2; // Minimum players needed to continue in a group
-export const MIN_ACTIVE_GROUPS = 2; // Minimum groups needed to continue the game
+export const MIN_ACTIVE_GROUPS = TEST_MODE ? 1 : 2; // Minimum groups needed to continue the game
 
 // Log warning if in test mode
 if (TEST_MODE) {

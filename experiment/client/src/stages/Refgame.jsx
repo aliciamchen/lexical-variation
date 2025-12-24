@@ -94,8 +94,18 @@ export function Refgame(props) {
       });
 
       if (allGroupResponded) {
-        waitingMessage =
-          "All players in group responded! Waiting for members of other groups to respond...";
+        // Check if there are multiple groups (TEST_MODE has only 1 group)
+        const activeGroups = game.get("active_groups") || [];
+        if (activeGroups.length > 1) {
+          waitingMessage =
+            "All players in group responded! Waiting for members of other groups to respond...";
+        } else {
+          waitingMessage = "All players responded!";
+        }
+        // Auto-submit this player's stage when all in group have responded
+        if (!player.stage.get("submit")) {
+          player.stage.set("submit", true);
+        }
       } else {
         waitingMessage = "Waiting for the players in your group to respond...";
       }

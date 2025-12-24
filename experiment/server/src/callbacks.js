@@ -38,8 +38,8 @@ Empirica.onGameStart(({ game }) => {
   game.set("condition", condition);
   console.log(`Game condition: ${condition}, Treatment: ${JSON.stringify(treatment)}`);
 
-  // Assign tangram set
-  const tangram_set = _.random(0, 2);
+  // Assign tangram set (single set with Ji et al. 2022 tangrams)
+  const tangram_set = 0;
   const context = tangram_sets[tangram_set];
   game.set("tangram_set", tangram_set);
   game.set("context", context);
@@ -80,7 +80,7 @@ Empirica.onGameStart(({ game }) => {
     player.set("shuffled_tangrams", shuffled_tangrams);
     player.set(
       "tangramURLs",
-      shuffled_tangrams.map((tangram) => `/tangram_${tangram}.png`)
+      shuffled_tangrams.map((tangram) => `/tangram_${tangram}.svg`)
     );
   });
 
@@ -207,6 +207,12 @@ Empirica.onRoundStart(({ round }) => {
         (p) => p.get("current_group") === groupName
       );
 
+      // Adjust speaker index for groups with fewer than GROUP_SIZE players
+      // This ensures someone is always speaker even after dropouts
+      const adjustedSpeakerIndex = groupPlayers.length > 0
+        ? speakerIndex % groupPlayers.length
+        : 0;
+
       groupPlayers.forEach((player, i) => {
         // In mixed conditions, use anonymous avatars for both display and chat
         if (
@@ -235,9 +241,8 @@ Empirica.onRoundStart(({ round }) => {
           player.set("name", player.get("original_name"));
         }
 
-        // Assign speaker/listener roles
-        const playerGroupIndex = i; // Position within current group
-        player.round.set("role", playerGroupIndex === speakerIndex ? "speaker" : "listener");
+        // Assign speaker/listener roles (using adjusted index for reduced groups)
+        player.round.set("role", i === adjustedSpeakerIndex ? "speaker" : "listener");
       });
     });
 
@@ -260,14 +265,25 @@ function reshuffleGroups(game, players) {
 
   const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
   const shuffledPlayers = _.shuffle(players);
+  const numPlayers = shuffledPlayers.length;
 
-  // Assign players to groups randomly
+  // Calculate how many groups we can support with MIN_GROUP_SIZE each
+  const maxGroups = Math.floor(numPlayers / MIN_GROUP_SIZE);
+  const numGroups = Math.min(maxGroups, activeGroups.length);
+
+  if (numGroups === 0) {
+    console.log("Not enough players for any viable group");
+    return;
+  }
+
+  // Distribute players evenly across groups using round-robin
+  // This spreads players like: 7 players / 3 groups → 3+2+2
   shuffledPlayers.forEach((player, i) => {
-    const groupIndex = Math.floor(i / GROUP_SIZE);
-    if (groupIndex < activeGroups.length) {
-      player.set("current_group", activeGroups[groupIndex]);
-    }
+    const groupIndex = i % numGroups;
+    player.set("current_group", activeGroups[groupIndex]);
   });
+
+  console.log(`Reshuffled ${numPlayers} players into ${numGroups} groups`);
 }
 
 Empirica.onStageStart(({ stage }) => {

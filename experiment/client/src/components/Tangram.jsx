@@ -22,7 +22,7 @@ export function Tangram(props) {
   const column = 1 + (tangram_num % 3);
   let mystyle = {
     background: "url(tangram_" + tangram + ".svg)",
-    backgroundSize: "80%",
+    backgroundSize: "85%",
     backgroundRepeat: "no-repeat",
     backgroundPosition: "center",
     width: "12vh",
