@@ -59,9 +59,7 @@ export function Game() {
 
   // Show chat for any group during Selection stage (groups A, B, C)
   const showChat =
-    stage?.get("name") === "Selection" &&
-    !allGroupResponded &&
-    playerGroup;
+    stage?.get("name") === "Selection" && !allGroupResponded && playerGroup;
 
   return (
     <div className="h-full w-full flex">
@@ -80,7 +78,11 @@ export function Game() {
 
       {showChat && (
         <div className="h-full w-128 border-l flex justify-center items-center">
-          <Chat player={player} scope={stage} attribute={`${playerGroup}_chat`} />
+          <Chat
+            player={player}
+            scope={stage}
+            attribute={`${playerGroup}_chat`}
+          />
         </div>
       )}
     </div>

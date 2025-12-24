@@ -2,17 +2,20 @@
 
 This document tracks the changes needed to make the web experiment.
 
+NOTE for claude: If you need it to figure out how to do something, the docs for empirica are here: https://docs.empirica.ly/ and the source code for empirica is at https://github.com/empiricaly/empirica
+
 ---
 
 ### Timing
 
-| Stage | Duration |
-|-------|----------|
-| Selection | 45s |
-| Feedback | 10s |
-| Transitions | 30s |
+| Stage       | Duration |
+| ----------- | -------- |
+| Selection   | 45s      |
+| Feedback    | 10s      |
+| Transitions | 30s      |
 
 **Estimated Duration:**
+
 - Test mode (2+2 blocks): ~15-20 min
 - Production (6+6 blocks): ~30-45 min (plus intro/exit)
 
@@ -21,12 +24,15 @@ This document tracks the changes needed to make the web experiment.
 ## Remaining Todos
 
 ### 1. Data Collection Improvements
-- [ ] For the chat, save timestamps of messages sent
-- [ ] In player rounds, also save whether clicked tangram was correct
+
+- [x] For the chat, save timestamps of messages sent
+  - [ ] I did this by changing the chunk-J6LPACOK.js file, see README.md for details. It works locally but we need to test it on the server.
+- [x] In player rounds, also save whether clicked tangram was correct
 - [ ] For the idle/reassignment cases, check that the reassigned groups are saved correctly in the data
 - [ ] Verify we have the data fields we need
 
 ### 2. Transition Screens
+
 - [ ] Add transition screen before each reshuffling (5 second screen, no key press required)
 - [ ] Write actual text for transition screens (explain reshuffling to participants)
 - [ ] Fix scaling and styling of transition screens
@@ -34,10 +40,12 @@ This document tracks the changes needed to make the web experiment.
 ### 3. Participant-Facing Content
 
 #### Consent.jsx
+
 - [ ] Update time estimate
 - [ ] Update compensation information ($10 base + up to $5.40 bonus)
 
 #### Introduction.jsx
+
 - [ ] Part 1: Overview of tangram reference game
 - [ ] Part 2: Explain groups of 3 (1 speaker, 2 listeners)
 - [ ] Part 3: Phase 1 explanation (6 blocks within groups)
@@ -50,6 +58,7 @@ This document tracks the changes needed to make the web experiment.
 - [ ] Explain tangrams not clickable until speaker sends message
 
 #### Comprehension Quiz
+
 - [ ] Remove questions about old Phase 2/3
 - [ ] Add questions about group size (3 people)
 - [ ] Add questions about phase structure
@@ -57,6 +66,7 @@ This document tracks the changes needed to make the web experiment.
 - [ ] Add condition-specific questions (if applicable)
 
 #### ExitSurvey.jsx
+
 - [ ] Update to reflect new experiment
 - [ ] Add condition-specific questions
 - [ ] Update bonus display calculation
@@ -64,11 +74,13 @@ This document tracks the changes needed to make the web experiment.
 - [ ] Update max bonus calculation ($5.40 max)
 
 #### Kicked-Out Pages
+
 - [ ] Page for idle timeout (kicked for inactivity)
 - [ ] Page for group disbanded (other players left)
 - [ ] Write compensation messages and Prolific payment logic
 
 ### 4. UI/UX Polish
+
 - [ ] If someone in a group leaves, indicate to participants that the group is now smaller because someone left or idled
 - [ ] For the icons for who picked what tangram, add a bit of space between them when they are stacked
 - [ ] If speaker is idle and listeners aren't able to select, in the feedback indicate that the speaker was idle
@@ -77,6 +89,7 @@ This document tracks the changes needed to make the web experiment.
 ### 5. Testing
 
 #### Test Mode (3 players)
+
 - [ ] Check data is saving correctly
 - [ ] Test all intro screens and quiz
 - [ ] Test exit survey and debrief
@@ -84,6 +97,7 @@ This document tracks the changes needed to make the web experiment.
 - [ ] Check that on admin dashboard, the game marks finished when all players have finished
 
 #### Dropout Testing
+
 - [ ] Player removed after 2 idle rounds
 - [ ] Group continuation with 2 remaining
 - [ ] Final member removal when 2 drop
@@ -91,10 +105,12 @@ This document tracks the changes needed to make the web experiment.
 - [ ] What happens when someone leaves in the middle of block? Should reassign to another speaker to finish the tangrams left to be described
 
 #### Production Mode (9 players)
+
 - [ ] Come up with a list of things to test for 9 players
 - [ ] Is the idling logic working correctly?
 
 ### 7. Optional / Nice-to-Have
+
 - [ ] MAYBE: Let games start if there are fewer than 9 people in the waiting room
 - [ ] MAYBE: Set up Jest unit tests for callbacks
 
@@ -111,6 +127,7 @@ This document tracks the changes needed to make the web experiment.
 - **DiceBear avatars**: Using identicon style (blue) for regular, shapes style (gray) for anonymous
 
 ### Server (`server/src/`)
+
 - Constants: 9 players, 3 groups of 3, TEST_MODE toggle, DiceBear avatars, updated scoring ($0.05/point)
 - Callbacks: Player/group assignment, condition handling, Phase 1+2 structure, speaker rotation, reshuffling
 - Conditions: `refer_separated` (same groups), `refer_mixed` (shuffled + masked), `social_mixed` (shuffled + group guessing)
@@ -119,6 +136,7 @@ This document tracks the changes needed to make the web experiment.
 - Idle detection: Only during Selection stage; speakers idle if no message, listeners idle if no message AND no click
 
 ### Client (`client/src/`)
+
 - Game.jsx: Phase-aware rendering, chat per group (A/B/C), masked identities in Phase 2 mixed
 - Task.jsx: Refgame + Transition routing, inactive player handling
 - Refgame.jsx: 2 listeners UI, social guessing for `social_mixed`, display_avatar/display_name
@@ -127,13 +145,16 @@ This document tracks the changes needed to make the web experiment.
 - Avatar.jsx: DiceBear API support
 
 ### Data Collection
+
 - Fields: original_group, current_group, idle_rounds, display_avatar/name, social_guess
 
 ### Configuration
+
 - treatments.yaml: 3 condition treatments
 - TEST_MODE: 3 players, 1 group, 2+2 blocks
 
 ### Manual Testing Completed
+
 - Phase 1 + Phase 2 for all 3 conditions
 - Reshuffling (round-robin, uneven players)
 - Speaker rotation, scoring, chat masking, block counter, feedback timing
