@@ -27,11 +27,6 @@ export function Profile() {
         <div className="text-empirica-500 font-medium">
           {stage ? stage.get("name") : ""}
         </div>
-        {originalGroup && (
-          <div className="text-xs text-gray-400">
-            Original Group: {originalGroup}
-          </div>
-        )}
       </div>
 
       <Timer />

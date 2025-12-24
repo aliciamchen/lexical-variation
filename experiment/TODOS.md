@@ -33,16 +33,16 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 ## Remaining Todos (By Implementation Order)
 
 ### Phase 1: Quick Cleanup
-- [ ] Delete or archive `stages/Production.jsx` file
-- [ ] Delete or archive `stages/Comprehension.jsx` file
-- [ ] Remove original group indicator on the top left of the screen
+- [x] Delete or archive `stages/Production.jsx` file
+- [x] Delete or archive `stages/Comprehension.jsx` file
+- [x] Remove original group indicator on the top left of the screen
 
 ### Phase 2: Core Functionality Fixes
 - [ ] Update to the new tangrams from Ji et al. (2022). They are in the `client/public/` folder under their respective names (e.g., `tangram_page1-129.svg`). Make sure that the data collection and the keys in the experiment are updated accordingly
+- [ ] What does it mean to be an idle player? It should include speakers that don't write anything in the chat or listeners that don't click anything. It should not include the "transitions" where the players are just waiting for the next trial to start. 
 - [ ] Fix "waiting for other group" message in TEST_MODE (only 1 group exists)
 - [ ] Check reassignment is correct when speaker leaves (does it reassign someone else as speaker?)
 - [ ] Ensure anonymous avatars are unique per block (different seed each reshuffling)
-- [ ] MAYBE: let games start if there are fewer than 9 people? For example, if there are 6 people in the waiting room, and then the waiting room time is up, rather than kicking all 6 people out and compensating them for the time they spent waiting, we could start the game anyway. This would lead to more uneven games, but it would save money
 - [ ] There are potential issues with dropout handling that we haven't handled or tested for. For example if a group only has 2 people, then each of those players is speaker more frequently right? But overall they do the same number of blocks so that the whole experiment is synchronized right? 
 
 ### Phase 3: Transition Screens
@@ -87,13 +87,14 @@ This document tracks the changes needed to migrate from the old prereg (8 player
   - [ ] Group continuation with 2 remaining
   - [ ] Final member removal when 2 drop
   - [ ] Game continuation with 2+ active groups
+- [ ] Test reshuffling logic: speakers should not generally be speakers twice in a row
 - [ ] Test all intro screens and quiz
 - [ ] Test exit survey and debrief
 - [ ] Test with 9 players (production mode)
 - [ ] Verify we have the data fields we need
 
 ### Phase 6: Nice-to-haves
-
+- [ ] MAYBE: let games start if there are fewer than 9 people? For example, if there are 6 people in the waiting room, and then the waiting room time is up, rather than kicking all 6 people out and compensating them for the time they spent waiting, we could start the game anyway. This would lead to more uneven games, but it would save money
 - [ ] Set up Jest unit tests for callbacks (optional)
 
 ---

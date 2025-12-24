@@ -15,6 +15,12 @@ cd experiment
 empirica
 ```
 
+Remove the tajriba file between instances of testing: 
+
+```bash
+rm .empirica/local/tajriba.json
+```
+
 ## Dependencies
 
 The R packages are managed by `renv` and the Python packages are managed by conda.
