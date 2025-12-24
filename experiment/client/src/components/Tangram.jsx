@@ -21,10 +21,12 @@ export function Tangram(props) {
   const row = 1 + Math.floor(tangram_num / 3);
   const column = 1 + (tangram_num % 3);
   let mystyle = {
-    background: "url(tangram_" + tangram + ".png)",
-    backgroundSize: "cover",
-    width: "17vh",
-    height: "17vh",
+    background: "url(tangram_" + tangram + ".svg)",
+    backgroundSize: "80%",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
+    width: "12vh",
+    height: "12vh",
     gridRow: row,
     gridColumn: column,
     margin: "0.8rem",
