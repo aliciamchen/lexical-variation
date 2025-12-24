@@ -13,3 +13,5 @@ __pycache__
 experiment/data
 tajriba.json
 CLAUDE.md
+*.zip
+lexical-variation*/
