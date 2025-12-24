@@ -30,104 +30,87 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 
 ---
 
-## Remaining Todos (By Implementation Order)
+## Remaining Todos
 
-### Phase 1: Quick Cleanup
-- [x] Delete or archive `stages/Production.jsx` file
-- [x] Delete or archive `stages/Comprehension.jsx` file
-- [x] Remove original group indicator on the top left of the screen
+### 1. Data Collection Improvements
+- [ ] For the chat, save timestamps of messages sent
+- [ ] In player rounds, also save whether clicked tangram was correct
+- [ ] For the idle/reassignment screens, check that the reassigned groups are saved correctly in the data
+- [ ] Verify we have the data fields we need
 
-### Phase 2: Core Functionality Fixes
-- [x] Update to the new tangrams from Ji et al. (2022). They are in the `client/public/` folder under their respective names (e.g., `tangram_page1-129.svg`). Make sure that the data collection and the keys in the experiment are updated accordingly
-  - [x] Normalized SVG viewBoxes to square for consistent display
-  - [x] Updated `pick_tangrams.Qmd` for reproducibility
-- [x] What does it mean to be an idle player? It should include speakers that don't write anything in the chat or listeners that don't write anything in the chat AND dont click a tangram on a trial. It should not include the "transitions" where the players are just waiting for the next trial to start.
-  - [x] Idle detection now only runs during Selection stage (not Feedback or transitions)
-  - [x] Speakers: idle if they don't send any chat message
-  - [x] Listeners: idle if they don't send a message AND don't click a tangram
-- [x] Fix "waiting for other group" message in TEST_MODE (only 1 group exists)
-- [x] Check reassignment is correct when speaker leaves (does it reassign someone else as speaker?)
-  - [x] Speaker index now uses `blockNum % currentGroupSize` for even distribution after dropout
-  - [x] Group players shuffled before speaker assignment for fair random distribution
-- [x] Ensure anonymous avatars are unique per block (different seed each reshuffling)
-- [x] Make sure the participant reshuffling in Phase 2 mixed conditions is correct and that it works with participant removal logic.
-  - [x] Reshuffling uses round-robin distribution: `player[i] → group[i % numGroups]`
-  - [x] Handles uneven player counts (e.g., 7 players → 3+2+2)
-  - [x] MIN_ACTIVE_GROUPS adjusted for TEST_MODE (1 instead of 2)
-- [x] There are potential issues with dropout handling that we haven't handled or tested for. For example if a group only has 2 people, then each of those players is speaker more frequently right? But overall they do the same number of blocks so that the whole experiment is synchronized right?
-  - [x] Fixed: Speaker rotation is now `blockNum % groupSize` (not pre-computed), ensuring even distribution (2 players → 0,1,0,1...)
-- [x] Change "waiting for round to end" thing in phase 2 in test mode, make it advance when everyone responds right now it's just waiting for the timer to end because in test mode there's only one group so it's just waiting for the timer to end.
-  - [x] Each player now auto-submits when all in group have responded
-- [x] In phase 2 of the task, reshuffling of participants to groups should happen after every trial, not just at the start of each block. 
-
-### Phase 3: Transition Screens
+### 2. Transition Screens
 - [ ] Add transition screen before each reshuffling (5 second screen, no key press required)
 - [ ] Write actual text for transition screens (explain reshuffling to participants)
-- [ ] fix scaling and styling of transition screens
+- [ ] Fix scaling and styling of transition screens
 
-### Phase 4: Participant-Facing Content
+### 3. Participant-Facing Content
+
+#### Consent.jsx
+- [ ] Update time estimate
+- [ ] Update compensation information ($10 base + up to $5.40 bonus)
+
+#### Introduction.jsx
+- [ ] Part 1: Overview of tangram reference game
+- [ ] Part 2: Explain groups of 3 (1 speaker, 2 listeners)
+- [ ] Part 3: Phase 1 explanation (6 blocks within groups)
+- [ ] Part 4: Phase 2 explanation (condition-dependent):
+  - [ ] For `refer_separated`: Continue with same group
+  - [ ] For `refer_mixed`: Groups will be shuffled
+  - [ ] For `social_mixed`: Shuffled + guess speaker's group
+- [ ] Part 5: Scoring and bonus explanation
+- [ ] Update visual examples for 3-person groups
+- [ ] Explain tangrams not clickable until speaker sends message
+
+#### Comprehension Quiz
+- [ ] Remove questions about old Phase 2/3
+- [ ] Add questions about group size (3 people)
+- [ ] Add questions about phase structure
+- [ ] Add questions about scoring (2 points listener, 1 point speaker)
+- [ ] Add condition-specific questions (if applicable)
+
+#### ExitSurvey.jsx
+- [ ] Update to reflect new experiment
+- [ ] Add condition-specific questions
+- [ ] Update bonus display calculation
 - [ ] Update base pay from $12 to $10
 - [ ] Update max bonus calculation ($5.40 max)
-- [ ] Rewrite Introduction.jsx:
-  - [ ] Part 1: Overview of tangram reference game
-  - [ ] Part 2: Explain groups of 3 (1 speaker, 2 listeners)
-  - [ ] Part 3: Phase 1 explanation (6 blocks within groups)
-  - [ ] Part 4: Phase 2 explanation (condition-dependent):
-    - [ ] For `refer_separated`: Continue with same group
-    - [ ] For `refer_mixed`: Groups will be shuffled
-    - [ ] For `social_mixed`: Shuffled + guess speaker's group
-  - [ ] Part 5: Scoring and bonus explanation
-  - [ ] Update visual examples for 3-person groups
-  - [ ] Explain tangrams not clickable until speaker sends message
-- [ ] Rewrite Comprehension Quiz:
-  - [ ] Remove questions about old Phase 2/3
-  - [ ] Add questions about group size (3 people)
-  - [ ] Add questions about phase structure
-  - [ ] Add questions about scoring (2 points listener, 1 point speaker)
-  - [ ] Add condition-specific questions (if applicable)
-- [ ] Update Consent.jsx:
-  - [ ] Update time estimate
-  - [ ] Update compensation information ($10 base + up to $5.40 bonus)
-- [ ] Update ExitSurvey.jsx:
-  - [ ] Update to reflect new experiment
-  - [ ] Add condition-specific questions
-  - [ ] Update bonus display calculation
-- [ ] Create sorry/kicked-out pages:
-  - [ ] Page for idle timeout (kicked for inactivity)
-  - [ ] Page for group disbanded (other players left)
-  - [ ] Write compensation messages and Prolific payment logic
 
-### Phase 5: Testing
+#### Kicked-Out Pages
+- [ ] Page for idle timeout (kicked for inactivity)
+- [ ] Page for group disbanded (other players left)
+- [ ] Write compensation messages and Prolific payment logic
+
+### 4. UI/UX Polish
+- [ ] If someone in a group leaves, indicate to participants that the group is now smaller because someone left or idled
+- [ ] For the icons for who picked what tangram, add a bit of space between them when they are stacked
+- [ ] If speaker is idle and listeners aren't able to select, in the feedback indicate that the speaker was idle
+- [ ] Check that in mixed conditions the icons are different each time so people don't know who they are talking to
+
+### 5. Dropout Edge Cases
+- [ ] What happens when someone leaves in the middle of block? Should reassign to another speaker to finish the tangrams left to be described
+
+### 6. Testing
+
+#### Test Mode (3 players)
 - [ ] Check data is saving correctly
-- [ ] Test dropout handling:
-  - [ ] Player removed after 2 idle rounds
-  - [ ] Group continuation with 2 remaining
-  - [ ] Final member removal when 2 drop
-  - [ ] Game continuation with 2+ active groups
-- [x] Test reshuffling logic. Test that reshuffling with uneven players generally works.
-  - [x] Verified round-robin distribution (7 players → 3+2+2, 4 players → 2+2)
-  - [x] Verified speaker distribution is fair despite reshuffling (no systematic bias)
-- [x] Also test reshuffling happens after every trial, not just at the start of each block.
 - [ ] Test all intro screens and quiz
 - [ ] Test exit survey and debrief
-- [ ] Test with 9 players (production mode)
-  - [ ] Come up with a list of things to test for here, because it will take a long time to start and run through for 9 players..
-  - [ ] E.g. is the idling logic working correctly?
-- [ ] Verify we have the data fields we need
-- [ ] GEnerally check timing
-- [ ] Check that on admin dashboard, the game marks finished when all players have finished. 
+- [ ] Generally check timing
+- [ ] Check that on admin dashboard, the game marks finished when all players have finished
 
-### Phase 6: other stuff
-- [ ] MAYBE: let games start if there are fewer than 9 people? For example, if there are 6 people in the waiting room, and then the waiting room time is up, rather than kicking all 6 people out and compensating them for the time they spent waiting, we could start the game anyway. This would lead to more uneven games, but it would save money
-- [ ] For the chat, save timestamps of messages sent. 
-- [ ] in player rounds, also save whether clicked tangram was correct. 
-- [ ] If someone in a group leaves, indicate to participants that the group is now smaller because someone left or idled. 
-- [ ] For the icons for who picked what tangram, add a bit of space between them when they are stacked (i.e. if two people pick the same tangram, there should be a bit of space between the two icons).
-- [ ] If speaker is idle and listeners aren't able to select, in the feedback indicate that the speaker was idle and that's why they couldn't select.
-- [ ] for the idle/ reassignment screens, check that the reassigned groups are saved correctly in the data.
-- [ ] what happens when someone leaves in the middle of block? it should just be reassigned to another speaker to finish the tangrams left to be described in the block, check it does that. 
-- [ ] Check that in mixed conditions the icons are different each time so people dont know who they are talking to
-- [ ] Set up Jest unit tests for callbacks (optional)
+#### Dropout Testing
+- [ ] Player removed after 2 idle rounds
+- [ ] Group continuation with 2 remaining
+- [ ] Final member removal when 2 drop
+- [ ] Game continuation with 2+ active groups
+
+#### Production Mode (9 players)
+- [ ] Come up with a list of things to test for 9 players
+- [ ] Is the idling logic working correctly?
+
+### 7. Optional / Nice-to-Have
+- [ ] MAYBE: Let games start if there are fewer than 9 people in the waiting room
+- [ ] Set up Jest unit tests for callbacks
 
 ---
 
@@ -150,152 +133,32 @@ This document tracks the changes needed to migrate from the old prereg (8 player
 
 ---
 
-## Completed Todos
+## Completed
 
-### Server Changes (`server/src/`)
+### Server (`server/src/`)
+- Constants: 9 players, 3 groups of 3, TEST_MODE toggle, DiceBear avatars, updated scoring ($0.05/point)
+- Callbacks: Player/group assignment, condition handling, Phase 1+2 structure, speaker rotation, reshuffling
+- Conditions: `refer_separated` (same groups), `refer_mixed` (shuffled + masked), `social_mixed` (shuffled + group guessing)
+- Removed: Old Phase 2 production, Phase 3 comprehension, old scoring
+- Dropout: Idle tracking, removal after 2 rounds, group viability checks, MIN_GROUP_SIZE=2
+- Idle detection: Only during Selection stage; speakers idle if no message, listeners idle if no message AND no click
 
-#### Constants (`constants.js`)
-- [x] Change player count from 8 to 9
-- [x] Change group count from 2 to 3
-- [x] Change group size from 4 to 3
-- [x] Update `names` array (9 player names)
-- [x] Update avatar system to use DiceBear API
-- [x] Add anonymous avatar generation for mixed conditions (grayscale)
-- [x] Add experimental conditions constant
-- [x] Change `bonus_per_point` from 0.02 to 0.05
-- [x] Update Phase 1 blocks from 8 to 6
-- [x] Add Phase 2 blocks constant (6 blocks)
-- [x] Remove old conditions array
-- [x] Add TEST_MODE flag for reduced player testing
-
-#### Callbacks (`callbacks.js`)
-- [x] Update player assignment logic for 9 players in 3 groups
-- [x] Add game-level condition setting
-- [x] Store `game.set("condition", ...)` for between-subjects condition
-- [x] Update group assignment (3 groups: "A", "B", "C")
-- [x] Adjust avatar assignment for 3 players per group
-- [x] Store phase block counts for client display
-- [x] Reduce Phase 1 to 6 blocks
-- [x] Update listener count from 3 to 2 per trial
-- [x] Adjust speaker rotation (3 speakers × 2 rotations)
-- [x] Update scoring (2 pts listener, 1 pt speaker per correct)
-- [x] Keep tangram randomization (6 tangrams per block)
-
-#### Condition: `refer_separated`
-- [x] Players stay in originally assigned groups
-- [x] Continue reference game as in Phase 1
-- [x] Same speaker rotation pattern
-
-#### Condition: `refer_mixed`
-- [x] Shuffle group assignments randomly each block
-- [x] Fully mask player identities (anonymous avatars, hide group membership)
-- [x] Implement reshuffling logic
-
-#### Condition: `social_mixed`
-- [x] Same interaction structure and identity masking as `refer_mixed`
-- [x] Add social signaling question after tangram selection
-- [x] Store guess per listener per trial
-- [x] Listener: 2 points for correct group identification
-- [x] Speaker: 1 point per correct listener identification
-- [x] No feedback given for social guessing responses
-
-#### Remove Old Phases
-- [x] Delete `createProductionRounds()` logic
-- [x] Remove production stage creation
-- [x] Remove utterance collection per condition
-- [x] Delete condition-specific trial setup
-- [x] Delete `createComprehensionRounds()` logic
-- [x] Remove Phase 3 trial construction
-- [x] Remove matched/unmatched speaker-recipient logic
-- [x] Delete `clicked_tangram`, `clicked_group`, `clicked_ingroup` handling
-- [x] Remove Phase 3 scoring calculations
-
-#### Dropout Handling
-- [x] Remove old inactive player logic
-- [x] Track idle rounds per player
-- [x] Remove player after 2 consecutive idle rounds
-- [x] If 2 members of initial group remain active, continue
-- [x] If only 1 member remains, remove final member
-- [x] Continue if at least 2 groups remain active
-- [x] Each active group must have at least 2 people
-
-#### Stage Transitions
-- [x] Update `onRoundStart` for new block/round structure
-- [x] Update `onStageStart` for mixed conditions
-- [x] Update `onStageEnded` for new scoring
-- [x] Add transition screen between Phase 1 and Phase 2
-
-### Client Changes (`client/src/`)
-
-#### Game Component (`Game.jsx`)
-- [x] Update to handle new phase structure
-- [x] Add condition-aware rendering
-- [x] Update chat to use current_group (A, B, C)
-- [x] Chat uses masked identities in Phase 2 mixed conditions
-
-#### Task Router (`Task.jsx`)
-- [x] Remove Production stage routing
-- [x] Remove Comprehension stage routing
-- [x] Keep Refgame for both phases
-- [x] Add condition-specific UI elements for `social_mixed`
-- [x] Handle inactive players and group disbanded states
-
-#### Refgame (`stages/Refgame.jsx`)
-- [x] Adjust UI for 2 listeners instead of 3
-- [x] Update player status cards layout for 3 players per group
-- [x] Add social signaling question UI for `social_mixed` condition
-- [x] Use display_avatar and display_name for masked conditions
-- [x] Fix block counter to show correct totals based on TEST_MODE
-- [x] Fix feedback stage to not auto-advance
-
-#### Tangram (`components/Tangram.jsx`)
-- [x] Update for current_group instead of red/blue
-- [x] Handle social_mixed condition timing
-- [x] Fix auto-submit logic to only run during Selection stage
-- [x] Add pointer cursor when hovering over tangrams
-
-#### Transition (`stages/Transition.jsx`)
-- [x] Update transition text for new experiment structure
-- [x] Add placeholder text for condition-specific instructions
-
-#### Profile (`Profile.jsx`)
-- [x] Update score display for new point values
-- [x] Show original group indicator
-- [x] Consistent text color regardless of phase
-
-#### Avatar (`components/Avatar.jsx`)
-- [x] Remove group-based color distinction
-- [x] Works with DiceBear API URLs
-- [x] Supports both regular and anonymous avatars
+### Client (`client/src/`)
+- Game.jsx: Phase-aware rendering, chat per group (A/B/C), masked identities in Phase 2 mixed
+- Task.jsx: Refgame + Transition routing, inactive player handling
+- Refgame.jsx: 2 listeners UI, social guessing for `social_mixed`, display_avatar/display_name
+- Tangram.jsx: Auto-submit logic, click handling
+- Profile.jsx: Score display, original group indicator
+- Avatar.jsx: DiceBear API support
 
 ### Data Collection
-- [x] Add `original_group` field (persists through mixing)
-- [x] Track `current_group` (changes in mixed conditions)
-- [x] Track `idle_rounds` for dropout handling
-- [x] Store `original_name` and `original_avatar` for restoration
-- [x] Simplify to reference game data only
-- [x] Add `social_guess` and `social_guess_correct` for social_mixed
-- [x] Remove Phase 2/3 old data fields
+- Fields: original_group, current_group, idle_rounds, display_avatar/name, social_guess
 
 ### Configuration
-- [x] Add game condition selection at batch creation (treatments.yaml)
-- [x] Create treatment types for all 3 conditions
+- treatments.yaml: 3 condition treatments
+- TEST_MODE: 3 players, 1 group, 2+2 blocks
 
-### Test Mode
-- [x] Add `TEST_MODE` constant in `constants.js`
-- [x] Reduce players from 9 to 3 (1 group only)
-- [x] Reduce Phase 1 blocks from 6 to 2
-- [x] Reduce Phase 2 blocks from 12 to 2
-- [x] Conditionally export constants based on `TEST_MODE`
-- [x] Add console warning when running in test mode
-
-### Manual Testing (Completed)
-- [x] Test with 3 players in TEST_MODE
-- [x] Test Phase 1 (2 blocks in test mode) completion
-- [x] Test `refer_separated` condition
-- [x] Test `refer_mixed` condition with reshuffling
-- [x] Test `social_mixed` condition with group guessing
-- [x] Test scoring and bonus calculation
-- [x] Test chat masking in Phase 2 mixed conditions
-- [x] Test block counter shows correct totals
-- [x] Test feedback stage waits for all players
+### Manual Testing Completed
+- Phase 1 + Phase 2 for all 3 conditions
+- Reshuffling (round-robin, uneven players)
+- Speaker rotation, scoring, chat masking, block counter, feedback timing
