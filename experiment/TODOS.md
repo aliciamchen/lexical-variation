@@ -21,38 +21,53 @@ NOTE for claude: If you need it to figure out how to do something, the docs for 
 
 ---
 
-## Remaining Todos
+- [ ] Make Chrome agent to be able to run through the experiment as multiple players (use playwright MCP and give it all the steps it needs to start admin, click through experiment)
+- [ ] remove social guessing feedback, change to aggregated social feedback at the end of the experiment, and change that in the instructions too
 
-- [ ] Add another tangram set. Decide how many tangram sets? 
-  - [ ] Check kilogram dashboard to make sure that the tangrams don't have *too* geometric descriptions..
-- [ ] Check rotation of speakers across conditions
-  - [ ] the assignment of participants to groups is randomized, with the constraint that the assignment to speaker and listener roles follows the same rotation schedule as the 'refer + separated' condition (i.e., each participant is listener twice, then speaker once, and so on). This condition tests whether cross-group interaction drives convergence toward shared conventions.
-- [ ] Figure out appointemnt slot thing (do this externally, this isnt a change in the code.)
-- [ ] comprehension check attempts? 
-- [ ] generally go through RR and add todos based on it
+# Phase A: Running the Experiment & Collecting Pilot Data
 
-### 1. Data Collection Improvements
+These todos must be completed before collecting pilot data.
+
+## A1. Stimuli & Game Setup
+
+- [x] Add another tangram set. Decide how many tangram sets?
+  - [x] Check kilogram dashboard to make sure that the tangrams don't have *too* geometric descriptions (high SND tangrams preferred)
+  - [x] Verify each game is assigned to one of the two tangram sets (random 50/50 assignment)
+  - Set 0: page1-129, page3-121, page3-182, page4-157, page6-149, page7-81 (SND: 0.960-0.987)
+  - Set 1: page3-85, page3-136, page5-64, page9-46, page9-27, page1-128 (SND: 0.978-0.987)
+- [x] Tangram grid order should be randomized across participants (to prevent spatial descriptions like "top left")
+  - Each player gets their own `shuffled_tangrams` array via `_.shuffle(context)`
+- [x] Check rotation of speakers across conditions
+  - [x] Implemented balanced reshuffling: each reshuffled group gets one player from each `original_player_index` (0, 1, 2)
+  - [x] Speaker rotation uses `blockNum % GROUP_SIZE` matching player's `player_index`
+  - [x] Fallback for incomplete groups (due to dropouts) picks speaker based on position
+  - [x] Test file: `server/src/test_reshuffling.js` verifies the logic
+
+## A2. Data Collection (what gets saved)
 
 - [x] For the chat, save timestamps of messages sent
   - [ ] I did this by changing the chunk-J6LPACOK.js file, see README.md for details. It works locally but we need to test it on the server.
-- [x] In player rounds, also save whether clicked tangram was correct
+- [x] In player rounds, also save whether clicked tangram was correct (`clicked_correct` field added)
 - [ ] For the idle/reassignment cases, check that the reassigned groups are saved correctly in the data
-- [ ] Verify we have the data fields we need
+- [x] Verify the following fields are being saved:
+  - [x] Speaker utterances (all messages per trial) → `player.round.chat`
+  - [x] Block/repetition number → `player.round.block_num`
+  - [x] Phase number (1 or 2) → `player.round.phase_num`
+  - [x] Tangram identity (which tangram is target) → `player.round.target`
+  - [x] Original group (A, B, C) → `player.round.original_group`
+  - [x] Current group (for mixed conditions) → `player.round.current_group`
+  - [x] Listener selections + correctness → `player.round.clicked` + `player.round.clicked_correct`
+  - [x] Social guessing responses (social_mixed only) → `player.round.social_guess` + `player.round.social_guess_correct`
+  - [x] Player role (speaker/listener) per round → `player.round.role`
 
-### 2. Transition Screens
+## A3. Participant-Facing Content
 
-- [ ] Add transition screen before each reshuffling (5 second screen, no key press required)
-- [ ] Write actual text for transition screens (explain reshuffling to participants)
-- [ ] Fix scaling and styling of transition screens
-
-### 3. Participant-Facing Content
-
-#### Consent.jsx
+### Consent.jsx
 
 - [ ] Update time estimate
 - [ ] Update compensation information ($10 base + up to $5.40 bonus)
 
-#### Introduction.jsx
+### Introduction.jsx
 
 - [ ] Part 1: Overview of tangram reference game
 - [ ] Part 2: Explain groups of 3 (1 speaker, 2 listeners)
@@ -64,38 +79,79 @@ NOTE for claude: If you need it to figure out how to do something, the docs for 
 - [ ] Part 5: Scoring and bonus explanation
 - [ ] Update visual examples for 3-person groups
 - [ ] Explain tangrams not clickable until speaker sends message
+- [ ] Instruction: Restrict chat to tangram-related discussion only (no discussing group identity or using codewords)
 
-#### Comprehension Quiz
+### Comprehension Quiz
 
 - [ ] Remove questions about old Phase 2/3
 - [ ] Add questions about group size (3 people)
 - [ ] Add questions about phase structure
 - [ ] Add questions about scoring (2 points listener, 1 point speaker)
 - [ ] Add condition-specific questions (if applicable)
+- [ ] Implement 3-attempt limit, remove participant after 3 failed attempts
 
-#### ExitSurvey.jsx
+### ExitSurvey.jsx
 
 - [ ] Update to reflect new experiment
 - [ ] Update bonus display calculation
 - [ ] Update base pay from $12 to $10
 - [ ] Update max bonus calculation ($5.40 max)
 
-#### Kicked-Out Pages
+### Kicked-Out Pages
 
 - [ ] Page for idle timeout (kicked for inactivity)
 - [ ] Page for group disbanded (other players left)
 - [ ] Write compensation messages and Prolific payment logic
 
-### 4. UI/UX Polish
+## A4. Transition Screens
+
+- [ ] Add transition screen before each reshuffling (5 second screen, no key press required)
+- [ ] Write actual text for transition screens (explain reshuffling to participants)
+- [ ] Fix scaling and styling of transition screens
+
+## A5. Waiting Room & Game Start Logic
+
+- [ ] Waiting room timeout: 5 minutes max, then remove and compensate $2
+- [ ] Games can start with 6+ members (prioritize 9-player games)
+- [ ] Handle uneven player counts (6, 7, 8 players) - how are groups formed?
+
+## A6. In-Game Exclusion Criteria (automated)
+
+- [ ] Remove participants who fail comprehension quiz after 3 attempts
+- [x] Idle for 2 consecutive rounds → remove participant
+  - Implemented in `onStageEnded`: speakers idle if no message, listeners idle if no message AND no click
+  - After `MAX_IDLE_ROUNDS` (2), player marked `is_active=false`, `ended="player timeout"`
+
+## A7. Social Guessing Logic (social_mixed only)
+
+- [x] Social guessing implemented (per-trial, confirmed correct)
+  - Listeners guess after EACH trial (tangram) in Phase 2
+- [x] Scoring: Listeners get 2 points for correct social guess (`SOCIAL_GUESS_CORRECT_POINTS = 2`)
+- [x] Scoring: Speakers get 1 point for each correct listener social guess (`SOCIAL_SPEAKER_POINTS_PER_CORRECT = 1`)
+- [x] Social guessing UI appears after listener clicks tangram (in Refgame.jsx)
+- [x] Social guessing data saved: `player.round.social_guess` and `player.round.social_guess_correct`
+
+## A8. Phase 2 & Dropout Logic
+
+- [x] Verify dropout rule is the same for Phase 1 and Phase 2:
+  - [x] Each original group needs at least 2 active members (`MIN_GROUP_SIZE=2`)
+  - [x] Game continues as long as at least 2 original groups meet this requirement (`MIN_ACTIVE_GROUPS=2`)
+  - [x] Viability check uses `original_group`, not `current_group` (correct for mixed conditions)
+  - [x] Remaining member removed with `ended="group disbanded"` when group becomes non-viable
+- [ ] Speaker role reassignment when someone drops mid-block
+  - Current behavior: if speaker is kicked, listeners in same group auto-submit and skip remaining trials
+  - TODO: Implement reassignment if needed (complex edge case)
+
+## A9. UI/UX Polish
 
 - [ ] If someone in a group leaves, indicate to participants that the group is now smaller because someone left or idled
 - [ ] For the icons for who picked what tangram, add a bit of space between them when they are stacked
 - [ ] If speaker is idle and listeners aren't able to select, in the feedback indicate that the speaker was idle
 - [ ] Check that in mixed conditions the icons are different each time so people don't know who they are talking to
 
-### 5. Testing
+## A10. Testing (before pilot)
 
-#### Test Mode (3 players)
+### Test Mode (3 players)
 
 - [ ] Check data is saving correctly
 - [ ] Test all intro screens and quiz
@@ -103,7 +159,7 @@ NOTE for claude: If you need it to figure out how to do something, the docs for 
 - [ ] Generally check timing
 - [ ] Check that on admin dashboard, the game marks finished when all players have finished
 
-#### Dropout Testing
+### Dropout Testing
 
 - [ ] Player removed after 2 idle rounds
 - [ ] Group continuation with 2 remaining
@@ -111,16 +167,74 @@ NOTE for claude: If you need it to figure out how to do something, the docs for 
 - [ ] Game continuation with 2+ active groups
 - [ ] What happens when someone leaves in the middle of block? Should reassign to another speaker to finish the tangrams left to be described
 
-#### Production Mode (9 players)
+### Production Mode (9 players)
 
 - [ ] Come up with a list of things to test for 9 players
 - [ ] Is the idling logic working correctly?
 - [ ] Check listener guessing speaker group logic
 
-### 7. Optional / Nice-to-Have
+## A11. External/Logistics
+
+- [ ] Figure out appointment slot thing (do this externally, this isn't a change in the code.) - Use Optimeet for scheduling
+
+## A12. Optional / Nice-to-Have (for running experiment)
 
 - [ ] MAYBE: Let games start if there are fewer than 9 people in the waiting room
 - [ ] MAYBE: Set up Jest unit tests for callbacks
+
+---
+
+# Phase B: Pilot Data Analysis & Go/No-Go Decision 
+These todos are for after collecting pilot data, to verify the outcome-neutral criteria before running the full sample.
+
+## B1. Data Export & Verification
+
+- [ ] Verify Empirica export contains all required fields
+- [ ] Check that condition assignment is correctly logged
+- [ ] Verify speaker utterances are captured per trial
+- [ ] Verify in-group vs out-group speaker-listener relationships can be computed from exported data
+
+## B2. Outcome-Neutral Criteria (from RR - MUST pass before full data collection)
+
+These must be satisfied before running the main experiment:
+
+- [ ] **Description length decreases over blocks** (Phase 1)
+  - Model: `utt_length ~ rep_num + (rep_num | participant) + (rep_num | group) + (rep_num | tangram)`
+  - Require: significant negative main effect of rep_num
+- [ ] **Listener accuracy increases over blocks** (Phase 1)
+  - Model: `ref_accuracy ~ rep_num + (rep_num | group) + (rep_num | tangram)`
+  - Require: significant positive main effect of rep_num
+- [ ] **Conventions are stable** (increasing cosine similarity between successive utterances)
+  - Model: `sim_adjacent ~ rep_num + (rep_num | participant) + (rep_num | group) + (rep_num | tangram)`
+  - Require: significant positive main effect of rep_num
+- [ ] **Group-specificity scores at end of Phase 1 exceed chance levels**
+  - Permutation test: permute group assignment 1000 times, compare observed to null
+  - Require: at least 80% of games (16/20 per condition) show significant group-specificity (p < .05)
+
+## B3. Analysis Pipeline Setup
+
+- [ ] Set up SBERT embedding generation (paraphrase-MiniLM-L12-v2 model)
+- [ ] Compute pairwise cosine similarities between utterances
+- [ ] Implement group-specificity metric calculation
+  - Formula: `similarity ~ same_group + (1 | tangram) + (1 | participant_pair)`
+  - Extract coefficient for same_group as group-specificity score
+- [ ] Set up lmer/lmerTest models in R
+
+## B4. Post-Hoc Exclusion Criteria (applied during analysis)
+
+- [ ] Flag groups where <2/3 participants achieved <2/3 accuracy during last 3 blocks of Phase 1
+- [ ] Post-hoc inspection: Flag inappropriate, adversarial, or task-irrelevant messages
+- [ ] MAYBE: LLM-based classifier to filter out non-referential messages (e.g., "thanks", "good job") for analysis
+
+## B5. Pilot Report
+
+- [ ] Report completion rates
+- [ ] Report session duration
+- [ ] Report technical issues (if any)
+- [ ] Visualize description length over blocks
+- [ ] Visualize listener accuracy over blocks
+- [ ] Report group-specificity results
+- [ ] Go/no-go decision for full data collection
 
 ---
 

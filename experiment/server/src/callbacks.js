@@ -38,9 +38,10 @@ Empirica.onGameStart(({ game }) => {
   game.set("condition", condition);
   console.log(`Game condition: ${condition}, Treatment: ${JSON.stringify(treatment)}`);
 
-  // Assign tangram set (single set with Ji et al. 2022 tangrams)
-  const tangram_set = 0;
+  // Randomly assign tangram set (two sets with Ji et al. 2022 high-SND tangrams)
+  const tangram_set = Math.random() < 0.5 ? 0 : 1;
   const context = tangram_sets[tangram_set];
+  console.log(`Game assigned to tangram set: ${tangram_set}`);
   game.set("tangram_set", tangram_set);
   game.set("context", context);
 
@@ -202,27 +203,27 @@ Empirica.onRoundStart(({ round }) => {
         (p) => p.get("current_group") === groupName
       );
 
-      // In Phase 1 (or Phase 2 separated): Use consistent player order so speaker stays same within block
-      // In Phase 2 mixed conditions: Shuffle for fair distribution since groups change each trial
+      // Determine speaker based on player_index (consistent rotation across all conditions)
+      // Speaker is the player whose original_player_index matches blockNum % GROUP_SIZE
+      const speakerTargetIndex = blockNum % GROUP_SIZE;
+
+      // Find the designated speaker (player with matching player_index)
+      let speaker = groupPlayers.find(p => p.get("player_index") === speakerTargetIndex);
+
+      // Fallback: if no player with matching index (due to dropouts), pick based on position
+      if (!speaker && groupPlayers.length > 0) {
+        const fallbackIdx = blockNum % groupPlayers.length;
+        const sortedPlayers = _.sortBy(groupPlayers, p => p.get("player_index"));
+        speaker = sortedPlayers[fallbackIdx];
+        console.log(`Speaker fallback: No player with index ${speakerTargetIndex} in group ${groupName}, using ${speaker.get("name")} (index ${speaker.get("player_index")})`);
+      }
+
       const isMixedPhase2 = phase_num === 2 &&
         (condition === "refer_mixed" || condition === "social_mixed");
 
-      const orderedGroupPlayers = isMixedPhase2
-        ? _.shuffle(groupPlayers)
-        : _.sortBy(groupPlayers, (p) => p.get("player_index"));
-
-      // Calculate speaker index based on block number and CURRENT group size
-      // This ensures even rotation even after dropouts (e.g., with 2 players: 0,1,0,1...)
-      const adjustedSpeakerIndex = orderedGroupPlayers.length > 0
-        ? blockNum % orderedGroupPlayers.length
-        : 0;
-
-      orderedGroupPlayers.forEach((player, i) => {
+      groupPlayers.forEach((player, i) => {
         // In mixed conditions, use anonymous avatars for both display and chat
-        if (
-          phase_num === 2 &&
-          (condition === "refer_mixed" || condition === "social_mixed")
-        ) {
+        if (isMixedPhase2) {
           const anonIndex = activeGroups.indexOf(groupName) * GROUP_SIZE + i;
           const anonSeed = `anon_block${blockNum}_player${anonIndex}`;
           const anonAvatar = getAnonymousAvatarUrl(anonSeed);
@@ -245,8 +246,8 @@ Empirica.onRoundStart(({ round }) => {
           player.set("name", player.get("original_name"));
         }
 
-        // Assign speaker/listener roles (using adjusted index for reduced groups)
-        player.round.set("role", i === adjustedSpeakerIndex ? "speaker" : "listener");
+        // Assign speaker/listener roles based on player_index matching
+        player.round.set("role", player === speaker ? "speaker" : "listener");
       });
     });
 
@@ -263,15 +264,16 @@ Empirica.onRoundStart(({ round }) => {
   }
 });
 
-// Helper function to reshuffle groups for mixed conditions
+// Helper function to reshuffle groups for mixed conditions with BALANCED assignment
+// Goal: Each group should have one player from each original_player_index (0, 1, 2)
+// This ensures speaker rotation (blockNum % 3) works consistently across conditions
 function reshuffleGroups(game, players) {
-  console.log("Reshuffling groups for mixed condition");
+  console.log("Reshuffling groups for mixed condition (balanced)");
 
   const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
-  const shuffledPlayers = _.shuffle(players);
-  const numPlayers = shuffledPlayers.length;
+  const numPlayers = players.length;
 
-  // Calculate how many groups we can support with MIN_GROUP_SIZE each
+  // Calculate how many groups we can support (each needs MIN_GROUP_SIZE players)
   const maxGroups = Math.floor(numPlayers / MIN_GROUP_SIZE);
   const numGroups = Math.min(maxGroups, activeGroups.length);
 
@@ -280,14 +282,116 @@ function reshuffleGroups(game, players) {
     return;
   }
 
-  // Distribute players evenly across groups using round-robin
-  // This spreads players like: 7 players / 3 groups → 3+2+2
-  shuffledPlayers.forEach((player, i) => {
-    const groupIndex = i % numGroups;
-    player.set("current_group", activeGroups[groupIndex]);
+  // Group players by their original_player_index
+  const playersByIndex = {
+    0: players.filter(p => p.get("player_index") === 0),
+    1: players.filter(p => p.get("player_index") === 1),
+    2: players.filter(p => p.get("player_index") === 2),
+  };
+
+  // Shuffle within each index group for randomization
+  Object.keys(playersByIndex).forEach(idx => {
+    playersByIndex[idx] = _.shuffle(playersByIndex[idx]);
   });
 
-  console.log(`Reshuffled ${numPlayers} players into ${numGroups} groups`);
+  // Log distribution for debugging
+  console.log(`Player distribution by index: 0=${playersByIndex[0].length}, 1=${playersByIndex[1].length}, 2=${playersByIndex[2].length}`);
+
+  // Calculate target group sizes for even distribution
+  // E.g., 8 players / 3 groups = 2 groups of 3, 1 group of 2 → [3, 3, 2]
+  const baseSize = Math.floor(numPlayers / numGroups);
+  const extraPlayers = numPlayers % numGroups;
+  const targetSizes = [];
+  for (let i = 0; i < numGroups; i++) {
+    targetSizes.push(baseSize + (i < extraPlayers ? 1 : 0));
+  }
+  console.log(`Target group sizes: ${targetSizes.join(", ")}`);
+
+  const usedGroups = activeGroups.slice(0, numGroups);
+
+  // Strategy: For each group, assign one player from each index (0, 1, 2)
+  // This ensures each group gets balanced indices when possible
+  // Track which players have been assigned in THIS reshuffling
+  const assignedInThisReshuffling = new Set();
+  const indexPointers = { 0: 0, 1: 0, 2: 0 };
+
+  // First pass: Fill each group with one player from each index
+  usedGroups.forEach((groupName, groupIdx) => {
+    const targetSize = targetSizes[groupIdx];
+    let assigned = 0;
+
+    // Try to assign one player from each index
+    for (let idx = 0; idx < GROUP_SIZE && assigned < targetSize; idx++) {
+      const pointer = indexPointers[idx];
+      if (pointer < playersByIndex[idx].length) {
+        const player = playersByIndex[idx][pointer];
+        player.set("current_group", groupName);
+        assignedInThisReshuffling.add(player.id);
+        indexPointers[idx]++;
+        assigned++;
+      }
+    }
+  });
+
+  // Second pass: Distribute any remaining unassigned players
+  // This handles cases where some index has more players than others
+  const unassignedPlayers = players.filter(p => !assignedInThisReshuffling.has(p.id));
+
+  if (unassignedPlayers.length > 0) {
+    console.log(`Second pass: ${unassignedPlayers.length} unassigned players to distribute`);
+
+    // Assign remaining players to groups that haven't reached target size
+    let unassignedIdx = 0;
+    usedGroups.forEach((groupName, groupIdx) => {
+      const targetSize = targetSizes[groupIdx];
+      let currentSize = players.filter(
+        p => assignedInThisReshuffling.has(p.id) && p.get("current_group") === groupName
+      ).length;
+
+      while (currentSize < targetSize && unassignedIdx < unassignedPlayers.length) {
+        const player = unassignedPlayers[unassignedIdx];
+        player.set("current_group", groupName);
+        assignedInThisReshuffling.add(player.id);
+        currentSize++;
+        unassignedIdx++;
+      }
+    });
+  }
+
+  // Verification: Log final group composition
+  const groupComposition = {};
+  usedGroups.forEach(groupName => {
+    const groupPlayers = players.filter(p => p.get("current_group") === groupName);
+    const indices = groupPlayers.map(p => p.get("player_index"));
+    groupComposition[groupName] = {
+      size: groupPlayers.length,
+      indices: indices.sort(),
+      hasAllIndices: [0, 1, 2].every(idx => indices.includes(idx))
+    };
+  });
+
+  console.log("Group composition after reshuffling:", JSON.stringify(groupComposition));
+
+  // Verify all groups meet MIN_GROUP_SIZE
+  const undersizedGroups = Object.entries(groupComposition)
+    .filter(([_, info]) => info.size < MIN_GROUP_SIZE)
+    .map(([name, _]) => name);
+
+  if (undersizedGroups.length > 0) {
+    console.error(`ERROR: Groups ${undersizedGroups.join(", ")} are below MIN_GROUP_SIZE=${MIN_GROUP_SIZE}`);
+  }
+
+  // Warn if any group is missing an index (will need fallback for speaker selection)
+  const incompleteGroups = Object.entries(groupComposition)
+    .filter(([_, info]) => !info.hasAllIndices)
+    .map(([name, _]) => name);
+
+  if (incompleteGroups.length > 0) {
+    console.warn(`WARNING: Groups ${incompleteGroups.join(", ")} don't have all indices - speaker fallback will be used`);
+  }
+
+  const numComplete = Object.values(groupComposition).filter(g => g.hasAllIndices).length;
+  console.log(`Reshuffled ${numPlayers} players into ${numGroups} groups (${numComplete} complete)`);
 }
 
 Empirica.onStageStart(({ stage }) => {
@@ -395,9 +499,15 @@ Empirica.onStageEnded(({ stage }) => {
 
       if (!speaker) return;
 
-      // Count correct listeners
+      // Save correctness for each listener and count correct ones
+      listeners.forEach((listener) => {
+        const clicked = listener.round.get("clicked");
+        const isCorrect = clicked === target;
+        listener.round.set("clicked_correct", isCorrect);
+      });
+
       const correctListeners = listeners.filter(
-        (p) => p.round.get("clicked") === target
+        (p) => p.round.get("clicked_correct")
       );
 
       // Award points to correct listeners

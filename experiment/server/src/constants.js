@@ -3,9 +3,12 @@
 export const TEST_MODE = true;
 
 // ============ TANGRAM SETS ============
-// Using Ji et al. (2022) tangrams - single set of 6
+// Using Ji et al. (2022) tangrams - two sets of 6 with high SND (Shape Naming Divergence)
+// Set 0: Original selection (SND range: 0.960-0.987)
+// Set 1: Next highest SND tangrams (SND range: 0.978-0.987)
 export const tangram_sets = {
   0: ["page1-129", "page3-121", "page3-182", "page4-157", "page6-149", "page7-81"],
+  1: ["page3-85", "page3-136", "page5-64", "page9-46", "page9-27", "page1-128"],
 };
 
 // ============ PLAYER CONFIGURATION ============
