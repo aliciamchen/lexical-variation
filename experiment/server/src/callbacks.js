@@ -156,7 +156,7 @@ Empirica.onGameStart(({ game }) => {
       });
       round.addStage({
         name: "Selection",
-        duration: 45,
+        duration: 120, // Increased for testing
       });
       round.addStage({
         name: "Feedback",
