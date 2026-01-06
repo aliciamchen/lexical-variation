@@ -23,6 +23,14 @@ NOTE for claude: If you need it to figure out how to do something, the docs for 
 
 ## Remaining Todos
 
+- [ ] Add another tangram set. Decide how many tangram sets? 
+  - [ ] Check kilogram dashboard to make sure that the tangrams don't have *too* geometric descriptions..
+- [ ] Check rotation of speakers across conditions
+  - [ ] the assignment of participants to groups is randomized, with the constraint that the assignment to speaker and listener roles follows the same rotation schedule as the 'refer + separated' condition (i.e., each participant is listener twice, then speaker once, and so on). This condition tests whether cross-group interaction drives convergence toward shared conventions.
+- [ ] Figure out appointemnt slot thing (do this externally, this isnt a change in the code.)
+- [ ] comprehension check attempts? 
+- [ ] generally go through RR and add todos based on it
+
 ### 1. Data Collection Improvements
 
 - [x] For the chat, save timestamps of messages sent
