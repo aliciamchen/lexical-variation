@@ -84,6 +84,9 @@ export function Refgame(props) {
   const speaker = playersInGroup.find((p) => p.round.get("role") === "speaker");
   const speakerSentMessage = speaker && playerGroupChat.some((msg) => msg.sender?.id === speaker.id);
 
+  // Check if speaker is missing (was kicked mid-block)
+  const speakerMissing = !speaker && isListener;
+
   // Get total blocks from game (set based on TEST_MODE)
   const phase1Blocks = game.get("phase1Blocks") || 6;
   const phase2Blocks = game.get("phase2Blocks") || 12;
@@ -129,8 +132,10 @@ export function Refgame(props) {
   let feedback = "";
   if (stage.get("name") == "Feedback") {
     if (player.round.get("role") == "listener") {
-      // Check if speaker was idle (didn't send any message)
-      if (!speakerSentMessage) {
+      // Check if speaker was missing (kicked) or idle (didn't send any message)
+      if (!speaker) {
+        feedback = "Your speaker was removed from the game. A new speaker will be assigned.";
+      } else if (!speakerSentMessage) {
         feedback = "The speaker did not send a message this round. No points were awarded.";
       } else if (!player.round.get("clicked")) {
         // Listener didn't respond in time
@@ -281,6 +286,21 @@ export function Refgame(props) {
         </div>
 
         {renderSocialGuess()}
+
+        {speakerMissing && isSelectionStage && (
+          <h3
+            style={{
+              marginTop: 5,
+              marginBottom: "auto",
+              textAlign: "center",
+              color: "#dc2626",
+              fontStyle: "italic",
+              width: "100%",
+            }}
+          >
+            Your group's speaker was removed. A new speaker will be assigned next round.
+          </h3>
+        )}
 
         {waitingMessage && (
           <h3

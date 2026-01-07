@@ -210,6 +210,11 @@ Empirica.onRoundStart(({ round }) => {
         (p) => p.get("current_group") === groupName
       );
 
+      if (groupPlayers.length === 0) {
+        console.log(`Group ${groupName} has no active players, skipping role assignment`);
+        return;
+      }
+
       // Determine speaker based on player_index (consistent rotation across all conditions)
       // Speaker is the player whose original_player_index matches blockNum % GROUP_SIZE
       const speakerTargetIndex = blockNum % GROUP_SIZE;
@@ -217,12 +222,22 @@ Empirica.onRoundStart(({ round }) => {
       // Find the designated speaker (player with matching player_index)
       let speaker = groupPlayers.find(p => p.get("player_index") === speakerTargetIndex);
 
-      // Fallback: if no player with matching index (due to dropouts), pick based on position
+      // SPEAKER REASSIGNMENT: If designated speaker is not available (kicked/inactive),
+      // reassign speaker role to another player in the group
       if (!speaker && groupPlayers.length > 0) {
-        const fallbackIdx = blockNum % groupPlayers.length;
+        // Sort by player_index to ensure consistent fallback selection
         const sortedPlayers = _.sortBy(groupPlayers, p => p.get("player_index"));
+
+        // Pick the next available player in rotation order
+        // Use the same block-based rotation but with available players only
+        const fallbackIdx = blockNum % sortedPlayers.length;
         speaker = sortedPlayers[fallbackIdx];
-        console.log(`Speaker fallback: No player with index ${speakerTargetIndex} in group ${groupName}, using ${speaker.get("name")} (index ${speaker.get("player_index")})`);
+
+        console.log(`SPEAKER REASSIGNMENT: Original speaker (index ${speakerTargetIndex}) not available in group ${groupName}`);
+        console.log(`  -> Reassigning to ${speaker.get("name")} (index ${speaker.get("player_index")}) for remaining trials in block ${blockNum}`);
+
+        // Track that speaker was reassigned (useful for debugging)
+        game.set(`speaker_reassigned_block_${blockNum}_group_${groupName}`, true);
       }
 
       const isMixedPhase2 = phase_num === 2 &&
@@ -402,27 +417,8 @@ function reshuffleGroups(game, players) {
 }
 
 Empirica.onStageStart(({ stage }) => {
-  const game = stage.currentGame;
-  const players = game.players.filter((p) => p.get("is_active"));
-
-  // Handle players who have been kicked
-  players.forEach((player) => {
-    if (player.get("ended") === "player timeout") {
-      player.stage.set("submit", "true");
-      if (player.round.get("role") === "speaker") {
-        // Auto-submit for listeners in same group if speaker is kicked
-        const playerGroup = player.get("current_group");
-        players.forEach((p) => {
-          if (
-            p.get("current_group") === playerGroup &&
-            p.round.get("role") === "listener"
-          ) {
-            p.stage.set("submit", "true");
-          }
-        });
-      }
-    }
-  });
+  // Stage start - no special handling needed
+  // Speaker reassignment is handled in onRoundStart via fallback logic
 });
 
 Empirica.onStageEnded(({ stage }) => {
@@ -451,14 +447,29 @@ Empirica.onStageEnded(({ stage }) => {
       // Check if player clicked a tangram (only relevant for listeners)
       const clickedTangram = player.round.get("clicked");
 
+      // Check if the speaker in this group sent any message
+      // (listeners shouldn't be marked idle if speaker didn't send anything - they couldn't act)
+      const groupPlayers = game.players.filter(
+        p => p.get("is_active") && p.get("current_group") === playerGroup
+      );
+      const groupSpeaker = groupPlayers.find(p => p.round.get("role") === "speaker");
+      const speakerSentMessage = groupSpeaker && chat.some((msg) => msg.sender?.id === groupSpeaker.id);
+
       // Determine if player was idle this round
       let wasIdle = false;
       if (role === "speaker") {
         // Speakers are idle if they didn't send any message
         wasIdle = !sentMessage;
       } else {
-        // Listeners are idle if they didn't send a message AND didn't click a tangram
-        wasIdle = !sentMessage && !clickedTangram;
+        // Listeners are idle ONLY if speaker sent a message but listener didn't respond
+        // If speaker didn't send a message, listener couldn't act - not their fault
+        if (!speakerSentMessage) {
+          // Speaker was idle, don't penalize listeners
+          wasIdle = false;
+        } else {
+          // Speaker sent a message, listener should have clicked
+          wasIdle = !clickedTangram;
+        }
       }
 
       if (wasIdle) {
@@ -469,11 +480,25 @@ Empirica.onStageEnded(({ stage }) => {
         );
 
         if (idleRounds >= MAX_IDLE_ROUNDS) {
+          const wasSpeak = role === "speaker";
           console.log(
-            `Player ${player.id} removed after ${MAX_IDLE_ROUNDS} idle rounds`
+            `Player ${player.id} (${role}) removed after ${MAX_IDLE_ROUNDS} idle rounds`
           );
           player.set("is_active", false);
           player.set("ended", "player timeout");
+
+          // If speaker was kicked, log that reassignment will occur
+          if (wasSpeak) {
+            const playerGroup = player.get("current_group");
+            const remainingInGroup = game.players.filter(
+              p => p.get("is_active") && p.get("current_group") === playerGroup
+            );
+            if (remainingInGroup.length >= MIN_GROUP_SIZE) {
+              console.log(
+                `SPEAKER KICKED: Group ${playerGroup} has ${remainingInGroup.length} remaining players, speaker will be reassigned in next round`
+              );
+            }
+          }
 
           // Check if group can continue
           checkGroupViability(game);

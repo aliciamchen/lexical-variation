@@ -17,7 +17,7 @@ export const TEST_MODE = true; // Set to true for testing (longer timeouts)
 
 // ============ TIMING CONFIGURATION ============
 // Stage durations in seconds
-export const SELECTION_DURATION = TEST_MODE ? 120 : 45;  // Selection stage (testing: 2min, prod: 45s)
+export const SELECTION_DURATION = TEST_MODE ? 15 : 45;  // Selection stage (FAST TEST: 15s)
 export const FEEDBACK_DURATION = 10;                      // Feedback stage (same for both)
 export const TRANSITION_DURATION = 30;                    // Phase transition (same for both)
 export const BONUS_INFO_DURATION = 30;                    // End game bonus info (same for both)
@@ -105,7 +105,7 @@ export const SOCIAL_GUESS_CORRECT_POINTS = 2;
 export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 1;
 
 // ============ DROPOUT HANDLING ============
-export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 2; // Testing: 5 rounds, Production: 2 rounds
+export const MAX_IDLE_ROUNDS = TEST_MODE ? 2 : 2; // FAST TEST: 2 rounds
 export const MIN_GROUP_SIZE = 2; // Minimum players needed to continue in a group
 // MIN_ACTIVE_GROUPS is derived dynamically in callbacks.js based on actual group count
 
