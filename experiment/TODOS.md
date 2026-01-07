@@ -4,6 +4,7 @@ This document tracks the changes needed to make the web experiment.
 
 NOTE for claude: If you need it to figure out how to do something, the docs for empirica are here: https://docs.empirica.ly/ and the source code for empirica is at https://github.com/empiricaly/empirica
 
+To test the experiment, use the test-experiment skill. 
 ---
 
 ### Timing
@@ -32,6 +33,13 @@ NOTE for claude: If you need it to figure out how to do something, the docs for 
 - [ ] set and check final constants: money, timing, etc (revert to the non-testing timing)
 - [ ] check completion codes are correct and that they are indicated correctly on prolific
 - [ ] Check that the waiting for other players submit and waiting for your group members to submit screens, are displaying correctly in the 9 person case
+- [ ] When all is ready, switch to final version with all correct timing + lobby config, and then run once using playwright and then test once manually to make sure everything is working correctly.
+- [ ] for later (i need to do manually): set up digitalocean server and figure out billing
+- [ ] also for later: get IRB approval from mitchell
+- [ ] make avatars squares, why are they circles
+
+
+- [ ] IMPORTANT: make sure the shuffling is happening on each trial in the mixed conditions and that participants know this. Indicate in feedback screens in phase 2, that shuffling is happening each time. Check text, make sure it's clear, say that we are masking group identities
 
 # Phase A: Running the Experiment & Collecting Pilot Data
 
@@ -176,9 +184,11 @@ These todos must be completed before collecting pilot data.
 
 - [x] Check data is saving correctly (verified via 9-player automated test export)
 - [ ] Test all intro screens and quiz
+- [ ] Check that quiz data is saved correctly
 - [ ] Test exit survey and debrief
-- [ ] Generally check timing
-- [ ] Check that on admin dashboard, the game marks finished when all players have finished
+- [x] Check that on admin dashboard, the game marks finished when all players have finished
+- [x] Is the idling logic working correctly?
+- [x] Check listener guessing speaker group logic (UI and data fields verified; needs human testing for actual button clicks)
 
 ### Dropout Testing
 
@@ -189,12 +199,6 @@ These todos must be completed before collecting pilot data.
 - [x] Final member removal when 2 drop
 - [x] Game continuation with 2+ active groups
 - [ ] Check that when someone leaves in the middle of block, the speaker is reassigned to the next player in the group and they finish up the block and then do the next block. 
-
-### Production Mode (9 players)
-
-- [x] Come up with a list of things to test for 9 players
-- [x] Is the idling logic working correctly?
-- [x] Check listener guessing speaker group logic (UI and data fields verified; needs human testing for actual button clicks)
 
 ## A11. External/Logistics
 
@@ -270,3 +274,33 @@ These todos are for after collecting pilot data, to verify the outcome-neutral c
 - Verified group reshuffling with balanced composition
 - Verified dropout handling (idle detection, group viability checks)
 - Note: Social guess buttons not clicked during automated test (data fields exist and are wired up correctly)
+
+---
+
+## Bugs Found in Testing (2026-01-07)
+
+### Fixed Bugs
+
+- [x] **Role display bug (Groups B and C)** - **FIXED**: Was caused by TEST_MODE/treatment mismatch. Now GROUP_COUNT and MIN_ACTIVE_GROUPS are derived dynamically from actual player count in callbacks.js (lines 92-99).
+  - **Fix applied**: Removed PLAYER_COUNT, GROUP_COUNT, MIN_ACTIVE_GROUPS from TEST_MODE dependency in constants.js
+  - **New behavior**: `actualGroupCount = Math.floor(players.length / GROUP_SIZE)` derives group count from actual players
+
+- [x] **TEST_MODE/treatment mismatch** - **FIXED**: TEST_MODE now only controls timing and tolerance settings, not player/group counts.
+  - Player count is set in treatments.yaml
+  - Group count is derived from `players.length / GROUP_SIZE` in callbacks.js
+  - MIN_ACTIVE_GROUPS is set dynamically: 2 for multi-group games, 1 for single-group
+
+### Verified Working
+
+- [x] Speaker sends message → Listeners can click tangrams
+- [x] Feedback screen shows "Ooops, that wasn't the target!" for wrong answer
+- [x] Feedback screen shows "The speaker did not send a message this round. No points were awarded." for idle speaker
+- [x] Feedback shows player avatar icons for who clicked what
+- [x] "Waiting for the players in your group to respond..." message appears after clicking
+- [x] Game auto-progresses when all group members respond
+- [x] Roles display correctly in Group A (speaker's view and listener's view)
+- [x] Chat messages appear with timestamps
+- [x] **9-player game with dynamic group count**: Server correctly derives 3 groups from 9 players
+- [x] **Roles display correctly in ALL groups**: Groups A, B, and C all show correct speaker/listener labels
+- [x] **Multi-group waiting message**: Shows "Waiting for members of other groups to respond..." (not just "All players responded!")
+- [x] **Idle detection works across all groups**: Players marked idle correctly regardless of group
