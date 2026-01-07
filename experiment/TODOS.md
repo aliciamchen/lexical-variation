@@ -29,7 +29,9 @@ To test the experiment, use the test-experiment skill.
 - [x] in phase 2 anonymous condition instead of player numbers just say "Player" so that it's fully anonymous
   - Changed from "Player 1", "Player 2" to just "Player" in callbacks.js
 
-- [ ] test cumulative social guesses are saved correctly
+- [x] test cumulative social guesses are saved correctly
+  - Verified via 9-player social_mixed test: 26 rows with social_guess data
+  - Fields saved: social_guess, social_guess_correct (True/False), social_round_score (0/1/2 points)
 - [ ] set and check final constants: money, timing, etc (revert to the non-testing timing)
 - [ ] check completion codes are correct and that they are indicated correctly on prolific
 - [ ] Check that the waiting for other players submit and waiting for your group members to submit screens, are displaying correctly in the 9 person case
@@ -39,7 +41,9 @@ To test the experiment, use the test-experiment skill.
 - [ ] make avatars squares, why are they circles
 
 
-- [ ] IMPORTANT: make sure the shuffling is happening on each trial in the mixed conditions and that participants know this. Indicate in feedback screens in phase 2, that shuffling is happening each time. Check text, make sure it's clear, say that we are masking group identities
+- [x] IMPORTANT: make sure the shuffling is happening on each trial in the mixed conditions and that participants know this. Indicate in feedback screens in phase 2, that shuffling is happening each time. Check text, make sure it's clear, say that we are masking group identities
+  - Verified: Server logs show "Reshuffling groups for mixed condition (balanced)" on each round
+  - Transition screen explains reshuffling and masked identities clearly
 
 # Phase A: Running the Experiment & Collecting Pilot Data
 
@@ -163,9 +167,13 @@ These todos must be completed before collecting pilot data.
   - [x] Game continues as long as at least 2 original groups meet this requirement (`MIN_ACTIVE_GROUPS=2`)
   - [x] Viability check uses `original_group`, not `current_group` (correct for mixed conditions)
   - [x] Remaining member removed with `ended="group disbanded"` when group becomes non-viable
-- [ ] Speaker role reassignment when someone drops mid-block
-  - Current behavior: if speaker is kicked, listeners in same group auto-submit and skip remaining trials
-  - CHANGE TO (this is important): speaker role is reassigned to the next player in the group, they finish up the block and then do the next block. 
+- [x] Speaker role reassignment when someone drops mid-block
+  - **IMPLEMENTED AND TESTED** (2026-01-07):
+  - Removed dead code that auto-submitted listeners when speaker kicked
+  - Added explicit speaker reassignment via fallback logic in onRoundStart
+  - Server logs: "SPEAKER REASSIGNMENT: Original speaker (index 0) not available → Reassigning to Player (index 1)"
+  - Fixed idle detection: listeners NOT kicked when speaker didn't send message (not their fault)
+  - Client shows "Your group's speaker was removed. A new speaker will be assigned next round." 
 
 ## A9. UI/UX Polish
 
@@ -194,11 +202,14 @@ These todos must be completed before collecting pilot data.
 
 - [x] Player removed after 2 idle rounds
 - [x] Group continuation with 2 remaining
-    - [ ] Check in this case the rotation works correctly (i.e. the remaining speakers just end up alternating block after block)
-- [ ] Check dropout rules make sense and work, with the reshuffling logic in the mixed conditions
+    - [x] Check in this case the rotation works correctly (i.e. the remaining speakers just end up alternating block after block)
+      - Verified: speaker fallback uses `blockNum % sortedPlayers.length` for remaining players
+- [x] Check dropout rules make sense and work, with the reshuffling logic in the mixed conditions
+  - Verified: 9-player test with dropout showed reshuffling adapted (9→8 players, groups became 3,3,2)
 - [x] Final member removal when 2 drop
 - [x] Game continuation with 2+ active groups
-- [ ] Check that when someone leaves in the middle of block, the speaker is reassigned to the next player in the group and they finish up the block and then do the next block. 
+- [x] Check that when someone leaves in the middle of block, the speaker is reassigned to the next player in the group and they finish up the block and then do the next block.
+  - Verified: See A8 speaker role reassignment item above 
 
 ## A11. External/Logistics
 
@@ -274,6 +285,21 @@ These todos are for after collecting pilot data, to verify the outcome-neutral c
 - Verified group reshuffling with balanced composition
 - Verified dropout handling (idle detection, group viability checks)
 - Note: Social guess buttons not clicked during automated test (data fields exist and are wired up correctly)
+
+### Automated Testing Completed (2026-01-07)
+
+- **Full 9-player social_mixed test** via Playwright MCP:
+  - ✅ Phase 1 completion (2 blocks)
+  - ✅ Phase 2 reshuffling: "Reshuffled 9 players into 3 groups (3 complete)"
+  - ✅ Masked identities: "Player (You)", "Player (Listener)" shown in UI
+  - ✅ Anonymous avatars: shapes/svg style used in Phase 2
+  - ✅ Social guessing UI: Group buttons appear after tangram click
+  - ✅ Social guess data saved: 26 rows with social_guess, social_guess_correct, social_round_score
+  - ✅ Speaker dropout tested: "SPEAKER KICKED: Group A has 2 remaining players"
+  - ✅ Speaker reassignment: "SPEAKER REASSIGNMENT: Original speaker (index 0) not available → Reassigning to Player (index 1)"
+  - ✅ Adaptive reshuffling: 8 players distributed into 3,3,2 groups after dropout
+  - ✅ Idle detection fix: Listeners NOT kicked when speaker didn't send message
+- Screenshots captured: phase2_transition_social_mixed.png, phase2_masked_identities.png, phase2_social_guessing_ui.png
 
 ---
 
