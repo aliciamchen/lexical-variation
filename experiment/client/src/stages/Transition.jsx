@@ -20,17 +20,17 @@ export function Transition(props) {
     if (condition === "refer_separated") {
       conditionInstructions = (
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
-          You will continue playing the reference game with the <strong>same group members</strong> you played with in Phase 1. Your goal remains the same: describe the tangrams to help your listeners identify them correctly.
+          You will continue playing the reference game with the <strong>same group members</strong> you played with in Phase 1. Your goal remains the same: describe the tangrams to help your listeners identify them correctly.  Remember to limit your messages to describing the current target picture only.
         </p>
       );
     } else if (condition === "refer_mixed") {
       conditionInstructions = (
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>
-            In this phase, players from all groups will be <strong>mixed together</strong>. You will be randomly assigned to new groups, and player identities will be hidden. You won't know who your current group members are - everyone will appear as "Player" with anonymous avatars.
+            In this phase, players from all groups will be <strong>mixed together</strong>. You will be randomly assigned to new groups on each trial, and player identities will be hidden. You won't know who your current group members are - everyone will appear as "Player" with anonymous avatars.
           </p>
           <p style={{ marginTop: 8 }}>
-            Your goal remains the same: describe the tangrams to help your listeners identify them correctly. Remember to limit your messages to describing the current target picture only.
+            Your goal remains the same: describe the tangrams to help your listeners identify them correctly.
           </p>
         </div>
       );
@@ -38,13 +38,13 @@ export function Transition(props) {
       conditionInstructions = (
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>
-            In this phase, players from all groups will be <strong>mixed together</strong>. You will be randomly assigned to new groups, and player identities will be hidden. You won't know who your current group members are - everyone will appear as "Player" with anonymous avatars.
+            In this phase, players from all groups will be <strong>mixed together</strong>. You will be randomly assigned to new groups on each trial, and player identities will be hidden. You won't know who your current group members are - everyone will appear as "Player" with anonymous avatars.
           </p>
           <p style={{ marginTop: 8 }}>
             <strong>New task:</strong> After clicking on a tangram, listeners will also guess whether the speaker was in their original group from Phase 1. You'll see your overall results at the end of the game.
           </p>
           <p style={{ marginTop: 8 }}>
-            Remember to limit your messages to describing the current target picture only - do not try to signal your group identity!
+            Remember to limit your messages to describing the current target picture only. 
           </p>
         </div>
       );

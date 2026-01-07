@@ -311,6 +311,22 @@ export function Refgame(props) {
           </h3>
         )}
 
+        {stage.get("name") == "Feedback" &&
+          (condition === "refer_mixed" || condition === "social_mixed") &&
+          phase_num === 2 && (
+          <p
+            style={{
+              marginTop: 12,
+              textAlign: "center",
+              color: "#6b7280",
+              fontStyle: "italic",
+              width: "100%",
+            }}
+          >
+            Shuffling players for the next trial...
+          </p>
+        )}
+
         {stage.get("name") == "Feedback" && (
           <div
             style={{

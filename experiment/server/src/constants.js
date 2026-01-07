@@ -1,20 +1,19 @@
 // ============ TEST MODE ============
-// Set to true for local testing with fewer players
-export const TEST_MODE = true;
+// Set to true for local testing (longer timeouts, more idle tolerance)
+// NOTE: Player count and group count are derived from the treatment, NOT from TEST_MODE
+export const TEST_MODE = true; // Set to true for testing (longer timeouts)
 
 // ============ TESTING VS PRODUCTION VALUES ============
-// All values that differ between testing and production are defined here
+// TEST_MODE only affects timing and tolerance settings, not player/group counts.
+// Player count is set in treatments.yaml and group count is derived from player count.
 //
 // | Setting              | Testing | Production | Description                          |
 // |----------------------|---------|------------|--------------------------------------|
 // | TEST_MODE            | true    | false      | Master toggle                        |
-// | PLAYER_COUNT         | 3       | 9          | Total players per game               |
-// | GROUP_COUNT          | 1       | 3          | Number of groups                     |
-// | PHASE_1_BLOCKS       | 2       | 6          | Blocks in Phase 1                    |
-// | PHASE_2_BLOCKS       | 2       | 6          | Blocks in Phase 2                    |
 // | SELECTION_DURATION   | 120     | 45         | Seconds for selection stage          |
 // | MAX_IDLE_ROUNDS      | 5       | 2          | Rounds before idle kick              |
-// | MIN_ACTIVE_GROUPS    | 1       | 2          | Min groups to continue game          |
+// | PHASE_1_BLOCKS       | 2       | 6          | Blocks in Phase 1                    |
+// | PHASE_2_BLOCKS       | 2       | 6          | Blocks in Phase 2                    |
 
 // ============ TIMING CONFIGURATION ============
 // Stage durations in seconds
@@ -33,10 +32,8 @@ export const tangram_sets = {
 };
 
 // ============ PLAYER CONFIGURATION ============
-// Production: 9 players, 3 groups of 3
-// Test mode: 3 players, 1 group of 3
-export const PLAYER_COUNT = TEST_MODE ? 3 : 9;
-export const GROUP_COUNT = TEST_MODE ? 1 : 3;
+// Player count is set in treatments.yaml (playerCount field)
+// Group count is derived dynamically in callbacks.js from actual player count
 export const GROUP_SIZE = 3;
 export const LISTENERS_PER_TRIAL = 2;
 
@@ -110,9 +107,9 @@ export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 1;
 // ============ DROPOUT HANDLING ============
 export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 2; // Testing: 5 rounds, Production: 2 rounds
 export const MIN_GROUP_SIZE = 2; // Minimum players needed to continue in a group
-export const MIN_ACTIVE_GROUPS = TEST_MODE ? 1 : 2; // Minimum groups needed to continue the game
+// MIN_ACTIVE_GROUPS is derived dynamically in callbacks.js based on actual group count
 
 // Log warning if in test mode
 if (TEST_MODE) {
-  console.warn("⚠️  RUNNING IN TEST MODE - Reduced players and blocks for testing");
+  console.warn("⚠️  RUNNING IN TEST MODE - Longer timeouts and higher idle tolerance");
 }

@@ -10,8 +10,6 @@ import {
   getAvatarUrl,
   getAnonymousAvatarUrl,
   bonus_per_point,
-  PLAYER_COUNT,
-  GROUP_COUNT,
   GROUP_SIZE,
   PHASE_1_BLOCKS,
   PHASE_2_BLOCKS,
@@ -21,7 +19,6 @@ import {
   SOCIAL_SPEAKER_POINTS_PER_CORRECT,
   MAX_IDLE_ROUNDS,
   MIN_GROUP_SIZE,
-  MIN_ACTIVE_GROUPS,
   TEST_MODE,
   SELECTION_DURATION,
   FEEDBACK_DURATION,
@@ -89,8 +86,14 @@ Empirica.onGameStart(({ game }) => {
     );
   });
 
-  // Store active groups (just the names, not player objects)
-  game.set("active_groups", GROUP_NAMES.slice(0, GROUP_COUNT));
+  // Derive actual group count from number of players (to support both test and production treatments)
+  const actualGroupCount = Math.floor(game.players.length / GROUP_SIZE);
+  console.log(`Game starting with ${game.players.length} players → ${actualGroupCount} groups`);
+  game.set("active_groups", GROUP_NAMES.slice(0, actualGroupCount));
+
+  // Set min active groups dynamically (need at least 2 groups for 9-player, 1 group for 3-player)
+  const minActiveGroups = actualGroupCount > 1 ? 2 : 1;
+  game.set("min_active_groups", minActiveGroups);
 
   // Store block counts for client display
   game.set("phase1Blocks", PHASE_1_BLOCKS);
@@ -200,7 +203,7 @@ Empirica.onRoundStart(({ round }) => {
     }
 
     // Set roles for each group
-    const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
+    const activeGroups = game.get("active_groups") || GROUP_NAMES;
 
     activeGroups.forEach((groupName) => {
       const groupPlayers = players.filter(
@@ -274,7 +277,7 @@ Empirica.onRoundStart(({ round }) => {
 function reshuffleGroups(game, players) {
   console.log("Reshuffling groups for mixed condition (balanced)");
 
-  const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
+  const activeGroups = game.get("active_groups") || GROUP_NAMES;
   const numPlayers = players.length;
 
   // Calculate how many groups we can support (each needs MIN_GROUP_SIZE players)
@@ -433,7 +436,7 @@ Empirica.onStageEnded(({ stage }) => {
   // Speakers are idle if they don't send any chat message
   // Listeners are idle if they don't send any chat message AND don't click a tangram
   if (stageName === "Selection") {
-    const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
+    const activeGroups = game.get("active_groups") || GROUP_NAMES;
 
     players.forEach((player) => {
       if (!player.get("is_active")) return;
@@ -487,7 +490,7 @@ Empirica.onStageEnded(({ stage }) => {
     const round = stage.round;
     const target = round.get("target");
     const phase_num = round.get("phase_num");
-    const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
+    const activeGroups = game.get("active_groups") || GROUP_NAMES;
 
     activeGroups.forEach((groupName) => {
       const groupPlayers = players.filter(
@@ -578,7 +581,7 @@ Empirica.onStageEnded(({ stage }) => {
 // Helper function to check if groups are still viable
 function checkGroupViability(game) {
   const players = game.players;
-  const activeGroups = game.get("active_groups") || GROUP_NAMES.slice(0, GROUP_COUNT);
+  const activeGroups = game.get("active_groups") || GROUP_NAMES;
 
   const viableGroups = activeGroups.filter((groupName) => {
     const groupPlayers = players.filter(
@@ -603,9 +606,10 @@ function checkGroupViability(game) {
 
   game.set("active_groups", viableGroups);
 
-  // Check if game can continue
-  if (viableGroups.length < MIN_ACTIVE_GROUPS) {
-    console.log("Not enough active groups, ending game");
+  // Check if game can continue (use dynamic min_active_groups from game)
+  const minRequired = game.get("min_active_groups") || 1;
+  if (viableGroups.length < minRequired) {
+    console.log(`Not enough active groups (${viableGroups.length} < ${minRequired}), ending game`);
     // Game will end naturally when rounds complete
   }
 }
