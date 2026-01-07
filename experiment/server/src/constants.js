@@ -87,7 +87,7 @@ export const SOCIAL_GUESS_CORRECT_POINTS = 2;
 export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 1;
 
 // ============ DROPOUT HANDLING ============
-export const MAX_IDLE_ROUNDS = 2; // Remove player after 2 consecutive idle rounds
+export const MAX_IDLE_ROUNDS = 5; // Remove player after 5 consecutive idle rounds (increased for MCP testing)
 export const MIN_GROUP_SIZE = 2; // Minimum players needed to continue in a group
 export const MIN_ACTIVE_GROUPS = TEST_MODE ? 1 : 2; // Minimum groups needed to continue the game
 

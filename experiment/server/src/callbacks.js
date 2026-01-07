@@ -113,7 +113,7 @@ Empirica.onGameStart(({ game }) => {
       });
       round.addStage({
         name: "Selection",
-        duration: 45,
+        duration: 120, // Increased for MCP testing
       });
       round.addStage({
         name: "Feedback",
@@ -227,7 +227,7 @@ Empirica.onRoundStart(({ round }) => {
           const anonIndex = activeGroups.indexOf(groupName) * GROUP_SIZE + i;
           const anonSeed = `anon_block${blockNum}_player${anonIndex}`;
           const anonAvatar = getAnonymousAvatarUrl(anonSeed);
-          const anonName = `Player ${anonIndex + 1}`;
+          const anonName = "Player";
 
           // Set on round for display in header
           player.round.set("display_avatar", anonAvatar);
@@ -537,6 +537,12 @@ Empirica.onStageEnded(({ stage }) => {
 
             listener.round.set("social_guess_correct", correct);
 
+            // Track cumulative social guess stats for end-of-game summary
+            const totalGuesses = (listener.get("social_guess_total") || 0) + 1;
+            const correctTotal = (listener.get("social_guess_correct_total") || 0) + (correct ? 1 : 0);
+            listener.set("social_guess_total", totalGuesses);
+            listener.set("social_guess_correct_total", correctTotal);
+
             if (correct) {
               listener.set("score", listener.get("score") + SOCIAL_GUESS_CORRECT_POINTS);
               correctGuesses++;
@@ -548,6 +554,12 @@ Empirica.onStageEnded(({ stage }) => {
         socialSpeakerPoints = correctGuesses * SOCIAL_SPEAKER_POINTS_PER_CORRECT;
         speaker.set("score", speaker.get("score") + socialSpeakerPoints);
         speaker.round.set("social_round_score", socialSpeakerPoints);
+
+        // Track speaker's cumulative social stats (how many guessed correctly about them)
+        const speakerGuessedAbout = (speaker.get("social_guessed_about_total") || 0) + listeners.length;
+        const speakerGuessedCorrect = (speaker.get("social_guessed_about_correct") || 0) + correctGuesses;
+        speaker.set("social_guessed_about_total", speakerGuessedAbout);
+        speaker.set("social_guessed_about_correct", speakerGuessedCorrect);
       }
 
       // Save chat

@@ -89,6 +89,9 @@ h1, h2, h3, h4 {
   align-self: start;
   padding: 0rem;
   text-align: left;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .feedback img {
@@ -98,6 +101,7 @@ h1, h2, h3, h4 {
   max-height: 4vh;
   /* object-fit: cover; */
   background-color: white;
+  border-radius: 50%;
 }
 
 .tangrams.grid {

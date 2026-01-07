@@ -15,7 +15,7 @@ export function ConsentPage({ next }) {
         series of communication tasks with other participants.
       </p>
       <p>
-        <strong>Time required:</strong> This study will take approximately 60
+        <strong>Time required:</strong> This study will take approximately 30-45
         minutes.
       </p>
       <p>
@@ -28,8 +28,8 @@ export function ConsentPage({ next }) {
         a computer monitor and using a mouse for the duration of the experiment.
       </p>
       <p>
-        <strong>Compensation:</strong> You will receive $12 for completing the
-        experiment, with an additional performance bonus of up to $8.
+        <strong>Compensation:</strong> You will receive $10 for completing the
+        experiment, with an additional performance bonus of up to $5.40.
       </p>
       <p>
         <strong>Confidentiality:</strong> Your participation in this study will

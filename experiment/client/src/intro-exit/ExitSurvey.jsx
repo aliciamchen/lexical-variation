@@ -17,6 +17,10 @@ export function ExitSurvey({ next }) {
   const [education, setEducation] = useState("");
   const [understood, setUnderstood] = useState("");
 
+  // Get player's score and bonus
+  const score = player.get("score") || 0;
+  const bonus = player.get("bonus") || 0;
+
   function handleSubmit(event) {
     event.preventDefault();
     player.set("exitSurvey", {
@@ -41,9 +45,15 @@ export function ExitSurvey({ next }) {
 
   return (
     <div className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <Alert title="Bonus">
+      <Alert title="Game Complete!">
         <p>
-          Please submit the following code to receive your bonus:{" "}
+          You earned <strong>{score} points</strong> for a bonus of <strong>${bonus.toFixed(2)}</strong>.
+        </p>
+        <p className="mt-2">
+          Your base pay is <strong>$10.00</strong>, so your total compensation is <strong>${(10 + bonus).toFixed(2)}</strong>.
+        </p>
+        <p className="mt-2">
+          Please submit the following code on Prolific to receive your payment:{" "}
           <strong>C3OIIB3N</strong>.
         </p>
       </Alert>

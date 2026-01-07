@@ -21,8 +21,15 @@ NOTE for claude: If you need it to figure out how to do something, the docs for 
 
 ---
 
-- [ ] remove social guessing feedback, change to aggregated social feedback at the end of the experiment, and change that in the instructions too
-- [ ] in phase 2 anonymous condition instead of player numbers just say "Player" so that it's fully anonymous
+- [x] remove social guessing feedback, change to aggregated social feedback at the end of the experiment, and change that in the instructions too
+  - Per-trial feedback removed from Refgame.jsx
+  - Aggregated summary shown at end in Transition.jsx (bonus_info stage)
+  - Tracks: social_guess_total, social_guess_correct_total, social_guessed_about_total, social_guessed_about_correct
+- [x] in phase 2 anonymous condition instead of player numbers just say "Player" so that it's fully anonymous
+  - Changed from "Player 1", "Player 2" to just "Player" in callbacks.js
+
+- [ ] test cumulative social guesses are saved correctly
+- [ ] check constants: money, timing, etc.
 
 # Phase A: Running the Experiment & Collecting Pilot Data
 
@@ -66,49 +73,54 @@ These todos must be completed before collecting pilot data.
 
 ### Consent.jsx
 
-- [ ] Update time estimate
-- [ ] Update compensation information ($10 base + up to $5.40 bonus)
+- [x] Update time estimate (30-45 minutes)
+- [x] Update compensation information ($10 base + up to $5.40 bonus)
 
 ### Introduction.jsx
 
-- [ ] Part 1: Overview of tangram reference game
-- [ ] Part 2: Explain groups of 3 (1 speaker, 2 listeners)
-- [ ] Part 3: Phase 1 explanation (6 blocks within groups)
-- [ ] Part 4: Phase 2 explanation (condition-dependent):
-  - [ ] For `refer_separated`: Continue with same group
-  - [ ] For `refer_mixed`: Groups will be shuffled
-  - [ ] For `social_mixed`: Shuffled + guess speaker's group
-- [ ] Part 5: Scoring and bonus explanation
-- [ ] Update visual examples for 3-person groups
-- [ ] Explain tangrams not clickable until speaker sends message
-- [ ] Instruction: Restrict chat to tangram-related discussion only (no discussing group identity or using codewords)
+- [x] Part 1: Overview of tangram reference game
+- [x] Part 2: Explain groups of 3 (1 speaker, 2 listeners)
+- [x] Part 3: Phase 1 explanation (6 blocks within groups)
+- [x] Part 4: Phase 2 explanation (deferred to Transition.jsx for condition-specific):
+  - [x] For `refer_separated`: Continue with same group
+  - [x] For `refer_mixed`: Groups will be shuffled
+  - [x] For `social_mixed`: Shuffled + guess speaker's group
+- [x] Part 5: Scoring and bonus explanation
+- [x] Update visual examples for 3-person groups
+- [x] Explain tangrams not clickable until speaker sends message
+- [x] Instruction: Restrict chat to tangram-related discussion only (no discussing group identity or using codewords)
 
 ### Comprehension Quiz
 
-- [ ] Remove questions about old Phase 2/3
-- [ ] Add questions about group size (3 people)
-- [ ] Add questions about phase structure
-- [ ] Add questions about scoring (2 points listener, 1 point speaker)
-- [ ] Add condition-specific questions (if applicable)
-- [ ] Implement 3-attempt limit, remove participant after 3 failed attempts
+- [x] Remove questions about old Phase 2/3
+- [x] Add questions about group size (3 people)
+- [x] Add questions about phase structure (indirectly via intro)
+- [x] Add questions about scoring (2 points listener, 1 point speaker)
+- [x] Add question about listeners waiting for speaker
+- [x] Implement 3-attempt limit, show failure message after 3 failed attempts
 
 ### ExitSurvey.jsx
 
-- [ ] Update to reflect new experiment
-- [ ] Update bonus display calculation
-- [ ] Update base pay from $12 to $10
-- [ ] Update max bonus calculation ($5.40 max)
+- [x] Update to reflect new experiment
+- [x] Update bonus display calculation (shows actual score and bonus)
+- [x] Update base pay from $12 to $10
+- [x] Shows total compensation
 
 ### Kicked-Out Pages
 
-- [ ] Page for idle timeout (kicked for inactivity)
-- [ ] Page for group disbanded (other players left)
-- [ ] Write compensation messages and Prolific payment logic
+- [x] Page for idle timeout (kicked for inactivity) - Sorry.jsx updated
+- [x] Page for group disbanded (other players left) - Sorry.jsx updated
+- [x] Page for lobby timeout - Sorry.jsx updated
+- [x] Different Prolific codes for each termination reason
 
 ## A4. Transition Screens
 
-- [ ] Add transition screen before each reshuffling (5 second screen, no key press required)
-- [ ] Write actual text for transition screens (explain reshuffling to participants)
+- [x] Transition screen between Phase 1 and Phase 2 with condition-specific instructions
+- [x] Write actual text for transition screens (explain reshuffling to participants)
+  - Updated Transition.jsx with proper text (removed placeholders)
+  - refer_separated: "same group members"
+  - refer_mixed: "mixed together", "Player" with anonymous avatars
+  - social_mixed: Explains social guessing task
 - [ ] Fix scaling and styling of transition screens
 
 ## A5. Waiting Room & Game Start Logic
@@ -119,7 +131,8 @@ These todos must be completed before collecting pilot data.
 
 ## A6. In-Game Exclusion Criteria (automated)
 
-- [ ] Remove participants who fail comprehension quiz after 3 attempts
+- [x] Remove participants who fail comprehension quiz after 3 attempts
+  - Quiz.jsx shows failure message with Prolific code after 3 failed attempts
 - [x] Idle for 2 consecutive rounds → remove participant
   - Implemented in `onStageEnded`: speakers idle if no message, listeners idle if no message AND no click
   - After `MAX_IDLE_ROUNDS` (2), player marked `is_active=false`, `ended="player timeout"`
@@ -146,9 +159,12 @@ These todos must be completed before collecting pilot data.
 
 ## A9. UI/UX Polish
 
-- [ ] If someone in a group leaves, indicate to participants that the group is now smaller because someone left or idled
-- [ ] For the icons for who picked what tangram, add a bit of space between them when they are stacked
-- [ ] If speaker is idle and listeners aren't able to select, in the feedback indicate that the speaker was idle
+- [x] If someone in a group leaves, indicate to participants that the group is now smaller because someone left or idled
+  - Added message in Refgame.jsx: "Your group is smaller because a player left or was inactive."
+- [x] For the icons for who picked what tangram, add a bit of space between them when they are stacked
+  - Updated index.css: .feedback has display:flex, gap:4px, flex-wrap:wrap
+- [x] If speaker is idle and listeners aren't able to select, in the feedback indicate that the speaker was idle
+  - Added check in Refgame.jsx feedback: "The speaker did not send a message this round. No points were awarded."
 - [x] Check that in mixed conditions the icons are different each time so people don't know who they are talking to
   - Verified: Anonymous avatars use different seeds per block (e.g., `anon_block0_player1`, `anon_block1_player2`)
 

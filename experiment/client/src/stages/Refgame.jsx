@@ -70,6 +70,20 @@ export function Refgame(props) {
   const playersInGroup = players.filter((p) => p.get("current_group") === playerGroup && p.get("is_active"));
   const otherPlayers = playersInGroup.filter((p) => p.id !== player.id);
 
+  // Check if group is smaller than expected (someone left/was idle)
+  const expectedGroupSize = 3;
+  const groupIsSmaller = playersInGroup.length < expectedGroupSize;
+
+  // Check if speaker sent any messages (for idle speaker detection)
+  // During Selection stage, use live stage chat; during Feedback, use saved round chat
+  // (chat is saved to player.round at end of Selection stage in callbacks.js)
+  const isSelectionStage = stage.get("name") === "Selection";
+  const playerGroupChat = isSelectionStage
+    ? (stage.get(`${playerGroup}_chat`) || [])
+    : (player.round.get("chat") || []);
+  const speaker = playersInGroup.find((p) => p.round.get("role") === "speaker");
+  const speakerSentMessage = speaker && playerGroupChat.some((msg) => msg.sender?.id === speaker.id);
+
   // Get total blocks from game (set based on TEST_MODE)
   const phase1Blocks = game.get("phase1Blocks") || 6;
   const phase2Blocks = game.get("phase2Blocks") || 12;
@@ -115,43 +129,21 @@ export function Refgame(props) {
   let feedback = "";
   if (stage.get("name") == "Feedback") {
     if (player.round.get("role") == "listener") {
-      // if player did not respond in time
-      if (!player.round.get("clicked")) {
-        feedback =
-          "You did not respond in time. You earned no bonus this round.";
+      // Check if speaker was idle (didn't send any message)
+      if (!speakerSentMessage) {
+        feedback = "The speaker did not send a message this round. No points were awarded.";
+      } else if (!player.round.get("clicked")) {
+        // Listener didn't respond in time
+        feedback = "You did not respond in time. You earned no bonus this round.";
       } else if (correct) {
         feedback = "Correct! You earned 2 points for the tangram.";
-        // Add social guess feedback if applicable
-        if (isSocialMixed) {
-          const socialCorrect = player.round.get("social_guess_correct");
-          if (socialCorrect) {
-            feedback += " You also correctly guessed the speaker's group (+2 points).";
-          } else if (player.round.get("social_guess")) {
-            feedback += " Your guess about the speaker's group was incorrect.";
-          }
-        }
       } else {
         feedback = "Ooops, that wasn't the target! You earned no tangram bonus this round.";
-        // Add social guess feedback if applicable
-        if (isSocialMixed) {
-          const socialCorrect = player.round.get("social_guess_correct");
-          if (socialCorrect) {
-            feedback += " But you correctly guessed the speaker's group (+2 points).";
-          } else if (player.round.get("social_guess")) {
-            feedback += " Your guess about the speaker's group was also incorrect.";
-          }
-        }
       }
     }
     if (player.round.get("role") == "speaker") {
       const roundScore = player.round.get("round_score") || 0;
-      const socialRoundScore = player.round.get("social_round_score") || 0;
-      const totalScore = roundScore + socialRoundScore;
-
-      feedback = `You earned ${totalScore} ${totalScore == 1 ? `point` : `points`} this round.`;
-      if (isSocialMixed && socialRoundScore > 0) {
-        feedback += ` (${roundScore} from tangrams, ${socialRoundScore} from social guessing)`;
-      }
+      feedback = `You earned ${roundScore} ${roundScore == 1 ? `point` : `points`} this round.`;
     }
   }
 
@@ -235,7 +227,7 @@ export function Refgame(props) {
           </button>
         </div>
         <p style={{ textAlign: "center", marginTop: 8, fontSize: "0.85rem", color: "#666" }}>
-          You earn 2 points for a correct guess.
+          You'll see how well you did at the end of the game.
         </p>
       </div>
     );
@@ -248,6 +240,17 @@ export function Refgame(props) {
           <h3 style={{ textAlign: "center", marginBottom: "10px" }}>
             Your Group | Phase {phase_num} - Block {displayBlockNum} of {totalBlocks}
           </h3>
+          {groupIsSmaller && (
+            <p style={{
+              textAlign: "center",
+              fontSize: "0.85rem",
+              color: "#dc2626",
+              marginBottom: "8px",
+              fontStyle: "italic"
+            }}>
+              Your group is smaller because a player left or was inactive.
+            </p>
+          )}
           <div
             className="player-group"
             style={{

@@ -16,3 +16,4 @@ CLAUDE.md
 *.zip
 lexical-variation*/
 .playwright-mcp
+.claude/

@@ -18,8 +18,8 @@ export default function App() {
   const url = `${protocol}//${host}/query`;
 
   function introSteps({ game, player }) {
-    return []; // for testing
-    // return [ConsentPage, Introduction];
+    // return []; // for testing
+    return [ConsentPage, Introduction];
   }
 
   function exitSteps({ game, player }) {
