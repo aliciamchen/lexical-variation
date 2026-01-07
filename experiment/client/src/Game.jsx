@@ -61,6 +61,17 @@ export function Game() {
   const showChat =
     stage?.get("name") === "Selection" && !allGroupResponded && playerGroup;
 
+  // In mixed conditions during Phase 2, use display_name and display_avatar
+  const isMixed = (condition === "refer_mixed" || condition === "social_mixed") && phase_num === 2;
+
+  // Custom player name function to show role (Speaker/Listener)
+  const customPlayerName = (p) => {
+    const displayName = isMixed ? p.round?.get("display_name") : p.get("name");
+    const role = p.round?.get("role");
+    const roleLabel = role === "speaker" ? "(Speaker)" : "(Listener)";
+    return `${displayName || "Player"} ${roleLabel}`;
+  };
+
   return (
     <div className="h-full w-full flex">
       <div className="h-full w-full flex flex-col">
@@ -82,6 +93,7 @@ export function Game() {
             player={player}
             scope={stage}
             attribute={`${playerGroup}_chat`}
+            customPlayerName={customPlayerName}
           />
         </div>
       )}

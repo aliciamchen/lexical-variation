@@ -63,6 +63,57 @@ scope.append(attribute, {
 });
 ```
 
+**Chat role indicator patch:** Modify the Chat function (~line 458-479) to accept `customPlayerName` prop:
+```js
+// Change:
+function Chat({
+  scope,
+  attribute = "messages",
+  loading: LoadingComp = Loading
+}) {
+  // ...
+  const handleNewMessage = (text) => {
+    scope.append(attribute, {
+      text,
+      timestamp: Date.now(),
+      sender: {
+        id: player.id,
+        name: player.get("name") || player.id,
+        avatar: player.get("avatar")
+      }
+    });
+  };
+
+// To:
+function Chat({
+  scope,
+  attribute = "messages",
+  loading: LoadingComp = Loading,
+  customPlayerName
+}) {
+  // ...
+  const handleNewMessage = (text) => {
+    const senderName = customPlayerName ? customPlayerName(player) : (player.get("name") || player.id);
+    scope.append(attribute, {
+      text,
+      timestamp: Date.now(),
+      sender: {
+        id: player.id,
+        name: senderName,
+        avatar: player.get("avatar")
+      }
+    });
+  };
+```
+
+**Chat avatar square patch:** Add to `experiment/client/src/index.css`:
+```css
+/* Override Empirica chat avatar styling - make them squares to match other avatars */
+img.rounded-full {
+  border-radius: 6px !important;
+}
+```
+
 ## Dependencies
 
 The R packages are managed by `renv` and the Python packages are managed by conda.

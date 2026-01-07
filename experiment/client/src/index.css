@@ -101,7 +101,7 @@ h1, h2, h3, h4 {
   max-height: 4vh;
   /* object-fit: cover; */
   background-color: white;
-  border-radius: 50%;
+  border-radius: 6px;
 }
 
 .tangrams.grid {
@@ -193,7 +193,7 @@ h1, h2, h3, h4 {
 .player img {
   width: 45px;
   height: 45px;
-  border-radius: 50%;
+  border-radius: 6px;
   margin-right: 8px;
 }
 
@@ -611,3 +611,8 @@ h1, h2, h3, h4 {
 .exit-survey .form-line.thirds .bp3-form-group .bp3-label {
   min-height: 36px;
 } */
+
+/* Override Empirica chat avatar styling - make them squares to match other avatars */
+img.rounded-full {
+  border-radius: 6px !important;
+}

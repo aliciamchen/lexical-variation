@@ -34,11 +34,20 @@ To test the experiment, use the test-experiment skill.
   - Fields saved: social_guess, social_guess_correct (True/False), social_round_score (0/1/2 points)
 - [ ] set and check final constants: money, timing, etc (revert to the non-testing timing)
 - [ ] check completion codes are correct and that they are indicated correctly on prolific
-- [ ] Check that the waiting for other players submit and waiting for your group members to submit screens, are displaying correctly in the 9 person case
+- [x] Check that the waiting for other players submit and waiting for your group members to submit screens, are displaying correctly in the 9 person case
+  - Verified with 9-player refer_mixed test (2026-01-07):
+  - "Waiting for the players in your group to respond..." - shown when group members haven't finished
+  - "All players in group responded! Waiting for members of other groups to respond..." - shown when group finished but other groups haven't
+  - Screenshots: waiting_screen_speaker_view.png, waiting_screen_multi_group.png
 - [ ] When all is ready, switch to final version with all correct timing + lobby config, and then run once using playwright and then test once manually to make sure everything is working correctly.
 - [ ] for later (i need to do manually): set up digitalocean server and figure out billing
 - [ ] also for later: get IRB approval from mitchell
-- [ ] make avatars squares, why are they circles
+- [x] make avatars squares, why are they circles
+  - **FIXED** (2026-01-07): Changed border-radius from 50% to 6px in index.css:
+  - `.player img` (line 196) - group member avatars in game
+  - `.feedback img` (line 104) - feedback avatars on tangrams
+  - Added `img.rounded-full { border-radius: 6px !important; }` to override Empirica chat avatars
+  - Screenshots: avatar_squares_test.png, chat_avatar_square_test.png
 
 
 - [x] IMPORTANT: make sure the shuffling is happening on each trial in the mixed conditions and that participants know this. Indicate in feedback screens in phase 2, that shuffling is happening each time. Check text, make sure it's clear, say that we are masking group identities
@@ -330,3 +339,13 @@ These todos are for after collecting pilot data, to verify the outcome-neutral c
 - [x] **Roles display correctly in ALL groups**: Groups A, B, and C all show correct speaker/listener labels
 - [x] **Multi-group waiting message**: Shows "Waiting for members of other groups to respond..." (not just "All players responded!")
 - [x] **Idle detection works across all groups**: Players marked idle correctly regardless of group
+- [x] **Chat role indicators**: Added "(Speaker)" or "(Listener)" labels next to player names in chat
+  - Patched Empirica Chat component in chunk-J6LPACOK.js to accept `customPlayerName` prop
+  - Game.jsx passes function that returns name + role label
+  - Works in both Phase 1 (regular names) and Phase 2 mixed conditions (masked names)
+  - Screenshots: chat_role_indicator_speaker.png, chat_role_indicator_listener.png
+- [x] **Phase 2 avatar and chat verification** (2026-01-07):
+  - Avatars remain square (not circular) in Phase 2 with anonymous shapes style
+  - Chat role indicators work with masked "Player" name: "Player (Speaker)" and "Player (Listener)"
+  - Group display shows masked identities: "Player (You)", "Player (Speaker)", "Player (Listener)"
+  - Screenshots: phase2_masked_identities_test.png, phase2_chat_role_indicator.png, phase2_chat_both_roles.png

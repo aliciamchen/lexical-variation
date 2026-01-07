@@ -22,7 +22,7 @@ export function Transition(props) {
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
           You will continue playing the reference game with the{" "}
           <strong>same group members</strong> you played with in Phase 1. Your
-          goal remains the same: describe the tangrams to help your listeners
+          goal (and the scoring) remains the same: describe the tangrams to help your listeners
           identify them correctly. Remember to limit your messages to describing
           the current target picture only.
         </p>
