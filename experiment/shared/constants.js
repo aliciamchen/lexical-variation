@@ -1,0 +1,154 @@
+// ============ SHARED CONSTANTS ============
+// Import from here in both client/src and server/src.
+
+// ============ TEST MODE ============
+// Set to true for local testing (longer timeouts, more idle tolerance)
+export const TEST_MODE = true; // Set to true for testing (longer timeouts)
+
+// ============ TESTING VS PRODUCTION VALUES ============
+// TEST_MODE only affects timing and tolerance settings, not player/group counts.
+// Player count is set in treatments.yaml and group count is derived from player count.
+//
+// | Setting              | Testing | Production | Description                          |
+// |----------------------|---------|------------|--------------------------------------|
+// | TEST_MODE            | true    | false      | Master toggle                        |
+// | SELECTION_DURATION   | 120     | 45         | Seconds for selection stage          |
+// | MAX_IDLE_ROUNDS      | 5       | 2          | Rounds before idle kick              |
+// | PHASE_1_BLOCKS       | 2       | 6          | Blocks in Phase 1                    |
+// | PHASE_2_BLOCKS       | 2       | 6          | Blocks in Phase 2                    |
+
+// ============ TIMING CONFIGURATION ============
+// Stage durations in seconds
+export const SELECTION_DURATION = TEST_MODE ? 120 : 45;  // Selection stage (TEST: 120s)
+export const FEEDBACK_DURATION = 10;                      // Feedback stage (same for both)
+export const TRANSITION_DURATION = 30;                    // Phase transition (same for both)
+export const BONUS_INFO_DURATION = 30;                    // End game bonus info (same for both)
+
+// ============ TANGRAM SETS ============
+// Using Ji et al. (2022) tangrams - two sets of 6 with high SND (Shape Naming Divergence)
+// Set 0: Original selection (SND range: 0.960-0.987)
+// Set 1: Next highest SND tangrams (SND range: 0.978-0.987)
+export const tangram_sets = {
+  0: ["page1-129", "page3-121", "page3-182", "page4-157", "page6-149", "page7-81"],
+  1: ["page3-85", "page3-136", "page5-64", "page9-46", "page9-27", "page1-128"],
+};
+
+// ============ PLAYER CONFIGURATION ============
+// Player count is set in treatments.yaml (playerCount field)
+// Group count is derived dynamically in callbacks.js from actual player count
+export const GROUP_SIZE = 3;
+export const LISTENERS_PER_TRIAL = 2;
+
+// ============ PHASE CONFIGURATION ============
+// Phase 1: Within-group reference game
+// Phase 2: Continued reference game (condition-dependent)
+export const PHASE_1_BLOCKS = TEST_MODE ? 2 : 6; // Each player speaks twice in production
+export const PHASE_2_BLOCKS = TEST_MODE ? 2 : 6;
+
+// ============ GAME STRUCTURE ============
+export const NUM_TANGRAMS = 6;
+
+// ============ PLAYER NAMES ============
+export const names = [
+  "Repi",
+  "Minu",
+  "Laju",
+  "Hera",
+  "Zuda",
+  "Bavi",
+  "Lika",
+  "Felu",
+  "Nori", // Added 9th name
+];
+
+// ============ EXPERIMENTAL CONDITIONS ============
+// Between-subjects conditions (set at game creation)
+export const conditions = ["refer_separated", "refer_mixed", "social_mixed"];
+
+// ============ AVATAR CONFIGURATION ============
+// Using DiceBear API for avatars (https://www.dicebear.com)
+
+// Regular avatar seeds for Phase 1 (identicon style)
+export const avatar_seeds = [
+  "aria",
+  "katherine",
+  "kayla",
+  "oliver",
+  "kaylee",
+  "alexandra",
+  "cole",
+  "noah",
+  "morgan",
+];
+
+// Generate DiceBear identicon URL (consistent blue color scheme)
+export const getAvatarUrl = (seed) =>
+  `https://api.dicebear.com/9.x/identicon/svg?seed=${seed}&backgroundColor=e0f2fe&rowColor=0369a1`;
+
+// Generate anonymous avatar URL (shapes style, grayscale)
+export const getAnonymousAvatarUrl = (seed) =>
+  `https://api.dicebear.com/9.x/shapes/svg?seed=${seed}&backgroundColor=e5e7eb&shape1Color=9ca3af&shape2Color=6b7280&shape3Color=4b5563`;
+
+// Neutral colors for player names (no group distinction)
+export const name_colors = [
+  "#29828D",
+  "#444EA1",
+  "#57AEC6",
+  "#5792C8",
+  "#A93F39",
+  "#D075A7",
+  "#A9385B",
+  "#A93849",
+  "#6B7280", // Added 9th color (neutral gray)
+];
+
+// ============ SCORING ============
+export const BONUS_PER_POINT = 0.05;
+export const bonus_per_point = BONUS_PER_POINT; // Alias for server compatibility
+export const LISTENER_CORRECT_POINTS = 2;
+export const SPEAKER_POINTS_PER_CORRECT_LISTENER = 1;
+export const SPEAKER_POINTS_PER_LISTENER = SPEAKER_POINTS_PER_CORRECT_LISTENER; // Alias for client
+export const SOCIAL_GUESS_CORRECT_POINTS = 2;
+export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 1;
+
+// ============ COMPENSATION ============
+export const BASE_PAY = 10; // dollars
+export const PARTIAL_PAY = 2; // dollars for terminated players (timeout, lobby timeout)
+
+// ============ DROPOUT HANDLING ============
+export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 2; // TEST: 5 rounds tolerance
+export const MIN_GROUP_SIZE = 2; // Minimum players needed to continue in a group
+// MIN_ACTIVE_GROUPS is derived dynamically in callbacks.js based on actual group count
+
+// ============ DERIVED VALUES ============
+// Total blocks
+export const TOTAL_BLOCKS = PHASE_1_BLOCKS + PHASE_2_BLOCKS;
+
+// Rounds per block (one per tangram)
+export const ROUNDS_PER_BLOCK = NUM_TANGRAMS;
+
+// Total rounds
+export const TOTAL_ROUNDS = TOTAL_BLOCKS * ROUNDS_PER_BLOCK;
+
+// How many times each player is speaker in Phase 1
+export const SPEAKER_TIMES_PHASE_1 = PHASE_1_BLOCKS / GROUP_SIZE;
+
+// Maximum possible bonus calculation
+// Each player: PHASE_1_BLOCKS as speaker (1 pt per correct listener × 2 listeners × 6 rounds)
+//            + PHASE_1_BLOCKS as listener (2 pts per correct × 6 rounds)
+// Plus Phase 2 same pattern
+const maxSpeakerPointsPerBlock = SPEAKER_POINTS_PER_LISTENER * (GROUP_SIZE - 1) * NUM_TANGRAMS;
+const maxListenerPointsPerBlock = LISTENER_CORRECT_POINTS * NUM_TANGRAMS;
+const speakerBlocksTotal = TOTAL_BLOCKS / GROUP_SIZE;
+const listenerBlocksTotal = TOTAL_BLOCKS - speakerBlocksTotal;
+export const MAX_POINTS = (speakerBlocksTotal * maxSpeakerPointsPerBlock) + (listenerBlocksTotal * maxListenerPointsPerBlock);
+export const MAX_BONUS = MAX_POINTS * BONUS_PER_POINT;
+
+// Estimated time in minutes
+export const ESTIMATED_TIME_MIN = 30;
+export const ESTIMATED_TIME_MAX = 45;
+
+// Log warning if in test mode (only runs on server)
+if (typeof window === 'undefined' && TEST_MODE) {
+  console.warn("⚠️  RUNNING IN TEST MODE");
+}

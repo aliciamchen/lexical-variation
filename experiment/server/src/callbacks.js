@@ -95,9 +95,15 @@ Empirica.onGameStart(({ game }) => {
   const minActiveGroups = actualGroupCount > 1 ? 2 : 1;
   game.set("min_active_groups", minActiveGroups);
 
-  // Store block counts for client display
+  // Store constants for client display
   game.set("phase1Blocks", PHASE_1_BLOCKS);
   game.set("phase2Blocks", PHASE_2_BLOCKS);
+  game.set("selectionDuration", SELECTION_DURATION);
+  game.set("numTangrams", context.length);
+  game.set("groupSize", GROUP_SIZE);
+  game.set("bonusPerPoint", bonus_per_point);
+  game.set("listenerCorrectPoints", LISTENER_CORRECT_POINTS);
+  game.set("speakerPointsPerListener", SPEAKER_POINTS_PER_CORRECT_LISTENER);
 
   // ============ PHASE 1: REFERENCE GAME ============
   // Players play within their original groups

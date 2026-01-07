@@ -1,5 +1,11 @@
 import React from "react";
 import { Button } from "../components/Button";
+import {
+  ESTIMATED_TIME_MIN,
+  ESTIMATED_TIME_MAX,
+  BASE_PAY,
+  MAX_BONUS,
+} from "../constants";
 
 export function ConsentPage({ next }) {
   return (
@@ -15,7 +21,7 @@ export function ConsentPage({ next }) {
         series of communication tasks with other participants.
       </p>
       <p>
-        <strong>Time required:</strong> This study will take approximately 30-45
+        <strong>Time required:</strong> This study will take approximately {ESTIMATED_TIME_MIN}-{ESTIMATED_TIME_MAX}{" "}
         minutes.
       </p>
       <p>
@@ -28,8 +34,8 @@ export function ConsentPage({ next }) {
         a computer monitor and using a mouse for the duration of the experiment.
       </p>
       <p>
-        <strong>Compensation:</strong> You will receive $10 for completing the
-        experiment, with an additional performance bonus of up to $5.40.
+        <strong>Compensation:</strong> You will receive ${BASE_PAY} for completing the
+        experiment, with an additional performance bonus of up to ${MAX_BONUS.toFixed(2)}.
       </p>
       <p>
         <strong>Confidentiality:</strong> Your participation in this study will

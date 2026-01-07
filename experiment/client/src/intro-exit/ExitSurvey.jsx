@@ -2,6 +2,7 @@ import { usePlayer } from "@empirica/core/player/classic/react";
 import React, { useState } from "react";
 import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
+import { BASE_PAY } from "../constants";
 
 export function ExitSurvey({ next }) {
   const labelClassName = "block text-sm font-medium text-gray-700 my-2";
@@ -50,7 +51,7 @@ export function ExitSurvey({ next }) {
           You earned <strong>{score} points</strong> for a bonus of <strong>${bonus.toFixed(2)}</strong>.
         </p>
         <p className="mt-2">
-          Your base pay is <strong>$10.00</strong>, so your total compensation is <strong>${(10 + bonus).toFixed(2)}</strong>.
+          Your base pay is <strong>${BASE_PAY.toFixed(2)}</strong>, so your total compensation is <strong>${(BASE_PAY + bonus).toFixed(2)}</strong>.
         </p>
         <p className="mt-2">
           Please submit the following code on Prolific to receive your payment:{" "}

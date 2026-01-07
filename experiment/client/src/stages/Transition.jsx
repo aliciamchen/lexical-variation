@@ -1,5 +1,13 @@
 import React from "react";
 import { Button } from "../components/Button";
+import {
+  PHASE_2_BLOCKS,
+  NUM_TANGRAMS,
+  LISTENER_CORRECT_POINTS,
+  SPEAKER_POINTS_PER_LISTENER,
+  SOCIAL_GUESS_CORRECT_POINTS,
+  SOCIAL_SPEAKER_POINTS_PER_CORRECT,
+} from "../constants";
 
 export function Transition(props) {
   const { round, stage, game, player, players } = props;
@@ -79,28 +87,28 @@ export function Transition(props) {
         </p>
         {conditionInstructions}
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
-          Phase 2 consists of 12 blocks. Each block has 6 rounds, just like in
+          Phase 2 consists of {PHASE_2_BLOCKS} blocks. Each block has {NUM_TANGRAMS} rounds, just like in
           Phase 1.
         </p>
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
           <strong>Scoring:</strong>
           <ul style={{ marginTop: 4, marginLeft: 20 }}>
             <li>
-              Listeners earn <strong>2 points</strong> for correctly identifying
+              Listeners earn <strong>{LISTENER_CORRECT_POINTS} points</strong> for correctly identifying
               the target tangram.
             </li>
             <li>
-              Speakers earn <strong>1 point</strong> for each listener who
+              Speakers earn <strong>{SPEAKER_POINTS_PER_LISTENER} point</strong> for each listener who
               correctly identifies the target.
             </li>
             {condition === "social_mixed" && (
               <>
                 <li>
-                  Listeners earn <strong>2 bonus points</strong> for correctly
+                  Listeners earn <strong>{SOCIAL_GUESS_CORRECT_POINTS} bonus points</strong> for correctly
                   guessing whether the speaker was in their original group.
                 </li>
                 <li>
-                  Speakers earn <strong>1 bonus point</strong> for each listener
+                  Speakers earn <strong>{SOCIAL_SPEAKER_POINTS_PER_CORRECT} bonus point</strong> for each listener
                   who correctly guesses their group membership.
                 </li>
               </>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Tangram } from "../components/Tangram.jsx";
 import { Button } from "../components/Button.jsx";
+import { PHASE_1_BLOCKS, PHASE_2_BLOCKS } from "../constants";
 
 export function Refgame(props) {
   const { round, stage, game, player, players } = props;
@@ -88,8 +89,8 @@ export function Refgame(props) {
   const speakerMissing = !speaker && isListener;
 
   // Get total blocks from game (set based on TEST_MODE)
-  const phase1Blocks = game.get("phase1Blocks") || 6;
-  const phase2Blocks = game.get("phase2Blocks") || 12;
+  const phase1Blocks = game.get("phase1Blocks") || PHASE_1_BLOCKS;
+  const phase2Blocks = game.get("phase2Blocks") || PHASE_2_BLOCKS;
   const totalBlocks = phase_num === 1 ? phase1Blocks : phase2Blocks;
   const displayBlockNum = block_num + 1;
 

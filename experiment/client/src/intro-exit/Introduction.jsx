@@ -2,6 +2,21 @@ import React, { useState } from "react";
 import { Button } from "../components/Button";
 import { Quiz } from "./Quiz";
 import _ from "lodash";
+import {
+  ESTIMATED_TIME_MIN,
+  ESTIMATED_TIME_MAX,
+  BASE_PAY,
+  MAX_BONUS,
+  NUM_TANGRAMS,
+  PHASE_1_BLOCKS,
+  PHASE_2_BLOCKS,
+  SELECTION_DURATION,
+  SPEAKER_TIMES_PHASE_1,
+  LISTENER_CORRECT_POINTS,
+  SPEAKER_POINTS_PER_LISTENER,
+  BONUS_PER_POINT,
+  GROUP_SIZE,
+} from "../constants";
 
 export function Introduction({ next }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -75,10 +90,10 @@ export function Introduction2({ next }) {
       <p>
         In this task, you will play a series of communication games with other
         players. The game has two phases. You should expect
-        that the whole game will take approximately <strong>30-45 minutes</strong>.
+        that the whole game will take approximately <strong>{ESTIMATED_TIME_MIN}-{ESTIMATED_TIME_MAX} minutes</strong>.
       </p>
       <p>
-        You will receive a base pay of <strong>$10</strong>, plus a bonus of up to <strong>$5.40</strong> based on your
+        You will receive a base pay of <strong>${BASE_PAY}</strong>, plus a bonus of up to <strong>${MAX_BONUS.toFixed(2)}</strong> based on your
         performance in the game.
       </p>
       <p>
@@ -121,12 +136,12 @@ export function Introduction3({ next }) {
       <h1>How to play</h1>
       <h2>Phase 1: Reference Game</h2>
       <p>
-        In the first phase, you will be assigned to a group with <strong>3 players</strong>,
+        In the first phase, you will be assigned to a group with <strong>{GROUP_SIZE} players</strong>,
         including yourself. You will play a communication game with the players
         in your group.
       </p>
       <p>
-        Everyone playing the game sees the same set of 6 pictures, which will
+        Everyone playing the game sees the same set of {NUM_TANGRAMS} pictures, which will
         look something like this:
       </p>
       <div className="tangrams grid">{tangramsNoTarget}</div>
@@ -215,7 +230,7 @@ export function Introduction4({ next }) {
       <div className="status">
         <div className="players card" style={{ width: "60%" }}>
           <h3 style={{ textAlign: "center", marginBottom: "10px" }}>
-            Your Group | Phase 1 - Block 1 of 6
+            Your Group | Phase 1 - Block 1 of {PHASE_1_BLOCKS}
           </h3>
           <div
             className="player-group"
@@ -232,13 +247,13 @@ export function Introduction4({ next }) {
         </div>
       </div>
       <p>
-        You and your group have <strong>45 seconds</strong> to select an image each trial. If
+        You and your group have <strong>{SELECTION_DURATION} seconds</strong> to select an image each trial. If
         you do not select an image in this time frame, you will automatically{" "}
         <strong>progress to the next stage when the time is up</strong> and will
         not get a bonus, so please stay focused.
       </p>
       <p>
-        Each block consists of 6 trials (one for each picture). The Speaker role rotates each block. In Phase 1, there are <strong>6 blocks</strong>, so each player will be the Speaker for 2 blocks.
+        Each block consists of {NUM_TANGRAMS} trials (one for each picture). The Speaker role rotates each block. In Phase 1, there are <strong>{PHASE_1_BLOCKS} blocks</strong>, so each player will be the Speaker for {SPEAKER_TIMES_PHASE_1} blocks.
       </p>
       <p>
         <strong>Important:</strong> If you are inactive for 2 consecutive trials (no messages or selections), you will be removed from the game.
@@ -260,7 +275,7 @@ export function Introduction5({ next }) {
       <h2>Phase 2 and Scoring</h2>
       <p>
         After completing Phase 1 with your group, you will continue to Phase 2.
-        Phase 2 also consists of 6 blocks. You will receive specific instructions
+        Phase 2 also consists of {PHASE_2_BLOCKS} blocks. You will receive specific instructions
         about Phase 2 when you get there.
       </p>
       <h3>Scoring</h3>
@@ -268,12 +283,12 @@ export function Introduction5({ next }) {
         Your performance earns you points which determine your bonus:
       </p>
       <ul style={{ marginLeft: 20 }}>
-        <li>Each time a <strong>Listener</strong> correctly identifies the target, they earn <strong>2 points</strong>.</li>
-        <li>The <strong>Speaker</strong> earns <strong>1 point</strong> for each Listener who correctly identifies the target.</li>
+        <li>Each time a <strong>Listener</strong> correctly identifies the target, they earn <strong>{LISTENER_CORRECT_POINTS} points</strong>.</li>
+        <li>The <strong>Speaker</strong> earns <strong>{SPEAKER_POINTS_PER_LISTENER} point</strong> for each Listener who correctly identifies the target.</li>
         <li>No points are awarded for incorrect selections or timeouts.</li>
       </ul>
       <p>
-        At the end of the game, your total points are converted to a bonus at a rate of <strong>$0.05 per point</strong>.
+        At the end of the game, your total points are converted to a bonus at a rate of <strong>${BONUS_PER_POINT.toFixed(2)} per point</strong>.
       </p>
       <h3>Important Rules</h3>
       <p>

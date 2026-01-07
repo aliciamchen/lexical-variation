@@ -2,6 +2,7 @@ import React from "react";
 import { usePlayer } from "@empirica/core/player/classic/react";
 import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
+import { PARTIAL_PAY } from "../constants";
 
 export function Sorry({ next }) {
   const player = usePlayer();
@@ -36,7 +37,7 @@ export function Sorry({ next }) {
       </>
     );
     compensationCode = "TIMEOUT2024";
-    compensationMessage = "partial payment ($2)";
+    compensationMessage = `partial payment ($${PARTIAL_PAY})`;
   } else if (endedReason === "group disbanded") {
     title = "Group Disbanded";
     message = (
@@ -66,7 +67,7 @@ export function Sorry({ next }) {
       </>
     );
     compensationCode = "LOBBYTIMEOUT";
-    compensationMessage = "partial payment ($2) for your waiting time";
+    compensationMessage = `partial payment ($${PARTIAL_PAY}) for your waiting time`;
   } else {
     // Default / unknown reason
     message = (
