@@ -23,6 +23,10 @@ import {
   MIN_GROUP_SIZE,
   MIN_ACTIVE_GROUPS,
   TEST_MODE,
+  SELECTION_DURATION,
+  FEEDBACK_DURATION,
+  TRANSITION_DURATION,
+  BONUS_INFO_DURATION,
 } from "./constants";
 
 // Group names (no color distinction)
@@ -113,11 +117,11 @@ Empirica.onGameStart(({ game }) => {
       });
       round.addStage({
         name: "Selection",
-        duration: 120, // Increased for MCP testing
+        duration: SELECTION_DURATION,
       });
       round.addStage({
         name: "Feedback",
-        duration: 10,
+        duration: FEEDBACK_DURATION,
       });
     });
   });
@@ -130,7 +134,7 @@ Empirica.onGameStart(({ game }) => {
 
   transition.addStage({
     name: "phase_2_transition",
-    duration: 30,
+    duration: TRANSITION_DURATION,
   });
 
   // ============ PHASE 2: CONTINUED REFERENCE GAME ============
@@ -156,11 +160,11 @@ Empirica.onGameStart(({ game }) => {
       });
       round.addStage({
         name: "Selection",
-        duration: 120, // Increased for testing
+        duration: SELECTION_DURATION,
       });
       round.addStage({
         name: "Feedback",
-        duration: 10,
+        duration: FEEDBACK_DURATION,
       });
     });
   });
@@ -173,7 +177,7 @@ Empirica.onGameStart(({ game }) => {
 
   finalTransition.addStage({
     name: "bonus_info",
-    duration: 30,
+    duration: BONUS_INFO_DURATION,
   });
 });
 

@@ -2,6 +2,27 @@
 // Set to true for local testing with fewer players
 export const TEST_MODE = true;
 
+// ============ TESTING VS PRODUCTION VALUES ============
+// All values that differ between testing and production are defined here
+//
+// | Setting              | Testing | Production | Description                          |
+// |----------------------|---------|------------|--------------------------------------|
+// | TEST_MODE            | true    | false      | Master toggle                        |
+// | PLAYER_COUNT         | 3       | 9          | Total players per game               |
+// | GROUP_COUNT          | 1       | 3          | Number of groups                     |
+// | PHASE_1_BLOCKS       | 2       | 6          | Blocks in Phase 1                    |
+// | PHASE_2_BLOCKS       | 2       | 6          | Blocks in Phase 2                    |
+// | SELECTION_DURATION   | 120     | 45         | Seconds for selection stage          |
+// | MAX_IDLE_ROUNDS      | 5       | 2          | Rounds before idle kick              |
+// | MIN_ACTIVE_GROUPS    | 1       | 2          | Min groups to continue game          |
+
+// ============ TIMING CONFIGURATION ============
+// Stage durations in seconds
+export const SELECTION_DURATION = TEST_MODE ? 120 : 45;  // Selection stage (testing: 2min, prod: 45s)
+export const FEEDBACK_DURATION = 10;                      // Feedback stage (same for both)
+export const TRANSITION_DURATION = 30;                    // Phase transition (same for both)
+export const BONUS_INFO_DURATION = 30;                    // End game bonus info (same for both)
+
 // ============ TANGRAM SETS ============
 // Using Ji et al. (2022) tangrams - two sets of 6 with high SND (Shape Naming Divergence)
 // Set 0: Original selection (SND range: 0.960-0.987)
@@ -87,7 +108,7 @@ export const SOCIAL_GUESS_CORRECT_POINTS = 2;
 export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 1;
 
 // ============ DROPOUT HANDLING ============
-export const MAX_IDLE_ROUNDS = 5; // Remove player after 5 consecutive idle rounds (increased for MCP testing)
+export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 2; // Testing: 5 rounds, Production: 2 rounds
 export const MIN_GROUP_SIZE = 2; // Minimum players needed to continue in a group
 export const MIN_ACTIVE_GROUPS = TEST_MODE ? 1 : 2; // Minimum groups needed to continue the game
 
