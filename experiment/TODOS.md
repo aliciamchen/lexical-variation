@@ -29,7 +29,9 @@ NOTE for claude: If you need it to figure out how to do something, the docs for 
   - Changed from "Player 1", "Player 2" to just "Player" in callbacks.js
 
 - [ ] test cumulative social guesses are saved correctly
-- [ ] check constants: money, timing, etc.
+- [ ] set and check final constants: money, timing, etc (revert to the non-testing timing)
+- [ ] check completion codes are correct and that they are indicated correctly on prolific
+- [ ] Check that the waiting for other players submit and waiting for your group members to submit screens, are displaying correctly in the 9 person case
 
 # Phase A: Running the Experiment & Collecting Pilot Data
 
@@ -125,9 +127,9 @@ These todos must be completed before collecting pilot data.
 
 ## A5. Waiting Room & Game Start Logic
 
-- [ ] Waiting room timeout: 5 minutes max, then remove and compensate $2
-- [ ] Games can start with 6+ members (prioritize 9-player games)
-- [ ] Handle uneven player counts (6, 7, 8 players) - how are groups formed?
+- [ ] Waiting room timeout: 5 minutes max, then remove and compensate $2, there should be a compensation code for this
+- [ ] [CHECK WITH ROBERT AND REBECCA] Games can start with 6+ members (prioritize 9-player games)? Should we do this? 
+- [ ] If above: Check that the groups are formed correctly for uneven player counts (6, 7, 8 players) - how are groups formed?
 
 ## A6. In-Game Exclusion Criteria (automated)
 
@@ -155,7 +157,7 @@ These todos must be completed before collecting pilot data.
   - [x] Remaining member removed with `ended="group disbanded"` when group becomes non-viable
 - [ ] Speaker role reassignment when someone drops mid-block
   - Current behavior: if speaker is kicked, listeners in same group auto-submit and skip remaining trials
-  - TODO: Implement reassignment if needed (complex edge case)
+  - CHANGE TO (this is important): speaker role is reassigned to the next player in the group, they finish up the block and then do the next block. 
 
 ## A9. UI/UX Polish
 
@@ -182,9 +184,11 @@ These todos must be completed before collecting pilot data.
 
 - [x] Player removed after 2 idle rounds
 - [x] Group continuation with 2 remaining
+    - [ ] Check in this case the rotation works correctly (i.e. the remaining speakers just end up alternating block after block)
+- [ ] Check dropout rules make sense and work, with the reshuffling logic in the mixed conditions
 - [x] Final member removal when 2 drop
 - [x] Game continuation with 2+ active groups
-- [ ] What happens when someone leaves in the middle of block? Should reassign to another speaker to finish the tangrams left to be described
+- [ ] Check that when someone leaves in the middle of block, the speaker is reassigned to the next player in the group and they finish up the block and then do the next block. 
 
 ### Production Mode (9 players)
 
@@ -195,11 +199,6 @@ These todos must be completed before collecting pilot data.
 ## A11. External/Logistics
 
 - [ ] Figure out appointment slot thing (do this externally, this isn't a change in the code.) - Use Optimeet for scheduling
-
-## A12. Optional / Nice-to-Have (for running experiment)
-
-- [ ] MAYBE: Let games start if there are fewer than 9 people in the waiting room
-- [ ] MAYBE: Set up Jest unit tests for callbacks
 
 ---
 
