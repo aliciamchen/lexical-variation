@@ -20,17 +20,26 @@ export function Transition(props) {
     if (condition === "refer_separated") {
       conditionInstructions = (
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
-          You will continue playing the reference game with the <strong>same group members</strong> you played with in Phase 1. Your goal remains the same: describe the tangrams to help your listeners identify them correctly.  Remember to limit your messages to describing the current target picture only.
+          You will continue playing the reference game with the{" "}
+          <strong>same group members</strong> you played with in Phase 1. Your
+          goal remains the same: describe the tangrams to help your listeners
+          identify them correctly. Remember to limit your messages to describing
+          the current target picture only.
         </p>
       );
     } else if (condition === "refer_mixed") {
       conditionInstructions = (
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>
-            In this phase, players from all groups will be <strong>mixed together</strong>. You will be randomly assigned to new groups on each trial, and player identities will be hidden. You won't know who your current group members are - everyone will appear as "Player" with anonymous avatars.
+            In this phase, players from all groups will be{" "}
+            <strong>mixed together</strong>. On each round, you will be randomly
+            assigned to play with different players. These people may or may not
+            be from your original group. Player identities will be hidden:
+            Everyone will appear as "Player" with anonymous avatars.
           </p>
           <p style={{ marginTop: 8 }}>
-            Your goal remains the same: describe the tangrams to help your listeners identify them correctly.
+            Your goal remains the same: describe the tangrams to help your
+            listeners identify them correctly.
           </p>
         </div>
       );
@@ -38,13 +47,23 @@ export function Transition(props) {
       conditionInstructions = (
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>
-            In this phase, players from all groups will be <strong>mixed together</strong>. You will be randomly assigned to new groups on each trial, and player identities will be hidden. You won't know who your current group members are - everyone will appear as "Player" with anonymous avatars.
+            In this phase, players from all groups will be{" "}
+            <strong>mixed together</strong>. On each round, you will be randomly
+            assigned to play with different players. These people may or may not
+            be from your original group. Player identities will be hidden:
+            Everyone will appear as "Player" with anonymous avatars.
           </p>
           <p style={{ marginTop: 8 }}>
-            <strong>New task:</strong> After clicking on a tangram, listeners will also guess whether the speaker was in their original group from Phase 1. You'll see your overall results at the end of the game.
+            <strong>New task:</strong> After clicking on a tangram, listeners
+            will also guess whether the speaker was in their{" "}
+            <em>original group</em> from Phase 1. Speakers and listeners will be
+            rewarded for correct guesses. For these guesses, we won't tell you
+            whether you were correct or not, but you will see the overall
+            results at the end of the game.
           </p>
           <p style={{ marginTop: 8 }}>
-            Remember to limit your messages to describing the current target picture only. 
+            Remember to limit your messages to describing the current target
+            picture only.
           </p>
         </div>
       );
@@ -60,17 +79,30 @@ export function Transition(props) {
         </p>
         {conditionInstructions}
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
-          Phase 2 consists of 12 blocks. Each block has 6 trials, just like in Phase 1.
+          Phase 2 consists of 12 blocks. Each block has 6 rounds, just like in
+          Phase 1.
         </p>
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
-          Scoring:
+          <strong>Scoring:</strong>
           <ul style={{ marginTop: 4, marginLeft: 20 }}>
-            <li>Listeners earn <strong>2 points</strong> for correctly identifying the target tangram.</li>
-            <li>Speakers earn <strong>1 point</strong> for each listener who correctly identifies the target.</li>
+            <li>
+              Listeners earn <strong>2 points</strong> for correctly identifying
+              the target tangram.
+            </li>
+            <li>
+              Speakers earn <strong>1 point</strong> for each listener who
+              correctly identifies the target.
+            </li>
             {condition === "social_mixed" && (
               <>
-                <li>Listeners earn <strong>2 bonus points</strong> for correctly guessing whether the speaker was in their original group.</li>
-                <li>Speakers earn <strong>1 bonus point</strong> for each listener who correctly guesses their group membership.</li>
+                <li>
+                  Listeners earn <strong>2 bonus points</strong> for correctly
+                  guessing whether the speaker was in their original group.
+                </li>
+                <li>
+                  Speakers earn <strong>1 bonus point</strong> for each listener
+                  who correctly guesses their group membership.
+                </li>
               </>
             )}
           </ul>
@@ -95,9 +127,13 @@ export function Transition(props) {
     // Social guess summary for social_mixed condition
     const socialGuessTotal = player.get("social_guess_total") || 0;
     const socialGuessCorrect = player.get("social_guess_correct_total") || 0;
-    const socialGuessedAboutTotal = player.get("social_guessed_about_total") || 0;
-    const socialGuessedAboutCorrect = player.get("social_guessed_about_correct") || 0;
-    const showSocialSummary = condition === "social_mixed" && (socialGuessTotal > 0 || socialGuessedAboutTotal > 0);
+    const socialGuessedAboutTotal =
+      player.get("social_guessed_about_total") || 0;
+    const socialGuessedAboutCorrect =
+      player.get("social_guessed_about_correct") || 0;
+    const showSocialSummary =
+      condition === "social_mixed" &&
+      (socialGuessTotal > 0 || socialGuessedAboutTotal > 0);
 
     return (
       <div className="prompt-container" style={{ textAlign: "left" }}>
@@ -108,23 +144,42 @@ export function Transition(props) {
           You have completed the game. Congrats!
         </p>
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
-          You earned <strong>{score} points</strong> in total, for
-          a bonus of <strong>${bonus.toFixed(2)}</strong>.
+          You earned <strong>{score} points</strong> in total, for a bonus of{" "}
+          <strong>${bonus.toFixed(2)}</strong>.
         </p>
 
         {showSocialSummary && (
-          <div style={{ marginTop: 16, padding: 16, backgroundColor: "#f0f9ff", borderRadius: 8 }}>
-            <p className="instruction-prompt" style={{ fontWeight: "bold", marginBottom: 8 }}>
+          <div
+            style={{
+              marginTop: 16,
+              padding: 16,
+              backgroundColor: "#f0f9ff",
+              borderRadius: 8,
+            }}
+          >
+            <p
+              className="instruction-prompt"
+              style={{ fontWeight: "bold", marginBottom: 8 }}
+            >
               Social Guessing Summary:
             </p>
             {socialGuessTotal > 0 && (
               <p className="instruction-prompt" style={{ marginTop: 4 }}>
-                When you were a listener, you correctly guessed the speaker's group <strong>{socialGuessCorrect}</strong> out of <strong>{socialGuessTotal}</strong> times ({Math.round(socialGuessCorrect / socialGuessTotal * 100)}%).
+                When you were a listener, you correctly guessed the speaker's
+                group <strong>{socialGuessCorrect}</strong> out of{" "}
+                <strong>{socialGuessTotal}</strong> times (
+                {Math.round((socialGuessCorrect / socialGuessTotal) * 100)}%).
               </p>
             )}
             {socialGuessedAboutTotal > 0 && (
               <p className="instruction-prompt" style={{ marginTop: 4 }}>
-                When you were a speaker, other players correctly identified your group <strong>{socialGuessedAboutCorrect}</strong> out of <strong>{socialGuessedAboutTotal}</strong> times ({Math.round(socialGuessedAboutCorrect / socialGuessedAboutTotal * 100)}%).
+                When you were a speaker, other players correctly identified your
+                group <strong>{socialGuessedAboutCorrect}</strong> out of{" "}
+                <strong>{socialGuessedAboutTotal}</strong> times (
+                {Math.round(
+                  (socialGuessedAboutCorrect / socialGuessedAboutTotal) * 100
+                )}
+                %).
               </p>
             )}
           </div>
