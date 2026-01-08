@@ -113,7 +113,10 @@ export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 1;
 
 // ============ COMPENSATION ============
 export const BASE_PAY = 10; // dollars
-export const PARTIAL_PAY = 2; // dollars for terminated players (timeout, lobby timeout)
+export const LOBBY_TIMEOUT_PAY = 2; // dollars for players who couldn't find a match in lobby
+
+// Expected game duration in minutes (used for proportional compensation)
+export const EXPECTED_GAME_DURATION_MIN = 35; // midpoint of 30-45 minute estimate
 
 // ============ DROPOUT HANDLING ============
 export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 2; // TEST: 5 rounds tolerance
