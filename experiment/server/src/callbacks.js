@@ -154,7 +154,7 @@ Empirica.onGameStart(({ game }) => {
   // ============ PHASE 2: CONTINUED REFERENCE GAME ============
   // Behavior depends on condition:
   // - refer_separated: Same groups as Phase 1
-  // - refer_mixed: Groups reshuffled each block, identities masked
+  // - refer_mixed: Groups reshuffled at start of each block (after 6 trials), identities masked
   // - social_mixed: Same as refer_mixed + social guessing question
   // Production: 12 blocks, Test mode: 4 blocks
 
@@ -205,9 +205,12 @@ Empirica.onRoundStart(({ round }) => {
     const players = game.players.filter((p) => p.get("is_active"));
     const blockNum = round.get("block_num");
 
-    // In Phase 2 with mixed conditions, reshuffle groups at start of each trial
+    // In Phase 2 with mixed conditions, reshuffle groups at start of each BLOCK
+    // (only when target_num === 0, i.e., first trial of the block)
+    const targetNum = round.get("target_num");
     if (
       phase_num === 2 &&
+      targetNum === 0 &&
       (condition === "refer_mixed" || condition === "social_mixed")
     ) {
       reshuffleGroups(game, players);

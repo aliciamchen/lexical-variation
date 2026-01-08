@@ -334,7 +334,8 @@ export function Refgame(props) {
 
         {stage.get("name") == "Feedback" &&
           (condition === "refer_mixed" || condition === "social_mixed") &&
-          phase_num === 2 && (
+          phase_num === 2 &&
+          round.get("target_num") === 5 && (
           <p
             style={{
               marginTop: 12,
@@ -344,7 +345,7 @@ export function Refgame(props) {
               width: "100%",
             }}
           >
-            Shuffling players for the next trial...
+            Shuffling players for the next block...
           </p>
         )}
 

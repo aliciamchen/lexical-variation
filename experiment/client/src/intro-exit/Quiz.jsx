@@ -32,7 +32,7 @@ export function Quiz({ next }) {
     {
       question: "What are you allowed to discuss in the chat?",
       choices: [
-        "Anything related to the game, including previous trials and strategies.",
+        "Anything related to the game.",
         "Only descriptions of the current target picture.",
         "Personal topics to get to know your group members.",
       ],
@@ -93,7 +93,9 @@ export function Quiz({ next }) {
         setFailed(true);
       } else {
         alert(
-          `Some answers are incorrect. You have ${MAX_ATTEMPTS - newAttempts} attempt(s) remaining. Please try again.`
+          `Some answers are incorrect. You have ${
+            MAX_ATTEMPTS - newAttempts
+          } attempt(s) remaining. Please try again.`
         );
       }
     }
@@ -125,9 +127,9 @@ export function Quiz({ next }) {
             Quiz Failed
           </h2>
           <p>
-            Unfortunately, you have used all {MAX_ATTEMPTS} attempts and were not able to
-            pass the comprehension quiz. You will not be able to participate in
-            this study.
+            Unfortunately, you have used all {MAX_ATTEMPTS} attempts and were
+            not able to pass the comprehension quiz. You will not be able to
+            participate in this study.
           </p>
           <p style={{ marginTop: "10px" }}>
             Please submit the following code on Prolific to receive partial

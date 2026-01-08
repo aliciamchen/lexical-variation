@@ -28,7 +28,7 @@ function formatSpeakerTimes(blocks, groupSize) {
   }
   // Otherwise, return as a fraction
   // Find GCD to simplify the fraction
-  const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+  const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
   const divisor = gcd(blocks, groupSize);
   return `${blocks / divisor}/${groupSize / divisor}`;
 }
@@ -104,11 +104,16 @@ export function Introduction2({ next }) {
       <h1>How to play</h1>
       <p>
         In this task, you will play a series of communication games with other
-        players. The game has two phases. You should expect
-        that the whole game will take approximately <strong>{ESTIMATED_TIME_MIN}-{ESTIMATED_TIME_MAX} minutes</strong>.
+        players. The game has two phases. You should expect that the whole game
+        will take approximately{" "}
+        <strong>
+          {ESTIMATED_TIME_MIN}-{ESTIMATED_TIME_MAX} minutes
+        </strong>
+        .
       </p>
       <p>
-        You will receive a base pay of <strong>${BASE_PAY}</strong>, plus a bonus of up to <strong>${MAX_BONUS.toFixed(2)}</strong> based on your
+        You will receive a base pay of <strong>${BASE_PAY}</strong>, plus a
+        bonus of up to <strong>${MAX_BONUS.toFixed(2)}</strong> based on your
         performance in the game.
       </p>
       <p>
@@ -151,17 +156,19 @@ export function Introduction3({ next }) {
       <h1>How to play</h1>
       <h2>Phase 1: Reference Game</h2>
       <p>
-        In the first phase, you will be assigned to a group with <strong>{GROUP_SIZE} players</strong>,
-        including yourself. You will play a communication game with the players
-        in your group.
+        In the first phase, you will be assigned to a group with{" "}
+        <strong>{GROUP_SIZE} players</strong>, including yourself. You will play
+        a communication game with the players in your group.
       </p>
       <p>
-        Everyone playing the game sees the same set of {NUM_TANGRAMS} pictures, which will
-        look something like this:
+        Everyone playing the game sees the same set of {NUM_TANGRAMS} pictures,
+        which will look something like this:
       </p>
       <div className="tangrams grid">{tangramsNoTarget}</div>
       <p>
-        In each trial, one of the players in the group is assigned the <strong>Speaker</strong> role and the other two are assigned the <strong>Listener</strong> role.
+        In each trial, one of the players in the group is assigned the{" "}
+        <strong>Speaker</strong> role and the other two are assigned the{" "}
+        <strong>Listener</strong> role.
       </p>
       <p>
         The Speaker sees a box secretly marking one of the pictures as the
@@ -173,19 +180,22 @@ export function Introduction3({ next }) {
         chatbox so that the Listeners are able to pick it out of the set. They
         can write whatever description they think will best allow the Listeners
         to identify the target. Please note that{" "}
-        <strong>the order of the pictures on your screen is scrambled</strong>, so
-        descriptions like "the one on the left" or "the third one" will not
+        <strong>the order of the pictures on your screen is scrambled</strong>,
+        so descriptions like "the one on the left" or "the third one" will not
         work.
       </p>
       <p>
-        <strong>Important:</strong> Please limit your messages to describing the current target picture.{" "}
-        <strong>Do not discuss previous trials, use codewords, or chat about any other topics.</strong>{" "}
-        Failure to follow this rule may result in <strong>not receiving your pay</strong>.
+        <strong>Important:</strong> Please limit your messages to describing the
+        current target picture.{" "}
+        <strong>Do not chat about any other topics.</strong> Failure to follow
+        this rule may result in not receiving your pay.
       </p>
       <p>
         After the Speaker sends a message, the Listeners read it and each click
-        the picture they believe is the target. <strong>Listeners cannot click until the Speaker sends a message.</strong> Listeners can also respond
-        by sending messages back through the chatbox. At the end of each trial, everyone will be given feedback about the correct picture.
+        the picture they believe is the target. Listeners cannot click until the
+        Speaker sends a message. Listeners can also respond by sending messages
+        back through the chatbox. At the end of each trial, everyone will be
+        given feedback about the correct picture.
       </p>
     </div>
   );
@@ -263,16 +273,22 @@ export function Introduction4({ next }) {
         </div>
       </div>
       <p>
-        You and your group have <strong>{SELECTION_DURATION} seconds</strong> to select an image each trial. If
-        you do not select an image in this time frame, you will automatically{" "}
-        <strong>progress to the next stage when the time is up</strong> and will
-        not get a bonus, so please stay focused.
+        You and your group have {SELECTION_DURATION} seconds for the listeners
+        to select an image each round. If you do not select an image in this
+        time frame, you will automatically progress to the next stage when the
+        time is up and will not not get a bonus, so please stay focused.
       </p>
       <p>
-        Each block consists of {NUM_TANGRAMS} trials (one for each picture). The Speaker role rotates each block. In Phase 1, there are <strong>{PHASE_1_BLOCKS} blocks</strong>, so each player will be the Speaker for {formatSpeakerTimes(PHASE_1_BLOCKS, GROUP_SIZE)} of the blocks.
+        <strong>Remember, free riding is not permitted.</strong> If we detect
+        that you are inactive, you will be removed from the game and{" "}
+        <strong>will not receive your pay</strong>.
       </p>
       <p>
-        <strong>Important:</strong> If you are inactive for 2 consecutive trials (no messages or selections), you will be removed from the game and <strong>will not receive your pay</strong>.
+        Each block consists of {NUM_TANGRAMS} rounds (one for each picture). The
+        Speaker role rotates each block. In Phase 1, there are{" "}
+        <strong>{PHASE_1_BLOCKS} blocks</strong>, so each player will be the
+        Speaker for {formatSpeakerTimes(PHASE_1_BLOCKS, GROUP_SIZE)} of the
+        blocks.
       </p>
       <p>
         Note that the game allows for simultaneous and real-time actions.{" "}
@@ -291,25 +307,26 @@ export function Introduction5({ next }) {
       <h2>Phase 2 and Scoring</h2>
       <p>
         After completing Phase 1 with your group, you will continue to Phase 2.
-        Phase 2 also consists of {PHASE_2_BLOCKS} blocks. You will receive specific instructions
-        about Phase 2 when you get there.
+        Phase 2 also consists of {PHASE_2_BLOCKS} blocks. You will receive
+        specific instructions about Phase 2 when you get there.
       </p>
-      <h3>Scoring</h3>
-      <p>
-        Your performance earns you points which determine your bonus:
-      </p>
+      <h2>Scoring</h2>
+      <p>Your performance earns you points which determine your bonus:</p>
       <ul style={{ marginLeft: 20 }}>
-        <li>Each time a <strong>Listener</strong> correctly identifies the target, they earn <strong>{LISTENER_CORRECT_POINTS} points</strong>.</li>
-        <li>The <strong>Speaker</strong> earns <strong>{SPEAKER_POINTS_PER_LISTENER} point</strong> for each Listener who correctly identifies the target.</li>
+        <li>
+          Each time a <strong>Listener</strong> correctly identifies the target,
+          they earn <strong>{LISTENER_CORRECT_POINTS} points</strong>.
+        </li>
+        <li>
+          The <strong>Speaker</strong> earns{" "}
+          <strong>{SPEAKER_POINTS_PER_LISTENER} point</strong> for each Listener
+          who correctly identifies the target.
+        </li>
         <li>No points are awarded for incorrect selections or timeouts.</li>
       </ul>
       <p>
-        At the end of the game, your total points are converted to a bonus at a rate of <strong>${BONUS_PER_POINT.toFixed(2)} per point</strong>.
-      </p>
-      <h2>Important Rules</h2>
-      <p>
-        <strong>Remember, free riding is not permitted.</strong> If we detect that you are
-        inactive, you will be removed from the game and <strong>will not receive your pay</strong>.
+        At the end of the game, your total points are converted to a bonus at a
+        rate of <strong>${BONUS_PER_POINT.toFixed(2)} per point</strong>.
       </p>
       <p>
         After you pass the comprehension quiz, you will be put into a waiting

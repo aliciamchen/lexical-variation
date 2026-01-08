@@ -12,16 +12,33 @@ To test the experiment, use the test-experiment skill.
 
 ### Pre-Launch (Code/Testing)
 
-- [ ] Waiting room timeout: 5 minutes max, then remove and compensate $2, there should be a compensation code for this
+- [x] Waiting room timeout: 5 minutes max, then remove and compensate $2, there should be a compensation code for this
+- [ ] Choose the two tangram sets based on Robert's feedback in slack
 - [ ] Set and check final constants: money, timing, etc (revert to the non-testing timing)
+- [ ] Put in Saxelab consent form
+- [ ] Check that when there is a social goal, the points on the screen don't increment during the experiment, and that participants are just shown their performance at the end (including the total score for refer and social guessing)
+- [x] oops for the mixed condition, reshuffling in phase 2 should be after each BLOCK not after each round (i.e. it should be: after one speaker describes each of the six tangrams, then the reshuffling happens). Clarify/change this in the instructions and change experiment code accordingly if we don't have this behavior right now.
+  - Fixed (2026-01-08): Changed callbacks.js to only reshuffle when `target_num === 0` (first trial of block)
+  - Updated Transition.jsx instructions to say "At the start of each block (every 6 rounds)" 
+- [ ] Test that in each block, the order of target tangrams is randomized (also check: is the order the same for all groups or not? i forget)
+- [ ] If participants are inactive for one round, add a reminder to the feedback that said that they were inactive and if they are inactive again they will be removed from the experiment and not receive any pay. 
+
+Changes for intro screens: 
+  - [ ] bonus amount in page, why is it 2.40? 
+  - [ ] change icons in intro from green to something else 
+  - [ ] change intro "important rules" heading size
+  - [ ] say that if they are inactive they will not receive their pay
+  - [ ] make comprehension quiz easier? / more conceptual? not just about memorizing numbers
+  - [ ] tell participants that to receive their pay they need to restrict discussion to tangrams
 
 ### Pre-Launch (Verification)
 
 - [ ] Read through all text in the experiment (instructions, etc.) and check
 - [ ] Check the numbers are correct: number of blocks, money, timing, etc.
-    - [ ] Particularly check if the pay is correct for the various ways that people people exit the experiment (idle, group disbanded, etc.) For group disbanded, it should be proportional to the amount of time they spent in the experiment. For idle, they do not get paid anything. 
+    - [x] Particularly check if the pay is correct for the various ways that people people exit the experiment (idle, group disbanded, etc.) For group disbanded, it should be proportional to the amount of time they spent in the experiment. For idle, they do not get paid anything. 
 - [ ] Check completion codes are correct and that they are indicated correctly on Prolific
 - [ ] When all is ready, switch to final version with all correct timing + lobby config, and then run once using Playwright and then test once manually to make sure everything is working correctly. Look at the data and see everything is saving. 
+    - [ ] We should export all the data and test it to make sure all the reshuffling assignments, fields, etc., are saving correctly
 - [ ] Check on production server, including chat timestamps and various other patches on production server (chunk-J6LPACOK.js modification)
   - Figure out how to test on production server...
 
@@ -35,6 +52,7 @@ To test the experiment, use the test-experiment skill.
 - [ ] Set up DigitalOcean server and figure out billing (manual)
 - [ ] Get IRB approval from Mitchell (manual)
 - [ ] Figure out appointment slot thing - Use Optimeet for scheduling (external)
+- [ ] Standardize language in the RR (in each block, one person describes all 6 tangrams)
 
 ---
 
@@ -85,8 +103,9 @@ To test the experiment, use the test-experiment skill.
   - `.feedback img` (line 104) - feedback avatars on tangrams
   - Added `img.rounded-full { border-radius: 6px !important; }` to override Empirica chat avatars
   - Screenshots: avatar_squares_test.png, chat_avatar_square_test.png
-- [x] IMPORTANT: make sure the shuffling is happening on each trial in the mixed conditions and that participants know this. Indicate in feedback screens in phase 2, that shuffling is happening each time. Check text, make sure it's clear, say that we are masking group identities
-  - Verified: Server logs show "Reshuffling groups for mixed condition (balanced)" on each round
+- [x] IMPORTANT: make sure the shuffling is happening at correct intervals in the mixed conditions and that participants know this. Indicate in feedback screens in phase 2 that shuffling is happening. Check text, make sure it's clear, say that we are masking group identities
+  - Updated (2026-01-08): Reshuffling now happens at start of each BLOCK (every 6 rounds), not each round
+  - Server logs show "Reshuffling groups for mixed condition (balanced)" at block boundaries (target_num === 0)
   - Transition screen explains reshuffling and masked identities clearly
 
 ### A1. Stimuli & Game Setup
