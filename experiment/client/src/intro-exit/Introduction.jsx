@@ -15,6 +15,8 @@ import {
   SPEAKER_POINTS_PER_LISTENER,
   BONUS_PER_POINT,
   GROUP_SIZE,
+  getAvatarUrl,
+  avatar_seeds,
 } from "../constants";
 
 // Helper to format speaker times as a readable fraction or whole number
@@ -177,7 +179,8 @@ export function Introduction3({ next }) {
       </p>
       <p>
         <strong>Important:</strong> Please limit your messages to describing the current target picture.{" "}
-        <strong>Do not discuss previous trials, use codewords, or chat about any other topics!</strong>
+        <strong>Do not discuss previous trials, use codewords, or chat about any other topics.</strong>{" "}
+        Failure to follow this rule may result in <strong>not receiving your pay</strong>.
       </p>
       <p>
         After the Speaker sends a message, the Listeners read it and each click
@@ -212,7 +215,7 @@ export function Introduction4({ next }) {
   const player = {
     _id: 0,
     name: names[0],
-    avatar: `/instructions/aaron.png`,
+    avatar: getAvatarUrl(avatar_seeds[0]),
     role: "listener",
   };
 
@@ -220,13 +223,13 @@ export function Introduction4({ next }) {
     {
       _id: 1,
       name: names[1],
-      avatar: `instructions/muhammad.png`,
+      avatar: getAvatarUrl(avatar_seeds[1]),
       role: "speaker",
     },
     {
       _id: 2,
       name: names[2],
-      avatar: `instructions/nathaniel.png`,
+      avatar: getAvatarUrl(avatar_seeds[2]),
       role: "listener",
     },
   ];
@@ -269,7 +272,7 @@ export function Introduction4({ next }) {
         Each block consists of {NUM_TANGRAMS} trials (one for each picture). The Speaker role rotates each block. In Phase 1, there are <strong>{PHASE_1_BLOCKS} blocks</strong>, so each player will be the Speaker for {formatSpeakerTimes(PHASE_1_BLOCKS, GROUP_SIZE)} of the blocks.
       </p>
       <p>
-        <strong>Important:</strong> If you are inactive for 2 consecutive trials (no messages or selections), you will be removed from the game.
+        <strong>Important:</strong> If you are inactive for 2 consecutive trials (no messages or selections), you will be removed from the game and <strong>will not receive your pay</strong>.
       </p>
       <p>
         Note that the game allows for simultaneous and real-time actions.{" "}
@@ -303,11 +306,10 @@ export function Introduction5({ next }) {
       <p>
         At the end of the game, your total points are converted to a bonus at a rate of <strong>${BONUS_PER_POINT.toFixed(2)} per point</strong>.
       </p>
-      <h3>Important Rules</h3>
+      <h2>Important Rules</h2>
       <p>
         <strong>Remember, free riding is not permitted.</strong> If we detect that you are
-        inactive, you will be removed from the game and will not receive your
-        full pay.
+        inactive, you will be removed from the game and <strong>will not receive your pay</strong>.
       </p>
       <p>
         After you pass the comprehension quiz, you will be put into a waiting

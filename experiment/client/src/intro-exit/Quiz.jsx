@@ -10,30 +10,33 @@ export function Quiz({ next }) {
 
   const questions = [
     {
-      question:
-        "How many participants will be in your group, including yourself?",
-      choices: ["2", "3", "4", "9"],
-      correctAnswer: "3",
-    },
-    {
-      question: "How many pictures will be shown at a time?",
-      choices: ["2", "4", "6", "8"],
-      correctAnswer: "6",
-    },
-    {
-      question: "In each trial, how many players are Listeners?",
-      choices: ["1", "2", "3", "4"],
-      correctAnswer: "2",
-    },
-    {
-      question: "Select the true statement about scoring:",
+      question: "What is the Speaker's job in each trial?",
       choices: [
-        "Listeners earn 2 points for correct selections; Speakers earn 1 point per correct listener.",
-        "Speakers earn 3 points for each correct listener; Listeners earn 1 point.",
-        "Everyone earns the same points regardless of role.",
+        "To click on the target picture as fast as possible.",
+        "To describe the target picture so Listeners can identify it.",
+        "To guess which picture the Listeners will choose.",
       ],
       correctAnswer:
-        "Listeners earn 2 points for correct selections; Speakers earn 1 point per correct listener.",
+        "To describe the target picture so Listeners can identify it.",
+    },
+    {
+      question: "What happens if you are inactive for multiple trials?",
+      choices: [
+        "Nothing, you can rejoin later.",
+        "You will be removed from the game and will not receive your pay.",
+        "You will lose some bonus points but can continue playing.",
+      ],
+      correctAnswer:
+        "You will be removed from the game and will not receive your pay.",
+    },
+    {
+      question: "What are you allowed to discuss in the chat?",
+      choices: [
+        "Anything related to the game, including previous trials and strategies.",
+        "Only descriptions of the current target picture.",
+        "Personal topics to get to know your group members.",
+      ],
+      correctAnswer: "Only descriptions of the current target picture.",
     },
     {
       question: "Select the true statement about the chat:",
@@ -52,6 +55,16 @@ export function Quiz({ next }) {
       ],
       correctAnswer:
         "Everyone will see the same pictures, but the pictures will be mixed up and in different places for different people.",
+    },
+    {
+      question: "Why won't descriptions like 'the one on the left' work?",
+      choices: [
+        "Because left and right are too vague.",
+        "Because the pictures are in different positions for each player.",
+        "Because you can only use one word to describe each picture.",
+      ],
+      correctAnswer:
+        "Because the pictures are in different positions for each player.",
     },
   ];
 
