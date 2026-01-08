@@ -11,12 +11,25 @@ import {
   PHASE_1_BLOCKS,
   PHASE_2_BLOCKS,
   SELECTION_DURATION,
-  SPEAKER_TIMES_PHASE_1,
   LISTENER_CORRECT_POINTS,
   SPEAKER_POINTS_PER_LISTENER,
   BONUS_PER_POINT,
   GROUP_SIZE,
 } from "../constants";
+
+// Helper to format speaker times as a readable fraction or whole number
+function formatSpeakerTimes(blocks, groupSize) {
+  const result = blocks / groupSize;
+  // If it's a whole number, return as-is
+  if (Number.isInteger(result)) {
+    return result.toString();
+  }
+  // Otherwise, return as a fraction
+  // Find GCD to simplify the fraction
+  const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+  const divisor = gcd(blocks, groupSize);
+  return `${blocks / divisor}/${groupSize / divisor}`;
+}
 
 export function Introduction({ next }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -253,7 +266,7 @@ export function Introduction4({ next }) {
         not get a bonus, so please stay focused.
       </p>
       <p>
-        Each block consists of {NUM_TANGRAMS} trials (one for each picture). The Speaker role rotates each block. In Phase 1, there are <strong>{PHASE_1_BLOCKS} blocks</strong>, so each player will be the Speaker for {SPEAKER_TIMES_PHASE_1} blocks.
+        Each block consists of {NUM_TANGRAMS} trials (one for each picture). The Speaker role rotates each block. In Phase 1, there are <strong>{PHASE_1_BLOCKS} blocks</strong>, so each player will be the Speaker for {formatSpeakerTimes(PHASE_1_BLOCKS, GROUP_SIZE)} of the blocks.
       </p>
       <p>
         <strong>Important:</strong> If you are inactive for 2 consecutive trials (no messages or selections), you will be removed from the game.
