@@ -22,14 +22,13 @@ To test the experiment, use the test-experiment skill.
   - Updated Transition.jsx instructions to say "At the start of each block (every 6 rounds)" 
 - [ ] Test that in each block, the order of target tangrams is randomized (also check: is the order the same for all groups or not? i forget)
 - [ ] If participants are inactive for one round, add a reminder to the feedback that said that they were inactive and if they are inactive again they will be removed from the experiment and not receive any pay. 
-
-Changes for intro screens: 
-  - [ ] bonus amount in page, why is it 2.40? 
-  - [ ] change icons in intro from green to something else 
-  - [ ] change intro "important rules" heading size
-  - [ ] say that if they are inactive they will not receive their pay
-  - [ ] make comprehension quiz easier? / more conceptual? not just about memorizing numbers
-  - [ ] tell participants that to receive their pay they need to restrict discussion to tangrams
+- [ ] is there an issue if theres a previously ended batch? 
+- [ ] Remove "shuffling players for the next block..." from feedback if its the last feedback screen in the experiment
+- [ ] test with listener messages too
+- [ ] in social + mixed case in phase 2, the speaker prompt should also say "You will also be rewarded if the listeners correctly guess whether you were in their original group." The feedback screen should say "You earned XXX points this round for picture guessing. Total social guessing score will be shown at the end of the experiment."
+- [ ] In social + mixed case in phase 2, the listener feedback screen should say "You earned XXX points this round for picture guessing. Total social guessing score will be shown at the end of the experiment."
+- [ ] Standardize text in experiment. right now we use "image," "picture," and "tangram" interchangeably. Make sure to standardize this, just use "picture" everywhere. 
+- [ ] When the text says "You earned no tangram bonus this round." it should say "You earned no points this round."
 
 ### Pre-Launch (Verification)
 

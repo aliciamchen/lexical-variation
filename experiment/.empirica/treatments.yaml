@@ -3,7 +3,6 @@ factors:
       desc: how many players?
       values:
         - value: 9
-        - value: 3
     - name: condition
       desc: experimental condition (between-subjects)
       values:
@@ -25,19 +24,4 @@ treatments:
       desc: Groups reshuffled with social guessing in Phase 2
       factors:
         playerCount: 9
-        condition: social_mixed
-    - name: Test - Refer Separated (3 players)
-      desc: Testing with 3 players - refer_separated
-      factors:
-        playerCount: 3
-        condition: refer_separated
-    - name: Test - Refer Mixed (3 players)
-      desc: Testing with 3 players - refer_mixed
-      factors:
-        playerCount: 3
-        condition: refer_mixed
-    - name: Test - Social Mixed (3 players)
-      desc: Testing with 3 players - social_mixed
-      factors:
-        playerCount: 3
         condition: social_mixed
