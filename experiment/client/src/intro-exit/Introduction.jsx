@@ -274,7 +274,7 @@ export function Introduction4({ next }) {
       </div>
       <p>
         You and your group have {SELECTION_DURATION} seconds for the listeners
-        to select an image each round. If you do not select an image in this
+        to select a picture each round. If you do not select a picture in this
         time frame, you will automatically progress to the next stage when the
         time is up and will not not get a bonus, so please stay focused.
       </p>

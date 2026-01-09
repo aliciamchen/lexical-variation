@@ -30,7 +30,7 @@ export function Transition(props) {
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
           You will continue playing the reference game with the{" "}
           <strong>same group members</strong> you played with in Phase 1. Your
-          goal (and the scoring) remains the same: describe the tangrams to help your listeners
+          goal (and the scoring) remains the same: describe the pictures to help your listeners
           identify them correctly. Remember to limit your messages to describing
           the current target picture only.
         </p>
@@ -46,7 +46,7 @@ export function Transition(props) {
             Everyone will appear as "Player" with anonymous avatars.
           </p>
           <p style={{ marginTop: 8 }}>
-            Your goal remains the same: describe the tangrams to help your
+            Your goal remains the same: describe the pictures to help your
             listeners identify them correctly.
           </p>
         </div>
@@ -62,7 +62,7 @@ export function Transition(props) {
             Everyone will appear as "Player" with anonymous avatars.
           </p>
           <p style={{ marginTop: 8 }}>
-            <strong>New task:</strong> After clicking on a tangram, listeners
+            <strong>New task:</strong> After clicking on a picture, listeners
             will also guess whether the speaker was in their{" "}
             <em>original group</em> from Phase 1. Speakers and listeners will be
             rewarded for correct guesses. For these guesses, we won't tell you
@@ -95,7 +95,7 @@ export function Transition(props) {
           <ul style={{ marginTop: 4, marginLeft: 20 }}>
             <li>
               Listeners earn <strong>{LISTENER_CORRECT_POINTS} points</strong> for correctly identifying
-              the target tangram.
+              the target picture.
             </li>
             <li>
               Speakers earn <strong>{SPEAKER_POINTS_PER_LISTENER} point</strong> for each listener who

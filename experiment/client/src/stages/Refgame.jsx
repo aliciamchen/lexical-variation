@@ -131,6 +131,7 @@ export function Refgame(props) {
   }
 
   let feedback = "";
+  let socialFeedback = "";
   if (stage.get("name") == "Feedback") {
     if (player.round.get("role") == "listener") {
       // Check if speaker was missing (kicked) or idle (didn't send any message)
@@ -140,18 +141,27 @@ export function Refgame(props) {
         feedback = "The speaker did not send a message this round. No points were awarded.";
       } else if (!player.round.get("clicked")) {
         // Listener didn't respond in time
-        feedback = "You did not respond in time. You earned no bonus this round.";
+        feedback = "You did not respond in time. You earned no points this round.";
       } else if (correct) {
-        feedback = "Correct! You earned 2 points for the tangram.";
+        feedback = "Correct! You earned 2 points for the picture.";
       } else {
-        feedback = "Ooops, that wasn't the target! You earned no tangram bonus this round.";
+        feedback = "Ooops, that wasn't the target! You earned no points this round.";
       }
     }
     if (player.round.get("role") == "speaker") {
       const roundScore = player.round.get("round_score") || 0;
-      feedback = `You earned ${roundScore} ${roundScore == 1 ? `point` : `points`} this round.`;
+      feedback = `You earned ${roundScore} ${roundScore == 1 ? `point` : `points`} this round for picture guessing.`;
+    }
+
+    // Add social feedback for social_mixed condition in Phase 2
+    if (isSocialMixed) {
+      socialFeedback = "Total social guessing score will be shown at the end of the experiment.";
     }
   }
+
+  // Check if player was idle in the previous round (idle_rounds === 1 means first warning)
+  const idleRounds = player.get("idle_rounds") || 0;
+  const wasIdleLastRound = idleRounds === 1;
 
   if (hasSubmitted && stage.get("name") == "Feedback") {
     return (
@@ -276,8 +286,9 @@ export function Refgame(props) {
           <p className="instruction-prompt">
             {" "}
             {player.round.get("role") == "speaker"
-              ? "You are the speaker. Please describe the picture in the box to the other players."
-              : "You are a listener. Please click on the image that the speaker describes." +
+              ? "You are the speaker. Please describe the picture in the box to the other players." +
+                (isSocialMixed ? " You will also be rewarded if the listeners correctly guess whether you were in their original group." : "")
+              : "You are a listener. Please click on the picture that the speaker describes." +
                 (isSocialMixed ? " Then guess whether the speaker was in your original group." : "")}
           </p>
         </div>
@@ -332,10 +343,42 @@ export function Refgame(props) {
           </h3>
         )}
 
+        {socialFeedback && stage.get("name") == "Feedback" && (
+          <p
+            style={{
+              marginTop: 8,
+              textAlign: "center",
+              color: "#6b7280",
+              fontStyle: "italic",
+              width: "100%",
+            }}
+          >
+            {socialFeedback}
+          </p>
+        )}
+
+        {wasIdleLastRound && stage.get("name") == "Feedback" && (
+          <p
+            style={{
+              marginTop: 12,
+              textAlign: "center",
+              color: "#dc2626",
+              fontWeight: "bold",
+              width: "100%",
+              backgroundColor: "#fee2e2",
+              padding: "8px 12px",
+              borderRadius: "6px",
+            }}
+          >
+            Warning: You were inactive last round. If you are inactive again, you will be removed from the experiment and will not receive any pay.
+          </p>
+        )}
+
         {stage.get("name") == "Feedback" &&
           (condition === "refer_mixed" || condition === "social_mixed") &&
           phase_num === 2 &&
-          round.get("target_num") === 5 && (
+          round.get("target_num") === 5 &&
+          block_num < (game.get("phase2Blocks") || PHASE_2_BLOCKS) - 1 && (
           <p
             style={{
               marginTop: 12,
