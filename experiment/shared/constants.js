@@ -21,7 +21,7 @@ export const TEST_MODE = false; // Set to false for production
 // Stage durations in seconds
 export const SELECTION_DURATION = TEST_MODE ? 120 : 45;  // Selection stage (TEST: 120s)
 export const FEEDBACK_DURATION = 10;                      // Feedback stage (same for both)
-export const TRANSITION_DURATION = 30;                    // Phase transition (same for both)
+export const TRANSITION_DURATION = 60;                    // Phase transition (same for both)
 export const BONUS_INFO_DURATION = 30;                    // End game bonus info (same for both)
 
 // ============ TANGRAM SETS ============

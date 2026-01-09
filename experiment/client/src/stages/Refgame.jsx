@@ -155,7 +155,7 @@ export function Refgame(props) {
 
     // Add social feedback for social_mixed condition in Phase 2
     if (isSocialMixed) {
-      socialFeedback = "Total social guessing score will be shown at the end of the experiment.";
+      socialFeedback = "Total in-group guessing score will be shown at the end of the experiment.";
     }
   }
 

@@ -78,7 +78,7 @@ export function Transition(props) {
     }
 
     return (
-      <div className="prompt-container" style={{ textAlign: "left" }}>
+      <div className="prompt-container" style={{ textAlign: "left", paddingTop: 24 }}>
         <div className="text-2xl">
           <em>End of Phase 1</em>
         </div>
@@ -144,7 +144,7 @@ export function Transition(props) {
       (socialGuessTotal > 0 || socialGuessedAboutTotal > 0);
 
     return (
-      <div className="prompt-container" style={{ textAlign: "left" }}>
+      <div className="prompt-container" style={{ textAlign: "left", paddingTop: 24 }}>
         <div className="text-2xl">
           <em>End of Game</em>
         </div>

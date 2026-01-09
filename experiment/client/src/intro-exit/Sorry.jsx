@@ -54,7 +54,7 @@ export function Sorry({ next }) {
     message = (
       <>
         <p>
-          You were removed from the game because you were inactive for 2 consecutive trials.
+          You were removed from the game because you were inactive for 2 consecutive rounds.
           This may have happened because you didn't send any messages or make any selections.
         </p>
         <p className="mt-2">

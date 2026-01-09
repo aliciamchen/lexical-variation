@@ -29,6 +29,8 @@ To test the experiment, use the test-experiment skill.
 - [ ] In social + mixed case in phase 2, the listener feedback screen should say "You earned XXX points this round for picture guessing. Total social guessing score will be shown at the end of the experiment."
 - [ ] Standardize text in experiment. right now we use "image," "picture," and "tangram" interchangeably. Make sure to standardize this, just use "picture" everywhere. 
 - [ ] When the text says "You earned no tangram bonus this round." it should say "You earned no points this round."
+- [ ] Check and screenshot idle warning message
+- [ ] make transition UIs slightly better — add a bit of padding between "End of Phase 1" and the timer 
 
 ### Pre-Launch (Verification)
 
