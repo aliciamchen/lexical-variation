@@ -21,98 +21,18 @@ Remove the tajriba file between instances of testing:
 rm .empirica/local/tajriba.json
 ```
 
-## Required Patches
+## Custom Chat Component
 
-After installing empirica, you need to make edits `experiment/client/node_modules/@empirica/core/dist/chunk-J6LPACOK.js` for some details of the experiment to work correctly. 
+This project uses a custom Chat component (`experiment/client/src/components/Chat.jsx`) instead of the default Empirica Chat. This eliminates the need for any `node_modules` patches.
 
-**Avatar display patch:** Comment out the avatar URL check (~line 522-524):
-```js
-// if (!avatar.startsWith("http")) {
-//   avatarImage = /* @__PURE__ */ React6.createElement("div", { className: "inline-block h-9 w-9 rounded-full" }, avatar);
-// }
-```
+The custom Chat component provides:
+- **Role labels**: Shows "(Speaker)" or "(Listener)" after player names
+- **Identity masking**: Uses `display_name` and `display_avatar` in Phase 2 mixed conditions
+- **Timestamps**: Shows 5-second increments (5s, 10s, 15s...) instead of "now" for recent messages
+- **Square avatars**: Matches the UI style of other avatars in the game
+- **DiceBear fallback**: Uses identicon avatars when player avatar is not set
 
-**Chat timestamp display patch:** Modify the `relTime` function (~line 598-602) to show 5-second increments:
-```js
-// Change:
-if (difference < 60) {
-  return `now`;
-}
-
-// To:
-if (difference < 5) {
-  return `now`;
-} else if (difference < 60) {
-  return `${Math.floor(difference / 5) * 5}s`;
-}
-```
-
-**Chat timestamp data patch:** Add timestamp to message data in `handleNewMessage` (~line 468-477):
-```js
-// Change:
-scope.append(attribute, {
-  text,
-  sender: { ... }
-});
-
-// To:
-scope.append(attribute, {
-  text,
-  timestamp: Date.now(),
-  sender: { ... }
-});
-```
-
-**Chat role indicator patch:** Modify the Chat function (~line 458-479) to accept `customPlayerName` prop:
-```js
-// Change:
-function Chat({
-  scope,
-  attribute = "messages",
-  loading: LoadingComp = Loading
-}) {
-  // ...
-  const handleNewMessage = (text) => {
-    scope.append(attribute, {
-      text,
-      timestamp: Date.now(),
-      sender: {
-        id: player.id,
-        name: player.get("name") || player.id,
-        avatar: player.get("avatar")
-      }
-    });
-  };
-
-// To:
-function Chat({
-  scope,
-  attribute = "messages",
-  loading: LoadingComp = Loading,
-  customPlayerName
-}) {
-  // ...
-  const handleNewMessage = (text) => {
-    const senderName = customPlayerName ? customPlayerName(player) : (player.get("name") || player.id);
-    scope.append(attribute, {
-      text,
-      timestamp: Date.now(),
-      sender: {
-        id: player.id,
-        name: senderName,
-        avatar: player.get("avatar")
-      }
-    });
-  };
-```
-
-**Chat avatar square patch:** Add to `experiment/client/src/index.css`:
-```css
-/* Override Empirica chat avatar styling - make them squares to match other avatars */
-img.rounded-full {
-  border-radius: 6px !important;
-}
-```
+No `node_modules` patches are required.
 
 ## Dependencies
 
