@@ -1,11 +1,11 @@
 import {
-  Chat,
   usePlayer,
   usePlayers,
   useRound,
   useGame,
   useStage,
 } from "@empirica/core/player/classic/react";
+import { Chat } from "./components/Chat";
 
 import { React, useEffect } from "react";
 import { Profile } from "./Profile";
