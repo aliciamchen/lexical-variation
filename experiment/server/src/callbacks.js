@@ -593,15 +593,13 @@ Empirica.onStageEnded(({ stage }) => {
             listener.set("social_guess_correct_total", correctTotal);
 
             if (correct) {
-              listener.set("score", listener.get("score") + SOCIAL_GUESS_CORRECT_POINTS);
               correctGuesses++;
             }
           }
         });
 
-        // Speaker gets points for each correct guess about them
+        // Track speaker's social round score (not added to displayed score)
         socialSpeakerPoints = correctGuesses * SOCIAL_SPEAKER_POINTS_PER_CORRECT;
-        speaker.set("score", speaker.get("score") + socialSpeakerPoints);
         speaker.round.set("social_round_score", socialSpeakerPoints);
 
         // Track speaker's cumulative social stats (how many guessed correctly about them)
@@ -681,7 +679,15 @@ Empirica.onRoundEnded(({ round }) => {
   const players = game.players;
 
   players.forEach((player) => {
-    player.set("bonus", player.get("score") * bonus_per_point);
+    // Base score from picture guessing
+    const baseScore = player.get("score") || 0;
+
+    // Social points (tracked separately, added to bonus only)
+    const listenerSocialPoints = (player.get("social_guess_correct_total") || 0) * SOCIAL_GUESS_CORRECT_POINTS;
+    const speakerSocialPoints = (player.get("social_guessed_about_correct") || 0) * SOCIAL_SPEAKER_POINTS_PER_CORRECT;
+    const totalScore = baseScore + listenerSocialPoints + speakerSocialPoints;
+
+    player.set("bonus", totalScore * bonus_per_point);
   });
 });
 
@@ -691,9 +697,17 @@ Empirica.onGameEnded(({ game }) => {
   // Final bonus calculation
   const players = game.players;
   players.forEach((player) => {
-    player.set("bonus", player.get("score") * bonus_per_point);
+    // Base score from picture guessing
+    const baseScore = player.get("score") || 0;
+
+    // Social points (tracked separately, added to bonus only)
+    const listenerSocialPoints = (player.get("social_guess_correct_total") || 0) * SOCIAL_GUESS_CORRECT_POINTS;
+    const speakerSocialPoints = (player.get("social_guessed_about_correct") || 0) * SOCIAL_SPEAKER_POINTS_PER_CORRECT;
+    const totalScore = baseScore + listenerSocialPoints + speakerSocialPoints;
+
+    player.set("bonus", totalScore * bonus_per_point);
     console.log(
-      `Player ${player.id}: Score=${player.get("score")}, Bonus=$${player.get("bonus").toFixed(2)}`
+      `Player ${player.id}: Score=${baseScore}, SocialPoints=${listenerSocialPoints + speakerSocialPoints}, TotalScore=${totalScore}, Bonus=$${player.get("bonus").toFixed(2)}`
     );
   });
 });

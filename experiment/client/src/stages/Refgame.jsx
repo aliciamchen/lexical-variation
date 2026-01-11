@@ -145,12 +145,12 @@ export function Refgame(props) {
       } else if (correct) {
         feedback = "Correct! You earned 2 points for the picture.";
       } else {
-        feedback = "Ooops, that wasn't the target! You earned no points this round.";
+        feedback = "Ooops, that wasn't the target! You earned no points this round from guessing the picture.";
       }
     }
     if (player.round.get("role") == "speaker") {
       const roundScore = player.round.get("round_score") || 0;
-      feedback = `You earned ${roundScore} ${roundScore == 1 ? `point` : `points`} this round for picture guessing.`;
+      feedback = `You earned ${roundScore} ${roundScore == 1 ? `point` : `points`} this round from picture guessing.`;
     }
 
     // Add social feedback for social_mixed condition in Phase 2

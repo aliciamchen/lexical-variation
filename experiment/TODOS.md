@@ -20,27 +20,25 @@ To test the experiment, use the test-experiment skill.
 - [x] oops for the mixed condition, reshuffling in phase 2 should be after each BLOCK not after each round (i.e. it should be: after one speaker describes each of the six tangrams, then the reshuffling happens). Clarify/change this in the instructions and change experiment code accordingly if we don't have this behavior right now.
   - Fixed (2026-01-08): Changed callbacks.js to only reshuffle when `target_num === 0` (first trial of block)
   - Updated Transition.jsx instructions to say "At the start of each block (every 6 rounds)" 
-- [ ] Test that in each block, the order of target tangrams is randomized (also check: is the order the same for all groups or not? i forget)
-- [ ] If participants are inactive for one round, add a reminder to the feedback that said that they were inactive and if they are inactive again they will be removed from the experiment and not receive any pay. 
+- [x] Test that in each block, the order of target tangrams is randomized (also check: is the order the same for all groups or not? i forget)
+- [x] If participants are inactive for one round, add a reminder to the feedback that said that they were inactive and if they are inactive again they will be removed from the experiment and not receive any pay. 
 - [ ] is there an issue if theres a previously ended batch? 
-- [ ] Remove "shuffling players for the next block..." from feedback if its the last feedback screen in the experiment
+- [x] Remove "shuffling players for the next block..." from feedback if its the last feedback screen in the experiment
 - [ ] test with listener messages too
-- [ ] in social + mixed case in phase 2, the speaker prompt should also say "You will also be rewarded if the listeners correctly guess whether you were in their original group." The feedback screen should say "You earned XXX points this round for picture guessing. Total social guessing score will be shown at the end of the experiment."
-- [ ] In social + mixed case in phase 2, the listener feedback screen should say "You earned XXX points this round for picture guessing. Total social guessing score will be shown at the end of the experiment."
-- [ ] Standardize text in experiment. right now we use "image," "picture," and "tangram" interchangeably. Make sure to standardize this, just use "picture" everywhere. 
-- [ ] When the text says "You earned no tangram bonus this round." it should say "You earned no points this round."
-- [ ] Check and screenshot idle warning message
-- [ ] make transition UIs slightly better — add a bit of padding between "End of Phase 1" and the timer 
+- [x] in social + mixed case in phase 2, the speaker prompt should also say "You will also be rewarded if the listeners correctly guess whether you were in their original group." The feedback screen should say "You earned XXX points this round for picture guessing. Total social guessing score will be shown at the end of the experiment."
+- [x] In social + mixed case in phase 2, the listener feedback screen should say "You earned XXX points this round for picture guessing. Total social guessing score will be shown at the end of the experiment."
+- [x] Standardize text in experiment. right now we use "image," "picture," and "tangram" interchangeably. Make sure to standardize this, just use "picture" everywhere. 
+- [x] When the text says "You earned no tangram bonus this round." it should say "You earned no points this round."
+- [x] Check and screenshot idle warning message
+- [x] make transition UIs slightly better — add a bit of padding between "End of Phase 1" and the timer 
 
 ### Pre-Launch (Verification)
 
 - [ ] Read through all text in the experiment (instructions, etc.) and check
 - [ ] Check the numbers are correct: number of blocks, money, timing, etc.
     - [x] Particularly check if the pay is correct for the various ways that people people exit the experiment (idle, group disbanded, etc.) For group disbanded, it should be proportional to the amount of time they spent in the experiment. For idle, they do not get paid anything. 
-- [ ] Check completion codes are correct and that they are indicated correctly on Prolific
 - [ ] When all is ready, switch to final version with all correct timing + lobby config, and then run once using Playwright and then test once manually to make sure everything is working correctly. Look at the data and see everything is saving. 
     - [ ] We should export all the data and test it to make sure all the reshuffling assignments, fields, etc., are saving correctly
-- [ ] Check on production server, including chat timestamps and various other patches on production server (chunk-J6LPACOK.js modification)
   - Figure out how to test on production server...
 
 ### Decisions needed 
@@ -54,6 +52,9 @@ To test the experiment, use the test-experiment skill.
 - [ ] Get IRB approval from Mitchell (manual)
 - [ ] Figure out appointment slot thing - Use Optimeet for scheduling (external)
 - [ ] Standardize language in the RR (in each block, one person describes all 6 tangrams)
+- [ ] Check completion codes are correct and that they are indicated correctly on Prolific
+- [ ] Check on production server, including chat timestamps and various other patches on production server (chunk-J6LPACOK.js modification)
+
 
 ---
 
