@@ -133,7 +133,7 @@ export function Quiz({ next }) {
           </p>
           <p style={{ marginTop: "10px" }}>
             Please submit the following code on Prolific to receive partial
-            compensation for your time: <strong>QUIZFAIL2024</strong>
+            compensation for your time: <strong>QUIZFAIL2026</strong>
           </p>
           <p style={{ marginTop: "10px" }}>
             Thank you for your interest in our study.

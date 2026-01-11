@@ -83,7 +83,7 @@ export function Sorry({ next }) {
         </p>
       </>
     );
-    compensationCode = "DISBANDED2024";
+    compensationCode = "DISBANDED2026";
     compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
   } else {
     // Default / unknown reason
