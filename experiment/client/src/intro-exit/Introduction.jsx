@@ -57,15 +57,11 @@ export function Introduction({ next }) {
     }
   };
 
+  // Quiz page - no navigation buttons (quiz handles its own flow)
   if (currentIndex === instructionComponents.length - 1) {
     return (
       <div className="instructions">
         {instructionComponents[currentIndex]}
-        <div className="flex w-sw justify-center">
-          <Button handleClick={prevPage} autoFocus>
-            Prev
-          </Button>
-        </div>
       </div>
     );
   } else {
