@@ -31,6 +31,14 @@ To test the experiment, use the test-experiment skill.
 - [x] When the text says "You earned no tangram bonus this round." it should say "You earned no points this round."
 - [x] Check and screenshot idle warning message
 - [x] make transition UIs slightly better — add a bit of padding between "End of Phase 1" and the timer 
+- [ ] Potential issue: If a player is kicked mid-block in Phase 2, their current shuffled group would have fewer players, but reshuffling
+  doesn't happen until the next block starts. If that group drops to 1 player mid-block, they'd continue alone for the rest of the block.
+- [ ] Are there 30 rounds or 36 rounds in phase 1?? should be 36
+- [ ] for social guess, it should also be proportional to the number of listeners in the group. like with the tangram guess
+- [ ] At the end of phase 1, remove groups where fewer than two-thirds of participants achieved below two-thirds accuracy during the last three blocks of Phase 1. 
+- [ ] Whats the diff between Inactive.jsx and Sorry.jsx? Why did i have to add compensation codes to both?
+- [ ] test solo player reassignment in phase 2 mixed
+
 
 ### Pre-Launch (Verification)
 

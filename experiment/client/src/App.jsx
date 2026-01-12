@@ -7,7 +7,6 @@ import { ExitSurvey } from "./intro-exit/ExitSurvey";
 import { Introduction } from "./intro-exit/Introduction";
 import { ConsentPage } from "./intro-exit/Consent.jsx";
 import { Sorry } from "./intro-exit/Sorry.jsx";
-import { Inactive } from "./stages/Inactive.jsx";
 import { Failed } from "./intro-exit/Failed.jsx";
 
 export default function App() {
