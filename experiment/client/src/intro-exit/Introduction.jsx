@@ -3,8 +3,7 @@ import { Button } from "../components/Button";
 import { Quiz } from "./Quiz";
 import _ from "lodash";
 import {
-  ESTIMATED_TIME_MIN,
-  ESTIMATED_TIME_MAX,
+  ESTIMATED_TIME,
   BASE_PAY,
   MAX_BONUS,
   NUM_TANGRAMS,
@@ -60,9 +59,7 @@ export function Introduction({ next }) {
   // Quiz page - no navigation buttons (quiz handles its own flow)
   if (currentIndex === instructionComponents.length - 1) {
     return (
-      <div className="instructions">
-        {instructionComponents[currentIndex]}
-      </div>
+      <div className="instructions">{instructionComponents[currentIndex]}</div>
     );
   } else {
     return (
@@ -101,11 +98,7 @@ export function Introduction2({ next }) {
       <p>
         In this task, you will play a series of communication games with other
         players. The game has two phases. You should expect that the whole game
-        will take approximately{" "}
-        <strong>
-          {ESTIMATED_TIME_MIN}-{ESTIMATED_TIME_MAX} minutes
-        </strong>
-        .
+        will take approximately <strong>{ESTIMATED_TIME} minutes</strong>.
       </p>
       <p>
         You will receive a base pay of <strong>${BASE_PAY}</strong>, plus a
@@ -190,8 +183,9 @@ export function Introduction3({ next }) {
         After the Speaker sends a message, the Listeners read it and each click
         the picture they believe is the target. Listeners cannot click until the
         Speaker sends a message. Listeners can also respond by sending messages
-        back through the chatbox. At the end of each trial, everyone will be
-        given feedback about the correct picture.
+        back through the chatbox. At the end of each round, everyone will be
+        given feedback about what the correct picture was and what the Listeners
+        guessed.
       </p>
     </div>
   );

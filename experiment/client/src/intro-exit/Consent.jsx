@@ -1,11 +1,6 @@
 import React from "react";
 import { Button } from "../components/Button";
-import {
-  ESTIMATED_TIME_MIN,
-  ESTIMATED_TIME_MAX,
-  BASE_PAY,
-  MAX_BONUS,
-} from "../constants";
+import { ESTIMATED_TIME, BASE_PAY, MAX_BONUS } from "../constants";
 
 export function ConsentPage({ next }) {
   return (
@@ -21,8 +16,8 @@ export function ConsentPage({ next }) {
         series of communication tasks with other participants.
       </p>
       <p>
-        <strong>Time required:</strong> This study will take approximately {ESTIMATED_TIME_MIN}-{ESTIMATED_TIME_MAX}{" "}
-        minutes.
+        <strong>Time required:</strong> This study will take approximately{" "}
+        {ESTIMATED_TIME} minutes.
       </p>
       <p>
         <strong>Purpose of the research:</strong> The purpose is to understand
@@ -34,8 +29,9 @@ export function ConsentPage({ next }) {
         a computer monitor and using a mouse for the duration of the experiment.
       </p>
       <p>
-        <strong>Compensation:</strong> You will receive ${BASE_PAY} for completing the
-        experiment, with an additional performance bonus of up to ${MAX_BONUS.toFixed(2)}.
+        <strong>Compensation:</strong> You will receive ${BASE_PAY} for
+        completing the experiment, with an additional performance bonus of up to
+        ${MAX_BONUS.toFixed(2)}.
       </p>
       <p>
         <strong>Confidentiality:</strong> Your participation in this study will
@@ -52,7 +48,7 @@ export function ConsentPage({ next }) {
       <p>
         <strong>How to contact the researcher:</strong> If you have questions or
         concerns about your participation or payment, or want to request a
-        summary of research findings, please contact
+        summary of research findings, please contact{" "}
         <a href="mailto:aliciach@mit.edu">aliciach@mit.edu</a>.
       </p>
       <p>

@@ -10,7 +10,7 @@ export function Quiz({ next }) {
 
   const questions = [
     {
-      question: "What is the Speaker's job in each trial?",
+      question: "What is the Speaker's job in each round?",
       choices: [
         "To click on the target picture as fast as possible.",
         "To describe the target picture so Listeners can identify it.",
@@ -20,7 +20,7 @@ export function Quiz({ next }) {
         "To describe the target picture so Listeners can identify it.",
     },
     {
-      question: "What happens if you are inactive for multiple trials?",
+      question: "What happens if you are inactive for multiple rounds?",
       choices: [
         "Nothing, you can rejoin later.",
         "You will be removed from the game and will not receive your pay.",
