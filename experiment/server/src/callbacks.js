@@ -201,6 +201,18 @@ Empirica.onRoundStart(({ round }) => {
   const condition = game.get("condition");
   const phase_num = round.get("phase_num");
 
+  // Skip processing if game has been terminated due to insufficient groups
+  if (game.get("gameTerminated")) {
+    return;
+  }
+
+  // Check if we still have enough active groups to continue
+  const activeGroups = game.get("active_groups") || GROUP_NAMES;
+  const minRequired = game.get("min_active_groups") || 1;
+  if (activeGroups.length < minRequired) {
+    return;
+  }
+
   if (round.get("phase") === "refgame") {
     const players = game.players.filter((p) => p.get("is_active"));
     const blockNum = round.get("block_num");
@@ -441,6 +453,11 @@ Empirica.onStageEnded(({ stage }) => {
   const condition = game.get("condition");
   const stageName = stage.get("name");
 
+  // Skip processing if game has been terminated due to insufficient groups
+  if (game.get("gameTerminated")) {
+    return;
+  }
+
   // ============ IDLE PLAYER DETECTION ============
   // Only check idleness during Selection stage (not Feedback or transitions)
   // Speakers are idle if they don't send any chat message
@@ -669,13 +686,48 @@ function checkGroupViability(game) {
   const minRequired = game.get("min_active_groups") || 1;
   if (viableGroups.length < minRequired) {
     console.log(`Not enough active groups (${viableGroups.length} < ${minRequired}), ending game`);
-    // Game will end naturally when rounds complete
+
+    // Give remaining active players partial compensation and end them
+    const remainingActivePlayers = players.filter(p => p.get("is_active"));
+    remainingActivePlayers.forEach((player) => {
+      console.log(`Ending remaining player ${player.id} due to insufficient groups`);
+      player.set("is_active", false);
+      player.set("ended", "group disbanded");
+      player.set("gameEndTime", Date.now());
+
+      // Calculate proportional pay based on time spent + earned bonus
+      const startTime = player.get("gameStartTime");
+      const endTime = Date.now();
+      const minutesSpent = (endTime - startTime) / (1000 * 60);
+      const proportionalBasePay = Math.min(
+        BASE_PAY,
+        (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY
+      );
+      const earnedBonus = player.get("bonus") || 0;
+      const totalPartialPay = proportionalBasePay + earnedBonus;
+
+      player.set("partialPay", Math.round(totalPartialPay * 100) / 100);
+      player.set("partialBasePay", Math.round(proportionalBasePay * 100) / 100);
+      player.set("partialBonus", Math.round(earnedBonus * 100) / 100);
+      player.set("minutesSpent", Math.round(minutesSpent));
+      console.log(`  -> Proportional pay: $${player.get("partialPay")} for ${Math.round(minutesSpent)} minutes`);
+    });
+
+    // Mark the game as terminated so subsequent rounds/stages are skipped
+    game.set("gameTerminated", true);
+    console.log("Game marked as terminated - remaining rounds will be skipped");
   }
 }
 
 Empirica.onRoundEnded(({ round }) => {
   // Calculate and update bonuses at end of each round
   const game = round.currentGame;
+
+  // Skip processing if game has been terminated
+  if (game.get("gameTerminated")) {
+    return;
+  }
+
   const players = game.players;
 
   players.forEach((player) => {
