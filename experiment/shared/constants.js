@@ -112,7 +112,7 @@ export const SOCIAL_GUESS_CORRECT_POINTS = 2;
 export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 1;
 
 // ============ COMPENSATION ============
-export const BASE_PAY = 10; // dollars
+export const BASE_PAY = 12; // dollars
 export const LOBBY_TIMEOUT_PAY = 2; // dollars for players who couldn't find a match in lobby
 
 // Expected game duration in minutes (used for proportional compensation)
@@ -148,8 +148,7 @@ export const MAX_POINTS = (speakerBlocksTotal * maxSpeakerPointsPerBlock) + (lis
 export const MAX_BONUS = MAX_POINTS * BONUS_PER_POINT;
 
 // Estimated time in minutes
-export const ESTIMATED_TIME_MIN = 30;
-export const ESTIMATED_TIME_MAX = 45;
+export const ESTIMATED_TIME = 60;
 
 // Log warning if in test mode (only runs on server)
 if (typeof window === 'undefined' && TEST_MODE) {
