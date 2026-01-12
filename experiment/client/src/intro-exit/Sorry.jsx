@@ -1,10 +1,9 @@
 import React from "react";
 import { usePlayer } from "@empirica/core/player/classic/react";
 import { Alert } from "../components/Alert";
-import { Button } from "../components/Button";
 import { LOBBY_TIMEOUT_PAY } from "../constants";
 
-export function Sorry({ next }) {
+export function Sorry() {
   const player = usePlayer();
   const endedReason = player.get("ended");
   const partialPay = player.get("partialPay");
@@ -18,14 +17,6 @@ export function Sorry({ next }) {
   const isLobbyTimeout = !gameStartTime &&
     endedReason !== "player timeout" &&
     endedReason !== "group disbanded";
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    player.set("exitSurvey", {
-      gamefailed: isLobbyTimeout ? "lobby timeout" : (endedReason || "unknown"),
-    });
-    next();
-  }
 
   // Different messages based on why the player was removed
   let title = "Game Ended";
@@ -129,11 +120,6 @@ export function Sorry({ next }) {
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <div className="mt-8">
-          <Button type="submit">Submit</Button>
-        </div>
-      </form>
     </div>
   );
 }
