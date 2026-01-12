@@ -106,8 +106,8 @@ export const name_colors = [
 export const BONUS_PER_POINT = 0.05;
 export const bonus_per_point = BONUS_PER_POINT; // Alias for server compatibility
 export const LISTENER_CORRECT_POINTS = 2;
-export const SPEAKER_POINTS_PER_CORRECT_LISTENER = 1;
-export const SPEAKER_POINTS_PER_LISTENER = SPEAKER_POINTS_PER_CORRECT_LISTENER; // Alias for client
+// Speaker scoring: 2 * (proportion of correct listeners) - max 2 points per round
+export const SPEAKER_MAX_POINTS_PER_ROUND = 2;
 export const SOCIAL_GUESS_CORRECT_POINTS = 2;
 export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 1;
 
@@ -137,10 +137,10 @@ export const TOTAL_ROUNDS = TOTAL_BLOCKS * ROUNDS_PER_BLOCK;
 export const SPEAKER_TIMES_PHASE_1 = PHASE_1_BLOCKS / GROUP_SIZE;
 
 // Maximum possible bonus calculation
-// Each player: PHASE_1_BLOCKS as speaker (1 pt per correct listener × 2 listeners × 6 rounds)
-//            + PHASE_1_BLOCKS as listener (2 pts per correct × 6 rounds)
+// Each player: as speaker (2 pts max per round × 6 rounds per block)
+//            + as listener (2 pts per correct × 6 rounds per block)
 // Plus Phase 2 same pattern
-const maxSpeakerPointsPerBlock = SPEAKER_POINTS_PER_LISTENER * (GROUP_SIZE - 1) * NUM_TANGRAMS;
+const maxSpeakerPointsPerBlock = SPEAKER_MAX_POINTS_PER_ROUND * NUM_TANGRAMS;
 const maxListenerPointsPerBlock = LISTENER_CORRECT_POINTS * NUM_TANGRAMS;
 const speakerBlocksTotal = TOTAL_BLOCKS / GROUP_SIZE;
 const listenerBlocksTotal = TOTAL_BLOCKS - speakerBlocksTotal;

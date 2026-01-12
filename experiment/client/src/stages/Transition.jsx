@@ -4,7 +4,6 @@ import {
   PHASE_2_BLOCKS,
   NUM_TANGRAMS,
   LISTENER_CORRECT_POINTS,
-  SPEAKER_POINTS_PER_LISTENER,
   SOCIAL_GUESS_CORRECT_POINTS,
   SOCIAL_SPEAKER_POINTS_PER_CORRECT,
 } from "../constants";
@@ -98,8 +97,8 @@ export function Transition(props) {
               the target picture.
             </li>
             <li>
-              Speakers earn <strong>{SPEAKER_POINTS_PER_LISTENER} point</strong> for each listener who
-              correctly identifies the target.
+              Speakers earn up to <strong>2 points</strong> based on the proportion of listeners who
+              correctly identify the target.
             </li>
             {condition === "social_mixed" && (
               <>

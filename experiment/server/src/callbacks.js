@@ -14,7 +14,7 @@ import {
   PHASE_1_BLOCKS,
   PHASE_2_BLOCKS,
   LISTENER_CORRECT_POINTS,
-  SPEAKER_POINTS_PER_CORRECT_LISTENER,
+  SPEAKER_MAX_POINTS_PER_ROUND,
   SOCIAL_GUESS_CORRECT_POINTS,
   SOCIAL_SPEAKER_POINTS_PER_CORRECT,
   MAX_IDLE_ROUNDS,
@@ -108,7 +108,7 @@ Empirica.onGameStart(({ game }) => {
   game.set("groupSize", GROUP_SIZE);
   game.set("bonusPerPoint", bonus_per_point);
   game.set("listenerCorrectPoints", LISTENER_CORRECT_POINTS);
-  game.set("speakerPointsPerListener", SPEAKER_POINTS_PER_CORRECT_LISTENER);
+  game.set("speakerMaxPointsPerRound", SPEAKER_MAX_POINTS_PER_ROUND);
 
   // ============ PHASE 1: REFERENCE GAME ============
   // Players play within their original groups
@@ -581,8 +581,11 @@ Empirica.onStageEnded(({ stage }) => {
         listener.set("score", listener.get("score") + LISTENER_CORRECT_POINTS);
       });
 
-      // Award points to speaker (1 point per correct listener)
-      const speakerPoints = correctListeners.length * SPEAKER_POINTS_PER_CORRECT_LISTENER;
+      // Award points to speaker (2 * proportion of correct listeners)
+      // This accommodates groups with fewer listeners after dropout
+      const speakerPoints = listeners.length > 0
+        ? 2 * (correctListeners.length / listeners.length)
+        : 0;
       speaker.set("score", speaker.get("score") + speakerPoints);
       speaker.round.set("round_score", speakerPoints);
 

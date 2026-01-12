@@ -11,7 +11,6 @@ import {
   PHASE_2_BLOCKS,
   SELECTION_DURATION,
   LISTENER_CORRECT_POINTS,
-  SPEAKER_POINTS_PER_LISTENER,
   BONUS_PER_POINT,
   GROUP_SIZE,
   getAvatarUrl,
@@ -308,9 +307,9 @@ export function Introduction5({ next }) {
           they earn <strong>{LISTENER_CORRECT_POINTS} points</strong>.
         </li>
         <li>
-          The <strong>Speaker</strong> earns{" "}
-          <strong>{SPEAKER_POINTS_PER_LISTENER} point</strong> for each Listener
-          who correctly identifies the target.
+          The <strong>Speaker</strong> earns up to{" "}
+          <strong>2 points</strong> based on the proportion of listeners
+          who correctly identify the target.
         </li>
         <li>No points are awarded for incorrect selections or timeouts.</li>
       </ul>
