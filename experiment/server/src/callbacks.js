@@ -610,7 +610,7 @@ Empirica.onStageEnded(({ stage }) => {
       }
 
       // Save chat
-      const chat = stage.get(`${groupName}_chat`);
+      const chat = stage.get(`${groupName}_chat`) || [];
       groupPlayers.forEach((player) => {
         player.round.set("chat", chat);
       });

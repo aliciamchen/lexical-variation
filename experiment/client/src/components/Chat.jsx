@@ -22,18 +22,24 @@ export function Chat({ scope, attribute = "messages", customPlayerName }) {
       ? customPlayerName(player)
       : player.get("name") || player.id;
 
-    scope.append(attribute, {
-      text,
-      timestamp: Date.now(),
-      sender: {
-        id: player.id,
-        name: senderName,
-        avatar: player.get("avatar"),
+    // Use .set() with array instead of .append() for simpler server-side access
+    const currentMessages = scope.get(attribute) || [];
+    scope.set(attribute, [
+      ...currentMessages,
+      {
+        id: `${player.id}-${Date.now()}`,
+        text,
+        timestamp: Date.now(),
+        sender: {
+          id: player.id,
+          name: senderName,
+          avatar: player.get("avatar"),
+        },
       },
-    });
+    ]);
   };
 
-  const msgs = scope.getAttribute(attribute)?.items || [];
+  const msgs = scope.get(attribute) || [];
 
   return (
     <div className="h-full w-full flex flex-col">
@@ -80,15 +86,14 @@ function Messages({ msgs }) {
   return (
     <div className="h-full overflow-auto pl-2 pr-4 pb-2" ref={scroller}>
       {msgs.map((msg) => (
-        <MessageComp key={msg.id} attribute={msg} />
+        <MessageComp key={msg.id} msg={msg} />
       ))}
     </div>
   );
 }
 
-function MessageComp({ attribute }) {
-  const msg = attribute.value;
-  const ts = msg.timestamp ? new Date(msg.timestamp) : attribute.createdAt;
+function MessageComp({ msg }) {
+  const ts = msg.timestamp ? new Date(msg.timestamp) : new Date();
 
   // Use sender's avatar or fallback to DiceBear identicon
   const avatar =
