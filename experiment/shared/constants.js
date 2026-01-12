@@ -109,7 +109,8 @@ export const LISTENER_CORRECT_POINTS = 2;
 // Speaker scoring: 2 * (proportion of correct listeners) - max 2 points per round
 export const SPEAKER_MAX_POINTS_PER_ROUND = 2;
 export const SOCIAL_GUESS_CORRECT_POINTS = 2;
-export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 1;
+// Speaker bonus: points for each original-group listener who correctly identifies them
+export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 2;
 
 // ============ COMPENSATION ============
 export const BASE_PAY = 12; // dollars

@@ -107,8 +107,8 @@ export function Transition(props) {
                   guessing whether the speaker was in their original group.
                 </li>
                 <li>
-                  Speakers earn <strong>{SOCIAL_SPEAKER_POINTS_PER_CORRECT} bonus point</strong> for each listener
-                  who correctly guesses their group membership.
+                  Speakers earn <strong>{SOCIAL_SPEAKER_POINTS_PER_CORRECT} bonus points</strong> for each listener
+                  from their original group who correctly identifies them.
                 </li>
               </>
             )}
@@ -180,8 +180,8 @@ export function Transition(props) {
             )}
             {socialGuessedAboutTotal > 0 && (
               <p className="instruction-prompt" style={{ marginTop: 4 }}>
-                When you were a speaker, other players correctly identified your
-                group <strong>{socialGuessedAboutCorrect}</strong> out of{" "}
+                When you were a speaker, listeners from your original group correctly
+                identified you <strong>{socialGuessedAboutCorrect}</strong> out of{" "}
                 <strong>{socialGuessedAboutTotal}</strong> times (
                 {Math.round(
                   (socialGuessedAboutCorrect / socialGuessedAboutTotal) * 100

@@ -592,7 +592,7 @@ Empirica.onStageEnded(({ stage }) => {
       // ============ SOCIAL GUESSING (for social_mixed condition in Phase 2) ============
       if (condition === "social_mixed" && phase_num === 2) {
         const speakerOriginalGroup = speaker.get("original_group");
-        let correctGuesses = 0;
+        let correctGuessesFromOriginalGroup = 0;
         let socialSpeakerPoints = 0;
 
         listeners.forEach((listener) => {
@@ -612,19 +612,21 @@ Empirica.onStageEnded(({ stage }) => {
             listener.set("social_guess_total", totalGuesses);
             listener.set("social_guess_correct_total", correctTotal);
 
-            if (correct) {
-              correctGuesses++;
+            // Speaker earns bonus only when a listener from their original group
+            // correctly identifies the speaker as being from the same group
+            if (wasInSameGroup && correct) {
+              correctGuessesFromOriginalGroup++;
             }
           }
         });
 
         // Track speaker's social round score (not added to displayed score)
-        socialSpeakerPoints = correctGuesses * SOCIAL_SPEAKER_POINTS_PER_CORRECT;
+        socialSpeakerPoints = correctGuessesFromOriginalGroup * SOCIAL_SPEAKER_POINTS_PER_CORRECT;
         speaker.round.set("social_round_score", socialSpeakerPoints);
 
-        // Track speaker's cumulative social stats (how many guessed correctly about them)
-        const speakerGuessedAbout = (speaker.get("social_guessed_about_total") || 0) + listeners.length;
-        const speakerGuessedCorrect = (speaker.get("social_guessed_about_correct") || 0) + correctGuesses;
+        // Track speaker's cumulative social stats (how many original-group listeners guessed correctly)
+        const speakerGuessedAbout = (speaker.get("social_guessed_about_total") || 0) + listeners.filter(l => l.get("original_group") === speakerOriginalGroup).length;
+        const speakerGuessedCorrect = (speaker.get("social_guessed_about_correct") || 0) + correctGuessesFromOriginalGroup;
         speaker.set("social_guessed_about_total", speakerGuessedAbout);
         speaker.set("social_guessed_about_correct", speakerGuessedCorrect);
       }
@@ -642,6 +644,13 @@ Empirica.onStageEnded(({ stage }) => {
 function checkGroupViability(game) {
   const players = game.players;
   const activeGroups = game.get("active_groups") || GROUP_NAMES;
+  const condition = game.get("condition");
+
+  // Get current phase from the current round
+  const currentRound = game.rounds.find(r => !r.get("ended"));
+  const phase_num = currentRound?.get("phase_num") || 1;
+  const isMixedPhase2 = phase_num === 2 &&
+    (condition === "refer_mixed" || condition === "social_mixed");
 
   const viableGroups = activeGroups.filter((groupName) => {
     const groupPlayers = players.filter(
@@ -719,6 +728,40 @@ function checkGroupViability(game) {
     // Mark the game as terminated so subsequent rounds/stages are skipped
     game.set("gameTerminated", true);
     console.log("Game marked as terminated - remaining rounds will be skipped");
+    return; // Exit early, no need to check for solo players
+  }
+
+  // ============ PHASE 2 MIXED: CHECK FOR SOLO PLAYERS IN CURRENT GROUPS ============
+  // After original group disbanding, some current (shuffled) groups might have only 1 player.
+  // Trigger immediate reshuffling so no one plays alone for the rest of the block.
+  if (isMixedPhase2) {
+    const activePlayers = players.filter(p => p.get("is_active"));
+
+    // Get all unique current groups that have active players
+    const currentGroupNames = [...new Set(activePlayers.map(p => p.get("current_group")))];
+
+    // Check if any current group has fewer than MIN_GROUP_SIZE players
+    const hasSoloPlayer = currentGroupNames.some(groupName => {
+      const groupSize = activePlayers.filter(p => p.get("current_group") === groupName).length;
+      return groupSize < MIN_GROUP_SIZE;
+    });
+
+    if (hasSoloPlayer) {
+      // Only reshuffle if we have enough players to form at least one viable group
+      if (activePlayers.length >= MIN_GROUP_SIZE) {
+        console.log(`MID-BLOCK RESHUFFLE: Solo player detected in Phase 2 mixed, triggering immediate reshuffling`);
+        console.log(`  -> ${activePlayers.length} active players will be redistributed`);
+
+        // Track that we did a mid-block reshuffle (for data analysis)
+        const currentBlock = currentRound?.get("block_num") || 0;
+        const currentTarget = currentRound?.get("target_num") || 0;
+        game.set(`midBlockReshuffle_block${currentBlock}_target${currentTarget}`, true);
+
+        reshuffleGroups(game, activePlayers);
+      } else {
+        console.log(`Cannot reshuffle: only ${activePlayers.length} players remaining (need ${MIN_GROUP_SIZE})`);
+      }
+    }
   }
 }
 
