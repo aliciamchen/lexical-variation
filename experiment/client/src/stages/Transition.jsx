@@ -5,7 +5,6 @@ import {
   NUM_TANGRAMS,
   LISTENER_CORRECT_POINTS,
   SOCIAL_GUESS_CORRECT_POINTS,
-  SOCIAL_SPEAKER_POINTS_PER_CORRECT,
 } from "../constants";
 
 export function Transition(props) {
@@ -107,8 +106,7 @@ export function Transition(props) {
                   guessing whether the speaker was in their original group.
                 </li>
                 <li>
-                  Speakers earn <strong>{SOCIAL_SPEAKER_POINTS_PER_CORRECT} bonus points</strong> for each listener
-                  from their original group who correctly identifies them.
+                  Speakers earn up to <strong>2 bonus points</strong> based on the proportion of listeners from their original group who correctly identify them.
                 </li>
               </>
             )}

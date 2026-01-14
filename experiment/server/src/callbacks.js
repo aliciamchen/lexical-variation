@@ -16,7 +16,6 @@ import {
   LISTENER_CORRECT_POINTS,
   SPEAKER_MAX_POINTS_PER_ROUND,
   SOCIAL_GUESS_CORRECT_POINTS,
-  SOCIAL_SPEAKER_POINTS_PER_CORRECT,
   MAX_IDLE_ROUNDS,
   MIN_GROUP_SIZE,
   TEST_MODE,
@@ -593,7 +592,11 @@ Empirica.onStageEnded(({ stage }) => {
       if (condition === "social_mixed" && phase_num === 2) {
         const speakerOriginalGroup = speaker.get("original_group");
         let correctGuessesFromOriginalGroup = 0;
-        let socialSpeakerPoints = 0;
+
+        // Find listeners who are from the speaker's original group
+        const listenersFromOriginalGroup = listeners.filter(
+          (l) => l.get("original_group") === speakerOriginalGroup
+        );
 
         listeners.forEach((listener) => {
           const listenerOriginalGroup = listener.get("original_group");
@@ -620,15 +623,22 @@ Empirica.onStageEnded(({ stage }) => {
           }
         });
 
-        // Track speaker's social round score (not added to displayed score)
-        socialSpeakerPoints = correctGuessesFromOriginalGroup * SOCIAL_SPEAKER_POINTS_PER_CORRECT;
+        // Track speaker's social round score (proportional, up to 2 points)
+        // Similar to tangram scoring: 2 * (proportion of original-group listeners who correctly identify)
+        const socialSpeakerPoints = listenersFromOriginalGroup.length > 0
+          ? 2 * (correctGuessesFromOriginalGroup / listenersFromOriginalGroup.length)
+          : 0;
         speaker.round.set("social_round_score", socialSpeakerPoints);
 
         // Track speaker's cumulative social stats (how many original-group listeners guessed correctly)
-        const speakerGuessedAbout = (speaker.get("social_guessed_about_total") || 0) + listeners.filter(l => l.get("original_group") === speakerOriginalGroup).length;
+        const speakerGuessedAbout = (speaker.get("social_guessed_about_total") || 0) + listenersFromOriginalGroup.length;
         const speakerGuessedCorrect = (speaker.get("social_guessed_about_correct") || 0) + correctGuessesFromOriginalGroup;
         speaker.set("social_guessed_about_total", speakerGuessedAbout);
         speaker.set("social_guessed_about_correct", speakerGuessedCorrect);
+
+        // Track cumulative proportional social speaker points
+        const cumulativeSocialSpeakerPoints = (speaker.get("social_speaker_points_total") || 0) + socialSpeakerPoints;
+        speaker.set("social_speaker_points_total", cumulativeSocialSpeakerPoints);
       }
 
       // Save chat
@@ -782,7 +792,8 @@ Empirica.onRoundEnded(({ round }) => {
 
     // Social points (tracked separately, added to bonus only)
     const listenerSocialPoints = (player.get("social_guess_correct_total") || 0) * SOCIAL_GUESS_CORRECT_POINTS;
-    const speakerSocialPoints = (player.get("social_guessed_about_correct") || 0) * SOCIAL_SPEAKER_POINTS_PER_CORRECT;
+    // Speaker social points are now proportional (accumulated each round)
+    const speakerSocialPoints = player.get("social_speaker_points_total") || 0;
     const totalScore = baseScore + listenerSocialPoints + speakerSocialPoints;
 
     player.set("bonus", totalScore * bonus_per_point);
@@ -800,7 +811,8 @@ Empirica.onGameEnded(({ game }) => {
 
     // Social points (tracked separately, added to bonus only)
     const listenerSocialPoints = (player.get("social_guess_correct_total") || 0) * SOCIAL_GUESS_CORRECT_POINTS;
-    const speakerSocialPoints = (player.get("social_guessed_about_correct") || 0) * SOCIAL_SPEAKER_POINTS_PER_CORRECT;
+    // Speaker social points are now proportional (accumulated each round)
+    const speakerSocialPoints = player.get("social_speaker_points_total") || 0;
     const totalScore = baseScore + listenerSocialPoints + speakerSocialPoints;
 
     player.set("bonus", totalScore * bonus_per_point);

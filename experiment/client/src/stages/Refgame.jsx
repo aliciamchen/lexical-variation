@@ -287,7 +287,7 @@ export function Refgame(props) {
             {" "}
             {player.round.get("role") == "speaker"
               ? "You are the speaker. Please describe the picture in the box to the other players." +
-                (isSocialMixed ? " You will also be rewarded if the listeners correctly guess whether you were in their original group." : "")
+                (isSocialMixed ? " You will also be rewarded if listeners from your original group correctly identify you as a member of their group." : "")
               : "You are a listener. Please click on the picture that the speaker describes." +
                 (isSocialMixed ? " Then guess whether the speaker was in your original group." : "")}
           </p>
