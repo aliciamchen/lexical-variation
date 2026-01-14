@@ -3,7 +3,7 @@
 
 // ============ TEST MODE ============
 // Set to true for local testing (longer timeouts, more idle tolerance)
-export const TEST_MODE = false; // Set to false for production
+export const TEST_MODE = true; // Set to false for production
 
 // ============ TESTING VS PRODUCTION VALUES ============
 // TEST_MODE only affects timing and tolerance settings, not player/group counts.
@@ -111,6 +111,8 @@ export const SPEAKER_MAX_POINTS_PER_ROUND = 2;
 export const SOCIAL_GUESS_CORRECT_POINTS = 2;
 // Speaker bonus: points for each original-group listener who correctly identifies them
 export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 2;
+// Social condition has more scoring opportunities, so lower multiplier to keep max bonus similar
+export const BONUS_PER_POINT_SOCIAL = 0.04;
 
 // ============ COMPENSATION ============
 export const BASE_PAY = 12; // dollars
@@ -137,16 +139,8 @@ export const TOTAL_ROUNDS = TOTAL_BLOCKS * ROUNDS_PER_BLOCK;
 // How many times each player is speaker in Phase 1
 export const SPEAKER_TIMES_PHASE_1 = PHASE_1_BLOCKS / GROUP_SIZE;
 
-// Maximum possible bonus calculation
-// Each player: as speaker (2 pts max per round × 6 rounds per block)
-//            + as listener (2 pts per correct × 6 rounds per block)
-// Plus Phase 2 same pattern
-const maxSpeakerPointsPerBlock = SPEAKER_MAX_POINTS_PER_ROUND * NUM_TANGRAMS;
-const maxListenerPointsPerBlock = LISTENER_CORRECT_POINTS * NUM_TANGRAMS;
-const speakerBlocksTotal = TOTAL_BLOCKS / GROUP_SIZE;
-const listenerBlocksTotal = TOTAL_BLOCKS - speakerBlocksTotal;
-export const MAX_POINTS = (speakerBlocksTotal * maxSpeakerPointsPerBlock) + (listenerBlocksTotal * maxListenerPointsPerBlock);
-export const MAX_BONUS = MAX_POINTS * BONUS_PER_POINT;
+// Maximum bonus displayed to participants (approximate, same across all conditions)
+export const MAX_BONUS = 8;
 
 // Estimated time in minutes
 export const ESTIMATED_TIME = 60;

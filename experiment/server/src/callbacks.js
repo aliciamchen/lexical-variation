@@ -10,6 +10,7 @@ import {
   getAvatarUrl,
   getAnonymousAvatarUrl,
   bonus_per_point,
+  BONUS_PER_POINT_SOCIAL,
   GROUP_SIZE,
   PHASE_1_BLOCKS,
   PHASE_2_BLOCKS,
@@ -105,7 +106,8 @@ Empirica.onGameStart(({ game }) => {
   game.set("selectionDuration", SELECTION_DURATION);
   game.set("numTangrams", context.length);
   game.set("groupSize", GROUP_SIZE);
-  game.set("bonusPerPoint", bonus_per_point);
+  // Use lower multiplier for social condition to keep max bonus equal across conditions
+  game.set("bonusPerPoint", condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point);
   game.set("listenerCorrectPoints", LISTENER_CORRECT_POINTS);
   game.set("speakerMaxPointsPerRound", SPEAKER_MAX_POINTS_PER_ROUND);
 
@@ -785,6 +787,9 @@ Empirica.onRoundEnded(({ round }) => {
   }
 
   const players = game.players;
+  const condition = game.get("treatment")?.condition;
+  // Use lower multiplier for social condition to keep max bonus equal across conditions
+  const multiplier = condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
 
   players.forEach((player) => {
     // Base score from picture guessing
@@ -796,7 +801,7 @@ Empirica.onRoundEnded(({ round }) => {
     const speakerSocialPoints = player.get("social_speaker_points_total") || 0;
     const totalScore = baseScore + listenerSocialPoints + speakerSocialPoints;
 
-    player.set("bonus", totalScore * bonus_per_point);
+    player.set("bonus", totalScore * multiplier);
   });
 });
 
@@ -805,6 +810,10 @@ Empirica.onGameEnded(({ game }) => {
 
   // Final bonus calculation
   const players = game.players;
+  const condition = game.get("treatment")?.condition;
+  // Use lower multiplier for social condition to keep max bonus equal across conditions
+  const multiplier = condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
+
   players.forEach((player) => {
     // Base score from picture guessing
     const baseScore = player.get("score") || 0;
@@ -815,7 +824,7 @@ Empirica.onGameEnded(({ game }) => {
     const speakerSocialPoints = player.get("social_speaker_points_total") || 0;
     const totalScore = baseScore + listenerSocialPoints + speakerSocialPoints;
 
-    player.set("bonus", totalScore * bonus_per_point);
+    player.set("bonus", totalScore * multiplier);
     console.log(
       `Player ${player.id}: Score=${baseScore}, SocialPoints=${listenerSocialPoints + speakerSocialPoints}, TotalScore=${totalScore}, Bonus=$${player.get("bonus").toFixed(2)}`
     );
