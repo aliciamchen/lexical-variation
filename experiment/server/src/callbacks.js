@@ -632,6 +632,10 @@ Empirica.onStageEnded(({ stage }) => {
 
       if (!speaker) return;
 
+      // Check if speaker sent a message this round (listeners can only act if speaker did)
+      const chat = stage.get(`${groupName}_chat`) || [];
+      const speakerSentMessage = chat.some((msg) => msg.sender?.id === speaker.id);
+
       // Save correctness for each listener and count correct ones
       listeners.forEach((listener) => {
         const clicked = listener.round.get("clicked");
@@ -639,7 +643,9 @@ Empirica.onStageEnded(({ stage }) => {
         listener.round.set("clicked_correct", isCorrect);
 
         // Track per-block listener accuracy for Phase 1 accuracy threshold check
-        if (phase_num === 1) {
+        // ONLY count trials where listener could actually respond (speaker sent message)
+        // Otherwise listeners are unfairly penalized for speaker idleness
+        if (phase_num === 1 && speakerSentMessage) {
           const blockNum = round.get("block_num");
           const blockAccuracy = listener.get("block_accuracy") || {};
           if (!blockAccuracy[blockNum]) {
