@@ -72,8 +72,22 @@ export function Game() {
     return `${displayName || "Player"} ${roleLabel}`;
   };
 
+  // Get game state for data attributes
+  const block_num = round?.get("block_num");
+  const target_num = round?.get("target_num");
+  const stageName = stage?.get("name");
+
   return (
-    <div className="h-full w-full flex">
+    <div
+      className="h-full w-full flex"
+      data-testid="game-container"
+      data-game-phase={phase_num || 0}
+      data-game-block={block_num ?? -1}
+      data-game-round={target_num ?? -1}
+      data-stage-name={stageName || "unknown"}
+      data-condition={condition || "unknown"}
+      data-player-group={playerGroup || "unknown"}
+    >
       <div className="h-full w-full flex flex-col">
         <Profile />
         <div className="h-full flex items-center justify-center">

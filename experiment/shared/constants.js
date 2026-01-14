@@ -42,7 +42,7 @@ export const LISTENERS_PER_TRIAL = 2;
 // ============ PHASE CONFIGURATION ============
 // Phase 1: Within-group reference game
 // Phase 2: Continued reference game (condition-dependent)
-export const PHASE_1_BLOCKS = TEST_MODE ? 2 : 6; // Each player speaks twice in production
+export const PHASE_1_BLOCKS = TEST_MODE ? 3 : 6; // Each player speaks twice in production (3 for test to match ACCURACY_CHECK_BLOCKS)
 export const PHASE_2_BLOCKS = TEST_MODE ? 2 : 6;
 
 // ============ GAME STRUCTURE ============
@@ -125,6 +125,13 @@ export const EXPECTED_GAME_DURATION_MIN = 35; // midpoint of 30-45 minute estima
 export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 2; // TEST: 5 rounds tolerance
 export const MIN_GROUP_SIZE = 2; // Minimum players needed to continue in a group
 // MIN_ACTIVE_GROUPS is derived dynamically in callbacks.js based on actual group count
+
+// ============ PHASE 1 ACCURACY THRESHOLD ============
+// At end of Phase 1, remove groups where fewer than 2/3 of players achieved >= 2/3 accuracy
+// Accuracy is calculated from listener performance in the last 3 blocks of Phase 1
+export const ACCURACY_CHECK_BLOCKS = 3; // Check last 3 blocks of Phase 1
+export const ACCURACY_THRESHOLD = 2 / 3; // Players must achieve >= 66.7% accuracy
+export const PLAYER_ACCURACY_THRESHOLD = 2 / 3; // >= 2/3 of group members must meet threshold
 
 // ============ DERIVED VALUES ============
 // Total blocks

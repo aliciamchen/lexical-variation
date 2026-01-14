@@ -17,6 +17,9 @@ export function Refgame(props) {
   const target = round.get("target");
   const shuffled_tangrams = player.get("shuffled_tangrams");
   const correct = player.round.get("clicked") == target;
+
+  // Compute target index for testing purposes
+  const targetIndex = shuffled_tangrams ? shuffled_tangrams.indexOf(target) : -1;
   const condition = game.get("condition");
   const phase_num = round.get("phase_num");
   const block_num = round.get("block_num");
@@ -250,7 +253,12 @@ export function Refgame(props) {
   };
 
   return (
-    <div className="task">
+    <div
+      className="task"
+      data-target-index={targetIndex}
+      data-role={player.round.get("role")}
+      data-current-group={playerGroup}
+    >
       <div className="status">
         <div className="players card">
           <h3 style={{ textAlign: "center", marginBottom: "10px" }}>

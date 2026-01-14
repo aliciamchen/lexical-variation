@@ -76,6 +76,46 @@ export function Sorry() {
     );
     compensationCode = "DISBANDED2026";
     compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
+  } else if (endedReason === "low accuracy") {
+    title = "Game Ended Early";
+    const payAmount = partialPay != null ? partialPay.toFixed(2) : "0.00";
+    const basePayAmount = partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
+    const bonusAmount = partialBonus != null ? partialBonus.toFixed(2) : "0.00";
+    const timeMsg = minutesSpent != null ? `${minutesSpent} minutes` : "your time";
+    message = (
+      <>
+        <p>
+          Unfortunately, your group's accuracy during Phase 1 was below the threshold required
+          to continue to Phase 2.
+        </p>
+        <p className="mt-2">
+          We apologize for the inconvenience. You will receive compensation proportional to
+          the time you spent ({timeMsg}) plus any bonus you earned.
+        </p>
+      </>
+    );
+    compensationCode = "DISBANDED2026";
+    compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
+  } else if (endedReason === "insufficient groups after accuracy check") {
+    title = "Game Ended Early";
+    const payAmount = partialPay != null ? partialPay.toFixed(2) : "0.00";
+    const basePayAmount = partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
+    const bonusAmount = partialBonus != null ? partialBonus.toFixed(2) : "0.00";
+    const timeMsg = minutesSpent != null ? `${minutesSpent} minutes` : "your time";
+    message = (
+      <>
+        <p>
+          Unfortunately, too many groups did not meet the accuracy threshold during Phase 1,
+          and we were unable to continue the experiment.
+        </p>
+        <p className="mt-2">
+          This is not your fault - we apologize for the inconvenience. You will receive
+          compensation proportional to the time you spent ({timeMsg}) plus any bonus you earned.
+        </p>
+      </>
+    );
+    compensationCode = "DISBANDED2026";
+    compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
   } else {
     // Default / unknown reason
     message = (
@@ -93,8 +133,19 @@ export function Sorry() {
     showCompensation = false;
   }
 
+  // Determine exit reason for data attribute
+  let exitReason = endedReason || "unknown";
+  if (isLobbyTimeout) exitReason = "lobby_timeout";
+
   return (
-    <div className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div
+      className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
+      data-testid="sorry-screen"
+      data-exit-reason={exitReason}
+      data-prolific-code={showCompensation && compensationCode ? compensationCode : "none"}
+      data-partial-pay={partialPay?.toFixed(2) || "0.00"}
+      data-player-id={player?.id || "unknown"}
+    >
       <Alert title={title}>
         {message}
       </Alert>

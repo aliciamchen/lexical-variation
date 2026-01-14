@@ -26,6 +26,9 @@ import {
   BONUS_INFO_DURATION,
   BASE_PAY,
   EXPECTED_GAME_DURATION_MIN,
+  ACCURACY_CHECK_BLOCKS,
+  ACCURACY_THRESHOLD,
+  PLAYER_ACCURACY_THRESHOLD,
 } from "./constants";
 
 // Group names (no color distinction)
@@ -212,6 +215,18 @@ Empirica.onRoundStart(({ round }) => {
   const minRequired = game.get("min_active_groups") || 1;
   if (activeGroups.length < minRequired) {
     return;
+  }
+
+  // ============ PHASE 1 → PHASE 2 TRANSITION: ACCURACY CHECK ============
+  // At the start of the Phase 2 transition, check if groups meet accuracy threshold
+  if (round.get("phase") === "transition" && round.get("transition_type") === "phase_2") {
+    console.log("Phase 1 → Phase 2 transition: Running accuracy threshold check");
+    checkPhase1AccuracyThreshold(game);
+
+    // After accuracy check, game might be terminated - check again
+    if (game.get("gameTerminated")) {
+      return;
+    }
   }
 
   if (round.get("phase") === "refgame") {
@@ -571,6 +586,20 @@ Empirica.onStageEnded(({ stage }) => {
         const clicked = listener.round.get("clicked");
         const isCorrect = clicked === target;
         listener.round.set("clicked_correct", isCorrect);
+
+        // Track per-block listener accuracy for Phase 1 accuracy threshold check
+        if (phase_num === 1) {
+          const blockNum = round.get("block_num");
+          const blockAccuracy = listener.get("block_accuracy") || {};
+          if (!blockAccuracy[blockNum]) {
+            blockAccuracy[blockNum] = { correct: 0, total: 0 };
+          }
+          blockAccuracy[blockNum].total += 1;
+          if (isCorrect) {
+            blockAccuracy[blockNum].correct += 1;
+          }
+          listener.set("block_accuracy", blockAccuracy);
+        }
       });
 
       const correctListeners = listeners.filter(
@@ -775,6 +804,155 @@ function checkGroupViability(game) {
       }
     }
   }
+}
+
+// Helper function to check Phase 1 accuracy threshold and remove underperforming groups
+// Called at the Phase 1 → Phase 2 transition
+function checkPhase1AccuracyThreshold(game) {
+  const players = game.players;
+  const activeGroups = game.get("active_groups") || GROUP_NAMES;
+
+  // Determine which blocks to check (last ACCURACY_CHECK_BLOCKS of Phase 1)
+  const startBlock = Math.max(0, PHASE_1_BLOCKS - ACCURACY_CHECK_BLOCKS);
+  const blocksToCheck = [];
+  for (let i = startBlock; i < PHASE_1_BLOCKS; i++) {
+    blocksToCheck.push(i);
+  }
+
+  console.log(`\n============ PHASE 1 ACCURACY CHECK ============`);
+  console.log(`Checking blocks: ${blocksToCheck.join(", ")} (last ${ACCURACY_CHECK_BLOCKS} blocks of Phase 1)`);
+  console.log(`Accuracy threshold: ${(ACCURACY_THRESHOLD * 100).toFixed(1)}%`);
+  console.log(`Player threshold: ${(PLAYER_ACCURACY_THRESHOLD * 100).toFixed(1)}% of group must meet accuracy`);
+
+  const groupResults = {};
+  const viableGroups = [];
+
+  activeGroups.forEach((groupName) => {
+    const groupPlayers = players.filter(
+      (p) => p.get("is_active") && p.get("original_group") === groupName
+    );
+
+    if (groupPlayers.length === 0) {
+      console.log(`Group ${groupName}: No active players, skipping`);
+      return;
+    }
+
+    // Calculate accuracy for each player in the checked blocks
+    const playerAccuracies = groupPlayers.map((player) => {
+      const blockAccuracy = player.get("block_accuracy") || {};
+      let totalCorrect = 0;
+      let totalTrials = 0;
+
+      blocksToCheck.forEach((blockNum) => {
+        const blockData = blockAccuracy[blockNum];
+        if (blockData) {
+          totalCorrect += blockData.correct;
+          totalTrials += blockData.total;
+        }
+      });
+
+      const accuracy = totalTrials > 0 ? totalCorrect / totalTrials : 0;
+      return {
+        playerId: player.id,
+        playerName: player.get("original_name"),
+        accuracy,
+        meetsThreshold: accuracy >= ACCURACY_THRESHOLD,
+        totalCorrect,
+        totalTrials,
+      };
+    });
+
+    // Count players meeting the threshold
+    const playersMeetingThreshold = playerAccuracies.filter((p) => p.meetsThreshold).length;
+    const proportionMeeting = playersMeetingThreshold / groupPlayers.length;
+    const groupMeetsThreshold = proportionMeeting >= PLAYER_ACCURACY_THRESHOLD;
+
+    groupResults[groupName] = {
+      players: playerAccuracies,
+      playersMeetingThreshold,
+      totalPlayers: groupPlayers.length,
+      proportionMeeting,
+      groupMeetsThreshold,
+    };
+
+    console.log(`\nGroup ${groupName}:`);
+    playerAccuracies.forEach((p) => {
+      console.log(`  ${p.playerName}: ${(p.accuracy * 100).toFixed(1)}% (${p.totalCorrect}/${p.totalTrials}) - ${p.meetsThreshold ? "PASS" : "FAIL"}`);
+    });
+    console.log(`  -> ${playersMeetingThreshold}/${groupPlayers.length} players meet threshold (${(proportionMeeting * 100).toFixed(1)}%) - Group ${groupMeetsThreshold ? "PASSES" : "FAILS"}`);
+
+    if (groupMeetsThreshold) {
+      viableGroups.push(groupName);
+    } else {
+      // Remove all players in this group with proportional compensation
+      console.log(`  -> Removing group ${groupName} due to low accuracy`);
+      groupPlayers.forEach((player) => {
+        console.log(`    Removing player ${player.id} (${player.get("original_name")})`);
+        player.set("is_active", false);
+        player.set("ended", "low accuracy");
+        player.set("gameEndTime", Date.now());
+
+        // Calculate proportional pay based on time spent + earned bonus
+        const startTime = player.get("gameStartTime");
+        const endTime = Date.now();
+        const minutesSpent = (endTime - startTime) / (1000 * 60);
+        const proportionalBasePay = Math.min(
+          BASE_PAY,
+          (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY
+        );
+        const earnedBonus = player.get("bonus") || 0;
+        const totalPartialPay = proportionalBasePay + earnedBonus;
+
+        player.set("partialPay", Math.round(totalPartialPay * 100) / 100);
+        player.set("partialBasePay", Math.round(proportionalBasePay * 100) / 100);
+        player.set("partialBonus", Math.round(earnedBonus * 100) / 100);
+        player.set("minutesSpent", Math.round(minutesSpent));
+        console.log(`    -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${Math.round(minutesSpent)} minutes`);
+      });
+    }
+  });
+
+  // Update active groups
+  game.set("active_groups", viableGroups);
+  game.set("phase1_accuracy_results", groupResults);
+
+  console.log(`\nActive groups after accuracy check: ${viableGroups.join(", ") || "NONE"}`);
+
+  // Check if game can continue
+  const minRequired = game.get("min_active_groups") || 1;
+  if (viableGroups.length < minRequired) {
+    console.log(`Not enough active groups (${viableGroups.length} < ${minRequired}), ending game`);
+
+    // Give remaining active players partial compensation and end them
+    const remainingActivePlayers = players.filter((p) => p.get("is_active"));
+    remainingActivePlayers.forEach((player) => {
+      console.log(`Ending remaining player ${player.id} due to insufficient groups after accuracy check`);
+      player.set("is_active", false);
+      player.set("ended", "insufficient groups after accuracy check");
+      player.set("gameEndTime", Date.now());
+
+      const startTime = player.get("gameStartTime");
+      const endTime = Date.now();
+      const minutesSpent = (endTime - startTime) / (1000 * 60);
+      const proportionalBasePay = Math.min(
+        BASE_PAY,
+        (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY
+      );
+      const earnedBonus = player.get("bonus") || 0;
+      const totalPartialPay = proportionalBasePay + earnedBonus;
+
+      player.set("partialPay", Math.round(totalPartialPay * 100) / 100);
+      player.set("partialBasePay", Math.round(proportionalBasePay * 100) / 100);
+      player.set("partialBonus", Math.round(earnedBonus * 100) / 100);
+      player.set("minutesSpent", Math.round(minutesSpent));
+      console.log(`  -> Proportional pay: $${player.get("partialPay")} for ${Math.round(minutesSpent)} minutes`);
+    });
+
+    game.set("gameTerminated", true);
+    console.log("Game marked as terminated after Phase 1 accuracy check");
+  }
+
+  console.log(`============ END ACCURACY CHECK ============\n`);
 }
 
 Empirica.onRoundEnded(({ round }) => {

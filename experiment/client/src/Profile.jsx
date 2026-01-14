@@ -17,9 +17,14 @@ export function Profile() {
   const score = player.get("score") || 0;
   const phase_num = round ? round.get("phase_num") : null;
   const originalGroup = player.get("original_group");
+  const playerName = player.get("name");
 
   return (
-    <div className="min-w-lg md:min-w-2xl mt-2 m-x-auto px-3 py-2 text-gray-500 rounded-md grid grid-cols-3 items-center border-.5">
+    <div
+      className="min-w-lg md:min-w-2xl mt-2 m-x-auto px-3 py-2 text-gray-500 rounded-md grid grid-cols-3 items-center border-.5"
+      data-player-name={playerName}
+      data-player-group={originalGroup}
+    >
       <div className="leading-tight ml-1">
         <div className="text-gray-600 font-semibold">
           {round ? round.get("name") : ""}

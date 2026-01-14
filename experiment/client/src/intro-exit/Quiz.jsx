@@ -113,7 +113,12 @@ export function Quiz({ next }) {
   // Show failure screen after 3 failed attempts
   if (failed) {
     return (
-      <div className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div
+        className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
+        data-testid="quiz-failed-screen"
+        data-exit-reason="quiz_failed"
+        data-prolific-code="QUIZFAIL2026"
+      >
         <div
           style={{
             padding: "20px",
