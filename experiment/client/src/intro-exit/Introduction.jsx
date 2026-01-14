@@ -173,10 +173,10 @@ export function Introduction3({ next }) {
         work.
       </p>
       <p>
-        <strong>Important:</strong> Please limit your messages to describing the
-        current target picture.{" "}
-        <strong>Do not chat about any other topics.</strong> Failure to follow
-        this rule may result in not receiving your pay.
+        <strong>Important:</strong> Your messages should describe what the
+        target picture looks like and help listeners identify the picture from
+        the set. Do not chat about any other topics. Failure to follow this rule
+        may result in not receiving your pay.
       </p>
       <p>
         After the Speaker sends a message, the Listeners read it and each click
@@ -307,9 +307,9 @@ export function Introduction5({ next }) {
           they earn <strong>{LISTENER_CORRECT_POINTS} points</strong>.
         </li>
         <li>
-          The <strong>Speaker</strong> earns up to{" "}
-          <strong>2 points</strong> based on the proportion of listeners
-          who correctly identify the target.
+          The <strong>Speaker</strong> earns up to <strong>2 points</strong>{" "}
+          based on the proportion of listeners who correctly identify the
+          target.
         </li>
         <li>No points are awarded for incorrect selections or timeouts.</li>
       </ul>
