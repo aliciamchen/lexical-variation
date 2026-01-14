@@ -331,6 +331,7 @@ Empirica.onRoundStart(({ round }) => {
 // Helper function to reshuffle groups for mixed conditions with BALANCED assignment
 // Goal: Each group should have one player from each original_player_index (0, 1, 2)
 // This ensures speaker rotation (blockNum % 3) works consistently across conditions
+// Additionally: Ensures groups are MIXED (players from different original groups together)
 function reshuffleGroups(game, players) {
   console.log("Reshuffling groups for mixed condition (balanced)");
 
@@ -346,23 +347,9 @@ function reshuffleGroups(game, players) {
     return;
   }
 
-  // Group players by their original_player_index
-  const playersByIndex = {
-    0: players.filter(p => p.get("player_index") === 0),
-    1: players.filter(p => p.get("player_index") === 1),
-    2: players.filter(p => p.get("player_index") === 2),
-  };
-
-  // Shuffle within each index group for randomization
-  Object.keys(playersByIndex).forEach(idx => {
-    playersByIndex[idx] = _.shuffle(playersByIndex[idx]);
-  });
-
-  // Log distribution for debugging
-  console.log(`Player distribution by index: 0=${playersByIndex[0].length}, 1=${playersByIndex[1].length}, 2=${playersByIndex[2].length}`);
+  const usedGroups = activeGroups.slice(0, numGroups);
 
   // Calculate target group sizes for even distribution
-  // E.g., 8 players / 3 groups = 2 groups of 3, 1 group of 2 → [3, 3, 2]
   const baseSize = Math.floor(numPlayers / numGroups);
   const extraPlayers = numPlayers % numGroups;
   const targetSizes = [];
@@ -371,55 +358,115 @@ function reshuffleGroups(game, players) {
   }
   console.log(`Target group sizes: ${targetSizes.join(", ")}`);
 
-  const usedGroups = activeGroups.slice(0, numGroups);
+  // Check how many unique original groups we have
+  const uniqueOriginalGroups = new Set(players.map(p => p.get("original_group")));
+  const canMix = uniqueOriginalGroups.size >= 2;
 
-  // Strategy: For each group, assign one player from each index (0, 1, 2)
-  // This ensures each group gets balanced indices when possible
-  // Track which players have been assigned in THIS reshuffling
-  const assignedInThisReshuffling = new Set();
-  const indexPointers = { 0: 0, 1: 0, 2: 0 };
+  // Helper function to perform one reshuffling attempt
+  function doReshuffle() {
+    // Group players by their original_player_index
+    const playersByIndex = {
+      0: players.filter(p => p.get("player_index") === 0),
+      1: players.filter(p => p.get("player_index") === 1),
+      2: players.filter(p => p.get("player_index") === 2),
+    };
 
-  // First pass: Fill each group with one player from each index
-  usedGroups.forEach((groupName, groupIdx) => {
-    const targetSize = targetSizes[groupIdx];
-    let assigned = 0;
+    // Shuffle within each index group for randomization
+    Object.keys(playersByIndex).forEach(idx => {
+      playersByIndex[idx] = _.shuffle(playersByIndex[idx]);
+    });
 
-    // Try to assign one player from each index
-    for (let idx = 0; idx < GROUP_SIZE && assigned < targetSize; idx++) {
-      const pointer = indexPointers[idx];
-      if (pointer < playersByIndex[idx].length) {
-        const player = playersByIndex[idx][pointer];
-        player.set("current_group", groupName);
-        assignedInThisReshuffling.add(player.id);
-        indexPointers[idx]++;
-        assigned++;
-      }
-    }
-  });
+    // Track which players have been assigned in THIS reshuffling
+    const assignedInThisReshuffling = new Set();
+    const indexPointers = { 0: 0, 1: 0, 2: 0 };
 
-  // Second pass: Distribute any remaining unassigned players
-  // This handles cases where some index has more players than others
-  const unassignedPlayers = players.filter(p => !assignedInThisReshuffling.has(p.id));
-
-  if (unassignedPlayers.length > 0) {
-    console.log(`Second pass: ${unassignedPlayers.length} unassigned players to distribute`);
-
-    // Assign remaining players to groups that haven't reached target size
-    let unassignedIdx = 0;
+    // First pass: Fill each group with one player from each index
     usedGroups.forEach((groupName, groupIdx) => {
       const targetSize = targetSizes[groupIdx];
-      let currentSize = players.filter(
-        p => assignedInThisReshuffling.has(p.id) && p.get("current_group") === groupName
-      ).length;
+      let assigned = 0;
 
-      while (currentSize < targetSize && unassignedIdx < unassignedPlayers.length) {
-        const player = unassignedPlayers[unassignedIdx];
-        player.set("current_group", groupName);
-        assignedInThisReshuffling.add(player.id);
-        currentSize++;
-        unassignedIdx++;
+      // Try to assign one player from each index
+      for (let idx = 0; idx < GROUP_SIZE && assigned < targetSize; idx++) {
+        const pointer = indexPointers[idx];
+        if (pointer < playersByIndex[idx].length) {
+          const player = playersByIndex[idx][pointer];
+          player.set("current_group", groupName);
+          assignedInThisReshuffling.add(player.id);
+          indexPointers[idx]++;
+          assigned++;
+        }
       }
     });
+
+    // Second pass: Distribute any remaining unassigned players
+    const unassignedPlayers = players.filter(p => !assignedInThisReshuffling.has(p.id));
+
+    if (unassignedPlayers.length > 0) {
+      let unassignedIdx = 0;
+      usedGroups.forEach((groupName, groupIdx) => {
+        const targetSize = targetSizes[groupIdx];
+        let currentSize = players.filter(
+          p => assignedInThisReshuffling.has(p.id) && p.get("current_group") === groupName
+        ).length;
+
+        while (currentSize < targetSize && unassignedIdx < unassignedPlayers.length) {
+          const player = unassignedPlayers[unassignedIdx];
+          player.set("current_group", groupName);
+          assignedInThisReshuffling.add(player.id);
+          currentSize++;
+          unassignedIdx++;
+        }
+      });
+    }
+  }
+
+  // Helper function to check if groups are properly mixed
+  // Mixed = at least one group has players from 2+ different original groups
+  function checkMixing() {
+    for (const groupName of usedGroups) {
+      const groupPlayers = players.filter(p => p.get("current_group") === groupName);
+      const originalGroups = new Set(groupPlayers.map(p => p.get("original_group")));
+      if (originalGroups.size >= 2) {
+        return true; // At least one group is mixed
+      }
+    }
+    return false; // No group has players from different original groups
+  }
+
+  // Perform reshuffling with mixing guarantee (if possible)
+  const MAX_RESHUFFLE_ATTEMPTS = 10;
+  let attempts = 0;
+  let isMixed = false;
+
+  // Log distribution for debugging (only once)
+  const playersByIndex = {
+    0: players.filter(p => p.get("player_index") === 0),
+    1: players.filter(p => p.get("player_index") === 1),
+    2: players.filter(p => p.get("player_index") === 2),
+  };
+  console.log(`Player distribution by index: 0=${playersByIndex[0].length}, 1=${playersByIndex[1].length}, 2=${playersByIndex[2].length}`);
+
+  if (!canMix) {
+    // Only one original group remaining, mixing is impossible
+    console.log("Only one original group remaining - mixing not possible");
+    doReshuffle();
+  } else {
+    // Try to get a mixed result
+    while (attempts < MAX_RESHUFFLE_ATTEMPTS && !isMixed) {
+      attempts++;
+      doReshuffle();
+      isMixed = checkMixing();
+
+      if (!isMixed && attempts < MAX_RESHUFFLE_ATTEMPTS) {
+        console.log(`Reshuffle attempt ${attempts}: no mixing, trying again...`);
+      }
+    }
+
+    if (isMixed) {
+      console.log(`Achieved mixed groups after ${attempts} attempt(s)`);
+    } else {
+      console.warn(`WARNING: Could not achieve mixing after ${MAX_RESHUFFLE_ATTEMPTS} attempts`);
+    }
   }
 
   // Verification: Log final group composition
@@ -427,10 +474,13 @@ function reshuffleGroups(game, players) {
   usedGroups.forEach(groupName => {
     const groupPlayers = players.filter(p => p.get("current_group") === groupName);
     const indices = groupPlayers.map(p => p.get("player_index"));
+    const originalGroups = [...new Set(groupPlayers.map(p => p.get("original_group")))];
     groupComposition[groupName] = {
       size: groupPlayers.length,
       indices: indices.sort(),
-      hasAllIndices: [0, 1, 2].every(idx => indices.includes(idx))
+      hasAllIndices: [0, 1, 2].every(idx => indices.includes(idx)),
+      originalGroups: originalGroups.sort(),
+      isMixed: originalGroups.length >= 2
     };
   });
 
@@ -455,7 +505,8 @@ function reshuffleGroups(game, players) {
   }
 
   const numComplete = Object.values(groupComposition).filter(g => g.hasAllIndices).length;
-  console.log(`Reshuffled ${numPlayers} players into ${numGroups} groups (${numComplete} complete)`);
+  const numMixed = Object.values(groupComposition).filter(g => g.isMixed).length;
+  console.log(`Reshuffled ${numPlayers} players into ${numGroups} groups (${numComplete} complete, ${numMixed} mixed)`);
 }
 
 Empirica.onStageStart(({ stage }) => {
