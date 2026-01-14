@@ -30,11 +30,9 @@ export function Transition(props) {
             You will continue playing the reference game with the{" "}
             <strong>same group members</strong> you played with in Phase 1. Your
             goal (and the scoring) remains the same: describe the pictures to
-            help your listeners identify them correctly. 
-          </p>
-          <p style={{ marginTop: 8 }}>
-            Remember to limit your messages to describing the current target
-            picture only, and to not chat about any other topics.
+            help your listeners identify them correctly. Remember to limit your
+            messages to describing the current target picture only, and to not
+            chat about any other topics.
           </p>
         </div>
       );
@@ -51,11 +49,9 @@ export function Transition(props) {
           </p>
           <p style={{ marginTop: 8 }}>
             Your goal remains the same: describe the pictures to help your
-            listeners identify them correctly.
-          </p>
-          <p style={{ marginTop: 8 }}>
-            Remember to limit your messages to describing the current target
-            picture only, and to not chat about any other topics.
+            listeners identify them correctly. Remember to limit your messages
+            to describing the current target picture only, and to not chat about
+            any other topics.
           </p>
         </div>
       );
@@ -103,7 +99,9 @@ export function Transition(props) {
           {NUM_TANGRAMS} rounds, just like in Phase 1.
         </p>
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
-          <strong>Scoring:</strong>
+          <strong>
+            {condition === "social_mixed" ? "Scoring" : "Scoring Reminder:"}
+          </strong>
           <ul style={{ marginTop: 4, marginLeft: 20 }}>
             <li>
               Listeners earn <strong>{LISTENER_CORRECT_POINTS} points</strong>{" "}
