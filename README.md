@@ -36,12 +36,15 @@ No `node_modules` patches are required.
 
 ## Dependencies
 
-The R packages are managed by `renv` and the Python packages are managed by conda.
+The R packages are managed by `renv` and the Python packages are managed by [uv](https://docs.astral.sh/uv/).
 
 The R version is `4.5.2`.
 
 ```bash
-conda env create -f environment.yml
-conda activate lexical-variation
+# Install Python dependencies
+uv sync
+
 # In R: renv::restore()
 ```
+
+Note: `rpy2` requires R to be installed. Cairo-based packages may require: `brew install cairo pango`

@@ -18,3 +18,4 @@ lexical-variation*/
 .playwright-mcp
 .claude/
 *export*
+*.pdf

@@ -633,8 +633,8 @@ Empirica.onStageEnded(({ stage }) => {
       if (!speaker) return;
 
       // Check if speaker sent a message this round (listeners can only act if speaker did)
-      const chat = stage.get(`${groupName}_chat`) || [];
-      const speakerSentMessage = chat.some((msg) => msg.sender?.id === speaker.id);
+      const groupChat = stage.get(`${groupName}_chat`) || [];
+      const speakerSentMessage = groupChat.some((msg) => msg.sender?.id === speaker.id);
 
       // Save correctness for each listener and count correct ones
       listeners.forEach((listener) => {
