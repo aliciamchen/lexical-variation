@@ -66,6 +66,7 @@ test.describe.serial('Compensation: Group Disbanded (TEST_PLAN 10.3)', () => {
   });
 
   test('two players from same group go idle and get kicked, disbanding the group', async () => {
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
 
     // Find players by original group so we can target two from the same group
@@ -98,6 +99,12 @@ test.describe.serial('Compensation: Group Disbanded (TEST_PLAN 10.3)', () => {
 
   test('disbanded player sees DISBANDED2026 code and partial pay > 0.00', async () => {
     const pages = pm.getPages();
+
+    // Wait for exit screens to render (sorry screens may not appear immediately after idle kicks)
+    for (const page of pages) {
+      // Try to wait for exit screen; some players may still be in game
+      await waitForExitScreen(page, 30_000).catch(() => null);
+    }
 
     // Find the player(s) with "group disbanded" exit reason
     const removed = await getRemovedPlayers(pages);

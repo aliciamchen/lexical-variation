@@ -77,6 +77,7 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
   });
 
   test('two players from one group go idle and get kicked', async () => {
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
 
     // Find players by original group so we can target two from the same group
@@ -108,9 +109,17 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
 
   test('idle players are on exit screen with "player timeout"', async () => {
     const pages = pm.getPages();
-    const groups = await getPlayersByGroup(pages);
 
-    // Find which group we targeted (group with fewer than 3 active members or removed members)
+    // Wait for exit screens to render (sorry screens may not appear immediately)
+    // Find the two idle players by waiting for their exit screens
+    const groups = await getPlayersByGroup(pages);
+    const targetGroupName = Object.keys(groups)[0];
+
+    // Wait for each page to potentially show an exit screen
+    for (const page of pages) {
+      await waitForExitScreen(page, 30_000);
+    }
+
     const removed = await getRemovedPlayers(pages);
     expect(removed.length).toBeGreaterThanOrEqual(2);
 

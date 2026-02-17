@@ -20,6 +20,7 @@ import {
   getRemovedPlayers,
   getPlayersByGroup,
   waitForExitScreen,
+  waitForStage,
   isOnExitScreen,
   isInGame,
 } from '../helpers/game-actions';
@@ -104,8 +105,12 @@ test.describe.serial('Group Viability: Phase 2 Dropout in Mixed Condition (3.6)'
 
   test('verify Phase 2 started with reshuffled groups', async () => {
     const pages = pm.getPages();
+
+    // Wait for Phase 2 Selection stage BEFORE getting active players
+    // (during transition, .task element may not exist, causing getActivePlayers issues)
+    await waitForStage(pages[0], 'Selection', 120_000);
+
     const active = await getActivePlayers(pages);
-    await active[0]?.waitForTimeout(2000);
 
     // Verify we are in Phase 2
     for (const page of active) {
@@ -130,6 +135,7 @@ test.describe.serial('Group Viability: Phase 2 Dropout in Mixed Condition (3.6)'
   });
 
   test('one player goes idle in Phase 2 and gets kicked', async () => {
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
     // Pick one player to idle (first player from group A)
     const groupNames = Object.keys(groupPageIndices);
@@ -143,10 +149,8 @@ test.describe.serial('Group Viability: Phase 2 Dropout in Mixed Condition (3.6)'
       await playRound(pages, { skipIndices: [idleIndex] });
     }
 
-    await pages[0].waitForTimeout(3000);
-
-    // Verify the idle player was removed
-    const exitInfo = await getExitInfo(pages[idleIndex]);
+    // Wait for the idle player to see the sorry screen
+    const exitInfo = await waitForExitScreen(pages[idleIndex], 30_000);
     expect(exitInfo).not.toBeNull();
     expect(exitInfo!.exitReason).toBe('player timeout');
   });

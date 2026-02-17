@@ -57,6 +57,7 @@ test.describe.serial('Happy Path: social_mixed', () => {
   });
 
   test('game starts with social_mixed condition', async () => {
+    test.slow(); // May need extra time if server is degraded from accumulated state
     await expectCondition(pm.getPage(0), 'social_mixed');
   });
 

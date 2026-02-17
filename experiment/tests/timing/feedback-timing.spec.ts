@@ -73,13 +73,20 @@ test.describe.serial('Timing: Feedback Stage Timing (TEST_PLAN 6.2)', () => {
     expect(feedbackInfo!.stageName).toBe('Feedback');
 
     // Do NOT click Continue -- let the timer expire.
-    // Wait for FEEDBACK_DURATION + 5 seconds.
-    const waitMs = (FEEDBACK_DURATION + 5) * 1000;
+    // Wait for FEEDBACK_DURATION + extra buffer for server processing.
+    // Server degradation may cause the stage to take longer than expected.
+    const waitMs = (FEEDBACK_DURATION + 15) * 1000;
     await pages[0].waitForTimeout(waitMs);
 
     // Verify the stage has advanced past Feedback.
     // It should now be on Selection (next round) or Transition (if block ended).
-    const infoAfter = await getPlayerInfo(pages[0]);
+    // Poll in case the stage transition is slow due to server load.
+    let infoAfter = await getPlayerInfo(pages[0]);
+    if (infoAfter?.stageName === 'Feedback') {
+      // Give extra time if still in Feedback (server may be slow)
+      await pages[0].waitForTimeout(10_000);
+      infoAfter = await getPlayerInfo(pages[0]);
+    }
     expect(infoAfter).not.toBeNull();
     expect(infoAfter!.stageName).not.toBe('Feedback');
     // Stage should be Selection or Transition

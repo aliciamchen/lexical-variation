@@ -67,8 +67,8 @@ test.describe.serial('Score Display: Refer Scores (TEST_PLAN 11.1)', () => {
     // Play one round where listeners click the correct tangram (default behavior)
     await playRound(pages);
 
-    // Wait for feedback to appear (scores are updated after round completes)
-    await pages[0].waitForTimeout(2000);
+    // Wait for feedback to appear and scores to update
+    await pages[0].waitForTimeout(3000);
 
     // Check that at least some players now have non-zero scores
     // Listeners who clicked correctly get LISTENER_CORRECT_POINTS (2)
@@ -76,18 +76,28 @@ test.describe.serial('Score Display: Refer Scores (TEST_PLAN 11.1)', () => {
     let foundNonZeroScore = false;
 
     for (const page of pages) {
-      const active = await getActivePlayers([page]);
-      if (active.length === 0) continue;
-
       // Look for the score display in the Profile section
-      // Profile has: "Score" label and a numeric value in text-3xl font
-      const scoreElement = page.locator('.text-3xl.font-semibold');
-      if (await scoreElement.count() > 0) {
-        const scoreText = await scoreElement.textContent();
-        const scoreValue = parseInt(scoreText || '0', 10);
-        if (scoreValue > 0) {
-          foundNonZeroScore = true;
+      // Profile.jsx renders: <div className="text-3xl font-semibold !leading-none tabular-nums">{score}</div>
+      // Use page.evaluate to find the score more reliably
+      const score = await page.evaluate(() => {
+        // Find by the "Score" label and get the adjacent numeric value
+        const scoreLabel = Array.from(document.querySelectorAll('div'))
+          .find(el => el.textContent?.trim() === 'Score');
+        if (scoreLabel) {
+          const parent = scoreLabel.parentElement;
+          if (parent) {
+            const numEl = parent.querySelector('.tabular-nums');
+            if (numEl) return parseInt(numEl.textContent || '0', 10);
+          }
         }
+        // Fallback: find by class
+        const el = document.querySelector('.tabular-nums');
+        return el ? parseInt(el.textContent || '0', 10) : 0;
+      });
+
+      if (score > 0) {
+        foundNonZeroScore = true;
+        break;
       }
     }
 
@@ -97,32 +107,28 @@ test.describe.serial('Score Display: Refer Scores (TEST_PLAN 11.1)', () => {
   test('scores continue to increment after additional rounds', async () => {
     const pages = pm.getPages();
 
+    // Helper to read score from a page
+    const readScore = async (page: typeof pages[0]) => {
+      return await page.evaluate(() => {
+        const el = document.querySelector('.tabular-nums');
+        return el ? parseInt(el.textContent || '0', 10) : 0;
+      });
+    };
+
     // Record scores before playing more rounds
     const scoresBefore: number[] = [];
     for (const page of pages) {
-      const scoreElement = page.locator('.text-3xl.font-semibold');
-      if (await scoreElement.count() > 0) {
-        const scoreText = await scoreElement.textContent();
-        scoresBefore.push(parseInt(scoreText || '0', 10));
-      } else {
-        scoresBefore.push(0);
-      }
+      scoresBefore.push(await readScore(page));
     }
 
     // Play another round
     await playRound(pages);
-    await pages[0].waitForTimeout(2000);
+    await pages[0].waitForTimeout(3000);
 
     // Record scores after
     const scoresAfter: number[] = [];
     for (const page of pages) {
-      const scoreElement = page.locator('.text-3xl.font-semibold');
-      if (await scoreElement.count() > 0) {
-        const scoreText = await scoreElement.textContent();
-        scoresAfter.push(parseInt(scoreText || '0', 10));
-      } else {
-        scoresAfter.push(0);
-      }
+      scoresAfter.push(await readScore(page));
     }
 
     // At least some players should have higher scores

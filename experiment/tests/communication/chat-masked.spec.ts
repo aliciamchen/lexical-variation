@@ -7,6 +7,7 @@ import {
   handleTransition,
   speakerSendMessage,
   getActivePlayers,
+  waitForStage,
 } from '../helpers/game-actions';
 import {
   expectPlayerInGame,
@@ -74,8 +75,8 @@ test.describe.serial('Communication: chat with masked identities in refer_mixed'
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
-    // Wait for Phase 2 to start
-    await active[0]?.waitForTimeout(2000);
+    // Wait for Phase 2 Selection stage so .task element is rendered
+    await waitForStage(active[0], 'Selection', 120_000);
 
     // Verify we are in Phase 2
     const firstInfo = await getPlayerInfo(active[0]);

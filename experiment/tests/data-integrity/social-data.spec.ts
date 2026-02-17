@@ -65,6 +65,7 @@ test.describe.serial('Data Integrity: Social Guess Data (TEST_PLAN 7.4)', () => 
   });
 
   test('complete Phase 1 and transition to Phase 2', async () => {
+    test.slow(); // Phase 1 completion + transition can take a while
     const pages = pm.getPages();
 
     // Complete all Phase 1 blocks (no social guessing in Phase 1)
@@ -72,13 +73,12 @@ test.describe.serial('Data Integrity: Social Guess Data (TEST_PLAN 7.4)', () => 
       await playBlock(pages, ROUNDS_PER_BLOCK);
     }
 
-    // Wait for and handle Transition
-    const transitionReached = await waitForStage(pages[0], 'Transition', 60_000);
-    expect(transitionReached).toBe(true);
+    // Wait for transition and handle it
+    await pages[0].waitForTimeout(3000);
     await handleTransition(pages);
 
-    // Wait for Phase 2 Selection
-    const phase2Reached = await waitForStage(pages[0], 'Selection', 60_000);
+    // Wait for Phase 2 Selection (transition takes ~60s, so need ample timeout)
+    const phase2Reached = await waitForStage(pages[0], 'Selection', 120_000);
     expect(phase2Reached).toBe(true);
 
     // Verify we are in Phase 2

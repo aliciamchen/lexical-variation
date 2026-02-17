@@ -59,28 +59,24 @@ test.describe.serial('Edge Case: Tangram Randomization (TEST_PLAN 9.2-9.3)', () 
   test('tangram grid order differs across players', async () => {
     const pages = pm.getPages();
 
-    // Collect the tangram grid order for each player by reading the tangram image
-    // sources or data attributes from the DOM
+    // Collect the tangram grid order for each player by reading the tangram
+    // background-image CSS from the DOM. Tangrams are rendered as divs with
+    // background: "url(tangram_X.svg)" style, NOT as <img> elements.
     const gridOrders: string[][] = [];
 
     for (const page of pages) {
       const info = await getPlayerInfo(page);
       if (!info) continue;
 
-      // Get the ordered list of tangram image sources in the grid
       const order = await page.evaluate(() => {
         const tangrams = document.querySelectorAll('.tangrams.grid > div');
         const sources: string[] = [];
         tangrams.forEach(t => {
-          // Try to get a unique identifier for each tangram
-          // This could be an img src, a data attribute, or a background-image
-          const img = t.querySelector('img');
-          if (img) {
-            sources.push(img.src);
-          } else {
-            // Fallback: use the tangram's inner content or style
-            const style = (t as HTMLElement).style.backgroundImage;
-            sources.push(style || t.innerHTML.substring(0, 50));
+          const bg = (t as HTMLElement).style.background || (t as HTMLElement).style.backgroundImage;
+          if (bg) {
+            // Extract the tangram identifier from the URL, e.g., "url(tangram_3.svg)"
+            const match = bg.match(/tangram_(\d+)/);
+            sources.push(match ? match[1] : bg);
           }
         });
         return sources;
@@ -100,7 +96,6 @@ test.describe.serial('Edge Case: Tangram Randomization (TEST_PLAN 9.2-9.3)', () 
     }
 
     // Verify that NOT all players have the exact same order
-    // Convert each order to a string for comparison
     const orderStrings = gridOrders.map(order => order.join('|'));
     const uniqueOrders = new Set(orderStrings);
 
@@ -177,8 +172,8 @@ test.describe.serial('Edge Case: Tangram Randomization (TEST_PLAN 9.2-9.3)', () 
     const pages = pm.getPages();
 
     // For a more direct test of tangram randomization:
-    // Get the position (index in grid) of each tangram image for each player
-    // and verify they differ across players.
+    // Get the position (index in grid) of each tangram by reading background-image CSS.
+    // Tangrams use background: "url(tangram_X.svg)" style, NOT <img> elements.
     const tangramPositions: Record<string, number[]> = {};
 
     for (let playerIdx = 0; playerIdx < pages.length; playerIdx++) {
@@ -186,18 +181,16 @@ test.describe.serial('Edge Case: Tangram Randomization (TEST_PLAN 9.2-9.3)', () 
         const tangrams = document.querySelectorAll('.tangrams.grid > div');
         const posMap: Record<string, number> = {};
         tangrams.forEach((t, idx) => {
-          const img = t.querySelector('img');
-          if (img) {
-            // Use the filename portion of the src as the tangram identifier
-            const src = img.src;
-            const filename = src.split('/').pop() || src;
-            posMap[filename] = idx;
+          const bg = (t as HTMLElement).style.background || (t as HTMLElement).style.backgroundImage;
+          if (bg) {
+            const match = bg.match(/tangram_(\d+)/);
+            const tangramId = match ? `tangram_${match[1]}` : `unknown_${idx}`;
+            posMap[tangramId] = idx;
           }
         });
         return posMap;
       });
 
-      // Store the position of each tangram image for this player
       for (const [tangramId, position] of Object.entries(positions)) {
         if (!tangramPositions[tangramId]) tangramPositions[tangramId] = [];
         tangramPositions[tangramId].push(position);

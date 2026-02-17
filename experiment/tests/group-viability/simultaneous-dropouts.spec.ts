@@ -90,6 +90,7 @@ test.describe.serial('Group Viability: Simultaneous Dropouts from Different Grou
   });
 
   test('one player from each of two different groups goes idle simultaneously', async () => {
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
     const groupNames = Object.keys(groupPageIndices);
 
@@ -113,14 +114,13 @@ test.describe.serial('Group Viability: Simultaneous Dropouts from Different Grou
     const idleFromGroupA = groupPageIndices[groupNames[0]][0];
     const idleFromGroupB = groupPageIndices[groupNames[1]][0];
 
-    // Verify player from group A was kicked
-    const exitInfoA = await getExitInfo(pages[idleFromGroupA]);
+    // Wait for exit screens to render (may not appear immediately after idle kicks)
+    const exitInfoA = await waitForExitScreen(pages[idleFromGroupA], 30_000);
     expect(exitInfoA).not.toBeNull();
     expect(exitInfoA!.exitReason).toBe('player timeout');
     expect(exitInfoA!.partialPay).toBe('0');
 
-    // Verify player from group B was kicked
-    const exitInfoB = await getExitInfo(pages[idleFromGroupB]);
+    const exitInfoB = await waitForExitScreen(pages[idleFromGroupB], 30_000);
     expect(exitInfoB).not.toBeNull();
     expect(exitInfoB!.exitReason).toBe('player timeout');
     expect(exitInfoB!.partialPay).toBe('0');

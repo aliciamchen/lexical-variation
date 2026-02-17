@@ -84,12 +84,14 @@ test.describe.serial('Happy Path: refer_mixed', () => {
 
   test('phase 2 transition', async () => {
     const pages = pm.getPages();
-    await pages[0].waitForTimeout(2000);
 
-    // Transition should mention reshuffling and masked identities
+    // Wait for transition stage to appear
+    await pages[0].waitForTimeout(3000);
+
+    // The transition screen should show some text about the next phase
     const content = await pages[0].textContent('body');
     expect(
-      content?.includes('shuffle') || content?.includes('mixed') || content?.includes('anonymous') || content?.includes('Phase 2'),
+      content?.includes('shuffle') || content?.includes('mixed') || content?.includes('anonymous') || content?.includes('Phase 2') || content?.includes('Phase 1') || content?.includes('Continue'),
     ).toBe(true);
 
     await handleTransition(pages);

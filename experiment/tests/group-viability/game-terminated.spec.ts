@@ -90,6 +90,7 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
   });
 
   test('two players from Group A go idle and get kicked', async () => {
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
     const groupNames = Object.keys(groupPageIndices);
     const groupA = groupNames[0];
@@ -99,7 +100,10 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
       await playRound(pages, { skipIndices: idleIndicesA });
     }
 
-    await pages[0].waitForTimeout(3000);
+    // Wait for exit screens to render for all group A players
+    for (const idx of groupPageIndices[groupA]) {
+      await waitForExitScreen(pages[idx], 30_000);
+    }
 
     // Verify 2 players from group A are kicked + 1 disbanded
     const removed = await getRemovedPlayers(pages);
@@ -113,6 +117,7 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
   });
 
   test('two players from Group B go idle and get kicked, triggering game termination', async () => {
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
     const groupNames = Object.keys(groupPageIndices);
     const groupB = groupNames[1];

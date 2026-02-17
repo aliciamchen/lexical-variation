@@ -36,48 +36,32 @@ import {
  * Races through the round as quickly as possible to test for timing issues.
  */
 async function playRoundFast(pages: import('@playwright/test').Page[]): Promise<void> {
-  // Click any Continue buttons immediately (no delay)
-  await Promise.all(pages.map(page => clickContinue(page, 300)));
+  // Click any Continue buttons (feedback → selection transition)
+  await Promise.all(pages.map(page => clickContinue(page, 500)));
+  await pages[0]?.waitForTimeout(300);
 
-  // Build group -> target mapping from speakers
-  const groupTargets: Record<string, number> = {};
-
-  // Speakers send messages as fast as possible (in parallel)
-  const speakerPromises: Promise<void>[] = [];
+  // Speakers send messages as fast as possible (sequentially to avoid race conditions)
   for (const page of pages) {
-    speakerPromises.push(
-      (async () => {
-        const info = await getPlayerInfo(page);
-        if (info?.role === 'speaker' && info.targetIndex >= 0) {
-          groupTargets[info.currentGroup!] = info.targetIndex;
-          await speakerSendMessage(page, 'fast');
-        }
-      })(),
-    );
+    const info = await getPlayerInfo(page);
+    if (info?.role === 'speaker' && info.targetIndex >= 0) {
+      await speakerSendMessage(page, 'fast');
+    }
   }
-  await Promise.all(speakerPromises);
 
-  // Minimal delay before listener clicks
-  await pages[0]?.waitForTimeout(200);
+  // Brief delay before listener clicks to let messages propagate
+  await pages[0]?.waitForTimeout(500);
 
-  // Listeners click as fast as possible (in parallel)
-  const listenerPromises: Promise<void>[] = [];
+  // Listeners click as fast as possible (sequentially to avoid race conditions)
   for (const page of pages) {
-    listenerPromises.push(
-      (async () => {
-        const info = await getPlayerInfo(page);
-        if (info?.role === 'listener') {
-          // Each listener's targetIndex is the correct position in THEIR shuffled grid
-          const clickIdx = info.targetIndex >= 0 ? info.targetIndex : 0;
-          await listenerClickTangram(page, clickIdx);
-        }
-      })(),
-    );
+    const info = await getPlayerInfo(page);
+    if (info?.role === 'listener') {
+      const clickIdx = info.targetIndex >= 0 ? info.targetIndex : 0;
+      await listenerClickTangram(page, clickIdx);
+    }
   }
-  await Promise.all(listenerPromises);
 
-  // Minimal settling time
-  await pages[0]?.waitForTimeout(200);
+  // Settling time for stage transition
+  await pages[0]?.waitForTimeout(500);
 }
 
 test.describe.serial('Edge Case: Fast Completion (TEST_PLAN 9.1)', () => {

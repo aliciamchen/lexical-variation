@@ -148,6 +148,7 @@ test.describe.serial('Happy Path: refer_separated', () => {
   });
 
   test('bonus info screen appears', async () => {
+    test.slow(); // May need extra time if server is degraded from accumulated state
     const pages = pm.getPages();
 
     // Click Continue to exit last Feedback stage

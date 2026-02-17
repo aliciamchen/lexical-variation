@@ -10,7 +10,6 @@ To test the experiment, use the test-experiment skill.
 
 ## Incomplete Tasks
 
-- [ ] Add thing robert said for increasing minimal group solidarity: "You and your partner have been working together as a team. Teams that successfully develop a shared communication system earn a $X team bonus!" Something like that
 
 ### Pre-Launch (Code/Testing)
 
@@ -41,6 +40,7 @@ To test the experiment, use the test-experiment skill.
 - [x] Implement roberts slack suggestions
 - [x] theres a situation if theres only two groups left for phase 2 mixed, the shuffling algorithm means that people might stay in their original groups (25 percent chance). SO, reshuffle until there is mixing. 
 - [ ] What if a player drops DURING the accuracy check blocks? Does their 0% accuracy count against the group? Answer: no, it should just be for the trials that are completed in general, dropouts should not count in the accuracy percentages
+- [ ] make stuff in transition screen scale by size of window
 
 
 ### Pre-Launch (Verification)
@@ -64,6 +64,8 @@ To test the experiment, use the test-experiment skill.
 - [ ] Figure out how optimeet works with the prolific max time
 - [ ] Check on production server, including chat timestamps and various other patches on production server (chunk-J6LPACOK.js modification)
 
+### For next experiment
+- [ ] Add thing robert said for increasing minimal group solidarity: "You and your partner have been working together as a team. Teams that successfully develop a shared communication system earn a $X team bonus!" Something like that
 
 ---
 

@@ -82,6 +82,7 @@ test.describe.serial('Group Viability: Speaker Dropout Mid-Block (3.7)', () => {
   });
 
   test('play a few rounds normally, then speaker goes idle', async () => {
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
 
     // Play 2 rounds normally first (speaker participates)
@@ -100,7 +101,8 @@ test.describe.serial('Group Viability: Speaker Dropout Mid-Block (3.7)', () => {
   test('idle speaker is kicked with "player timeout"', async () => {
     const pages = pm.getPages();
 
-    const exitInfo = await getExitInfo(pages[speakerPageIndex]);
+    // Wait for exit screen to render (may not appear immediately after idle kicks)
+    const exitInfo = await waitForExitScreen(pages[speakerPageIndex], 30_000);
     expect(exitInfo).not.toBeNull();
     expect(exitInfo!.exitReason).toBe('player timeout');
     expect(exitInfo!.partialPay).toBe('0'); // Idle players get no pay

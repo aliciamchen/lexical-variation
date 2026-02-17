@@ -45,6 +45,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
   });
 
   test('all 9 players complete intro and enter game', async () => {
+    test.slow(); // May need extra time if server is degraded from accumulated state
     await pm.registerAllPlayers();
     await pm.completeAllIntros();
 

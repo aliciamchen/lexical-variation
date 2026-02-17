@@ -140,10 +140,12 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
 
   test('(b) Phase 2: groups reshuffled - current_group may differ from original_group', async () => {
     const pages = pm.getPages();
-    const active = await getActivePlayers(pages);
 
-    // Wait for Phase 2 Selection stage so .task element is rendered
-    await waitForStage(active[0], 'Selection', 120_000);
+    // Wait for Phase 2 Selection stage BEFORE getting active players
+    // (during transition, .task element may not exist, causing getActivePlayers issues)
+    await waitForStage(pages[0], 'Selection', 120_000);
+
+    const active = await getActivePlayers(pages);
 
     // Record original and current groups for all players at start of Phase 2
     const groupData: { originalGroup: string; currentGroup: string }[] = [];

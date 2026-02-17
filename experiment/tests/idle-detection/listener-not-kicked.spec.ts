@@ -64,6 +64,7 @@ test.describe.serial('Idle Detection: Listener Not Kicked When Speaker Idles (TE
   });
 
   test('speaker is kicked but listeners in same group are NOT kicked', async () => {
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each (~120s * 5 rounds)
     const pages = pm.getPages();
 
     // Find a speaker and identify all group members (speaker + listeners)

@@ -58,6 +58,7 @@ test.describe.serial('Idle Detection: Idle Warning Display (TEST_PLAN 3.9)', () 
   });
 
   test('idle warning appears after first idle round', async () => {
+    test.slow(); // Idle round requires SELECTION_DURATION timeout (~120s)
     const pages = pm.getPages();
 
     // Identify a speaker to make idle for exactly 1 round
@@ -73,17 +74,19 @@ test.describe.serial('Idle Detection: Idle Warning Display (TEST_PLAN 3.9)', () 
 
     const idlePage = pages[idleSpeakerIndex];
 
-    // Play 1 round with the speaker idle (skipped)
+    // Play 1 round with the speaker idle (skipped).
+    // When the speaker is idle, listeners can't click (waiting for speaker message).
+    // The round advances after SELECTION_DURATION timeout, then onStageEnded
+    // increments idle_rounds for the speaker.
     await playRound(pages, { skipIndices: [idleSpeakerIndex] });
 
-    // After the idle round, wait for feedback to appear on the idle player's page.
-    // The warning text shows up during the Feedback stage or at the start of
-    // the next Selection stage when idle_rounds === 1.
-    // Wait a moment for the feedback/next stage to render.
-    await idlePage.waitForTimeout(2000);
+    // The idle warning shows during the Feedback stage when idle_rounds === 1.
+    // Refgame.jsx: "Warning: You were inactive last round."
+    // Wait for Feedback stage to render with the warning.
+    const feedbackReached = await waitForFeedback(idlePage, 30_000);
+    expect(feedbackReached).toBe(true);
 
-    // The warning message should appear on the idle player's page.
-    // The text in Refgame.jsx: "Warning: You were inactive last round."
+    // The warning message should appear on the idle player's page
     const warningText = 'Warning: You were inactive';
     const bodyContent = await idlePage.textContent('body');
     expect(
