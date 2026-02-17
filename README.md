@@ -48,3 +48,26 @@ uv sync
 ```
 
 Note: `rpy2` requires R to be installed. Cairo-based packages may require: `brew install cairo pango`
+
+## Testing the experiment
+
+The experiment has a Playwright test suite with 250 tests covering all 3 conditions, idle detection, group viability, UI, timing, and more. See [`experiment/README.md`](experiment/README.md) for full documentation.
+
+```bash
+cd experiment
+npm install
+npx playwright install chromium
+
+# Start the server (in a separate terminal)
+rm .empirica/local/tajriba.json
+empirica
+
+# Run tests
+npx playwright test
+
+# Run a specific category
+npx playwright test tests/happy-path/
+
+# View report
+npx playwright show-report
+```
