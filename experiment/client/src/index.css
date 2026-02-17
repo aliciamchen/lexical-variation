@@ -115,10 +115,12 @@ h1, h2, h3, h4 {
   max-width: 40vw;
   margin: 0 auto 3rem auto; /* Bottom margin of 3rem adds space between prompt and tangrams */
   text-align: center;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .instruction-prompt {
-  font-size: 1.4rem;
+  font-size: clamp(0.9rem, 1.2vw, 1.4rem);
   line-height: 1.5;
   margin: 0;
 }

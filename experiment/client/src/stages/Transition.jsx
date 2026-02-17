@@ -85,7 +85,7 @@ export function Transition(props) {
     return (
       <div
         className="prompt-container"
-        style={{ textAlign: "left", paddingTop: 24 }}
+        style={{ textAlign: "left", paddingTop: 24, maxWidth: "60vw" }}
       >
         <div className="text-2xl">
           <em>End of Phase 1</em>
@@ -159,7 +159,7 @@ export function Transition(props) {
     return (
       <div
         className="prompt-container"
-        style={{ textAlign: "left", paddingTop: 24 }}
+        style={{ textAlign: "left", paddingTop: 24, maxWidth: "60vw" }}
       >
         <div className="text-2xl">
           <em>End of Game</em>
