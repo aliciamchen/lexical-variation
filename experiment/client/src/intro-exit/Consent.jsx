@@ -19,9 +19,10 @@ export function ConsentPage({ next }) {
         tasks with other participants.
       </p>
       <p>
-        <b>Payment:</b> Given the estimated duration of 60 minutes, you will
-        receive
-        <b>$15</b> for successfully completing the survey.
+        <b>Payment:</b> This study will take approximately {ESTIMATED_TIME}{" "}
+        minutes. Given this estimated duration, you will receive
+        <b>${BASE_PAY}</b> for successfully completing the survey, with an
+        additional performance bonus of up to <b>${MAX_BONUS}</b>.
       </p>
       <p>
         <b>Risks and benefits:</b> There are no risks associated with
