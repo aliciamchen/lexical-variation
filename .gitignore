@@ -20,3 +20,4 @@ lexical-variation*/
 *.pdf
 
 *.test.js
+*.tar.zst
