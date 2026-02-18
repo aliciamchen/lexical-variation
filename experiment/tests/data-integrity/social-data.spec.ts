@@ -139,36 +139,33 @@ test.describe.serial('Data Integrity: Social Guess Data (TEST_PLAN 7.4)', () => 
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
-    // Complete the current round first so we can start a fresh one
-    // Have remaining listeners click and guess to advance
+    // Complete the current round (remaining listeners click and guess to advance)
     for (const page of active) {
       const info = await getPlayerInfo(page);
       if (info?.role === 'listener' && info.phase === 2) {
-        const hasClicked = await page.evaluate(() => {
+        // If this listener hasn't clicked yet, complete their actions
+        const clicked = await page.evaluate(() => {
           const task = document.querySelector('.task');
-          return task?.querySelector('.social-guess-container') !== null;
+          return task?.getAttribute('data-role') === 'listener' &&
+            !!document.querySelector('[data-testid="game-container"]');
         });
-        // If this listener hasn't acted yet, complete their actions
-        if (!hasClicked) {
-          await listenerClickTangram(page, 0);
-          await page.waitForTimeout(500);
-          await makeSocialGuess(page, 'different');
-          await page.waitForTimeout(500);
+        if (clicked) {
+          try {
+            await listenerClickTangram(page, 0);
+            await page.waitForTimeout(300);
+            await makeSocialGuess(page, 'same');
+          } catch {
+            // Listener may have already acted
+          }
         }
       }
     }
 
-    // Wait for the next round
-    await active[0].waitForTimeout(2000);
+    // Wait for the next round's Selection stage
+    await waitForStage(active[0], 'Selection', 60_000);
 
-    // Try to get to the next Selection stage
-    const nextSelection = await waitForStage(active[0], 'Selection', 30_000);
-    if (!nextSelection) {
-      // We may be in feedback, wait it out
-      await active[0].waitForTimeout(15_000);
-    }
-
-    // Find speakers and listeners in the new round
+    // Now play a fresh round manually to test "different group" guess
+    // Find a speaker and send a message
     let speakerGroup2: string | null = null;
     for (const page of active) {
       const info = await getPlayerInfo(page);
@@ -178,28 +175,26 @@ test.describe.serial('Data Integrity: Social Guess Data (TEST_PLAN 7.4)', () => 
         break;
       }
     }
+    expect(speakerGroup2).not.toBeNull();
+    await active[0].waitForTimeout(500);
 
-    if (speakerGroup2) {
-      await active[0].waitForTimeout(500);
+    // Find a listener in the same group and make a "different group" guess
+    for (const page of active) {
+      const info = await getPlayerInfo(page);
+      if (info?.role === 'listener' && info.currentGroup === speakerGroup2 && info.phase === 2) {
+        await listenerClickTangram(page, 1);
+        await page.waitForTimeout(500);
 
-      // Find a listener and make a "different group" guess
-      for (const page of active) {
-        const info = await getPlayerInfo(page);
-        if (info?.role === 'listener' && info.currentGroup === speakerGroup2 && info.phase === 2) {
-          await listenerClickTangram(page, 1);
-          await page.waitForTimeout(500);
+        const guessed = await makeSocialGuess(page, 'different');
+        expect(guessed).toBe(true);
 
-          const guessed = await makeSocialGuess(page, 'different');
-          expect(guessed).toBe(true);
+        await page.waitForTimeout(1000);
 
-          await page.waitForTimeout(1000);
-
-          // Verify the confirmation text for "Different group"
-          const bodyText = await page.textContent('body');
-          expect(bodyText).toContain('You guessed:');
-          expect(bodyText).toContain('Different group');
-          break;
-        }
+        // Verify the confirmation text for "Different group"
+        const bodyText = await page.textContent('body');
+        expect(bodyText).toContain('You guessed:');
+        expect(bodyText).toContain('Different group');
+        break;
       }
     }
   });

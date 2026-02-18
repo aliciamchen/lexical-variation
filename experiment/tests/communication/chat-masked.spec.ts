@@ -54,6 +54,7 @@ test.describe.serial('Communication: chat with masked identities in refer_mixed'
   });
 
   test('complete Phase 1', async () => {
+    test.slow(); // Phase 1 is 18 rounds, takes several minutes
     const pages = pm.getPages();
 
     for (let block = 0; block < PHASE_1_BLOCKS; block++) {
@@ -124,7 +125,8 @@ test.describe.serial('Communication: chat with masked identities in refer_mixed'
       await expect(chatArea.getByText(testMessage)).toBeVisible({ timeout: 5_000 });
 
       // The sender name in chat should be "Player (Speaker)", not a real name
-      await expect(chatArea.getByText('Player (Speaker)')).toBeVisible({ timeout: 5_000 });
+      // Use .first() since there may be multiple messages from the speaker
+      await expect(chatArea.getByText('Player (Speaker)').first()).toBeVisible({ timeout: 5_000 });
 
       // Verify that no real player names appear in the chat message sender area
       const chatText = await chatArea.textContent();
@@ -146,7 +148,7 @@ test.describe.serial('Communication: chat with masked identities in refer_mixed'
       // Verify on the speaker's chat that it shows "Player (Listener)"
       const speakerChatArea = speakerPage!.locator('.h-full.overflow-auto');
       await expect(speakerChatArea.getByText('the tall one?')).toBeVisible({ timeout: 5_000 });
-      await expect(speakerChatArea.getByText('Player (Listener)')).toBeVisible({ timeout: 5_000 });
+      await expect(speakerChatArea.getByText('Player (Listener)').first()).toBeVisible({ timeout: 5_000 });
     }
 
     // Check the player-group display area for masked identities

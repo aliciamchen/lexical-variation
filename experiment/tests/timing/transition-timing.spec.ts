@@ -59,6 +59,7 @@ test.describe.serial('Timing: Transition Stage Timing (TEST_PLAN 6.3)', () => {
   });
 
   test('complete Phase 1 to reach Transition', async () => {
+    test.slow(); // Phase 1 is 18 rounds, takes several minutes
     const pages = pm.getPages();
 
     // Play all Phase 1 blocks

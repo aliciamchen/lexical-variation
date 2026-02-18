@@ -6,6 +6,7 @@ import {
   handleTransition,
   clickContinue,
   getActivePlayers,
+  waitForStage,
 } from '../helpers/game-actions';
 import {
   PHASE_1_BLOCKS,
@@ -45,6 +46,7 @@ test.describe.serial('UI Verification: Exit Survey (5.6)', () => {
   });
 
   test('complete full game to reach exit survey', async () => {
+    test.slow(); // Full game: Phase 1 (18 rounds) + transition + Phase 2 (12 rounds)
     const pages = pm.getPages();
 
     // Phase 1
@@ -57,20 +59,31 @@ test.describe.serial('UI Verification: Exit Survey (5.6)', () => {
     await pages[0].waitForTimeout(2000);
     await handleTransition(pages);
 
+    // Wait for Phase 2 Selection to ensure transition completed
+    await waitForStage(pages[0], 'Selection', 120_000);
+
     // Phase 2
     for (let block = 0; block < PHASE_2_BLOCKS; block++) {
       const active = await getActivePlayers(pages);
       await playBlock(active, ROUNDS_PER_BLOCK);
     }
 
-    // Bonus info screen
-    await pages[0].waitForTimeout(2000);
+    // Click Continue to exit last Feedback stage
     for (const page of pages) {
       await clickContinue(page, 5000);
     }
 
+    // Wait for bonus_info stage
+    await waitForStage(pages[0], 'bonus_info', 120_000);
+
+    // Click Continue on bonus_info for all players
+    for (const page of pages) {
+      await waitForStage(page, 'bonus_info', 30_000);
+      await clickContinue(page, 5000);
+    }
+
     // Wait for exit survey to appear
-    await pages[0].waitForTimeout(2000);
+    await pages[0].waitForTimeout(5000);
   });
 
   test('exit survey page shows "Exit Survey" heading', async () => {

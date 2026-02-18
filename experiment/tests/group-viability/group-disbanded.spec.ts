@@ -110,14 +110,16 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
   test('idle players are on exit screen with "player timeout"', async () => {
     const pages = pm.getPages();
 
-    // Wait for exit screens to render (sorry screens may not appear immediately)
-    // Find the two idle players by waiting for their exit screens
+    // Wait for exit screens to render on the target group's pages
     const groups = await getPlayersByGroup(pages);
     const targetGroupName = Object.keys(groups)[0];
 
-    // Wait for each page to potentially show an exit screen
-    for (const page of pages) {
-      await waitForExitScreen(page, 30_000);
+    // Wait specifically for the target group's pages to show exit screens
+    for (let i = 0; i < pages.length; i++) {
+      const info = await getPlayerInfo(pages[i]);
+      if (info?.originalGroup === targetGroupName) {
+        await waitForExitScreen(pages[i], 60_000);
+      }
     }
 
     const removed = await getRemovedPlayers(pages);

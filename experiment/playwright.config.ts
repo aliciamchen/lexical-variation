@@ -5,6 +5,12 @@ import { defineConfig, devices } from '@playwright/test';
  * server is restarted (tajriba.json deleted) to prevent state accumulation
  * that causes server slowdown after ~20+ batches.
  *
+ * Setup projects depend on PREVIOUS SETUPS (not groups) so that test failures
+ * in one group don't block subsequent groups from running.
+ *
+ * With workers: 1, the execution order is:
+ *   setup-1 → group-1 → setup-2 → group-2 → setup-3 → group-3 → setup-4 → group-4
+ *
  * Group 1: happy-path, communication, lobby, edge-cases (10 files)
  * Group 2: ui-verification, timing (11 files)
  * Group 3: data-integrity, condition-specific, score-display (10 files)
@@ -44,10 +50,11 @@ export default defineConfig({
     },
 
     // --- Group 2: UI verification + timing ---
+    // Depends on setup-1 (not group-1) so group-1 failures don't block this
     {
       name: 'setup-2',
       testMatch: 'reset-server.setup.ts',
-      dependencies: ['group-1'],
+      dependencies: ['setup-1'],
     },
     {
       name: 'group-2',
@@ -60,7 +67,7 @@ export default defineConfig({
     {
       name: 'setup-3',
       testMatch: 'reset-server.setup.ts',
-      dependencies: ['group-2'],
+      dependencies: ['setup-2'],
     },
     {
       name: 'group-3',
@@ -73,7 +80,7 @@ export default defineConfig({
     {
       name: 'setup-4',
       testMatch: 'reset-server.setup.ts',
-      dependencies: ['group-3'],
+      dependencies: ['setup-3'],
     },
     {
       name: 'group-4',

@@ -70,6 +70,7 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
   });
 
   test('(a) Phase 1: groups are same (original_group === current_group)', async () => {
+    test.slow(); // Phase 1 is 18 rounds, takes several minutes
     const pages = pm.getPages();
 
     // Record original groups
@@ -194,6 +195,7 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
   });
 
   test('(b) Phase 2: reshuffling happens at block boundaries', async () => {
+    test.slow(); // Phase 2 is 12 rounds, takes several minutes
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
@@ -201,6 +203,17 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
     const blockGroupAssignments: Record<number, Record<number, string>> = {};
 
     for (let block = 0; block < PHASE_2_BLOCKS; block++) {
+      // For blocks after the first, wait for the game to advance to the new block
+      // (previous block's last Feedback must complete and reshuffling must occur)
+      if (block > 0) {
+        const waitStart = Date.now();
+        while (Date.now() - waitStart < 60_000) {
+          const info = await getPlayerInfo(active[0]);
+          if (info && info.block === block && info.stageName === 'Selection') break;
+          await active[0].waitForTimeout(1000);
+        }
+      }
+
       // Record current groups at start of each block
       blockGroupAssignments[block] = {};
       for (let i = 0; i < active.length; i++) {

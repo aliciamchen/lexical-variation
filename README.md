@@ -68,6 +68,9 @@ npx playwright test
 # Run a specific category
 npx playwright test tests/happy-path/
 
+# run tests headful
+npx playwright test --headed
+
 # View report
 npx playwright show-report
 ```

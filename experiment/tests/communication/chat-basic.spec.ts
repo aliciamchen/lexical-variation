@@ -110,8 +110,8 @@ test.describe.serial('Communication: basic chat in refer_separated', () => {
 
     // The speaker's message from the previous test should show "(Speaker)" label.
     // The Chat component renders sender names as "Name (Speaker)" or "Name (Listener)".
-    // Search the full page body for the role label text to be more resilient to DOM structure.
-    await expect(listenerPage!.getByText('(Speaker)')).toBeVisible({ timeout: 10_000 });
+    // Use .first() since multiple messages from the speaker may exist.
+    await expect(listenerPage!.getByText('(Speaker)').first()).toBeVisible({ timeout: 10_000 });
 
     // Now have the listener send a message so we can verify "(Listener)" label
     const listenerChatbox = listenerPage!.getByRole(CHAT_TEXTBOX.role, { name: CHAT_TEXTBOX.name });
@@ -121,7 +121,7 @@ test.describe.serial('Communication: basic chat in refer_separated', () => {
       await listenerPage!.waitForTimeout(1000);
 
       // Verify the listener message shows "(Listener)" label in the speaker's chat
-      await expect(speakerPage!.getByText('(Listener)')).toBeVisible({ timeout: 10_000 });
+      await expect(speakerPage!.getByText('(Listener)').first()).toBeVisible({ timeout: 10_000 });
       await expect(speakerPage!.getByText('which one do you mean?')).toBeVisible({ timeout: 10_000 });
     }
   });

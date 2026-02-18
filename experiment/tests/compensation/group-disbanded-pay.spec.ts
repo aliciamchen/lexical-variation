@@ -100,10 +100,16 @@ test.describe.serial('Compensation: Group Disbanded (TEST_PLAN 10.3)', () => {
   test('disbanded player sees DISBANDED2026 code and partial pay > 0.00', async () => {
     const pages = pm.getPages();
 
-    // Wait for exit screens to render (sorry screens may not appear immediately after idle kicks)
-    for (const page of pages) {
-      // Try to wait for exit screen; some players may still be in game
-      await waitForExitScreen(page, 30_000).catch(() => null);
+    // Wait for exit screens to render on the target group's pages
+    const groups = await getPlayersByGroup(pages);
+    const targetGroupName = Object.keys(groups)[0];
+
+    // Wait specifically for the target group's pages to show exit screens
+    for (let i = 0; i < pages.length; i++) {
+      const info = await getPlayerInfo(pages[i]);
+      if (info?.originalGroup === targetGroupName) {
+        await waitForExitScreen(pages[i], 60_000);
+      }
     }
 
     // Find the player(s) with "group disbanded" exit reason

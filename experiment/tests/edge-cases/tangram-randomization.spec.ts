@@ -75,7 +75,7 @@ test.describe.serial('Edge Case: Tangram Randomization (TEST_PLAN 9.2-9.3)', () 
           const bg = (t as HTMLElement).style.background || (t as HTMLElement).style.backgroundImage;
           if (bg) {
             // Extract the tangram identifier from the URL, e.g., "url(tangram_3.svg)"
-            const match = bg.match(/tangram_(\d+)/);
+            const match = bg.match(/tangram_([\w-]+)/);
             sources.push(match ? match[1] : bg);
           }
         });
@@ -183,7 +183,7 @@ test.describe.serial('Edge Case: Tangram Randomization (TEST_PLAN 9.2-9.3)', () 
         tangrams.forEach((t, idx) => {
           const bg = (t as HTMLElement).style.background || (t as HTMLElement).style.backgroundImage;
           if (bg) {
-            const match = bg.match(/tangram_(\d+)/);
+            const match = bg.match(/tangram_([\w-]+)/);
             const tangramId = match ? `tangram_${match[1]}` : `unknown_${idx}`;
             posMap[tangramId] = idx;
           }

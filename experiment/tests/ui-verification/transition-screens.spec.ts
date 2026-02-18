@@ -6,6 +6,7 @@ import {
   playBlock,
   handleTransition,
   getActivePlayers,
+  waitForStage,
 } from '../helpers/game-actions';
 import {
   PHASE_1_BLOCKS,
@@ -45,6 +46,7 @@ test.describe.serial('UI Verification: Transition Screens (5.5)', () => {
   });
 
   test('complete Phase 1 to reach transition', async () => {
+    test.slow(); // Phase 1 is 18 rounds, takes several minutes
     const pages = pm.getPages();
 
     for (let block = 0; block < PHASE_1_BLOCKS; block++) {
@@ -53,7 +55,8 @@ test.describe.serial('UI Verification: Transition Screens (5.5)', () => {
     }
 
     // Wait for transition stage to appear
-    await pages[0].waitForTimeout(2000);
+    const reachedTransition = await waitForStage(pages[0], 'phase_2_transition', 60_000);
+    expect(reachedTransition).toBe(true);
   });
 
   test('transition screen shows "End of Phase 1" text', async () => {

@@ -5,6 +5,7 @@ import * as fs from 'fs';
 const EXPERIMENT_DIR = path.resolve(__dirname, '../..');
 const TAJRIBA_PATH = path.join(EXPERIMENT_DIR, '.empirica/local/tajriba.json');
 const SERVER_URL = 'http://localhost:3000';
+const TAJRIBA_URL = 'http://localhost:8844';
 const PORTS = [3000, 8844];
 
 let serverProcess: ChildProcess | null = null;
@@ -26,16 +27,31 @@ function killPort(port: number): void {
   }
 }
 
-export async function waitForReady(timeout = 60_000): Promise<boolean> {
+/**
+ * Wait for BOTH the Vite frontend (port 3000) AND the tajriba backend (port 8844)
+ * to be ready. The frontend can start before the backend, so checking only port 3000
+ * is insufficient — players see a loading spinner until the backend is reachable.
+ */
+export async function waitForReady(timeout = 120_000): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     try {
-      const res = await fetch(SERVER_URL);
-      if (res.ok || res.status === 200) return true;
+      // Check that both ports are listening
+      const frontendUp = isPortInUse(3000);
+      const backendUp = isPortInUse(8844);
+      if (frontendUp && backendUp) {
+        // Verify the frontend actually responds
+        const res = await fetch(SERVER_URL);
+        if (res.ok || res.status === 200) {
+          // Give tajriba a few extra seconds to finish initialization
+          await new Promise(r => setTimeout(r, 5000));
+          return true;
+        }
+      }
     } catch {
       // Server not ready yet
     }
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 2000));
   }
   return false;
 }
@@ -50,52 +66,55 @@ export async function startServer(): Promise<void> {
   for (const port of PORTS) {
     killPort(port);
   }
-  await new Promise(r => setTimeout(r, 1000));
+  await new Promise(r => setTimeout(r, 2000));
 
-  // Spawn empirica server
+  // Spawn empirica server in its own process group (detached: true)
+  // so it survives Playwright worker lifecycle transitions between projects.
   serverProcess = spawn('empirica', [], {
     cwd: EXPERIMENT_DIR,
-    stdio: 'pipe',
-    detached: false,
+    stdio: 'ignore',
+    detached: true,
   });
 
-  serverProcess.stdout?.on('data', (data) => {
-    if (process.env.DEBUG) {
-      process.stdout.write(`[server] ${data}`);
-    }
-  });
-
-  serverProcess.stderr?.on('data', (data) => {
-    if (process.env.DEBUG) {
-      process.stderr.write(`[server:err] ${data}`);
-    }
-  });
+  // Don't keep the parent process alive waiting for this child
+  serverProcess.unref();
 
   serverProcess.on('error', (err) => {
     console.error('Server process error:', err);
   });
 
-  // Wait for server to be ready
-  const ready = await waitForReady(90_000);
+  // Wait for both frontend and backend to be ready
+  const ready = await waitForReady(120_000);
   if (!ready) {
-    throw new Error('Server failed to start within 90 seconds');
+    throw new Error('Server failed to start within 120 seconds (checked both ports 3000 and 8844)');
   }
+  console.log('[server-manager] Both frontend (3000) and backend (8844) are ready');
 }
 
 export async function stopServer(): Promise<void> {
+  // Try graceful kill via process reference
   if (serverProcess) {
-    serverProcess.kill('SIGTERM');
+    try {
+      // For detached processes, kill the process group
+      process.kill(-serverProcess.pid!, 'SIGTERM');
+    } catch {
+      try {
+        serverProcess.kill('SIGTERM');
+      } catch {
+        // Process may already be dead
+      }
+    }
     serverProcess = null;
   }
 
-  // Also kill any lingering processes on ports
+  // Also kill any lingering processes on ports (works even without process reference)
   for (const port of PORTS) {
     killPort(port);
   }
 
   // Wait for ports to free
   const start = Date.now();
-  while (Date.now() - start < 10_000) {
+  while (Date.now() - start < 15_000) {
     const anyInUse = PORTS.some(isPortInUse);
     if (!anyInUse) return;
     await new Promise(r => setTimeout(r, 500));
@@ -104,7 +123,7 @@ export async function stopServer(): Promise<void> {
 
 export async function resetServer(): Promise<void> {
   await stopServer();
-  await new Promise(r => setTimeout(r, 1000));
+  await new Promise(r => setTimeout(r, 2000));
   await startServer();
 }
 

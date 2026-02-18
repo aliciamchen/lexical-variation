@@ -2,12 +2,30 @@ import { Page } from '@playwright/test';
 import { Condition, TREATMENTS } from './constants';
 
 /**
+ * Stop all running batches in the admin interface to prevent
+ * new players from joining stale batches.
+ */
+async function stopRunningBatches(page: Page): Promise<void> {
+  // Look for stop buttons (square icon) on running batches
+  const stopButtons = page.locator('button[title="Stop"]');
+  let count = await stopButtons.count();
+  while (count > 0) {
+    await stopButtons.first().click();
+    await page.waitForTimeout(500);
+    count = await stopButtons.count();
+  }
+}
+
+/**
  * Create a new batch in the admin interface.
- * Navigates to /admin, creates batch with specified treatment.
+ * Navigates to /admin, stops any running batches, creates batch with specified treatment.
  */
 export async function createBatch(page: Page, condition: Condition): Promise<void> {
   await page.goto('/admin');
   await page.waitForTimeout(1000);
+
+  // Stop any running batches to prevent new players from joining them
+  await stopRunningBatches(page);
 
   // Click the button to open the new batch dialog
   // When no batches exist: "Create a Batch" (dashed placeholder)

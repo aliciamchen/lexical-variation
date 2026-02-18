@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test';
 import { GAME_CONTAINER, TASK, SORRY_SCREEN, QUIZ_FAILED_SCREEN, TANGRAM_ITEMS } from './selectors';
+import { SELECTION_DURATION, FEEDBACK_DURATION } from './constants';
 
 // ============ TYPES ============
 
@@ -233,6 +234,41 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
     }
   }
   await pages[0]?.waitForTimeout(500);
+
+  // When players are skipped, the round won't advance until SELECTION_DURATION
+  // timer expires (skipped players never submit). Wait for the full round cycle.
+  if (skipIndices.length > 0) {
+    let monitorPage: Page | null = null;
+    for (let i = 0; i < pages.length; i++) {
+      if (skipIndices.includes(i)) continue;
+      const info = await getPlayerInfo(pages[i]);
+      if (info) {
+        monitorPage = pages[i];
+        break;
+      }
+    }
+
+    if (monitorPage) {
+      // Wait for Feedback stage (SELECTION_DURATION timer must expire first)
+      const reachedFeedback = await waitForStage(
+        monitorPage,
+        'Feedback',
+        (SELECTION_DURATION + 15) * 1000,
+      );
+
+      if (reachedFeedback) {
+        // Wait for Feedback stage to end (FEEDBACK_DURATION + buffer)
+        const startWait = Date.now();
+        const maxWait = (FEEDBACK_DURATION + 10) * 1000;
+        while (Date.now() - startWait < maxWait) {
+          const info = await getPlayerInfo(monitorPage);
+          if (!info) break; // Player left game (kicked/disbanded)
+          if (info.stageName !== 'Feedback') break; // Stage advanced
+          await monitorPage.waitForTimeout(1000);
+        }
+      }
+    }
+  }
 }
 
 /**

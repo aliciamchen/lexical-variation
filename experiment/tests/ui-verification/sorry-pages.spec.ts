@@ -41,6 +41,7 @@ test.describe.serial('UI Verification: Sorry Pages (5.7)', () => {
   });
 
   test('idle player is removed and sees sorry screen with correct attributes', async () => {
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each (~120s * 5 rounds)
     const pages = pm.getPages();
 
     // Identify which player index to make idle (pick the first player, index 0)

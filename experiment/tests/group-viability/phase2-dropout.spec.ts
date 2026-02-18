@@ -86,6 +86,7 @@ test.describe.serial('Group Viability: Phase 2 Dropout in Mixed Condition (3.6)'
   });
 
   test('complete Phase 1 with all 9 players', async () => {
+    test.slow(); // Phase 1 is 18 rounds, takes several minutes
     const pages = pm.getPages();
 
     for (let block = 0; block < PHASE_1_BLOCKS; block++) {

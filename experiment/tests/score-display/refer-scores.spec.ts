@@ -67,8 +67,10 @@ test.describe.serial('Score Display: Refer Scores (TEST_PLAN 11.1)', () => {
     // Play one round where listeners click the correct tangram (default behavior)
     await playRound(pages);
 
-    // Wait for feedback to appear and scores to update
-    await pages[0].waitForTimeout(3000);
+    // Wait for Feedback stage where scores are updated
+    const feedbackReached = await waitForFeedback(pages[0], 30_000);
+    expect(feedbackReached).toBe(true);
+    await pages[0].waitForTimeout(2000);
 
     // Check that at least some players now have non-zero scores
     // Listeners who clicked correctly get LISTENER_CORRECT_POINTS (2)
@@ -123,7 +125,10 @@ test.describe.serial('Score Display: Refer Scores (TEST_PLAN 11.1)', () => {
 
     // Play another round
     await playRound(pages);
-    await pages[0].waitForTimeout(3000);
+
+    // Wait for Feedback stage where scores are updated
+    await waitForFeedback(pages[0], 30_000);
+    await pages[0].waitForTimeout(2000);
 
     // Record scores after
     const scoresAfter: number[] = [];
