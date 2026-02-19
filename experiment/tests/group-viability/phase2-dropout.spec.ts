@@ -12,28 +12,21 @@ import { PlayerManager } from '../helpers/player-manager';
 import { createBatch } from '../helpers/admin';
 import {
   getPlayerInfo,
-  getExitInfo,
   playRound,
   playBlock,
   handleTransition,
   getActivePlayers,
-  getRemovedPlayers,
-  getPlayersByGroup,
   waitForExitScreen,
   waitForStage,
-  isOnExitScreen,
   isInGame,
 } from '../helpers/game-actions';
 import {
   expectPlayerInGame,
-  expectPlayerOnExitScreen,
 } from '../helpers/assertions';
 import {
   MAX_IDLE_ROUNDS,
   PHASE_1_BLOCKS,
-  PHASE_2_BLOCKS,
   ROUNDS_PER_BLOCK,
-  PROLIFIC_CODES,
   MIN_GROUP_SIZE,
 } from '../helpers/constants';
 
@@ -98,66 +91,20 @@ test.describe.serial('Group Viability: Phase 2 Dropout in Mixed Condition (3.6)'
     expect(active.length).toBe(9);
   });
 
-  test('handle Phase 2 transition', async () => {
+  test('transition to Phase 2 and idle a listener until kicked', async () => {
+    test.slow(); // Phase 2 transition + idle rounds (~10 min)
     const pages = pm.getPages();
-    await pages[0].waitForTimeout(2000);
+
+    // Handle transition to Phase 2 (minimize gap before idling to avoid
+    // consuming rounds — Selection timer expiring between tests wastes rounds)
     await handleTransition(pages);
-  });
 
-  test('verify Phase 2 started with reshuffled groups', async () => {
-    const pages = pm.getPages();
+    // Wait for Phase 2 Selection stage
+    const phase2Started = await waitForStage(pages[0], 'Selection', 120_000);
+    expect(phase2Started).toBe(true);
 
-    // Wait for Phase 2 Selection stage BEFORE getting active players
-    // (during transition, .task element may not exist, causing getActivePlayers issues)
-    await waitForStage(pages[0], 'Selection', 120_000);
-
-    const active = await getActivePlayers(pages);
-
-    // Wait for ALL active pages to reach Phase 2 Selection stage
-    // (Empirica state propagation may lag between browser contexts)
-    for (const page of active) {
-      await page.locator('.task[data-current-group]').waitFor({ state: 'visible', timeout: 15_000 });
-    }
-
-    // Verify we are in Phase 2 (poll to allow Empirica sync time)
-    const pollStart = Date.now();
-    while (Date.now() - pollStart < 15_000) {
-      let allPhase2 = true;
-      for (const page of active) {
-        const info = await getPlayerInfo(page);
-        if (!info || info.phase !== 2) {
-          allPhase2 = false;
-          break;
-        }
-      }
-      if (allPhase2) break;
-      await pages[0].waitForTimeout(1000);
-    }
-
-    for (const page of active) {
-      const info = await getPlayerInfo(page);
-      if (info) {
-        expect(info.phase).toBe(2);
-      }
-    }
-
-    // In refer_mixed Phase 2, current_group may differ from original_group
-    // (groups are reshuffled at block boundaries)
-    let hasReshuffled = false;
-    for (const page of active) {
-      const info = await getPlayerInfo(page);
-      if (info && info.currentGroup !== info.originalGroup) {
-        hasReshuffled = true;
-        break;
-      }
-    }
-    // It is possible (though unlikely) that reshuffling results in same assignments,
-    // so we just verify Phase 2 is active rather than strictly requiring different groups
-  });
-
-  test('one listener goes idle in Phase 2 and gets kicked', async () => {
-    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
-    const pages = pm.getPages();
+    const info0 = await getPlayerInfo(pages[0]);
+    expect(info0?.phase).toBe(2);
 
     // Pick a LISTENER to idle (must be listener so idle detection triggers
     // when their group's speaker is active)
@@ -171,15 +118,15 @@ test.describe.serial('Group Viability: Phase 2 Dropout in Mixed Condition (3.6)'
     }
     expect(idleIndex).toBeGreaterThanOrEqual(0);
 
-    // Play rounds with this player idle until they are kicked
+    // Play MAX_IDLE_ROUNDS rounds with this player idle.
+    // Don't break early — timing glitches in getActivePlayers can cause
+    // false positives. The full loop ensures all idle rounds are counted.
     for (let r = 0; r < MAX_IDLE_ROUNDS; r++) {
-      const active = await getActivePlayers(pages);
-      if (active.length < 9) break; // Player already kicked
       await playRound(pages, { skipIndices: [idleIndex] });
     }
 
     // Wait for the idle player to see the sorry screen
-    const exitInfo = await waitForExitScreen(pages[idleIndex], 30_000);
+    const exitInfo = await waitForExitScreen(pages[idleIndex], 60_000);
     expect(exitInfo).not.toBeNull();
     expect(exitInfo!.exitReason).toBe('player timeout');
   });

@@ -9,10 +9,11 @@ import {
   getActivePlayers,
   getRemovedPlayers,
   waitForExitScreen,
+  waitForStage,
+  isInGame,
 } from '../helpers/game-actions';
 import {
   expectPlayerInGame,
-  expectPlayerOnExitScreen,
 } from '../helpers/assertions';
 import {
   MAX_IDLE_ROUNDS,
@@ -98,6 +99,16 @@ test.describe.serial('Idle Detection: Speaker Idle (TEST_PLAN 3.1)', () => {
 
   test('remaining players are still in the game', async () => {
     const pages = pm.getPages();
+
+    // After a speaker kick, the game needs time to stabilize (reassign speaker,
+    // advance to next round). Wait for a non-kicked page to reach Selection.
+    for (const page of pages) {
+      if (await isInGame(page)) {
+        await waitForStage(page, 'Selection', 60_000);
+        break;
+      }
+    }
+
     const active = await getActivePlayers(pages);
 
     // One player was kicked, so 8 should remain

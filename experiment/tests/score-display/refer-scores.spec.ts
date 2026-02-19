@@ -109,11 +109,20 @@ test.describe.serial('Score Display: Refer Scores (TEST_PLAN 11.1)', () => {
   test('scores continue to increment after additional rounds', async () => {
     const pages = pm.getPages();
 
-    // Helper to read score from a page
+    // Helper to read score from a page — find the "Score" label first,
+    // then get .tabular-nums within its parent (avoids matching the timer)
     const readScore = async (page: typeof pages[0]) => {
       return await page.evaluate(() => {
-        const el = document.querySelector('.tabular-nums');
-        return el ? parseInt(el.textContent || '0', 10) : 0;
+        const scoreLabel = Array.from(document.querySelectorAll('div'))
+          .find(el => el.textContent?.trim() === 'Score');
+        if (scoreLabel) {
+          const parent = scoreLabel.parentElement;
+          if (parent) {
+            const numEl = parent.querySelector('.tabular-nums');
+            if (numEl) return parseInt(numEl.textContent || '0', 10);
+          }
+        }
+        return 0;
       });
     };
 
