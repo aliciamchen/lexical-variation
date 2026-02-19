@@ -337,11 +337,11 @@ export function TangramInstructions(props) {
     backgroundSize: "85%",
     backgroundRepeat: "no-repeat",
     backgroundPosition: "center",
-    width: "12vh",
-    height: "12vh",
+    width: "15vh",
+    height: "15vh",
     gridRow: row,
     gridColumn: column,
-    margin: "0.8rem",
+    margin: "0.5rem",
   };
 
   if (tangram == target) {
