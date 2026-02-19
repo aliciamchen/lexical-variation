@@ -74,3 +74,19 @@ npx playwright test --headed
 # View report
 npx playwright show-report
 ```
+
+## Running experiment on server
+
+We are using the instructions at https://docs.empirica.ly/guides/deploying-my-experiment/ubuntu-tutorial
+
+`ssh root@tangramcommunication.empirica.app`
+
+Run `empirica bundle` in `experiment`
+
+`scp lexical-variation.tar.zst root@tangramcommunication.empirica.app:~/empirica/empirica.tar.zst`
+
+the experiment is available at https://tangramcommunication.empirica.app/
+
+Admin console: https://tangramcommunication.empirica.app/admin
+
+Copy data back to machine: `scp root@tangramcommunication.empirica.app:~/empirica/*.zip .`
