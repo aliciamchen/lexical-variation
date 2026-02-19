@@ -81,16 +81,14 @@ test.describe.serial('Group Viability: Speaker Dropout Mid-Block (3.7)', () => {
     expect(speakerGroup).toBeDefined();
   });
 
-  test('play a few rounds normally, then speaker goes idle', async () => {
+  test('speaker goes idle for MAX_IDLE_ROUNDS and is kicked', async () => {
     test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
 
-    // Play 2 rounds normally first (speaker participates)
-    await playRound(pages);
-    await playRound(pages);
-
-    // Now the speaker goes idle for MAX_IDLE_ROUNDS consecutive rounds
-    // The speaker does not send any messages
+    // Go straight to idle rounds (no normal rounds first) so all 5 idle rounds
+    // fit within block 0 (6 rounds per block). Playing normal rounds first would
+    // push idle rounds across the block boundary where speaker rotation happens,
+    // confusing the "new speaker assigned" assertion.
     for (let r = 0; r < MAX_IDLE_ROUNDS; r++) {
       await playRound(pages, { skipIndices: [speakerPageIndex] });
     }
@@ -101,8 +99,8 @@ test.describe.serial('Group Viability: Speaker Dropout Mid-Block (3.7)', () => {
   test('idle speaker is kicked with "player timeout"', async () => {
     const pages = pm.getPages();
 
-    // Wait for exit screen to render (may not appear immediately after idle kicks)
-    const exitInfo = await waitForExitScreen(pages[speakerPageIndex], 30_000);
+    // Wait for exit screen to render (may take time for Empirica to propagate state)
+    const exitInfo = await waitForExitScreen(pages[speakerPageIndex], 60_000);
     expect(exitInfo).not.toBeNull();
     expect(exitInfo!.exitReason).toBe('player timeout');
     expect(exitInfo!.partialPay).toBe('0.00'); // Idle players get no pay

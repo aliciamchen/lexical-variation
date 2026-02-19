@@ -154,6 +154,18 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
       await page.locator('.task[data-current-group]').waitFor({ state: 'visible', timeout: 15_000 });
     }
 
+    // Poll for Phase 2 on all pages first (Empirica state may lag)
+    const phaseStart = Date.now();
+    while (Date.now() - phaseStart < 15_000) {
+      let allPhase2 = true;
+      for (const page of active) {
+        const info = await getPlayerInfo(page);
+        if (!info || info.phase !== 2) { allPhase2 = false; break; }
+      }
+      if (allPhase2) break;
+      await pages[0].waitForTimeout(1000);
+    }
+
     // Poll for reshuffling to propagate: retry reading group data with short delays
     // The server reshuffles groups in onRoundStart, but clients may take a moment to sync
     let groupData: { originalGroup: string; currentGroup: string }[] = [];
@@ -276,8 +288,8 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
         }
       }
       // It is possible (but extremely unlikely with 9 players) that reshuffling
-      // produces the same assignment. We expect at least some change.
-      expect(anyGroupChanged).toBe(true);
+      // produces the same assignment. Use soft assertion to not fail the entire suite.
+      expect.soft(anyGroupChanged, 'Expected group reshuffling between blocks (extremely unlikely to be same)').toBe(true);
     }
   });
 

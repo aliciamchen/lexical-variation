@@ -60,6 +60,7 @@ test.describe.serial('Happy Path: refer_mixed', () => {
   });
 
   test('complete Phase 1 with original groups', async () => {
+    test.slow();
     const pages = pm.getPages();
 
     // Record original groups
@@ -98,11 +99,30 @@ test.describe.serial('Happy Path: refer_mixed', () => {
   });
 
   test('Phase 2: identities are masked', async () => {
+    test.slow();
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
     // Wait for Phase 2 Selection stage so .task element is rendered
     await waitForStage(active[0], 'Selection', 120_000);
+
+    // Wait for ALL active pages to have .task element with data-current-group
+    // (Empirica state propagation may lag between browser contexts)
+    for (const page of active) {
+      await page.locator('.task[data-current-group]').waitFor({ state: 'visible', timeout: 15_000 });
+    }
+
+    // Poll to verify all pages are in Phase 2 before checking identities
+    const pollStart = Date.now();
+    while (Date.now() - pollStart < 10_000) {
+      let allPhase2 = true;
+      for (const page of active) {
+        const info = await getPlayerInfo(page);
+        if (!info || info.phase !== 2) { allPhase2 = false; break; }
+      }
+      if (allPhase2) break;
+      await pages[0].waitForTimeout(1000);
+    }
 
     // In Phase 2 of refer_mixed, identities should be masked
     for (const page of active) {
@@ -111,6 +131,7 @@ test.describe.serial('Happy Path: refer_mixed', () => {
   });
 
   test('Phase 2: groups are reshuffled', async () => {
+    test.slow();
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 

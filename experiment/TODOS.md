@@ -50,7 +50,7 @@ To test the experiment, use the test-experiment skill.
     - [x] Particularly check if the pay is correct for the various ways that people people exit the experiment (idle, group disbanded, etc.) For group disbanded, it should be proportional to the amount of time they spent in the experiment. For idle, they do not get paid anything. 
 - [ ] When all is ready, switch to final version with all correct timing + lobby config, and then run once using Playwright and then test once manually to make sure everything is working correctly. Look at the data and see everything is saving. 
     - [ ] We should export all the data and test it to make sure all the reshuffling assignments, fields, etc., are saving correctly
-    - [ ] is there an issue if theres a previously ended batch? We can collect data as normal right...
+    - [x] is there an issue if theres a previously ended batch? We can collect data as normal right...
 
 ### External/Manual Tasks
 

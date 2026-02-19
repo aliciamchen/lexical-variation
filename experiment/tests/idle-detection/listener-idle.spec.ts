@@ -95,6 +95,10 @@ test.describe.serial('Idle Detection: Listener Idle (TEST_PLAN 3.2)', () => {
 
   test('remaining players are still in the game', async () => {
     const pages = pm.getPages();
+
+    // Allow game state to stabilize after the kick (Empirica state propagation)
+    await pages[0].waitForTimeout(3000);
+
     const active = await getActivePlayers(pages);
 
     // One listener was kicked, so 8 should remain

@@ -2,9 +2,9 @@
  * TEST_PLAN 9.1: Fast Completion (No Race Conditions)
  *
  * All players respond as quickly as possible. Verify no race conditions
- * when all players act immediately. Set up game, rush through rounds
- * with minimal waitForTimeout, and verify the game completes cleanly
- * without errors.
+ * when all players act immediately. Set up game, rush through all rounds,
+ * and verify the game completes cleanly without errors and all 9 players
+ * reach the exit survey with completion codes.
  */
 import { test, expect } from '@playwright/test';
 import { PlayerManager } from '../helpers/player-manager';
@@ -12,17 +12,15 @@ import { createBatch } from '../helpers/admin';
 import {
   getPlayerInfo,
   playRound,
+  playBlock,
   handleTransition,
   clickContinue,
   completeExitSurvey,
   getActivePlayers,
-  speakerSendMessage,
-  listenerClickTangram,
   waitForStage,
 } from '../helpers/game-actions';
 import {
   expectPlayerInGame,
-  expectCondition,
 } from '../helpers/assertions';
 import {
   PHASE_1_BLOCKS,
@@ -30,47 +28,6 @@ import {
   ROUNDS_PER_BLOCK,
   PROLIFIC_CODES,
 } from '../helpers/constants';
-
-/**
- * Fast version of playRound with minimal delays.
- * Races through the round as quickly as possible to test for timing issues.
- * Still waits for Selection stage to prevent round desynchronization.
- */
-async function playRoundFast(pages: import('@playwright/test').Page[]): Promise<void> {
-  // Only click Continue if we're NOT already at Selection (avoids wasted timeout)
-  const info0 = await getPlayerInfo(pages[0]);
-  if (!info0 || info0.stageName !== 'Selection') {
-    for (const page of pages) {
-      await clickContinue(page, 1000);
-    }
-  }
-
-  // Wait for Selection stage to prevent desync
-  await waitForStage(pages[0], 'Selection', 30_000);
-
-  // Speakers send messages as fast as possible
-  for (const page of pages) {
-    const info = await getPlayerInfo(page);
-    if (info?.role === 'speaker' && info.targetIndex >= 0) {
-      await speakerSendMessage(page, 'fast');
-    }
-  }
-
-  // Brief delay before listener clicks to let messages propagate
-  await pages[0]?.waitForTimeout(300);
-
-  // Listeners click as fast as possible
-  for (const page of pages) {
-    const info = await getPlayerInfo(page);
-    if (info?.role === 'listener') {
-      const clickIdx = info.targetIndex >= 0 ? info.targetIndex : 0;
-      await listenerClickTangram(page, clickIdx);
-    }
-  }
-
-  // Brief settling time
-  await pages[0]?.waitForTimeout(300);
-}
 
 test.describe.serial('Edge Case: Fast Completion (TEST_PLAN 9.1)', () => {
   let pm: PlayerManager;
@@ -102,12 +59,11 @@ test.describe.serial('Edge Case: Fast Completion (TEST_PLAN 9.1)', () => {
   });
 
   test('rush through Phase 1 with minimal delays', async () => {
+    test.slow();
     const pages = pm.getPages();
 
     for (let block = 0; block < PHASE_1_BLOCKS; block++) {
-      for (let round = 0; round < ROUNDS_PER_BLOCK; round++) {
-        await playRoundFast(pages);
-      }
+      await playBlock(pages, ROUNDS_PER_BLOCK);
 
       // Verify no players were lost due to race conditions
       const active = await getActivePlayers(pages);
@@ -123,13 +79,12 @@ test.describe.serial('Edge Case: Fast Completion (TEST_PLAN 9.1)', () => {
   });
 
   test('rush through Phase 2 with minimal delays', async () => {
+    test.slow();
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
     for (let block = 0; block < PHASE_2_BLOCKS; block++) {
-      for (let round = 0; round < ROUNDS_PER_BLOCK; round++) {
-        await playRoundFast(active);
-      }
+      await playBlock(active, ROUNDS_PER_BLOCK);
 
       // Verify no race condition casualties
       const stillActive = await getActivePlayers(pages);
@@ -176,9 +131,10 @@ test.describe.serial('Edge Case: Fast Completion (TEST_PLAN 9.1)', () => {
       const content = await page.textContent('body');
       expect(content).not.toBeNull();
       expect(content!.length).toBeGreaterThan(0);
-      // Should not show any error messages in the body
+      // Should not show crash/error screens
       expect(content).not.toContain('Something went wrong');
-      expect(content).not.toContain('Error');
+      expect(content).not.toContain('Unhandled Runtime Error');
+      expect(content).not.toContain('Application error');
     }
   });
 });

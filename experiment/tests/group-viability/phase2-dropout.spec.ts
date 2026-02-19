@@ -121,7 +121,7 @@ test.describe.serial('Group Viability: Phase 2 Dropout in Mixed Condition (3.6)'
 
     // Verify we are in Phase 2 (poll to allow Empirica sync time)
     const pollStart = Date.now();
-    while (Date.now() - pollStart < 10_000) {
+    while (Date.now() - pollStart < 15_000) {
       let allPhase2 = true;
       for (const page of active) {
         const info = await getPlayerInfo(page);
@@ -155,13 +155,21 @@ test.describe.serial('Group Viability: Phase 2 Dropout in Mixed Condition (3.6)'
     // so we just verify Phase 2 is active rather than strictly requiring different groups
   });
 
-  test('one player goes idle in Phase 2 and gets kicked', async () => {
+  test('one listener goes idle in Phase 2 and gets kicked', async () => {
     test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
-    // Pick one player to idle (first player from group A)
-    const groupNames = Object.keys(groupPageIndices);
-    const targetGroup = groupNames[0];
-    const idleIndex = groupPageIndices[targetGroup][0];
+
+    // Pick a LISTENER to idle (must be listener so idle detection triggers
+    // when their group's speaker is active)
+    let idleIndex = -1;
+    for (let i = 0; i < pages.length; i++) {
+      const info = await getPlayerInfo(pages[i]);
+      if (info?.role === 'listener' && info.phase === 2) {
+        idleIndex = i;
+        break;
+      }
+    }
+    expect(idleIndex).toBeGreaterThanOrEqual(0);
 
     // Play rounds with this player idle until they are kicked
     for (let r = 0; r < MAX_IDLE_ROUNDS; r++) {

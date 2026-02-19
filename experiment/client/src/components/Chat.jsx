@@ -84,7 +84,7 @@ function Messages({ msgs }) {
   }
 
   return (
-    <div className="h-full overflow-auto pl-2 pr-4 pb-2" ref={scroller}>
+    <div className="chat-messages h-full overflow-auto pl-2 pr-4 pb-2" ref={scroller}>
       {msgs.map((msg) => (
         <MessageComp key={msg.id} msg={msg} />
       ))}

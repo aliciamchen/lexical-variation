@@ -1,16 +1,20 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Single setup project starts the Empirica server, then a single test project
- * runs ALL test files sequentially (workers: 1, fullyParallel: false).
+ * 4 test groups with server resets between each group.
  *
- * No group separation or server resets between test categories. This ensures
- * that failures in one category never prevent other categories from running.
- * The Empirica server can handle many batches in a single session.
+ * Execution order: setup-1 → group-1 → setup-2 → group-2 → setup-3 → group-3 → setup-4 → group-4
  *
- * The `previous-batch.spec.ts` test is excluded because it creates multiple
- * batches that leave stale running batches, causing cascading failures in
- * subsequent tests that share the same server.
+ * Each setup project resets the Empirica server (deletes tajriba.json) to prevent
+ * state accumulation from previous test groups. This keeps the server fast and
+ * prevents batch contamination between groups.
+ *
+ * | Group   | Categories                                        |
+ * |---------|---------------------------------------------------|
+ * | group-1 | happy-path, communication, lobby, edge-cases      |
+ * | group-2 | ui-verification, timing                           |
+ * | group-3 | data-integrity, condition-specific, score-display  |
+ * | group-4 | idle-detection, group-viability, compensation     |
  */
 export default defineConfig({
   testDir: './tests',
@@ -33,14 +37,55 @@ export default defineConfig({
     navigationTimeout: 30_000,
   },
   projects: [
+    // ── Group 1: happy-path, communication, lobby, edge-cases ──
     {
-      name: 'setup',
+      name: 'setup-1',
       testMatch: 'reset-server.setup.ts',
     },
     {
-      name: 'tests',
-      dependencies: ['setup'],
+      name: 'group-1',
+      dependencies: ['setup-1'],
+      testMatch: /\/(happy-path|communication|lobby|edge-cases)\/.+\.spec\.ts$/,
       testIgnore: /previous-batch\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    // ── Group 2: ui-verification, timing ──
+    {
+      name: 'setup-2',
+      dependencies: ['group-1'],
+      testMatch: 'reset-server.setup.ts',
+    },
+    {
+      name: 'group-2',
+      dependencies: ['setup-2'],
+      testMatch: /\/(ui-verification|timing)\/.+\.spec\.ts$/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    // ── Group 3: data-integrity, condition-specific, score-display ──
+    {
+      name: 'setup-3',
+      dependencies: ['group-2'],
+      testMatch: 'reset-server.setup.ts',
+    },
+    {
+      name: 'group-3',
+      dependencies: ['setup-3'],
+      testMatch: /\/(data-integrity|condition-specific|score-display)\/.+\.spec\.ts$/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    // ── Group 4: idle-detection, group-viability, compensation ──
+    {
+      name: 'setup-4',
+      dependencies: ['group-3'],
+      testMatch: 'reset-server.setup.ts',
+    },
+    {
+      name: 'group-4',
+      dependencies: ['setup-4'],
+      testMatch: /\/(idle-detection|group-viability|compensation)\/.+\.spec\.ts$/,
       use: { ...devices['Desktop Chrome'] },
     },
   ],

@@ -61,6 +61,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
   });
 
   test('complete Phase 1', async () => {
+    test.slow();
     const pages = pm.getPages();
 
     for (let block = 0; block < PHASE_1_BLOCKS; block++) {
@@ -111,6 +112,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
   });
 
   test('complete remaining Phase 2 rounds with social guessing', async () => {
+    test.slow();
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 

@@ -35,6 +35,9 @@ test.describe.serial('Group Viability: Simultaneous Dropouts from Different Grou
   let pm: PlayerManager;
   // Track which page indices belong to each original group
   let groupPageIndices: Record<string, number[]>;
+  // Track idle player indices across tests
+  let idleFromGroupA: number;
+  let idleFromGroupB: number;
 
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
@@ -83,20 +86,33 @@ test.describe.serial('Group Viability: Simultaneous Dropouts from Different Grou
     }
   });
 
-  test('play a few normal rounds', async () => {
+  test('play a normal round to establish game state', async () => {
+    // Only 1 round so that 1 + MAX_IDLE_ROUNDS (5) = 6 = exactly one block
+    // (avoids crossing block boundary where speaker rotation could confuse idle detection)
     const pages = pm.getPages();
-    await playRound(pages);
     await playRound(pages);
   });
 
-  test('one player from each of two different groups goes idle simultaneously', async () => {
+  test('one listener from each of two different groups goes idle simultaneously', async () => {
     test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
     const groupNames = Object.keys(groupPageIndices);
 
-    // Pick one player from group A and one from group B to idle simultaneously
-    const idleFromGroupA = groupPageIndices[groupNames[0]][0];
-    const idleFromGroupB = groupPageIndices[groupNames[1]][0];
+    // Pick one LISTENER from group A and one from group B to idle simultaneously.
+    // Must be listeners (not speakers) because idle detection only triggers
+    // for listeners when their speaker is active.
+    idleFromGroupA = -1;
+    for (const idx of groupPageIndices[groupNames[0]]) {
+      const info = await getPlayerInfo(pages[idx]);
+      if (info?.role === 'listener') { idleFromGroupA = idx; break; }
+    }
+    idleFromGroupB = -1;
+    for (const idx of groupPageIndices[groupNames[1]]) {
+      const info = await getPlayerInfo(pages[idx]);
+      if (info?.role === 'listener') { idleFromGroupB = idx; break; }
+    }
+    expect(idleFromGroupA).toBeGreaterThanOrEqual(0);
+    expect(idleFromGroupB).toBeGreaterThanOrEqual(0);
     const idleIndices = [idleFromGroupA, idleFromGroupB];
 
     // Both players idle at the same time for MAX_IDLE_ROUNDS
@@ -109,18 +125,14 @@ test.describe.serial('Group Viability: Simultaneous Dropouts from Different Grou
 
   test('both idle players are kicked with "player timeout"', async () => {
     const pages = pm.getPages();
-    const groupNames = Object.keys(groupPageIndices);
 
-    const idleFromGroupA = groupPageIndices[groupNames[0]][0];
-    const idleFromGroupB = groupPageIndices[groupNames[1]][0];
-
-    // Wait for exit screens to render (may not appear immediately after idle kicks)
-    const exitInfoA = await waitForExitScreen(pages[idleFromGroupA], 30_000);
+    // Wait for exit screens to render (may take time for Empirica to propagate state)
+    const exitInfoA = await waitForExitScreen(pages[idleFromGroupA], 60_000);
     expect(exitInfoA).not.toBeNull();
     expect(exitInfoA!.exitReason).toBe('player timeout');
     expect(exitInfoA!.partialPay).toBe('0.00');
 
-    const exitInfoB = await waitForExitScreen(pages[idleFromGroupB], 30_000);
+    const exitInfoB = await waitForExitScreen(pages[idleFromGroupB], 60_000);
     expect(exitInfoB).not.toBeNull();
     expect(exitInfoB!.exitReason).toBe('player timeout');
     expect(exitInfoB!.partialPay).toBe('0.00');

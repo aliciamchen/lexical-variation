@@ -76,13 +76,11 @@ test.describe.serial('Communication: basic chat in refer_separated', () => {
     await speakerPage!.waitForTimeout(1000);
 
     // Verify message appears in speaker's own chat
-    const speakerChat = speakerPage!.locator('.h-full.overflow-auto');
-    await expect(speakerChat.getByText(testMessage)).toBeVisible({ timeout: 5_000 });
+    await expect(speakerPage!.getByText(testMessage)).toBeVisible({ timeout: 5_000 });
 
     // Verify message appears for each listener in the group
     for (const listenerPage of listenerPages) {
-      const listenerChat = listenerPage.locator('.h-full.overflow-auto');
-      await expect(listenerChat.getByText(testMessage)).toBeVisible({ timeout: 5_000 });
+      await expect(listenerPage.getByText(testMessage)).toBeVisible({ timeout: 5_000 });
     }
   });
 

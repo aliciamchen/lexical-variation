@@ -93,6 +93,7 @@ test.describe.serial('Data Integrity: Round Data (TEST_PLAN 7.2)', () => {
   });
 
   test('target_num cycles through 0-5 within a block', async () => {
+    test.slow();
     const pages = pm.getPages();
 
     // Previous test played round 0 and verified Feedback. We may still be in
@@ -144,6 +145,7 @@ test.describe.serial('Data Integrity: Round Data (TEST_PLAN 7.2)', () => {
   });
 
   test('phase increments from 1 to 2 after Phase 1 blocks', async () => {
+    test.slow();
     const pages = pm.getPages();
 
     // Determine how many blocks remain in Phase 1

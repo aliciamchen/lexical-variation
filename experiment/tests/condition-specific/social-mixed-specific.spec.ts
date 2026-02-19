@@ -101,6 +101,7 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
   });
 
   test('(a) Phase 1: no social guess UI', async () => {
+    test.slow();
     const pages = pm.getPages();
 
     // Play first block of Phase 1 and verify no social guess UI appears
@@ -344,6 +345,7 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
   });
 
   test('complete remaining Phase 2 rounds with social guessing', async () => {
+    test.slow();
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 

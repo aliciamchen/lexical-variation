@@ -18,6 +18,7 @@ import { createBatch } from '../helpers/admin';
 import {
   getPlayerInfo,
   playBlock,
+  playRound,
   handleTransition,
   speakerSendMessage,
   listenerClickTangram,
@@ -139,27 +140,11 @@ test.describe.serial('Data Integrity: Social Guess Data (TEST_PLAN 7.4)', () => 
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
-    // Complete the current round (remaining listeners click and guess to advance)
-    for (const page of active) {
-      const info = await getPlayerInfo(page);
-      if (info?.role === 'listener' && info.phase === 2) {
-        // If this listener hasn't clicked yet, complete their actions
-        const clicked = await page.evaluate(() => {
-          const task = document.querySelector('.task');
-          return task?.getAttribute('data-role') === 'listener' &&
-            !!document.querySelector('[data-testid="game-container"]');
-        });
-        if (clicked) {
-          try {
-            await listenerClickTangram(page, 0);
-            await page.waitForTimeout(300);
-            await makeSocialGuess(page, 'same');
-          } catch {
-            // Listener may have already acted
-          }
-        }
-      }
-    }
+    // Use playRound to properly advance the game past the current round.
+    // playRound handles all players (speakers send, listeners click) and
+    // waits for stage transitions including Feedback → next Selection.
+    // doSocialGuess: true so listeners also make social guesses to complete the round.
+    await playRound(active, { doSocialGuess: true });
 
     // Wait for the next round's Selection stage
     await waitForStage(active[0], 'Selection', 60_000);
@@ -179,6 +164,7 @@ test.describe.serial('Data Integrity: Social Guess Data (TEST_PLAN 7.4)', () => 
     await active[0].waitForTimeout(500);
 
     // Find a listener in the same group and make a "different group" guess
+    let foundListener = false;
     for (const page of active) {
       const info = await getPlayerInfo(page);
       if (info?.role === 'listener' && info.currentGroup === speakerGroup2 && info.phase === 2) {
@@ -194,8 +180,10 @@ test.describe.serial('Data Integrity: Social Guess Data (TEST_PLAN 7.4)', () => 
         const bodyText = await page.textContent('body');
         expect(bodyText).toContain('You guessed:');
         expect(bodyText).toContain('Different group');
+        foundListener = true;
         break;
       }
     }
+    expect(foundListener).toBe(true);
   });
 });

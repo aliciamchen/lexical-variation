@@ -1,4 +1,5 @@
 import { test, expect, Page, BrowserContext } from '@playwright/test';
+import { createBatch } from '../helpers/admin';
 
 /**
  * TEST_PLAN 5.1: Verify intro pages display correctly.
@@ -12,6 +13,13 @@ test.describe.serial('UI Verification: Intro & Instructions (5.1)', () => {
   let context: BrowserContext;
 
   test.beforeAll(async ({ browser }) => {
+    // Must create a batch first — Empirica shows "No experiments available"
+    // if no batch exists, blocking the intro flow entirely.
+    const adminContext = await browser.newContext();
+    const adminPage = await adminContext.newPage();
+    await createBatch(adminPage, 'refer_separated');
+    await adminContext.close();
+
     context = await browser.newContext();
     page = await context.newPage();
 

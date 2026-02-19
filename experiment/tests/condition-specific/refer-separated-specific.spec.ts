@@ -74,6 +74,7 @@ test.describe.serial('Condition-Specific: refer_separated (TEST_PLAN 8.1)', () =
   });
 
   test('(a) groups never change during Phase 1 - original_group === current_group', async () => {
+    test.slow();
     const pages = pm.getPages();
 
     // Record original groups for all players
@@ -154,6 +155,7 @@ test.describe.serial('Condition-Specific: refer_separated (TEST_PLAN 8.1)', () =
   });
 
   test('(c) no social guess UI during Phase 2 rounds', async () => {
+    test.slow();
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 

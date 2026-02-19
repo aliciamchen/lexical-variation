@@ -39,6 +39,8 @@ import {
 
 test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
   let pm: PlayerManager;
+  let idlePageIndices: number[] = [];
+  let targetGroupName: string;
 
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
@@ -85,14 +87,14 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
 
     // Find players by original group so we can target two from the same group
     const groups = await getPlayersByGroup(pages);
-    const targetGroupName = Object.keys(groups)[0]; // Pick the first group
+    targetGroupName = Object.keys(groups)[0]; // Pick the first group
     const targetGroupPlayers = groups[targetGroupName];
     expect(targetGroupPlayers.length).toBe(3);
 
     // Find the 2 LISTENERS in the target group (not the speaker!).
     // The speaker is fixed per block, so within a single block both listeners
     // consistently accumulate idle_rounds when the active speaker sends.
-    const idlePageIndices: number[] = [];
+    idlePageIndices = [];
     for (let i = 0; i < pages.length; i++) {
       const info = await getPlayerInfo(pages[i]);
       if (info?.originalGroup === targetGroupName && info.role === 'listener') {
@@ -115,25 +117,12 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
   test('idle players are on exit screen with "player timeout"', async () => {
     const pages = pm.getPages();
 
-    // Wait until we have at least 2 removed players (the 2 idle ones)
-    let removed = await getRemovedPlayers(pages);
-    const start = Date.now();
-    while (removed.length < 2 && Date.now() - start < 120_000) {
-      await pages[0].waitForTimeout(2000);
-      removed = await getRemovedPlayers(pages);
-    }
-
-    expect(removed.length).toBeGreaterThanOrEqual(2);
-
-    // Verify the idle players see the sorry/exit screen
-    const timeoutPlayers = removed.filter(
-      (r) => r.info.exitReason === 'player timeout',
-    );
-    expect(timeoutPlayers.length).toBeGreaterThanOrEqual(2);
-
-    // Idle players should get NO compensation
-    for (const { info } of timeoutPlayers) {
-      expect(info.prolificCode).toBe('none');
+    // Wait for sorry screens on the specific idle players (more reliable than polling all 9)
+    for (const idx of idlePageIndices) {
+      const exitInfo = await waitForExitScreen(pages[idx], 60_000);
+      expect(exitInfo).not.toBeNull();
+      expect(exitInfo!.exitReason).toBe('player timeout');
+      expect(exitInfo!.prolificCode).toBe('none');
     }
   });
 

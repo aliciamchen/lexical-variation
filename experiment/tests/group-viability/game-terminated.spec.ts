@@ -141,6 +141,10 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
     // This ensures Group B gets fresh role assignments for Block 2.
     await playRound(pages);
 
+    // Wait for next Selection stage so roles are properly assigned for the new block
+    const monitorIdx = groupPageIndices[groupB][0];
+    await waitForStage(pages[monitorIdx], 'Selection', 30_000);
+
     // Now check the CURRENT roles for Group B (they may have changed at block boundary)
     const idleIndicesB: number[] = [];
     for (const idx of groupPageIndices[groupB]) {

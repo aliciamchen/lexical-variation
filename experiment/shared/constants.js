@@ -3,7 +3,7 @@
 
 // ============ TEST MODE ============
 // Set to true for local testing (longer timeouts, more idle tolerance)
-export const TEST_MODE = false; // Set to false for production
+export const TEST_MODE = true; // Set to false for production
 
 // ============ TESTING VS PRODUCTION VALUES ============
 // TEST_MODE only affects timing and tolerance settings, not player/group counts.

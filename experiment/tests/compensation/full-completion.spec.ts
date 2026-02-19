@@ -55,6 +55,7 @@ test.describe.serial('Compensation: Full Completion (TEST_PLAN 10.1)', () => {
   });
 
   test('complete Phase 1', async () => {
+    test.slow();
     const pages = pm.getPages();
 
     for (let block = 0; block < PHASE_1_BLOCKS; block++) {
@@ -72,6 +73,7 @@ test.describe.serial('Compensation: Full Completion (TEST_PLAN 10.1)', () => {
   });
 
   test('complete Phase 2', async () => {
+    test.slow();
     const pages = pm.getPages();
 
     for (let block = 0; block < PHASE_2_BLOCKS; block++) {

@@ -212,8 +212,10 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
   // Click Continue only if we're NOT already in Selection (avoids 3s*N timeout waste)
   const currentInfo = await getPlayerInfo(monitorPage);
   if (currentInfo && currentInfo.stageName !== 'Selection') {
-    for (const page of pages) {
-      await clickContinue(page, 3000);
+    for (let i = 0; i < pages.length; i++) {
+      if (skipIndices.includes(i)) continue;
+      if (!(await isInGame(pages[i]))) continue;
+      await clickContinue(pages[i], 3000);
     }
   }
 
@@ -319,34 +321,46 @@ export async function playBlock(
  * 3. Submit the transition stage
  */
 export async function handleTransition(pages: Page[], timeout = 120_000): Promise<void> {
-  // Step 1: Submit any pending Feedback stage
+  // Find a monitor page that's still in the game (skip sorry-screen pages)
+  let monitorPage = pages[0];
   for (const page of pages) {
-    await clickContinue(page, 5000);
+    if (await isInGame(page)) {
+      monitorPage = page;
+      break;
+    }
   }
-  await pages[0]?.waitForTimeout(1000);
+
+  // Step 1: Submit any pending Feedback stage (skip sorry-screen pages)
+  for (const page of pages) {
+    if (await isInGame(page)) {
+      await clickContinue(page, 5000);
+    }
+  }
+  await monitorPage.waitForTimeout(1000);
 
   // Step 2: Wait for the transition stage to appear
   const transitionStages = ['phase_2_transition', 'bonus_info'];
   const start = Date.now();
   let foundTransition = false;
   while (Date.now() - start < timeout) {
-    const info = await getPlayerInfo(pages[0]);
+    const info = await getPlayerInfo(monitorPage);
     if (!info) break; // Player left game
     if (info.stageName && transitionStages.includes(info.stageName)) {
       foundTransition = true;
       break;
     }
-    // If already past transition (in Phase 2 Selection), return early
-    if (info.phase === 2 && info.stageName === 'Selection') return;
-    await pages[0].waitForTimeout(1000);
+    // If already past transition (in Phase 2 Selection or Feedback), return early
+    if (info.phase === 2 && (info.stageName === 'Selection' || info.stageName === 'Feedback')) return;
+    await monitorPage.waitForTimeout(1000);
   }
 
   if (foundTransition) {
     // Wait for all pages to reach the transition stage
-    await pages[0].waitForTimeout(2000);
+    await monitorPage.waitForTimeout(2000);
 
-    // Step 3: Click Continue on the transition stage for all pages
+    // Step 3: Click Continue on the transition stage for all active pages
     for (const page of pages) {
+      if (!(await isInGame(page))) continue;
       try {
         await page.getByRole('button', { name: /continue/i }).waitFor({ state: 'visible', timeout: 10_000 });
         await page.getByRole('button', { name: /continue/i }).click();
@@ -355,7 +369,7 @@ export async function handleTransition(pages: Page[], timeout = 120_000): Promis
       }
     }
   }
-  await pages[0]?.waitForTimeout(1000);
+  await monitorPage.waitForTimeout(1000);
 }
 
 // ============ EXIT SURVEY ============
@@ -431,13 +445,20 @@ export async function waitForFeedback(page: Page, timeout = 30_000): Promise<boo
 }
 
 export async function waitForExitScreen(page: Page, timeout = 120_000): Promise<ExitInfo | null> {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
-    const info = await getExitInfo(page);
-    if (info) return info;
-    await page.waitForTimeout(1000);
+  try {
+    // Use Playwright's native waitFor (MutationObserver-based) instead of manual polling.
+    // This catches DOM changes in real-time, even if the sorry screen briefly disappears
+    // during Empirica's transition from game view to exit steps.
+    await page.locator('[data-testid="sorry-screen"], [data-testid="quiz-failed-screen"]')
+      .first()
+      .waitFor({ state: 'attached', timeout });
+    // Small delay for React to finish rendering data attributes
+    await page.waitForTimeout(200);
+    return await getExitInfo(page);
+  } catch {
+    // Fallback: try polling once more (locator may have missed it due to frame changes)
+    return await getExitInfo(page);
   }
-  return null;
 }
 
 export async function waitForGameStart(pages: Page[], timeout = 120_000): Promise<boolean> {
@@ -479,9 +500,16 @@ export async function getPlayersByGroup(pages: Page[]): Promise<Record<string, {
 export async function getRemovedPlayers(pages: Page[]): Promise<{ page: Page; info: ExitInfo }[]> {
   const removed: { page: Page; info: ExitInfo }[] = [];
   for (const page of pages) {
-    const info = await getExitInfo(page);
-    if (info) {
-      removed.push({ page, info });
+    // First check via locator (more reliable than page.evaluate for detecting DOM presence)
+    const sorryLocator = page.locator('[data-testid="sorry-screen"]');
+    const quizFailLocator = page.locator('[data-testid="quiz-failed-screen"]');
+    const hasSorry = (await sorryLocator.count()) > 0;
+    const hasQuizFail = (await quizFailLocator.count()) > 0;
+    if (hasSorry || hasQuizFail) {
+      const info = await getExitInfo(page);
+      if (info) {
+        removed.push({ page, info });
+      }
     }
   }
   return removed;

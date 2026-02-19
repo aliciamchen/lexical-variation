@@ -6,11 +6,14 @@ import {
   playRound,
   waitForGameStart,
   getActivePlayers,
-  waitForFeedback,
+  waitForStage,
+  speakerSendMessage,
+  listenerClickTangram,
+  clickContinue,
 } from '../helpers/game-actions';
+import { SELECTION_DURATION, FEEDBACK_DURATION } from '../helpers/constants';
 import {
   expectPlayerInGame,
-  expectFeedbackVisible,
 } from '../helpers/assertions';
 
 /**
@@ -74,33 +77,62 @@ test.describe.serial('Idle Detection: Idle Warning Display (TEST_PLAN 3.9)', () 
 
     const idlePage = pages[idleSpeakerIndex];
 
-    // Play 1 round with the speaker idle (skipped).
-    // When the speaker is idle, listeners can't click (waiting for speaker message).
-    // The round advances after SELECTION_DURATION timeout, then onStageEnded
-    // increments idle_rounds for the speaker.
-    await playRound(pages, { skipIndices: [idleSpeakerIndex] });
+    // Manually orchestrate 1 round with the speaker idle.
+    // We do NOT use playRound({ skipIndices }) because it waits through
+    // the entire Feedback stage — we need to check the warning DURING Feedback.
 
-    // The idle warning shows during the Feedback stage when idle_rounds === 1.
-    // Refgame.jsx: "Warning: You were inactive last round."
-    // Wait for Feedback stage to render with the warning.
-    const feedbackReached = await waitForFeedback(idlePage, 30_000);
+    // Ensure we're in Selection
+    await waitForStage(pages[0], 'Selection', 15_000);
+
+    // Non-idle speakers send messages
+    for (let i = 0; i < pages.length; i++) {
+      if (i === idleSpeakerIndex) continue;
+      const info = await getPlayerInfo(pages[i]);
+      if (info?.role === 'speaker' && info.targetIndex >= 0) {
+        await speakerSendMessage(pages[i], 'round message');
+      }
+    }
+    await pages[0].waitForTimeout(500);
+
+    // Non-idle listeners click tangrams
+    for (let i = 0; i < pages.length; i++) {
+      if (i === idleSpeakerIndex) continue;
+      const info = await getPlayerInfo(pages[i]);
+      if (info?.role === 'listener') {
+        const clickIdx = info.targetIndex >= 0 ? info.targetIndex : 0;
+        await listenerClickTangram(pages[i], clickIdx);
+      }
+    }
+
+    // Wait for Selection timer to expire and Feedback to appear on the idle page.
+    // The idle speaker's group won't submit, so SELECTION_DURATION must run out.
+    const feedbackReached = await waitForStage(
+      idlePage,
+      'Feedback',
+      (SELECTION_DURATION + 15) * 1000,
+    );
     expect(feedbackReached).toBe(true);
 
-    // The warning message should appear on the idle player's page
+    // Check for warning text NOW, while still in Feedback stage.
+    // Refgame.jsx shows "Warning: You were inactive last round." when idle_rounds === 1.
     const warningText = 'Warning: You were inactive';
     const bodyContent = await idlePage.textContent('body');
     expect(
       bodyContent,
-      'Expected idle warning text to be visible on the idle player page',
+      'Expected idle warning text to be visible on the idle player page during Feedback',
     ).toContain(warningText);
+
+    // Now wait for Feedback to end so the game can proceed
+    const startWait = Date.now();
+    while (Date.now() - startWait < (FEEDBACK_DURATION + 10) * 1000) {
+      const info = await getPlayerInfo(idlePage);
+      if (!info || info.stageName !== 'Feedback') break;
+      await idlePage.waitForTimeout(1000);
+    }
   });
 
   test('idle player is still in the game after warning', async () => {
     const pages = pm.getPages();
-    const idlePage = pages.find(async (page) => {
-      const content = await page.textContent('body');
-      return content?.includes('Warning: You were inactive');
-    });
 
     // All 9 players should still be active (no one kicked after just 1 idle round)
     const active = await getActivePlayers(pages);
