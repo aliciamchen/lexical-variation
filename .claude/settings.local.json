@@ -23,7 +23,6 @@
       "Bash(xargs kill:*)",
       "mcp__playwright__browser_press_key",
       "Bash(curl:*)",
-      "Skill(test-experiment)",
       "Bash(unzip:*)",
       "Bash(node -e:*)",
       "Bash(__NEW_LINE__ echo -e \"\\\\n=== Checking social_guess values \\(sample\\) ===\")",
