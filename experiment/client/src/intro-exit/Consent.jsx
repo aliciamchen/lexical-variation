@@ -1,8 +1,21 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { usePlayer } from "@empirica/core/player/classic/react";
+import * as Sentry from "@sentry/react";
 import { Button } from "../components/Button";
 import { ESTIMATED_TIME, BASE_PAY, MAX_BONUS } from "../constants";
 
 export function ConsentPage({ next }) {
+  const player = usePlayer();
+
+  useEffect(() => {
+    if (player?.id) {
+      Sentry.setUser({
+        id: player.id,
+        username: player.get("name"),
+      });
+    }
+  }, [player?.id]);
+
   return (
     <div className="consent">
       <h1>Consent Form</h1>

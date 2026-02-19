@@ -7,7 +7,6 @@ import {
 } from "@empirica/core/player/classic/react";
 import { Chat } from "./components/Chat";
 
-import * as Sentry from "@sentry/react";
 import { React, useEffect } from "react";
 import { Profile } from "./Profile";
 import { Task } from "./Task";
@@ -21,16 +20,6 @@ export function Game() {
   const player = usePlayer();
   const players = usePlayers();
   const round = useRound();
-
-  // Set Sentry user context for player identification
-  useEffect(() => {
-    if (player?.id) {
-      Sentry.setUser({
-        id: player.id,
-        username: player.get("name"),
-      });
-    }
-  }, [player?.id]);
 
   // play sounds when the round or game changes
   useEffect(() => {
