@@ -81,7 +81,12 @@ export async function getExitInfo(page: Page): Promise<ExitInfo | null> {
 
 export async function isInGame(page: Page): Promise<boolean> {
   const container = page.locator(GAME_CONTAINER);
-  return (await container.count()) > 0;
+  if ((await container.count()) === 0) return false;
+  // Sorry screen can render INSIDE game-container (via Inactive component)
+  // when a player is kicked mid-game. Exclude those players.
+  const sorry = page.locator(SORRY_SCREEN);
+  if ((await sorry.count()) > 0) return false;
+  return true;
 }
 
 export async function isOnExitScreen(page: Page): Promise<boolean> {
@@ -95,29 +100,33 @@ export async function isOnExitScreen(page: Page): Promise<boolean> {
 export async function completeIntro(page: Page, playerName?: string): Promise<void> {
   const identifier = playerName || `player_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-  // Step 1: Handle Empirica built-in consent ("I AGREE") if present
-  const agreeBtn = page.getByRole('button', { name: /agree/i });
-  if (await agreeBtn.count() > 0) {
-    await agreeBtn.click();
+  // Step 1: Wait for and handle Empirica built-in consent ("I AGREE")
+  // Use explicit wait instead of conditional count (avoids race with page loading)
+  try {
+    await page.getByRole('button', { name: /agree/i }).click({ timeout: 10_000 });
     await page.waitForTimeout(500);
+  } catch {
+    // Consent dialog may have already been accepted or not shown
   }
 
-  // Step 2: Enter player identifier
+  // Step 2: Wait for textbox to appear, then enter player identifier
+  await page.getByRole('textbox').waitFor({ state: 'visible', timeout: 15_000 });
   await page.getByRole('textbox').fill(identifier);
   await page.getByRole('button', { name: /enter/i }).click();
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(500);
 
   // Step 3: Custom consent page - click "I consent"
-  await page.getByRole('button', { name: /consent/i }).click();
-  await page.waitForTimeout(200);
+  await page.getByRole('button', { name: /consent/i }).click({ timeout: 10_000 });
+  await page.waitForTimeout(300);
 
   // Step 4: 5 intro/instruction pages
   for (let j = 0; j < 5; j++) {
-    await page.getByRole('button', { name: /next/i }).click();
-    await page.waitForTimeout(100);
+    await page.getByRole('button', { name: /next/i }).click({ timeout: 10_000 });
+    await page.waitForTimeout(200);
   }
 
-  // Step 5: Quiz answers
+  // Step 5: Quiz answers - wait for first radio to be visible (quiz page loaded)
+  await page.getByRole('radio', { name: /describe the target picture/i }).waitFor({ state: 'visible', timeout: 10_000 });
   await page.getByRole('radio', { name: /describe the target picture/i }).click();
   await page.getByRole('radio', { name: /removed from the game/i }).click();
   await page.getByRole('radio', { name: /only descriptions of the current/i }).click();
@@ -128,7 +137,7 @@ export async function completeIntro(page: Page, playerName?: string): Promise<vo
   // Handle quiz success dialog
   page.once('dialog', async dialog => await dialog.accept());
   await page.getByRole('button', { name: /submit/i }).click();
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(500);
 }
 
 // ============ GAME ACTIONS ============
@@ -191,11 +200,25 @@ export async function clickContinue(page: Page, timeout = 1000): Promise<boolean
 export async function playRound(pages: Page[], options: CompleteRoundOptions = {}): Promise<void> {
   const { skipIndices = [], wrongGroups = [], doSocialGuess = false, message = 'round message' } = options;
 
-  // Click Continue buttons (feedback → selection transition)
-  for (const page of pages) {
-    await clickContinue(page, 500);
+  // Find a non-skipped active page for monitoring (skip sorry-screen pages)
+  let monitorPage = pages[0];
+  for (let i = 0; i < pages.length; i++) {
+    if (!skipIndices.includes(i) && await isInGame(pages[i])) {
+      monitorPage = pages[i];
+      break;
+    }
   }
-  await pages[0]?.waitForTimeout(500);
+
+  // Click Continue only if we're NOT already in Selection (avoids 3s*N timeout waste)
+  const currentInfo = await getPlayerInfo(monitorPage);
+  if (currentInfo && currentInfo.stageName !== 'Selection') {
+    for (const page of pages) {
+      await clickContinue(page, 3000);
+    }
+  }
+
+  // Wait for Selection stage to ensure we're in the right state
+  await waitForStage(monitorPage, 'Selection', 15_000);
 
   // Build group → target mapping from speakers
   const groupTargets: Record<string, number> = {};
@@ -285,22 +308,51 @@ export async function playBlock(
 }
 
 /**
- * Handle transition screen (click Continue for all)
- * Waits for each page to show the transition, then clicks Continue.
+ * Handle transition screen (click Continue for all).
+ *
+ * After the last round of a phase, the flow is:
+ *   Feedback → (all submit or timer) → phase_2_transition/bonus_info → (all submit or timer) → next stage
+ *
+ * This function handles BOTH clicks:
+ * 1. Submit any pending Feedback stage
+ * 2. Wait for the transition stage to appear
+ * 3. Submit the transition stage
  */
-export async function handleTransition(pages: Page[], timeout = 10000): Promise<void> {
-  // Wait for transition content to appear on first page
-  await pages[0]?.waitForTimeout(2000);
-
-  // Click Continue on each page, retrying to handle rendering delays
+export async function handleTransition(pages: Page[], timeout = 120_000): Promise<void> {
+  // Step 1: Submit any pending Feedback stage
   for (const page of pages) {
-    // Wait for the Continue button to appear (transition may render at different times)
-    try {
-      await page.getByRole('button', { name: /continue/i }).waitFor({ state: 'visible', timeout });
-      await page.getByRole('button', { name: /continue/i }).click();
-    } catch {
-      // Fallback: player may have already submitted or screen may differ
-      await clickContinue(page, 2000);
+    await clickContinue(page, 5000);
+  }
+  await pages[0]?.waitForTimeout(1000);
+
+  // Step 2: Wait for the transition stage to appear
+  const transitionStages = ['phase_2_transition', 'bonus_info'];
+  const start = Date.now();
+  let foundTransition = false;
+  while (Date.now() - start < timeout) {
+    const info = await getPlayerInfo(pages[0]);
+    if (!info) break; // Player left game
+    if (info.stageName && transitionStages.includes(info.stageName)) {
+      foundTransition = true;
+      break;
+    }
+    // If already past transition (in Phase 2 Selection), return early
+    if (info.phase === 2 && info.stageName === 'Selection') return;
+    await pages[0].waitForTimeout(1000);
+  }
+
+  if (foundTransition) {
+    // Wait for all pages to reach the transition stage
+    await pages[0].waitForTimeout(2000);
+
+    // Step 3: Click Continue on the transition stage for all pages
+    for (const page of pages) {
+      try {
+        await page.getByRole('button', { name: /continue/i }).waitFor({ state: 'visible', timeout: 10_000 });
+        await page.getByRole('button', { name: /continue/i }).click();
+      } catch {
+        await clickContinue(page, 2000);
+      }
     }
   }
   await pages[0]?.waitForTimeout(1000);

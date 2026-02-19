@@ -148,23 +148,47 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
 
     const active = await getActivePlayers(pages);
 
-    // Record original and current groups for all players at start of Phase 2
-    const groupData: { originalGroup: string; currentGroup: string }[] = [];
+    // Wait for ALL active pages to have .task element with data-current-group
+    // (Empirica state propagation may lag between browser contexts)
     for (const page of active) {
-      const info = await getPlayerInfo(page);
-      expect(info).not.toBeNull();
-      expect(info!.originalGroup).not.toBeNull();
-      expect(info!.currentGroup).not.toBeNull();
-      groupData.push({
-        originalGroup: info!.originalGroup!,
-        currentGroup: info!.currentGroup!,
-      });
+      await page.locator('.task[data-current-group]').waitFor({ state: 'visible', timeout: 15_000 });
     }
 
-    // In Phase 2 of refer_mixed, at least some players should have
-    // current_group !== original_group (groups are reshuffled)
-    const reshuffled = groupData.filter(d => d.currentGroup !== d.originalGroup);
-    expect(reshuffled.length).toBeGreaterThan(0);
+    // Poll for reshuffling to propagate: retry reading group data with short delays
+    // The server reshuffles groups in onRoundStart, but clients may take a moment to sync
+    let groupData: { originalGroup: string; currentGroup: string }[] = [];
+    let reshuffled: typeof groupData = [];
+    const pollStart = Date.now();
+    const POLL_TIMEOUT = 15_000;
+
+    while (Date.now() - pollStart < POLL_TIMEOUT) {
+      groupData = [];
+      for (const page of active) {
+        const info = await getPlayerInfo(page);
+        if (!info || !info.originalGroup || !info.currentGroup) {
+          groupData = []; // incomplete data, retry
+          break;
+        }
+        groupData.push({
+          originalGroup: info.originalGroup,
+          currentGroup: info.currentGroup,
+        });
+      }
+
+      if (groupData.length === active.length) {
+        reshuffled = groupData.filter(d => d.currentGroup !== d.originalGroup);
+        if (reshuffled.length > 0) break; // Reshuffling detected
+      }
+
+      await pages[0].waitForTimeout(1000);
+    }
+
+    // Assert reshuffling occurred
+    expect(
+      reshuffled.length,
+      `Expected some players to have currentGroup !== originalGroup after reshuffling. ` +
+      `Got: ${JSON.stringify(groupData)}`,
+    ).toBeGreaterThan(0);
 
     // Verify mixed group composition: each current group should have players
     // from different original groups

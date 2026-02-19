@@ -34,13 +34,21 @@ import {
 /**
  * Fast version of playRound with minimal delays.
  * Races through the round as quickly as possible to test for timing issues.
+ * Still waits for Selection stage to prevent round desynchronization.
  */
 async function playRoundFast(pages: import('@playwright/test').Page[]): Promise<void> {
-  // Click any Continue buttons (feedback → selection transition)
-  await Promise.all(pages.map(page => clickContinue(page, 500)));
-  await pages[0]?.waitForTimeout(300);
+  // Only click Continue if we're NOT already at Selection (avoids wasted timeout)
+  const info0 = await getPlayerInfo(pages[0]);
+  if (!info0 || info0.stageName !== 'Selection') {
+    for (const page of pages) {
+      await clickContinue(page, 1000);
+    }
+  }
 
-  // Speakers send messages as fast as possible (sequentially to avoid race conditions)
+  // Wait for Selection stage to prevent desync
+  await waitForStage(pages[0], 'Selection', 30_000);
+
+  // Speakers send messages as fast as possible
   for (const page of pages) {
     const info = await getPlayerInfo(page);
     if (info?.role === 'speaker' && info.targetIndex >= 0) {
@@ -49,9 +57,9 @@ async function playRoundFast(pages: import('@playwright/test').Page[]): Promise<
   }
 
   // Brief delay before listener clicks to let messages propagate
-  await pages[0]?.waitForTimeout(500);
+  await pages[0]?.waitForTimeout(300);
 
-  // Listeners click as fast as possible (sequentially to avoid race conditions)
+  // Listeners click as fast as possible
   for (const page of pages) {
     const info = await getPlayerInfo(page);
     if (info?.role === 'listener') {
@@ -60,8 +68,8 @@ async function playRoundFast(pages: import('@playwright/test').Page[]): Promise<
     }
   }
 
-  // Settling time for stage transition
-  await pages[0]?.waitForTimeout(500);
+  // Brief settling time
+  await pages[0]?.waitForTimeout(300);
 }
 
 test.describe.serial('Edge Case: Fast Completion (TEST_PLAN 9.1)', () => {
@@ -136,23 +144,13 @@ test.describe.serial('Edge Case: Fast Completion (TEST_PLAN 9.1)', () => {
     const active = await getActivePlayers(pages);
     expect(active.length).toBe(9);
 
-    // Click Continue to exit last Feedback stage
-    for (const page of active) {
-      await clickContinue(page, 5000);
-    }
+    // Handle the bonus_info transition (submits last Feedback, waits for bonus_info, clicks Continue)
+    await handleTransition(pages);
 
-    // Wait for each player to reach bonus_info, then click Continue
-    await waitForStage(active[0], 'bonus_info', 120_000);
-    for (const page of active) {
-      await waitForStage(page, 'bonus_info', 30_000);
-      await clickContinue(page, 5000);
-    }
-    await active[0].waitForTimeout(3000);
-
-    // Wait for exit survey to load
+    // Wait for Phase 2 to fully end and exit survey to load
     for (const page of pages) {
       try {
-        await page.getByText('Exit Survey').waitFor({ state: 'visible', timeout: 30_000 });
+        await page.getByText('Exit Survey').waitFor({ state: 'visible', timeout: 120_000 });
       } catch {
         // May already be past this point
       }

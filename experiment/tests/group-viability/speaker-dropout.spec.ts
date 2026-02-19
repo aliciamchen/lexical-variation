@@ -105,7 +105,7 @@ test.describe.serial('Group Viability: Speaker Dropout Mid-Block (3.7)', () => {
     const exitInfo = await waitForExitScreen(pages[speakerPageIndex], 30_000);
     expect(exitInfo).not.toBeNull();
     expect(exitInfo!.exitReason).toBe('player timeout');
-    expect(exitInfo!.partialPay).toBe('0'); // Idle players get no pay
+    expect(exitInfo!.partialPay).toBe('0.00'); // Idle players get no pay
   });
 
   test('a new speaker is assigned in the affected group', async () => {

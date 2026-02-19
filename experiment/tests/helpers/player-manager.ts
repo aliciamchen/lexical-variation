@@ -24,24 +24,52 @@ export class PlayerManager {
   }
 
   /**
-   * Navigate all players to the base URL (shows identifier page)
+   * Navigate all players to the base URL (shows identifier page).
+   * Includes retry logic for server connectivity issues.
+   * Waits for the Empirica UI to render before continuing.
    */
   async registerAllPlayers(): Promise<void> {
     for (let i = 0; i < this.pages.length; i++) {
       const page = this.pages[i];
-      await page.goto('/');
-      await page.waitForTimeout(500);
+
+      // Retry goto up to 3 times for server connectivity
+      let success = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await page.goto('/', { timeout: 30_000 });
+          success = true;
+          break;
+        } catch {
+          if (attempt === 2) throw new Error(`Player ${i}: page.goto failed after 3 attempts`);
+          await new Promise(r => setTimeout(r, 3000));
+        }
+      }
+
+      // Wait for Empirica UI to render (consent dialog or identifier textbox)
+      if (success) {
+        const start = Date.now();
+        while (Date.now() - start < 15_000) {
+          const agree = page.getByRole('button', { name: /agree/i });
+          const textbox = page.getByRole('textbox');
+          if ((await agree.count()) > 0 || (await textbox.count()) > 0) break;
+          await page.waitForTimeout(500);
+        }
+      }
+
+      await page.waitForTimeout(300);
     }
   }
 
   /**
-   * Complete intro (consent + instructions + quiz) for all players
+   * Complete intro (consent + instructions + quiz) for all players.
+   * Runs sequentially to avoid race conditions with the Empirica backend.
    */
   async completeAllIntros(): Promise<void> {
-    // Run intros in parallel for speed
-    await Promise.all(
-      this.pages.map((page) => completeIntro(page))
-    );
+    // Run intros sequentially to reduce server load and avoid race conditions.
+    // Parallel execution can overwhelm the Empirica websocket backend.
+    for (const page of this.pages) {
+      await completeIntro(page);
+    }
   }
 
   /**

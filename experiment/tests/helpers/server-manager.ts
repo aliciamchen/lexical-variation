@@ -43,9 +43,16 @@ export async function waitForReady(timeout = 120_000): Promise<boolean> {
         // Verify the frontend actually responds
         const res = await fetch(SERVER_URL);
         if (res.ok || res.status === 200) {
-          // Give tajriba a few extra seconds to finish initialization
-          await new Promise(r => setTimeout(r, 5000));
-          return true;
+          // Give tajriba extra time to finish initialization.
+          // The backend may be listening but not fully ready to handle
+          // WebSocket connections and game state yet.
+          await new Promise(r => setTimeout(r, 10_000));
+          // Double-check both endpoints are still responsive
+          const check1 = await fetch(SERVER_URL);
+          const check2 = await fetch(TAJRIBA_URL).catch(() => null);
+          if (check1.ok || check1.status === 200) {
+            return true;
+          }
         }
       }
     } catch {

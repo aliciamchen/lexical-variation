@@ -2,9 +2,17 @@
  * TEST_PLAN 10.3: Group Disbanded Compensation
  *
  * Group-disbanded players get proportional pay and DISBANDED2026 code.
- * Make 2 players from the same group idle until kicked. The remaining
- * group member gets "group disbanded". Verify data-prolific-code="DISBANDED2026"
+ * Make 2 LISTENERS from the same group idle until kicked. The remaining
+ * group member (speaker) gets "group disbanded". Verify data-prolific-code="DISBANDED2026"
  * and data-partial-pay is > "0.00".
+ *
+ * IMPORTANT: The 2 idle players must be LISTENERS (not the speaker).
+ * If an idle player is the speaker, they don't send messages, which causes
+ * the idle detection to NOT penalize the other idle player (listener) since
+ * "speaker didn't send". The listener's idle counter then RESETS to 0.
+ * By choosing both idle players as listeners, the active speaker sends
+ * messages every round, so both idle listeners are consistently detected
+ * as idle (didn't click after speaker sent).
  */
 import { test, expect } from '@playwright/test';
 import { PlayerManager } from '../helpers/player-manager';
@@ -58,14 +66,14 @@ test.describe.serial('Compensation: Group Disbanded (TEST_PLAN 10.3)', () => {
     }
   });
 
-  test('play initial rounds so players accumulate game time', async () => {
+  test('play initial round so players accumulate game time', async () => {
     const pages = pm.getPages();
-    // Play a couple rounds so all players participate (building up time for partial pay)
-    await playRound(pages);
+    // Play 1 round so all players participate (building up time for partial pay).
+    // Only 1 round so we have room for MAX_IDLE_ROUNDS rounds in the same block.
     await playRound(pages);
   });
 
-  test('two players from same group go idle and get kicked, disbanding the group', async () => {
+  test('two listeners from same group go idle and get kicked, disbanding the group', async () => {
     test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
 
@@ -75,45 +83,42 @@ test.describe.serial('Compensation: Group Disbanded (TEST_PLAN 10.3)', () => {
     const targetGroupPlayers = groups[targetGroupName];
     expect(targetGroupPlayers.length).toBe(3);
 
-    // Determine page indices for the two players who will idle
+    // Find the 2 LISTENERS in the target group (not the speaker!).
+    // The speaker is fixed per block, so within a single block both listeners
+    // consistently accumulate idle_rounds when the active speaker sends messages.
     const idlePageIndices: number[] = [];
     for (let i = 0; i < pages.length; i++) {
       const info = await getPlayerInfo(pages[i]);
-      if (info?.originalGroup === targetGroupName && idlePageIndices.length < 2) {
+      if (info?.originalGroup === targetGroupName && info.role === 'listener') {
         idlePageIndices.push(i);
       }
     }
-    expect(idlePageIndices.length).toBe(2);
+    expect(idlePageIndices.length).toBe(2); // 3-player group has exactly 2 listeners
 
-    // Play rounds with the two target players idling
+    // Play MAX_IDLE_ROUNDS rounds with the 2 listeners idling.
+    // The active speaker sends messages each round, so both idle listeners
+    // are detected as idle (didn't click after speaker sent).
     for (let r = 0; r < MAX_IDLE_ROUNDS; r++) {
-      const active = await getActivePlayers(pages);
-      await playRound(active.length === pages.length ? pages : active, {
-        skipIndices: idlePageIndices,
-      });
+      await playRound(pages, { skipIndices: idlePageIndices });
     }
 
-    // Wait for idle detection to process
-    await pages[0].waitForTimeout(3000);
+    // Wait for idle detection to process and propagate to clients
+    await pages[0].waitForTimeout(5000);
   });
 
   test('disbanded player sees DISBANDED2026 code and partial pay > 0.00', async () => {
     const pages = pm.getPages();
 
-    // Wait for exit screens to render on the target group's pages
-    const groups = await getPlayersByGroup(pages);
-    const targetGroupName = Object.keys(groups)[0];
-
-    // Wait specifically for the target group's pages to show exit screens
-    for (let i = 0; i < pages.length; i++) {
-      const info = await getPlayerInfo(pages[i]);
-      if (info?.originalGroup === targetGroupName) {
-        await waitForExitScreen(pages[i], 60_000);
-      }
+    // Wait until we have at least 3 removed players (2 idle + 1 disbanded).
+    // The sorry screen renders inside game-container via the Inactive component.
+    let removed = await getRemovedPlayers(pages);
+    const start = Date.now();
+    while (removed.length < 3 && Date.now() - start < 120_000) {
+      await pages[0].waitForTimeout(2000);
+      removed = await getRemovedPlayers(pages);
     }
 
     // Find the player(s) with "group disbanded" exit reason
-    const removed = await getRemovedPlayers(pages);
     const disbandedPlayers = removed.filter(
       (r) => r.info.exitReason === 'group disbanded',
     );

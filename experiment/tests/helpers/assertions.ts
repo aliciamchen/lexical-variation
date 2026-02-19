@@ -142,10 +142,23 @@ export async function expectFeedbackVisible(page: Page): Promise<void> {
 }
 
 /**
- * Assert a specific condition is set on the game container
+ * Assert a specific condition is set on the game container.
+ * Retries via toHaveAttribute, with diagnostic fallback on failure.
  */
 export async function expectCondition(page: Page, condition: string): Promise<void> {
-  await expect(page.locator(GAME_CONTAINER)).toHaveAttribute('data-condition', condition);
+  const container = page.locator(GAME_CONTAINER);
+  await expect(container).toBeVisible({ timeout: 10_000 });
+
+  try {
+    await expect(container).toHaveAttribute('data-condition', condition, { timeout: 15_000 });
+  } catch {
+    // On failure, read the actual value for clear diagnostics
+    const actual = await container.getAttribute('data-condition');
+    throw new Error(
+      `Expected data-condition="${condition}" but got "${actual}". ` +
+      `Players may have joined a game from a stale batch.`
+    );
+  }
 }
 
 /**

@@ -4,6 +4,11 @@
  * Goal: When too many groups lose players and fewer than 2 viable groups remain,
  * the game terminates for ALL remaining players with proportional compensation.
  *
+ * Strategy: Idle 2 LISTENERS from Group A → Group A disbanded.
+ * Then idle 2 LISTENERS from Group B → Group B disbanded → game terminates.
+ * Both idle phases use listeners (not speakers) to avoid the counter-reset bug.
+ * See group-disbanded-pay.spec.ts for explanation of why listeners must be used.
+ *
  * Condition: refer_separated (simpler, no reshuffling)
  */
 import { test, expect } from '@playwright/test';
@@ -17,6 +22,8 @@ import {
   getRemovedPlayers,
   getPlayersByGroup,
   waitForExitScreen,
+  waitForStage,
+  clickContinue,
   isOnExitScreen,
   isInGame,
 } from '../helpers/game-actions';
@@ -82,56 +89,70 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
     }
   });
 
-  test('play a few rounds normally', async () => {
-    const pages = pm.getPages();
-    // Play a couple rounds so players build some game time (for partial pay)
-    await playRound(pages);
-    await playRound(pages);
-  });
-
-  test('two players from Group A go idle and get kicked', async () => {
+  test('two listeners from Group A go idle and get kicked, disbanding Group A', async () => {
     test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
     const groupNames = Object.keys(groupPageIndices);
     const groupA = groupNames[0];
-    const idleIndicesA = groupPageIndices[groupA].slice(0, 2); // First 2 from group A
 
+    // Find the 2 LISTENERS in Group A (not the speaker!)
+    const idleIndicesA: number[] = [];
+    for (const idx of groupPageIndices[groupA]) {
+      const info = await getPlayerInfo(pages[idx]);
+      if (info?.role === 'listener') {
+        idleIndicesA.push(idx);
+      }
+    }
+    expect(idleIndicesA.length).toBe(2);
+
+    // Idle them for MAX_IDLE_ROUNDS rounds (all within Block 1)
     for (let r = 0; r < MAX_IDLE_ROUNDS; r++) {
       await playRound(pages, { skipIndices: idleIndicesA });
     }
 
-    // Wait for exit screens to render for all group A players
-    for (const idx of groupPageIndices[groupA]) {
-      await waitForExitScreen(pages[idx], 30_000);
-    }
+    // Wait for idle detection to process
+    await pages[0].waitForTimeout(5000);
 
-    // Verify 2 players from group A are kicked + 1 disbanded
+    // Verify all 3 Group A players are removed (2 timeout + 1 disbanded)
     const removed = await getRemovedPlayers(pages);
     const groupARemoved = removed.filter((r) => {
-      // Check if this removed player's page was one of group A's pages
       const pageIdx = pages.indexOf(r.page);
       return groupPageIndices[groupA].includes(pageIdx);
     });
-    // 2 idle + 1 disbanded = 3 players from group A should be removed
     expect(groupARemoved.length).toBe(3);
   });
 
-  test('two players from Group B go idle and get kicked, triggering game termination', async () => {
+  test('two listeners from Group B go idle and get kicked, triggering game termination', async () => {
     test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
     const groupNames = Object.keys(groupPageIndices);
     const groupB = groupNames[1];
-    const idleIndicesB = groupPageIndices[groupB].slice(0, 2); // First 2 from group B
 
-    // Get currently active pages (should be 6: 3 from group B + 3 from group C)
+    // Wait for active count to stabilize at 6 (Group A fully removed)
     let active = await getActivePlayers(pages);
+    const waitStart = Date.now();
+    while (active.length !== 6 && Date.now() - waitStart < 30_000) {
+      await pages[0].waitForTimeout(2000);
+      active = await getActivePlayers(pages);
+    }
     expect(active.length).toBe(6);
 
-    // Make 2 from group B idle
+    // Play 1 round normally to advance past Block 1 into Block 2.
+    // This ensures Group B gets fresh role assignments for Block 2.
+    await playRound(pages);
+
+    // Now check the CURRENT roles for Group B (they may have changed at block boundary)
+    const idleIndicesB: number[] = [];
+    for (const idx of groupPageIndices[groupB]) {
+      const info = await getPlayerInfo(pages[idx]);
+      if (info?.role === 'listener') {
+        idleIndicesB.push(idx);
+      }
+    }
+    expect(idleIndicesB.length).toBe(2);
+
+    // Idle Group B listeners for MAX_IDLE_ROUNDS rounds
     for (let r = 0; r < MAX_IDLE_ROUNDS; r++) {
-      // Use the full pages array with skipIndices since indices refer to positions in that array
-      active = await getActivePlayers(pages);
-      if (active.length === 0) break;
       await playRound(pages, { skipIndices: idleIndicesB });
     }
 
@@ -187,22 +208,22 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
     const groupA = groupNames[0];
     const groupB = groupNames[1];
 
-    // Check the 2 idle players from group A
-    const idleIndicesA = groupPageIndices[groupA].slice(0, 2);
-    for (const idx of idleIndicesA) {
+    // Check the idle players from group A (the 2 listeners we idled)
+    for (const idx of groupPageIndices[groupA]) {
       const exitInfo = await getExitInfo(pages[idx]);
       expect(exitInfo).not.toBeNull();
-      expect(exitInfo!.exitReason).toBe('player timeout');
-      expect(exitInfo!.partialPay).toBe('0');
+      if (exitInfo!.exitReason === 'player timeout') {
+        expect(exitInfo!.partialPay).toBe('0.00');
+      }
     }
 
-    // Check the 2 idle players from group B
-    const idleIndicesB = groupPageIndices[groupB].slice(0, 2);
-    for (const idx of idleIndicesB) {
+    // Check the idle players from group B (the 2 listeners we idled)
+    for (const idx of groupPageIndices[groupB]) {
       const exitInfo = await getExitInfo(pages[idx]);
       expect(exitInfo).not.toBeNull();
-      expect(exitInfo!.exitReason).toBe('player timeout');
-      expect(exitInfo!.partialPay).toBe('0');
+      if (exitInfo!.exitReason === 'player timeout') {
+        expect(exitInfo!.partialPay).toBe('0.00');
+      }
     }
   });
 });

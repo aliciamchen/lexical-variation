@@ -17,13 +17,13 @@ test.describe.serial('UI Verification: Intro & Instructions (5.1)', () => {
 
     // Navigate to the app and enter as a new player
     await page.goto('/');
-    await page.waitForTimeout(2000);
 
-    // Handle Empirica built-in consent ("I AGREE") if present
-    const agreeBtn = page.getByRole('button', { name: /agree/i });
-    if (await agreeBtn.count() > 0) {
-      await agreeBtn.click();
+    // Wait for and click Empirica built-in consent ("I AGREE")
+    try {
+      await page.getByRole('button', { name: /agree/i }).click({ timeout: 15_000 });
       await page.waitForTimeout(500);
+    } catch {
+      // Consent dialog may already have been accepted
     }
 
     // Wait for the textbox to be visible before filling

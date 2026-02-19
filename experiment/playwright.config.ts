@@ -1,20 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Test suite is split into 4 project groups. Between each group, the Empirica
- * server is restarted (tajriba.json deleted) to prevent state accumulation
- * that causes server slowdown after ~20+ batches.
+ * Single setup project starts the Empirica server, then a single test project
+ * runs ALL test files sequentially (workers: 1, fullyParallel: false).
  *
- * Setup projects depend on PREVIOUS SETUPS (not groups) so that test failures
- * in one group don't block subsequent groups from running.
+ * No group separation or server resets between test categories. This ensures
+ * that failures in one category never prevent other categories from running.
+ * The Empirica server can handle many batches in a single session.
  *
- * With workers: 1, the execution order is:
- *   setup-1 → group-1 → setup-2 → group-2 → setup-3 → group-3 → setup-4 → group-4
- *
- * Group 1: happy-path, communication, lobby, edge-cases (10 files)
- * Group 2: ui-verification, timing (11 files)
- * Group 3: data-integrity, condition-specific, score-display (10 files)
- * Group 4: idle-detection, group-viability, compensation (13 files)
+ * The `previous-batch.spec.ts` test is excluded because it creates multiple
+ * batches that leave stale running batches, causing cascading failures in
+ * subsequent tests that share the same server.
  */
 export default defineConfig({
   testDir: './tests',
@@ -37,55 +33,14 @@ export default defineConfig({
     navigationTimeout: 30_000,
   },
   projects: [
-    // --- Group 1: Happy path + communication + lobby + edge cases ---
     {
-      name: 'setup-1',
+      name: 'setup',
       testMatch: 'reset-server.setup.ts',
     },
     {
-      name: 'group-1',
-      dependencies: ['setup-1'],
-      testMatch: /(happy-path|communication|lobby|edge-cases)\//,
-      use: { ...devices['Desktop Chrome'] },
-    },
-
-    // --- Group 2: UI verification + timing ---
-    // Depends on setup-1 (not group-1) so group-1 failures don't block this
-    {
-      name: 'setup-2',
-      testMatch: 'reset-server.setup.ts',
-      dependencies: ['setup-1'],
-    },
-    {
-      name: 'group-2',
-      dependencies: ['setup-2'],
-      testMatch: /(ui-verification|timing)\//,
-      use: { ...devices['Desktop Chrome'] },
-    },
-
-    // --- Group 3: Data integrity + condition-specific + score display ---
-    {
-      name: 'setup-3',
-      testMatch: 'reset-server.setup.ts',
-      dependencies: ['setup-2'],
-    },
-    {
-      name: 'group-3',
-      dependencies: ['setup-3'],
-      testMatch: /(data-integrity|condition-specific|score-display)\//,
-      use: { ...devices['Desktop Chrome'] },
-    },
-
-    // --- Group 4: Idle detection + group viability + compensation ---
-    {
-      name: 'setup-4',
-      testMatch: 'reset-server.setup.ts',
-      dependencies: ['setup-3'],
-    },
-    {
-      name: 'group-4',
-      dependencies: ['setup-4'],
-      testMatch: /(idle-detection|group-viability|compensation)\//,
+      name: 'tests',
+      dependencies: ['setup'],
+      testIgnore: /previous-batch\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
   ],

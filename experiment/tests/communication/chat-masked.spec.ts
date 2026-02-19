@@ -121,7 +121,8 @@ test.describe.serial('Communication: chat with masked identities in refer_mixed'
     // Check that the chat message appears with masked name "Player (Speaker)"
     // instead of a real name like "Repi (Speaker)"
     for (const listenerPage of listenerPages) {
-      const chatArea = listenerPage.locator('.h-full.overflow-auto');
+      // Use .first() to avoid strict mode violation when multiple elements match
+      const chatArea = listenerPage.locator('.h-full.overflow-auto').first();
       await expect(chatArea.getByText(testMessage)).toBeVisible({ timeout: 5_000 });
 
       // The sender name in chat should be "Player (Speaker)", not a real name
@@ -146,7 +147,7 @@ test.describe.serial('Communication: chat with masked identities in refer_mixed'
       await listenerPages[0].waitForTimeout(1000);
 
       // Verify on the speaker's chat that it shows "Player (Listener)"
-      const speakerChatArea = speakerPage!.locator('.h-full.overflow-auto');
+      const speakerChatArea = speakerPage!.locator('.h-full.overflow-auto').first();
       await expect(speakerChatArea.getByText('the tall one?')).toBeVisible({ timeout: 5_000 });
       await expect(speakerChatArea.getByText('Player (Listener)').first()).toBeVisible({ timeout: 5_000 });
     }

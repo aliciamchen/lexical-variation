@@ -90,6 +90,6 @@ test.describe.serial('Timing: Feedback Stage Timing (TEST_PLAN 6.2)', () => {
     expect(infoAfter).not.toBeNull();
     expect(infoAfter!.stageName).not.toBe('Feedback');
     // Stage should be Selection or Transition
-    expect(['Selection', 'Transition']).toContain(infoAfter!.stageName);
+    expect(['Selection', 'phase_2_transition']).toContain(infoAfter!.stageName);
   });
 });

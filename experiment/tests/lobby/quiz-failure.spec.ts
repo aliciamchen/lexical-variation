@@ -19,10 +19,11 @@ test.describe.serial('Lobby: quiz failure after 3 attempts', () => {
     await page.waitForTimeout(500);
 
     // Handle Empirica built-in consent ("I AGREE") if present
-    const agreeBtn = page.getByRole('button', { name: /agree/i });
-    if (await agreeBtn.count() > 0) {
-      await agreeBtn.click();
+    try {
+      await page.getByRole('button', { name: /agree/i }).click({ timeout: 10_000 });
       await page.waitForTimeout(500);
+    } catch {
+      // Consent may have already been accepted
     }
 
     // Enter identifier
