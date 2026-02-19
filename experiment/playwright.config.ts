@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const isTestMode = process.env.TEST_MODE !== 'false';
+
 /**
  * 4 test groups with server resets between each group.
  *
@@ -8,6 +10,10 @@ import { defineConfig, devices } from '@playwright/test';
  * Each setup project resets the Empirica server (deletes tajriba.json) to prevent
  * state accumulation from previous test groups. This keeps the server fast and
  * prevents batch contamination between groups.
+ *
+ * By default, tests run in TEST_MODE (3+2 blocks, 120s selection, 5 idle rounds).
+ * Run with TEST_MODE=false for production timing (6+6 blocks, 45s selection, 2 idle rounds):
+ *   TEST_MODE=false npx playwright test
  *
  * | Group   | Categories                                        |
  * |---------|---------------------------------------------------|
@@ -23,7 +29,8 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: [['html'], ['list']],
-  timeout: 600_000,
+  // Test mode: 10 min per test. Production: 90 min (72 rounds * ~55s each + overhead).
+  timeout: isTestMode ? 600_000 : 5_400_000,
   globalTeardown: './tests/global-teardown.ts',
   expect: {
     timeout: 30_000,

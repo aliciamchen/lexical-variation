@@ -62,7 +62,7 @@ test.describe.serial('UI Verification: Group Size Change (5.8)', () => {
   });
 
   test('make player idle until kicked and verify group size message', async () => {
-    test.slow(); // Idle rounds require SELECTION_DURATION timeout each (~120s * 5 rounds)
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
 
     // Find out which group player 0 is in

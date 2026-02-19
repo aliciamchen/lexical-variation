@@ -44,8 +44,11 @@ Tests live in `experiment/tests/` and use `@playwright/test`. The server is mana
 ```bash
 cd experiment
 
-# Run the full test suite
+# Run the full test suite (test mode: 3+2 blocks, 120s selection)
 npx playwright test
+
+# Run with production timing (6+6 blocks, 45s selection, 2 idle rounds)
+TEST_MODE=false npx playwright test
 
 # Run a specific test file
 npx playwright test tests/ui-verification/intro-instructions.spec.ts
@@ -123,8 +126,9 @@ Tests are split into 4 project groups in `playwright.config.ts`. Between each gr
 4. Tests run sequentially (`workers: 1`, `fullyParallel: false`) because they share a single Empirica server. Use `test.describe.serial` for tests that depend on ordering within a file.
 
 **Key config values** (from `experiment/shared/constants.js`, mirrored in `tests/helpers/constants.ts`):
-- `TEST_MODE = true` — reduces blocks (3 phase-1, 2 phase-2) and increases idle tolerance
-- Test timeout: 600s per test, 30s for expects, 15s for actions
+- `TEST_MODE` — controlled by `TEST_MODE` env var (defaults to `false` for production, `server-manager.ts` sets `true` for tests)
+- Test mode: 3+2 blocks, 120s selection, 5 idle rounds, 600s timeout
+- Production mode (`TEST_MODE=false`): 6+6 blocks, 45s selection, 2 idle rounds, 5400s timeout
 
 
 ### Python environment

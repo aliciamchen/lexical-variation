@@ -57,7 +57,7 @@ test.describe.serial('Compensation: Idle Removal (TEST_PLAN 10.2)', () => {
   });
 
   test(`idle player is removed after ${MAX_IDLE_ROUNDS} rounds and gets no compensation`, async () => {
-    test.slow(); // Idle rounds require SELECTION_DURATION timeout each (~120s * 5 rounds)
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
 
     // Find a speaker to make idle

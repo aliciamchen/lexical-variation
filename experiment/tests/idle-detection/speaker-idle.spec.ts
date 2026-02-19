@@ -65,7 +65,7 @@ test.describe.serial('Idle Detection: Speaker Idle (TEST_PLAN 3.1)', () => {
   });
 
   test(`speaker is kicked after ${MAX_IDLE_ROUNDS} idle rounds`, async () => {
-    test.slow(); // Idle rounds require SELECTION_DURATION timeout each (~120s * 5 rounds)
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
 
     // Identify a speaker to make idle. Find the first player who is a speaker.

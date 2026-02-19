@@ -58,8 +58,11 @@ cd experiment
 npm install
 npx playwright install chromium
 
-# Run tests
+# Run tests (test mode: shorter games)
 npx playwright test
+
+# Run with production timing (6+6 blocks, 45s selection)
+TEST_MODE=false npx playwright test
 
 # Run a specific test group
 npx playwright test --project=group-1

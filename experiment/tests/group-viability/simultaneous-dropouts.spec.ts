@@ -87,7 +87,7 @@ test.describe.serial('Group Viability: Simultaneous Dropouts from Different Grou
   });
 
   test('play a normal round to establish game state', async () => {
-    // Only 1 round so that 1 + MAX_IDLE_ROUNDS (5) = 6 = exactly one block
+    // Only 1 round so that 1 + MAX_IDLE_ROUNDS fits within one block
     // (avoids crossing block boundary where speaker rotation could confuse idle detection)
     const pages = pm.getPages();
     await playRound(pages);

@@ -57,8 +57,11 @@ The Empirica server is managed automatically by the test framework — no need t
 ### Running Tests
 
 ```bash
-# Run the full suite
+# Run the full suite (test mode: 3+2 blocks, 120s selection, 5 idle rounds)
 npx playwright test
+
+# Run with production timing (6+6 blocks, 45s selection, 2 idle rounds)
+TEST_MODE=false npx playwright test
 
 # Run a specific test group
 npx playwright test --project=group-1
@@ -113,12 +116,12 @@ Tests are split into 4 project groups in `playwright.config.ts`. Between each gr
 Tests are configured in `playwright.config.ts`:
 
 - **Workers:** 1 (serial execution — multiplayer games are stateful)
-- **Timeout:** 10 minutes per test (games involve many rounds)
+- **Timeout:** 10 minutes per test in test mode, 90 minutes in production mode
 - **Retries:** 0 (game state is not resumable)
 - **Browser:** Chromium only
 - **Artifacts:** Screenshots, traces, and video are saved on failure
 
-The game uses `TEST_MODE = true` in `shared/constants.js` which shortens phases to 3 + 2 blocks (instead of 6 + 6) and reduces idle thresholds.
+`TEST_MODE` in `shared/constants.js` is controlled by the `TEST_MODE` environment variable (defaults to `false` for production). When `true`, it shortens phases to 3 + 2 blocks (instead of 6 + 6) and increases idle tolerance. The test framework sets `TEST_MODE=true` automatically via `server-manager.ts`.
 
 ### Writing New Tests
 

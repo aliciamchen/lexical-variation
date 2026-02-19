@@ -4,8 +4,6 @@ This document tracks the changes needed to make the web experiment.
 
 NOTE for claude: If you need it to figure out how to do something, the docs for empirica are here: https://docs.empirica.ly/ and the source code for empirica is at https://github.com/empiricaly/empirica
 
-To test the experiment, use the test-experiment skill.
-
 ---
 
 ## Incomplete Tasks
@@ -40,7 +38,7 @@ To test the experiment, use the test-experiment skill.
 - [x] Implement roberts slack suggestions
 - [x] theres a situation if theres only two groups left for phase 2 mixed, the shuffling algorithm means that people might stay in their original groups (25 percent chance). SO, reshuffle until there is mixing. 
 - [ ] What if a player drops DURING the accuracy check blocks? Does their 0% accuracy count against the group? Answer: no, it should just be for the trials that are completed in general, dropouts should not count in the accuracy percentages
-- [ ] make stuff in transition screen scale by size of window
+- [x] make stuff in transition screen scale by size of window
 
 
 ### Pre-Launch (Verification)
@@ -54,13 +52,13 @@ To test the experiment, use the test-experiment skill.
 
 ### External/Manual Tasks
 
-- [ ] Set up DigitalOcean server and figure out billing (manual)
+- [x] Set up DigitalOcean server and figure out billing (manual)
 - [ ] Get IRB approval from Mitchell (manual)
-- [ ] Put in Saxelab consent form (manual)
+- [x] Put in Saxelab consent form (manual)
 - [ ] Figure out appointment slot thing - Use Optimeet for scheduling (external)
-- [ ] Standardize language in the RR (in each block, one person describes all 6 tangrams)
-- [ ] Check completion codes are correct and that they are indicated correctly on Prolific
-- [ ] set up sentry for error tracking
+- [x] Standardize language in the RR (in each block, one person describes all 6 tangrams)
+- [x] Check completion codes are correct and that they are indicated correctly on Prolific
+- [x] set up sentry for error tracking
 - [ ] Figure out how optimeet works with the prolific max time
 - [ ] Check on production server, including chat timestamps and various other patches on production server (chunk-J6LPACOK.js modification)
 

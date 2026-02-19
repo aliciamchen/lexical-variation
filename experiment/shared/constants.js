@@ -2,8 +2,9 @@
 // Import from here in both client/src and server/src.
 
 // ============ TEST MODE ============
-// Set to true for local testing (longer timeouts, more idle tolerance)
-export const TEST_MODE = true; // Set to false for production
+// Defaults to false for production. Set TEST_MODE=true env var for local testing.
+// When true: longer timeouts, more idle tolerance, fewer blocks.
+export const TEST_MODE = typeof process !== "undefined" && process.env?.TEST_MODE === "true";
 
 // ============ TESTING VS PRODUCTION VALUES ============
 // TEST_MODE only affects timing and tolerance settings, not player/group counts.

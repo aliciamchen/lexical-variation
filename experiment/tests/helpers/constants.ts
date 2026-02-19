@@ -1,7 +1,9 @@
 // Mirror of experiment/shared/constants.js for test usage
 // Keep in sync with the source file
+// Default: TEST_MODE=true (test timing). Run with TEST_MODE=false for production timing.
+// The server gets the same value via env var in server-manager.ts.
 
-export const TEST_MODE = true;
+export const TEST_MODE = process.env.TEST_MODE !== 'false';
 
 // Timing
 export const SELECTION_DURATION = TEST_MODE ? 120 : 45;

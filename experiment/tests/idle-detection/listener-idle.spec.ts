@@ -63,7 +63,7 @@ test.describe.serial('Idle Detection: Listener Idle (TEST_PLAN 3.2)', () => {
   });
 
   test(`listener is kicked after ${MAX_IDLE_ROUNDS} idle rounds`, async () => {
-    test.slow(); // Idle rounds require SELECTION_DURATION timeout each (~120s * 5 rounds)
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
 
     // Identify a listener to make idle. Find the first player who is a listener.
