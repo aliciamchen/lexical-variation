@@ -19,60 +19,56 @@ export function ConsentPage({ next }) {
   return (
     <div className="consent">
       <h1>Consent Form</h1>
-
       <p>
         Please read this consent agreement carefully before deciding whether to
         participate in this experiment.
       </p>
       <p>
-        <strong>What you will do in this research:</strong> You will play a
-        series of communication tasks with other participants.
+        <b>Purpose:</b> The purpose of this study is to understand how people
+        communicate in groups.
       </p>
       <p>
-        <strong>Time required:</strong> This study will take approximately{" "}
-        {ESTIMATED_TIME} minutes.
+        <b>Procedure:</b> In this study, you will play a series of communication
+        tasks with other participants.
       </p>
       <p>
-        <strong>Purpose of the research:</strong> The purpose is to understand
-        how people think about communication in groups.
+        <b>Payment:</b> This study will take approximately {ESTIMATED_TIME}{" "}
+        minutes. Given this estimated duration, you will receive
+        <b>${BASE_PAY}</b> for successfully completing the survey, with an
+        additional performance bonus of up to <b>${MAX_BONUS}</b>.
       </p>
       <p>
-        <strong>Risks:</strong> There are no anticipated risks associated with
-        participating in this study. The effects should be comparable to viewing
-        a computer monitor and using a mouse for the duration of the experiment.
+        <b>Risks and benefits:</b> There are no risks associated with
+        participating in this study. There are no direct benefits associated
+        with participating in this study, aside from monetary compensation.
       </p>
       <p>
-        <strong>Compensation:</strong> You will receive ${BASE_PAY} for
-        completing the experiment, with an additional performance bonus of up to
-        ${MAX_BONUS.toFixed(2)}.
+        <b>Use of data by study researchers:</b> The research team led by
+        Rebecca Saxe at MIT will have access to your answers.
       </p>
       <p>
-        <strong>Confidentiality:</strong> Your participation in this study will
-        remain confidential. No personally identifiable information will be
-        collected. Your anonymous data may be shared with other researchers and
-        used in future projects.
+        <b>Publication of results:</b> The results of the research may be
+        presented at scientific meetings or published in scientific journals.
+        Raw data may be published, but that data will not be able to be used to
+        identify you.
       </p>
       <p>
-        <strong>Participation and withdrawal:</strong> Your participation in
-        this study is completely voluntary and you may refuse to participate or
-        choose to withdraw at any time without penalty or loss of benefits to
-        which you are otherwise entitled.
+        <b>Research contact information:</b> This study is run by Rebecca Saxe
+        at MIT. If you have any questions or concerns about this study, or in
+        the very unlikely event of a research-related injury, please contact
+        saxe@mit.edu or 617-258-0721.
       </p>
       <p>
-        <strong>How to contact the researcher:</strong> If you have questions or
-        concerns about your participation or payment, or want to request a
-        summary of research findings, please contact{" "}
-        <a href="mailto:aliciach@mit.edu">aliciach@mit.edu</a>.
+        <b>Research rights information:</b> You are not waiving any legal
+        claims, rights, or remedies because of your participation in this
+        research study. If you feel you have been treated unfairly, or if you
+        have questions regarding your rights as a research subject, you may
+        contact the Chairman of the Committee on the Use of Humans as
+        Experimental Subjects, M.I.T., Room E25-143B, 77 Massachusetts Ave,
+        Cambridge, MA 02139, phone 1-617-253-6787. If you have any questions or
+        issues completing the survey, please email Alicia Chen: aliciach@mit.edu
+        or Rebecca Saxe (PI): saxe@mit.edu
       </p>
-      <p>
-        <strong>Who to contact about your rights in this research:</strong> For
-        questions, concerns, suggestions, or complaints that have not been or
-        cannot be addressed by the researcher, or to report research-related
-        harm, please contact the Chairman of the Committee on the Use of Humans
-        as Experimental Subjects, M.I.T., Room E25-143B, 77 Massachusetts Ave,
-        Cambridge, MA 02139, phone 1-617-253-6787.
-      </p>
-
       <div className="flex w-sw justify-center">
         <Button handleClick={next} autoFocus>
           <p>I consent</p>

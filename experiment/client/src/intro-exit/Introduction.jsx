@@ -334,9 +334,11 @@ export function TangramInstructions(props) {
   const column = 1 + (tangram_num % 3);
   let mystyle = {
     background: "url(tangram_" + tangram + ".png)",
-    backgroundSize: "cover",
-    width: "17vh",
-    height: "17vh",
+    backgroundSize: "85%",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
+    width: "12vh",
+    height: "12vh",
     gridRow: row,
     gridColumn: column,
     margin: "0.8rem",

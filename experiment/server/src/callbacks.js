@@ -333,8 +333,6 @@ Empirica.onRoundStart(({ round }) => {
 // This ensures speaker rotation (blockNum % 3) works consistently across conditions
 // Additionally: Ensures groups are MIXED (players from different original groups together)
 function reshuffleGroups(game, players) {
-  console.log("Reshuffling groups for mixed condition (balanced)");
-
   const activeGroups = game.get("active_groups") || GROUP_NAMES;
   const numPlayers = players.length;
 
@@ -356,8 +354,6 @@ function reshuffleGroups(game, players) {
   for (let i = 0; i < numGroups; i++) {
     targetSizes.push(baseSize + (i < extraPlayers ? 1 : 0));
   }
-  console.log(`Target group sizes: ${targetSizes.join(", ")}`);
-
   // Check how many unique original groups we have
   const uniqueOriginalGroups = new Set(players.map(p => p.get("original_group")));
   const canMix = uniqueOriginalGroups.size >= 2;
@@ -444,8 +440,6 @@ function reshuffleGroups(game, players) {
     1: players.filter(p => p.get("player_index") === 1),
     2: players.filter(p => p.get("player_index") === 2),
   };
-  console.log(`Player distribution by index: 0=${playersByIndex[0].length}, 1=${playersByIndex[1].length}, 2=${playersByIndex[2].length}`);
-
   if (!canMix) {
     // Only one original group remaining, mixing is impossible
     console.log("Only one original group remaining - mixing not possible");
@@ -456,10 +450,6 @@ function reshuffleGroups(game, players) {
       attempts++;
       doReshuffle();
       isMixed = checkMixing();
-
-      if (!isMixed && attempts < MAX_RESHUFFLE_ATTEMPTS) {
-        console.log(`Reshuffle attempt ${attempts}: no mixing, trying again...`);
-      }
     }
 
     if (isMixed) {
@@ -484,8 +474,6 @@ function reshuffleGroups(game, players) {
     };
   });
 
-  console.log("Group composition after reshuffling:", JSON.stringify(groupComposition));
-
   // Verify all groups meet MIN_GROUP_SIZE
   const undersizedGroups = Object.entries(groupComposition)
     .filter(([_, info]) => info.size < MIN_GROUP_SIZE)
@@ -496,14 +484,6 @@ function reshuffleGroups(game, players) {
   }
 
   // Warn if any group is missing an index (will need fallback for speaker selection)
-  const incompleteGroups = Object.entries(groupComposition)
-    .filter(([_, info]) => !info.hasAllIndices)
-    .map(([name, _]) => name);
-
-  if (incompleteGroups.length > 0) {
-    console.warn(`WARNING: Groups ${incompleteGroups.join(", ")} don't have all indices - speaker fallback will be used`);
-  }
-
   const numComplete = Object.values(groupComposition).filter(g => g.hasAllIndices).length;
   const numMixed = Object.values(groupComposition).filter(g => g.isMixed).length;
   console.log(`Reshuffled ${numPlayers} players into ${numGroups} groups (${numComplete} complete, ${numMixed} mixed)`);
@@ -876,11 +856,6 @@ function checkPhase1AccuracyThreshold(game) {
     blocksToCheck.push(i);
   }
 
-  console.log(`\n============ PHASE 1 ACCURACY CHECK ============`);
-  console.log(`Checking blocks: ${blocksToCheck.join(", ")} (last ${ACCURACY_CHECK_BLOCKS} blocks of Phase 1)`);
-  console.log(`Accuracy threshold: ${(ACCURACY_THRESHOLD * 100).toFixed(1)}%`);
-  console.log(`Player threshold: ${(PLAYER_ACCURACY_THRESHOLD * 100).toFixed(1)}% of group must meet accuracy`);
-
   const groupResults = {};
   const viableGroups = [];
 
@@ -932,10 +907,6 @@ function checkPhase1AccuracyThreshold(game) {
       groupMeetsThreshold,
     };
 
-    console.log(`\nGroup ${groupName}:`);
-    playerAccuracies.forEach((p) => {
-      console.log(`  ${p.playerName}: ${(p.accuracy * 100).toFixed(1)}% (${p.totalCorrect}/${p.totalTrials}) - ${p.meetsThreshold ? "PASS" : "FAIL"}`);
-    });
     console.log(`  -> ${playersMeetingThreshold}/${groupPlayers.length} players meet threshold (${(proportionMeeting * 100).toFixed(1)}%) - Group ${groupMeetsThreshold ? "PASSES" : "FAILS"}`);
 
     if (groupMeetsThreshold) {
@@ -1009,7 +980,6 @@ function checkPhase1AccuracyThreshold(game) {
     console.log("Game marked as terminated after Phase 1 accuracy check");
   }
 
-  console.log(`============ END ACCURACY CHECK ============\n`);
 }
 
 Empirica.onRoundEnded(({ round }) => {

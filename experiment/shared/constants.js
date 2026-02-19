@@ -3,7 +3,7 @@
 
 // ============ TEST MODE ============
 // Set to true for local testing (longer timeouts, more idle tolerance)
-export const TEST_MODE = true; // Set to false for production
+export const TEST_MODE = false; // Set to false for production
 
 // ============ TESTING VS PRODUCTION VALUES ============
 // TEST_MODE only affects timing and tolerance settings, not player/group counts.
@@ -19,17 +19,24 @@ export const TEST_MODE = true; // Set to false for production
 
 // ============ TIMING CONFIGURATION ============
 // Stage durations in seconds
-export const SELECTION_DURATION = TEST_MODE ? 120 : 45;  // Selection stage (TEST: 120s)
-export const FEEDBACK_DURATION = 10;                      // Feedback stage (same for both)
-export const TRANSITION_DURATION = 60;                    // Phase transition (same for both)
-export const BONUS_INFO_DURATION = 30;                    // End game bonus info (same for both)
+export const SELECTION_DURATION = TEST_MODE ? 120 : 45; // Selection stage (TEST: 120s)
+export const FEEDBACK_DURATION = 10; // Feedback stage (same for both)
+export const TRANSITION_DURATION = 60; // Phase transition (same for both)
+export const BONUS_INFO_DURATION = 30; // End game bonus info (same for both)
 
 // ============ TANGRAM SETS ============
 // Using Ji et al. (2022) tangrams - two sets of 6 with high SND (Shape Naming Divergence)
 // Set 0: Original selection (SND range: 0.960-0.987)
 // Set 1: Next highest SND tangrams (SND range: 0.978-0.987)
 export const tangram_sets = {
-  0: ["page1-129", "page3-121", "page3-182", "page4-157", "page6-149", "page7-81"],
+  0: [
+    "page1-129",
+    "page3-121",
+    "page3-182",
+    "page4-157",
+    "page6-149",
+    "page7-81",
+  ],
   1: ["page3-85", "page3-136", "page5-64", "page9-46", "page9-27", "page1-128"],
 };
 
@@ -153,6 +160,6 @@ export const MAX_BONUS = 8;
 export const ESTIMATED_TIME = 60;
 
 // Log warning if in test mode (only runs on server)
-if (typeof window === 'undefined' && TEST_MODE) {
+if (typeof window === "undefined" && TEST_MODE) {
   console.warn("⚠️  RUNNING IN TEST MODE");
 }
