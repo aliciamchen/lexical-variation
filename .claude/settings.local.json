@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(node src/test_reshuffling.js:*)",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_tabs",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_run_code",
+      "mcp__playwright__browser_handle_dialog",
+      "mcp__playwright__browser_select_option",
+      "Bash(wc:*)",
+      "Bash(empirica:*)",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_fill_form",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "mcp__playwright__browser_press_key",
+      "Bash(curl:*)",
+      "Skill(test-experiment)",
+      "Bash(unzip:*)",
+      "Bash(node -e:*)",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n=== Checking social_guess values \\(sample\\) ===\")",
+      "Bash(__NEW_LINE__ echo -e \"\\\\n=== Checking chat messages \\(sample\\) ===\")",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(sort:*)",
+      "Bash(pgrep:*)",
+      "mcp__playwright__browser_console_messages",
+      "Bash(grep:*)",
+      "WebFetch(domain:docs.empirica.ly)",
+      "Bash(npx tsc:*)",
+      "Bash(npx playwright test:*)"
+    ]
+  }
+}
