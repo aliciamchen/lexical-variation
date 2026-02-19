@@ -51,24 +51,23 @@ Note: `rpy2` requires R to be installed. Cairo-based packages may require: `brew
 
 ## Testing the experiment
 
-The experiment has a Playwright test suite with 250 tests covering all 3 conditions, idle detection, group viability, UI, timing, and more. See [`experiment/README.md`](experiment/README.md) for full documentation.
+The experiment has a Playwright test suite with 46 spec files covering all 3 conditions, idle detection, group viability, UI, timing, and more. The server is managed automatically by the test framework. See [`experiment/README.md`](experiment/README.md) for full documentation.
 
 ```bash
 cd experiment
 npm install
 npx playwright install chromium
 
-# Start the server (in a separate terminal)
-rm .empirica/local/tajriba.json
-empirica
-
 # Run tests
 npx playwright test
+
+# Run a specific test group
+npx playwright test --project=group-1
 
 # Run a specific category
 npx playwright test tests/happy-path/
 
-# run tests headful
+# Run tests headful
 npx playwright test --headed
 
 # View report

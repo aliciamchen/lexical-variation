@@ -42,7 +42,7 @@ Periodically copy the tajriba file: `sh copy_tajriba.sh`
 
 ## Playwright Tests
 
-The test suite covers the full experiment lifecycle: happy paths for all 3 conditions, idle detection, group viability, lobby edge cases, UI verification, timing, data integrity, condition-specific behavior, compensation, and score display. There are 250 tests across 44 spec files.
+The test suite covers the full experiment lifecycle: happy paths for all 3 conditions, idle detection, group viability, lobby edge cases, UI verification, timing, data integrity, condition-specific behavior, compensation, and score display. There are 46 spec files across 12 categories.
 
 ### Prerequisites
 
@@ -52,18 +52,16 @@ npm install
 npx playwright install chromium
 ```
 
-The Empirica server must be running before you start the tests:
-
-```bash
-rm .empirica/local/tajriba.json   # fresh database
-empirica
-```
+The Empirica server is managed automatically by the test framework — no need to start it manually.
 
 ### Running Tests
 
 ```bash
 # Run the full suite
 npx playwright test
+
+# Run a specific test group
+npx playwright test --project=group-1
 
 # Run a single spec file
 npx playwright test tests/happy-path/refer-separated.spec.ts
@@ -75,9 +73,23 @@ npx playwright test tests/happy-path/
 # Run tests matching a name pattern
 npx playwright test -g "social_mixed"
 
+# Run with visible browser
+npx playwright test --headed
+
 # View the HTML report after a run
 npx playwright show-report
 ```
+
+### Test Architecture
+
+Tests are split into 4 project groups in `playwright.config.ts`. Between each group, the Empirica server is restarted (tajriba.json deleted) to prevent state accumulation. Execution order: `setup-1 → group-1 → setup-2 → group-2 → setup-3 → group-3 → setup-4 → group-4`.
+
+| Group | Categories | Description |
+|-------|-----------|-------------|
+| group-1 | happy-path, communication, lobby, edge-cases | Core game flow |
+| group-2 | ui-verification, timing | UI and timing checks |
+| group-3 | data-integrity, condition-specific, score-display | Data and conditions |
+| group-4 | idle-detection, group-viability, compensation | Dropout handling |
 
 ### Test Categories
 
@@ -86,13 +98,13 @@ npx playwright show-report
 | `happy-path/` | 3 | Full game completion for each condition |
 | `communication/` | 2 | Chat messaging and identity masking |
 | `idle-detection/` | 4 | Speaker/listener idle kicks and warnings |
-| `group-viability/` | 5 | Group disbanding, game termination, dropouts |
+| `group-viability/` | 6 | Group disbanding, game termination, dropouts, mid-block reshuffle |
 | `lobby/` | 2 | Lobby timeout, quiz failure |
 | `ui-verification/` | 8 | Intro, game screen, feedback, transitions, exit survey, sorry pages |
 | `timing/` | 3 | Selection, feedback, and transition auto-advance |
 | `data-integrity/` | 5 | Player, round, chat, social, and game data attributes |
 | `condition-specific/` | 3 | Detailed checks for each experimental condition |
-| `edge-cases/` | 3 | Fast completion, tangram randomization, multiple batches |
+| `edge-cases/` | 4 | Fast completion, tangram randomization, accuracy threshold, multiple batches |
 | `compensation/` | 4 | Prolific codes and partial pay for each exit path |
 | `score-display/` | 2 | Real-time scores and social guessing summary |
 
