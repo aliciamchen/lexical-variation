@@ -119,6 +119,8 @@ Empirica.onGameStart(({ game }) => {
   // Production: 6 blocks (each of 3 players speaks twice)
   // Test mode: 2 blocks
 
+  let trialNum = 0;
+
   _.times(PHASE_1_BLOCKS, (blockNum) => {
     const speakerIndex = blockNum % GROUP_SIZE; // Rotate through speakers
     const shuffled_context = _.shuffle(context);
@@ -132,6 +134,7 @@ Empirica.onGameStart(({ game }) => {
         target_order: shuffled_context,
         target: shuffled_context[target_num],
         target_num: target_num,
+        trial_num: trialNum++,
       });
       round.addStage({
         name: "Selection",
@@ -175,6 +178,7 @@ Empirica.onGameStart(({ game }) => {
         target_order: shuffled_context,
         target: shuffled_context[target_num],
         target_num: target_num,
+        trial_num: trialNum++,
       });
       round.addStage({
         name: "Selection",

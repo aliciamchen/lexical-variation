@@ -108,7 +108,9 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
     return players
 
 
-def build_trials(player_round_df: pd.DataFrame, round_df: pd.DataFrame) -> pd.DataFrame:
+def build_trials(
+    player_round_df: pd.DataFrame, round_df: pd.DataFrame, game_df: pd.DataFrame
+) -> pd.DataFrame:
     """Build trials.csv: 1 row per player per round (refgame rounds only)."""
     pr = drop_last_changed_cols(player_round_df)
     rd = drop_last_changed_cols(round_df)
@@ -152,6 +154,17 @@ def build_trials(player_round_df: pd.DataFrame, round_df: pd.DataFrame) -> pd.Da
         "roundId",
     ]
 
+    # Merge trialNum from round and tangramSet from game
+    round_info = rd[["id", "trial_num"]].rename(
+        columns={"id": "roundId", "trial_num": "trialNum"}
+    )
+    trials = trials.merge(round_info, on="roundId", how="left")
+
+    tangram_lookup = game_df[["id", "tangram_set"]].rename(
+        columns={"id": "gameId", "tangram_set": "tangramSet"}
+    )
+    trials = trials.merge(tangram_lookup, on="gameId", how="left")
+
     # Compute repNum: for each speaker × tangram, number repetitions by block order
     speaker_trials = trials[trials["role"] == "speaker"].copy()
     speaker_trials = speaker_trials.sort_values(
@@ -171,9 +184,12 @@ def build_trials(player_round_df: pd.DataFrame, round_df: pd.DataFrame) -> pd.Da
     return trials
 
 
-def build_messages(player_round_df: pd.DataFrame) -> pd.DataFrame:
+def build_messages(
+    player_round_df: pd.DataFrame, game_df: pd.DataFrame, round_df: pd.DataFrame
+) -> pd.DataFrame:
     """Build messages.csv: 1 row per chat message."""
     pr = drop_last_changed_cols(player_round_df)
+    rd = drop_last_changed_cols(round_df)
 
     # Filter to refgame rounds only
     pr = pr[pr["phase"] == "refgame"].copy()
@@ -236,6 +252,17 @@ def build_messages(player_round_df: pd.DataFrame) -> pd.DataFrame:
         messages = messages.drop_duplicates(subset=["roundId", "senderId", "timestamp"])
         messages = messages.sort_values(["gameId", "roundId", "timestamp"])
 
+        # Merge trialNum from round and tangramSet from game
+        round_info = rd[["id", "trial_num"]].rename(
+            columns={"id": "roundId", "trial_num": "trialNum"}
+        )
+        messages = messages.merge(round_info, on="roundId", how="left")
+
+        tangram_lookup = game_df[["id", "tangram_set"]].rename(
+            columns={"id": "gameId", "tangram_set": "tangramSet"}
+        )
+        messages = messages.merge(tangram_lookup, on="gameId", how="left")
+
     return messages
 
 
@@ -248,10 +275,12 @@ def build_speaker_utterances(
     speaker_msgs = speaker_msgs.sort_values(["roundId", "timestamp"])
 
     # Concatenate speaker messages per round (one utterance per speaker per round)
+    groupby_cols = [
+        "gameId", "roundId", "senderId", "blockNum", "phase", "phaseNum", "target",
+        "trialNum", "tangramSet",
+    ]
     utterances = (
-        speaker_msgs.groupby(
-            ["gameId", "roundId", "senderId", "blockNum", "phase", "phaseNum", "target"]
-        )
+        speaker_msgs.groupby(groupby_cols)
         .agg(utterance=("text", lambda x: ", ".join(x.astype(str))))
         .reset_index()
     )
@@ -277,7 +306,9 @@ def build_speaker_utterances(
         "playerId",
         "originalGroup",
         "currentGroup",
+        "tangramSet",
         "blockNum",
+        "trialNum",
         "phase",
         "phaseNum",
         "target",
@@ -291,7 +322,9 @@ def build_speaker_utterances(
     return utterances
 
 
-def build_social_guesses(player_round_df: pd.DataFrame) -> pd.DataFrame:
+def build_social_guesses(
+    player_round_df: pd.DataFrame, game_df: pd.DataFrame
+) -> pd.DataFrame:
     """Build social_guesses.csv: 1 row per listener social guess (social_mixed only)."""
     pr = drop_last_changed_cols(player_round_df)
 
@@ -305,6 +338,7 @@ def build_social_guesses(player_round_df: pd.DataFrame) -> pd.DataFrame:
                 "gameId",
                 "playerId",
                 "originalGroup",
+                "tangramSet",
                 "blockNum",
                 "phase",
                 "target",
@@ -338,6 +372,12 @@ def build_social_guesses(player_round_df: pd.DataFrame) -> pd.DataFrame:
         "socialGuessCorrect",
         "socialRoundScore",
     ]
+
+    # Merge tangramSet from game
+    tangram_lookup = game_df[["id", "tangram_set"]].rename(
+        columns={"id": "gameId", "tangram_set": "tangramSet"}
+    )
+    guesses = guesses.merge(tangram_lookup, on="gameId", how="left")
 
     return guesses
 
@@ -379,12 +419,12 @@ def main():
     print(f"  {len(players)} players")
 
     print("Building trials.csv...")
-    trials = build_trials(player_round_df, round_df)
+    trials = build_trials(player_round_df, round_df, game_df)
     trials.to_csv(output_dir / "trials.csv", index=False)
     print(f"  {len(trials)} trial rows")
 
     print("Building messages.csv...")
-    messages = build_messages(player_round_df)
+    messages = build_messages(player_round_df, game_df, round_df)
     messages.to_csv(output_dir / "messages.csv", index=False)
     print(f"  {len(messages)} messages")
 
@@ -394,7 +434,7 @@ def main():
     print(f"  {len(speaker_utterances)} speaker utterances")
 
     print("Building social_guesses.csv...")
-    social_guesses = build_social_guesses(player_round_df)
+    social_guesses = build_social_guesses(player_round_df, game_df)
     social_guesses.to_csv(output_dir / "social_guesses.csv", index=False)
     print(f"  {len(social_guesses)} social guesses")
 
