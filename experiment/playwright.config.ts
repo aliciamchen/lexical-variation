@@ -5,7 +5,7 @@ const isTestMode = process.env.TEST_MODE !== 'false';
 /**
  * 4 test groups with server resets between each group.
  *
- * Execution order: setup-1 → group-1 → setup-2 → group-2 → setup-3 → group-3 → setup-4 → group-4
+ * Execution order: setup-1 → group-1 → setup-2 → group-2 → setup-3 → group-3 → setup-4 → group-4 → setup-5 → group-holistic
  *
  * Each setup project resets the Empirica server (deletes tajriba.json) to prevent
  * state accumulation from previous test groups. This keeps the server fast and
@@ -21,6 +21,10 @@ const isTestMode = process.env.TEST_MODE !== 'false';
  * | group-2 | ui-verification, timing                           |
  * | group-3 | data-integrity, condition-specific, score-display  |
  * | group-4 | idle-detection, group-viability, compensation     |
+ * | group-holistic | holistic end-to-end (social_mixed, 15 players) |
+ *
+ * Run holistic test standalone:
+ *   TEST_MODE=false npx playwright test --project=setup-5 --project=group-holistic --reporter=list
  */
 export default defineConfig({
   testDir: './tests',
@@ -93,6 +97,19 @@ export default defineConfig({
       name: 'group-4',
       dependencies: ['setup-4'],
       testMatch: /\/(idle-detection|group-viability|compensation)\/.+\.spec\.ts$/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    // ── Holistic end-to-end test ──
+    {
+      name: 'setup-5',
+      // dependencies: ['group-4'], // Uncomment to chain after group-4 in full suite
+      testMatch: 'reset-server.setup.ts',
+    },
+    {
+      name: 'group-holistic',
+      dependencies: ['setup-5'],
+      testMatch: /\/holistic\/.+\.spec\.ts$/,
       use: { ...devices['Desktop Chrome'] },
     },
   ],

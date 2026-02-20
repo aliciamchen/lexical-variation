@@ -35,7 +35,8 @@
       "Bash(grep:*)",
       "WebFetch(domain:docs.empirica.ly)",
       "Bash(npx tsc:*)",
-      "Bash(npx playwright test:*)"
+      "Bash(npx playwright test:*)",
+      "Bash(TEST_MODE=false npx playwright test:*)"
     ]
   }
 }
