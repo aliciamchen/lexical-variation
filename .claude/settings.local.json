@@ -36,7 +36,12 @@
       "WebFetch(domain:docs.empirica.ly)",
       "Bash(npx tsc:*)",
       "Bash(npx playwright test:*)",
-      "Bash(TEST_MODE=false npx playwright test:*)"
+      "Bash(TEST_MODE=false npx playwright test:*)",
+      "Bash(uv run:*)",
+      "Bash(head:*)",
+      "Bash(uv add:*)",
+      "Bash(quarto render:*)",
+      "Bash(Rscript:*)"
     ]
   }
 }
