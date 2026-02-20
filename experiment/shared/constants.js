@@ -4,7 +4,8 @@
 // ============ TEST MODE ============
 // Defaults to false for production. Set TEST_MODE=true env var for local testing.
 // When true: longer timeouts, more idle tolerance, fewer blocks.
-export const TEST_MODE = typeof process !== "undefined" && process.env?.TEST_MODE === "true";
+export const TEST_MODE =
+  typeof process !== "undefined" && process.env?.TEST_MODE === "true";
 
 // ============ TESTING VS PRODUCTION VALUES ============
 // TEST_MODE only affects timing and tolerance settings, not player/group counts.
@@ -127,7 +128,7 @@ export const BASE_PAY = 12; // dollars
 export const LOBBY_TIMEOUT_PAY = 2; // dollars for players who couldn't find a match in lobby
 
 // Expected game duration in minutes (used for proportional compensation)
-export const EXPECTED_GAME_DURATION_MIN = 35; // midpoint of 30-45 minute estimate
+export const EXPECTED_GAME_DURATION_MIN = 45; // midpoint of 30-45 minute estimate
 
 // ============ DROPOUT HANDLING ============
 export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 2; // TEST: 5 rounds tolerance

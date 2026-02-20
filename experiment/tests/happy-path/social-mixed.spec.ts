@@ -24,7 +24,6 @@ import {
   PHASE_1_BLOCKS,
   PHASE_2_BLOCKS,
   ROUNDS_PER_BLOCK,
-  PROLIFIC_CODES,
 } from '../helpers/constants';
 
 test.describe.serial('Happy Path: social_mixed', () => {
@@ -216,12 +215,6 @@ test.describe.serial('Happy Path: social_mixed', () => {
       } catch {
         // May already be past this point
       }
-    }
-
-    // Verify completion code BEFORE submitting survey
-    for (const page of pages) {
-      const content = await page.textContent('body');
-      expect(content).toContain(PROLIFIC_CODES.completion);
     }
 
     // Complete exit survey

@@ -7,6 +7,7 @@ import {
   clickContinue,
   getActivePlayers,
   waitForStage,
+  completeExitSurvey,
 } from '../helpers/game-actions';
 import {
   PHASE_1_BLOCKS,
@@ -92,12 +93,12 @@ test.describe.serial('UI Verification: Exit Survey (5.6)', () => {
     expect(bodyText).toContain('Exit Survey');
   });
 
-  test('exit survey shows completion code and bonus info', async () => {
+  test('exit survey shows bonus info but not completion code before submission', async () => {
     const page = pm.getPage(0);
     const bodyText = await page.textContent('body');
 
-    // Should show the Prolific completion code
-    expect(bodyText).toContain(PROLIFIC_CODES.completion);
+    // Should NOT show the Prolific completion code before submission
+    expect(bodyText).not.toContain(PROLIFIC_CODES.completion);
 
     // Should show score and bonus
     expect(bodyText).toContain('points');
@@ -165,5 +166,31 @@ test.describe.serial('UI Verification: Exit Survey (5.6)', () => {
     const page = pm.getPage(0);
     const submitBtn = page.getByRole('button', { name: /submit/i });
     await expect(submitBtn).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('completion code shown after survey submission', async () => {
+    const page = pm.getPage(0);
+
+    // Submit the survey
+    await page.getByRole('button', { name: /submit/i }).click();
+    await page.waitForTimeout(1000);
+
+    // Should now show the Prolific completion code
+    const bodyText = await page.textContent('body');
+    expect(bodyText).toContain(PROLIFIC_CODES.completion);
+
+    // Should show the Finish button
+    const finishBtn = page.getByRole('button', { name: /finish/i });
+    await expect(finishBtn).toBeVisible({ timeout: 5_000 });
+
+    // Click Finish to complete
+    await finishBtn.click();
+    await page.waitForTimeout(500);
+
+    // Complete exit survey for remaining players
+    const pages = pm.getPages();
+    for (let i = 1; i < pages.length; i++) {
+      await completeExitSurvey(pages[i]);
+    }
   });
 });

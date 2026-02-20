@@ -25,7 +25,6 @@ import {
   PHASE_1_BLOCKS,
   PHASE_2_BLOCKS,
   ROUNDS_PER_BLOCK,
-  PROLIFIC_CODES,
 } from '../helpers/constants';
 
 test.describe.serial('Happy Path: refer_separated', () => {
@@ -186,12 +185,6 @@ test.describe.serial('Happy Path: refer_separated', () => {
       } catch {
         // May already be past this point
       }
-    }
-
-    // Check for prolific completion code on exit survey page (before submitting)
-    for (const page of pages) {
-      const content = await page.textContent('body');
-      expect(content).toContain(PROLIFIC_CODES.completion);
     }
 
     // Complete and submit the survey

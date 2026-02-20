@@ -1,7 +1,7 @@
 /**
  * TEST_PLAN 10.1: Full Completion Compensation
  *
- * Players who complete the full game get the completion code C3OIIB3N.
+ * Players who complete the full game get the completion code C2I8XDMC.
  * Set up and complete a full refer_separated game. Verify all 9 players
  * see the completion code on the exit/finished screen.
  */
@@ -21,7 +21,6 @@ import {
   PHASE_1_BLOCKS,
   PHASE_2_BLOCKS,
   ROUNDS_PER_BLOCK,
-  PROLIFIC_CODES,
 } from '../helpers/constants';
 
 test.describe.serial('Compensation: Full Completion (TEST_PLAN 10.1)', () => {
@@ -101,7 +100,7 @@ test.describe.serial('Compensation: Full Completion (TEST_PLAN 10.1)', () => {
     await active[0].waitForTimeout(3000);
   });
 
-  test('complete exit survey and verify completion code C3OIIB3N', async () => {
+  test('complete exit survey and verify completion code C2I8XDMC', async () => {
     const pages = pm.getPages();
 
     // Wait for exit survey to load
@@ -111,16 +110,6 @@ test.describe.serial('Compensation: Full Completion (TEST_PLAN 10.1)', () => {
       } catch {
         // May already be past this point
       }
-    }
-
-    // Verify all 9 players see the completion code BEFORE submitting survey
-    for (let i = 0; i < pages.length; i++) {
-      const page = pages[i];
-      const content = await page.textContent('body');
-      expect(
-        content,
-        `Player ${i + 1} should see completion code ${PROLIFIC_CODES.completion}`,
-      ).toContain('C3OIIB3N');
     }
 
     // Complete exit survey for all players

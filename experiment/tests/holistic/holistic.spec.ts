@@ -569,12 +569,6 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
       }
     }
 
-    // Verify completion code BEFORE submitting survey
-    for (const page of active) {
-      const content = await page.textContent('body');
-      expect(content).toContain(PROLIFIC_CODES.completion);
-    }
-
     // Complete exit survey
     for (const page of active) {
       await completeExitSurvey(page);
@@ -615,7 +609,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     //   - Test 8: speaker kicked with "player timeout"
     //   - Test 10: listener kicked with "player timeout"
     //   - Test 15: Phase 2 idle kicked + 1 disbanded with DISBANDED2026
-    //   - Test 17: 5 survivors completed exit survey with C3OIIB3N code
+    //   - Test 17: 5 survivors completed exit survey with C2I8XDMC code
     //   - Test 18: 3 lobby overflow not in game
     //
     // After 12+ minutes, sorry-screen DOM elements may have lost state

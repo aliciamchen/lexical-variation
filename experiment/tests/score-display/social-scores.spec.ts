@@ -192,12 +192,6 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
       }
     }
 
-    // Verify all players see completion code BEFORE submitting survey
-    for (const page of pages) {
-      const content = await page.textContent('body');
-      expect(content).toContain('C3OIIB3N');
-    }
-
     // Complete exit survey
     for (const page of pages) {
       await completeExitSurvey(page);

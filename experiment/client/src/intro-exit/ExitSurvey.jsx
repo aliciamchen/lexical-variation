@@ -22,6 +22,8 @@ export function ExitSurvey({ next }) {
   const score = player.get("score") || 0;
   const bonus = player.get("bonus") || 0;
 
+  const [submitted, setSubmitted] = useState(false);
+
   function handleSubmit(event) {
     event.preventDefault();
     player.set("exitSurvey", {
@@ -33,7 +35,7 @@ export function ExitSurvey({ next }) {
       education,
       understood,
     });
-    next();
+    setSubmitted(true);
   }
 
   function handleEducationChange(e) {
@@ -44,18 +46,42 @@ export function ExitSurvey({ next }) {
     setUnderstood(e.target.value);
   }
 
+  if (submitted) {
+    return (
+      <div className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Alert title="Thank you!">
+          <p>
+            You earned <strong>{score} points</strong> for a bonus of{" "}
+            <strong>${bonus.toFixed(2)}</strong>.
+          </p>
+          <p className="mt-2">
+            Your base pay is <strong>${BASE_PAY.toFixed(2)}</strong>, so your
+            total compensation is{" "}
+            <strong>${(BASE_PAY + bonus).toFixed(2)}</strong>.
+          </p>
+          <p className="mt-2">
+            Please submit the following code on Prolific to receive your payment:{" "}
+            <strong>C2I8XDMC</strong>.
+          </p>
+        </Alert>
+        <div className="mt-8">
+          <Button handleClick={() => next()}>Finish</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <Alert title="Game Complete!">
         <p>
-          You earned <strong>{score} points</strong> for a bonus of <strong>${bonus.toFixed(2)}</strong>.
+          You earned <strong>{score} points</strong> for a bonus of{" "}
+          <strong>${bonus.toFixed(2)}</strong>.
         </p>
         <p className="mt-2">
-          Your base pay is <strong>${BASE_PAY.toFixed(2)}</strong>, so your total compensation is <strong>${(BASE_PAY + bonus).toFixed(2)}</strong>.
-        </p>
-        <p className="mt-2">
-          Please submit the following code on Prolific to receive your payment:{" "}
-          <strong>C3OIIB3N</strong>.
+          Your base pay is <strong>${BASE_PAY.toFixed(2)}</strong>, so your
+          total compensation is{" "}
+          <strong>${(BASE_PAY + bonus).toFixed(2)}</strong>.
         </p>
       </Alert>
 

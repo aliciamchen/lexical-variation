@@ -407,6 +407,12 @@ export async function completeExitSurvey(page: Page): Promise<void> {
     // Submit
     await page.getByRole('button', { name: /submit/i }).click();
     await page.waitForTimeout(500);
+
+    // Click Finish on the confirmation page (shows Prolific code)
+    const finishButton = page.getByRole('button', { name: /finish/i });
+    await finishButton.waitFor({ state: 'visible', timeout: 5000 });
+    await finishButton.click();
+    await page.waitForTimeout(500);
   } catch {
     // Survey fields may vary
   }

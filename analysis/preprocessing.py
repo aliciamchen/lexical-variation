@@ -67,43 +67,48 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
     """Build players.csv: 1 row per player."""
     player_df = drop_last_changed_cols(player_df)
 
-    players = player_df[
-        [
-            "id",
-            "gameID",
-            "name",
-            "original_group",
-            "original_name",
-            "score",
-            "bonus",
-            "is_active",
-            "idle_rounds",
-            "exitSurvey",
-        ]
-    ].copy()
-    players.columns = [
-        "playerId",
-        "gameId",
+    required_cols = [
+        "id",
+        "gameID",
         "name",
-        "originalGroup",
-        "originalName",
+        "original_group",
+        "original_name",
         "score",
         "bonus",
-        "isActive",
-        "idleRounds",
-        "exitSurvey",
+        "is_active",
+        "idle_rounds",
     ]
+    optional_cols = ["exitSurvey"]
 
-    # Parse exitSurvey JSON and flatten
-    def parse_exit_survey(row):
-        survey = parse_json_field(row["exitSurvey"])
-        if survey and isinstance(survey, dict):
-            for key, val in survey.items():
-                row[f"exitSurvey_{key}"] = val
-        return row
+    # Only include optional columns that exist in the data
+    cols = required_cols + [c for c in optional_cols if c in player_df.columns]
+    players = player_df[cols].copy()
 
-    players = players.apply(parse_exit_survey, axis=1)
-    players = players.drop(columns=["exitSurvey"])
+    rename_map = {
+        "id": "playerId",
+        "gameID": "gameId",
+        "name": "name",
+        "original_group": "originalGroup",
+        "original_name": "originalName",
+        "score": "score",
+        "bonus": "bonus",
+        "is_active": "isActive",
+        "idle_rounds": "idleRounds",
+        "exitSurvey": "exitSurvey",
+    }
+    players = players.rename(columns={c: rename_map[c] for c in cols})
+
+    # Parse exitSurvey JSON and flatten (if present)
+    if "exitSurvey" in players.columns:
+        def parse_exit_survey(row):
+            survey = parse_json_field(row["exitSurvey"])
+            if survey and isinstance(survey, dict):
+                for key, val in survey.items():
+                    row[f"exitSurvey_{key}"] = val
+            return row
+
+        players = players.apply(parse_exit_survey, axis=1)
+        players = players.drop(columns=["exitSurvey"])
 
     return players
 
@@ -330,6 +335,21 @@ def build_social_guesses(
 
     # Filter to refgame rounds with social guess data
     pr = pr[pr["phase"] == "refgame"].copy()
+    if "social_guess" not in pr.columns:
+        return pd.DataFrame(
+            columns=[
+                "gameId",
+                "playerId",
+                "originalGroup",
+                "tangramSet",
+                "blockNum",
+                "phase",
+                "target",
+                "socialGuess",
+                "socialGuessCorrect",
+                "socialRoundScore",
+            ]
+        )
     pr = pr[pr["social_guess"].notna() & (pr["social_guess"] != "")].copy()
 
     if pr.empty:
