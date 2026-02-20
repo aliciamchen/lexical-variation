@@ -1,11 +1,11 @@
 lobbies:
 - name: Default shared fail
   kind: shared
-  duration: 5m
+  duration: 10m
   strategy: fail
 - name: Default shared ignore
   kind: shared
-  duration: 5m
+  duration: 10m
   strategy: ignore
 - name: 10m individual kick
   kind: individual

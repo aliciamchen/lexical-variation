@@ -38,7 +38,16 @@ Production URL: http://45.55.59.202:3000/
 
 ### Data Backup
 
-Periodically copy the tajriba file: `sh copy_tajriba.sh`
+Back up experiment data from the production server:
+
+```bash
+cd experiment
+bash copy_tajriba.sh            # loop every 5 minutes (default)
+bash copy_tajriba.sh --once     # single backup and exit
+bash copy_tajriba.sh --help     # show usage
+```
+
+The script SSHs into the production server, runs `empirica export` to produce a CSV zip, then copies it locally into `data/<timestamp>/`. Safe to run while the experiment is live. Exits automatically after 3 consecutive failures.
 
 ## Playwright Tests
 

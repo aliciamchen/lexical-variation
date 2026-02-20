@@ -34,10 +34,26 @@ def build_games(game_df: pd.DataFrame) -> pd.DataFrame:
     """Build games.csv: 1 row per game."""
     game_df = drop_last_changed_cols(game_df)
 
-    games = game_df[["id", "condition", "tangram_set", "actualPlayerCount",
-                      "active_groups", "phase1Blocks", "phase2Blocks"]].copy()
-    games.columns = ["gameId", "condition", "tangramSet", "numPlayers",
-                      "activeGroups", "phase1Blocks", "phase2Blocks"]
+    games = game_df[
+        [
+            "id",
+            "condition",
+            "tangram_set",
+            "actualPlayerCount",
+            "active_groups",
+            "phase1Blocks",
+            "phase2Blocks",
+        ]
+    ].copy()
+    games.columns = [
+        "gameId",
+        "condition",
+        "tangramSet",
+        "numPlayers",
+        "activeGroups",
+        "phase1Blocks",
+        "phase2Blocks",
+    ]
 
     # Parse activeGroups from JSON list string
     games["activeGroups"] = games["activeGroups"].apply(
@@ -51,12 +67,32 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
     """Build players.csv: 1 row per player."""
     player_df = drop_last_changed_cols(player_df)
 
-    players = player_df[["id", "gameID", "name", "original_group",
-                          "original_name", "score", "bonus",
-                          "is_active", "idle_rounds", "exitSurvey"]].copy()
-    players.columns = ["playerId", "gameId", "name", "originalGroup",
-                        "originalName", "score", "bonus",
-                        "isActive", "idleRounds", "exitSurvey"]
+    players = player_df[
+        [
+            "id",
+            "gameID",
+            "name",
+            "original_group",
+            "original_name",
+            "score",
+            "bonus",
+            "is_active",
+            "idle_rounds",
+            "exitSurvey",
+        ]
+    ].copy()
+    players.columns = [
+        "playerId",
+        "gameId",
+        "name",
+        "originalGroup",
+        "originalName",
+        "score",
+        "bonus",
+        "isActive",
+        "idleRounds",
+        "exitSurvey",
+    ]
 
     # Parse exitSurvey JSON and flatten
     def parse_exit_survey(row):
@@ -81,27 +117,55 @@ def build_trials(player_round_df: pd.DataFrame, round_df: pd.DataFrame) -> pd.Da
     pr = pr[pr["phase"] == "refgame"].copy()
 
     # Select and rename columns from playerRound
-    trials = pr[["gameID", "playerID", "name", "original_group",
-                  "current_group", "role", "block_num", "phase",
-                  "phase_num", "target", "clicked", "clicked_correct",
-                  "round_score", "roundID"]].copy()
-    trials.columns = ["gameId", "playerId", "playerName", "originalGroup",
-                       "currentGroup", "role", "blockNum", "phase",
-                       "phaseNum", "target", "clicked", "clickedCorrect",
-                       "roundScore", "roundId"]
+    trials = pr[
+        [
+            "gameID",
+            "playerID",
+            "name",
+            "original_group",
+            "current_group",
+            "role",
+            "block_num",
+            "phase",
+            "phase_num",
+            "target",
+            "clicked",
+            "clicked_correct",
+            "round_score",
+            "roundID",
+        ]
+    ].copy()
+    trials.columns = [
+        "gameId",
+        "playerId",
+        "playerName",
+        "originalGroup",
+        "currentGroup",
+        "role",
+        "blockNum",
+        "phase",
+        "phaseNum",
+        "target",
+        "clicked",
+        "clickedCorrect",
+        "roundScore",
+        "roundId",
+    ]
 
     # Compute repNum: for each speaker × tangram, number repetitions by block order
     speaker_trials = trials[trials["role"] == "speaker"].copy()
-    speaker_trials = speaker_trials.sort_values(["gameId", "playerId", "target", "blockNum"])
-    speaker_trials["repNum"] = speaker_trials.groupby(
-        ["gameId", "playerId", "target"]
-    ).cumcount() + 1
+    speaker_trials = speaker_trials.sort_values(
+        ["gameId", "playerId", "target", "blockNum"]
+    )
+    speaker_trials["repNum"] = (
+        speaker_trials.groupby(["gameId", "playerId", "target"]).cumcount() + 1
+    )
 
     # Merge repNum back (only speakers have repNum)
     trials = trials.merge(
         speaker_trials[["gameId", "playerId", "roundId", "repNum"]],
         on=["gameId", "playerId", "roundId"],
-        how="left"
+        how="left",
     )
 
     return trials
@@ -138,36 +202,38 @@ def build_messages(player_round_df: pd.DataFrame) -> pd.DataFrame:
             role_match = re.search(r"\((Speaker|Listener)\)", sender_name_raw)
             sender_role = role_match.group(1).lower() if role_match else None
             # Clean name: remove role suffix
-            sender_name = re.sub(r"\s*\((?:Speaker|Listener)\)", "", sender_name_raw).strip()
+            sender_name = re.sub(
+                r"\s*\((?:Speaker|Listener)\)", "", sender_name_raw
+            ).strip()
 
             # Use the sender's actual group, not the iterating player's group
             sender_group = sender_group_lookup.get(
                 (row["roundID"], sender_id), row["current_group"]
             )
 
-            rows.append({
-                "gameId": row["gameID"],
-                "roundId": row["roundID"],
-                "blockNum": row["block_num"],
-                "phase": row["phase"],
-                "phaseNum": row["phase_num"],
-                "target": row["target"],
-                "group": sender_group,
-                "senderId": sender_id,
-                "senderName": sender_name,
-                "senderRole": sender_role,
-                "text": msg.get("text", ""),
-                "timestamp": msg.get("timestamp"),
-            })
+            rows.append(
+                {
+                    "gameId": row["gameID"],
+                    "roundId": row["roundID"],
+                    "blockNum": row["block_num"],
+                    "phase": row["phase"],
+                    "phaseNum": row["phase_num"],
+                    "target": row["target"],
+                    "group": sender_group,
+                    "senderId": sender_id,
+                    "senderName": sender_name,
+                    "senderRole": sender_role,
+                    "text": msg.get("text", ""),
+                    "timestamp": msg.get("timestamp"),
+                }
+            )
 
     messages = pd.DataFrame(rows)
 
     # Deduplicate: each message appears once per player in the group,
     # so we keep only unique messages by (roundId, senderId, timestamp)
     if not messages.empty:
-        messages = messages.drop_duplicates(
-            subset=["roundId", "senderId", "timestamp"]
-        )
+        messages = messages.drop_duplicates(subset=["roundId", "senderId", "timestamp"])
         messages = messages.sort_values(["gameId", "roundId", "timestamp"])
 
     return messages
@@ -183,39 +249,44 @@ def build_speaker_utterances(
 
     # Concatenate speaker messages per round (one utterance per speaker per round)
     utterances = (
-        speaker_msgs
-        .groupby(["gameId", "roundId", "senderId", "blockNum", "phase",
-                   "phaseNum", "target"])
+        speaker_msgs.groupby(
+            ["gameId", "roundId", "senderId", "blockNum", "phase", "phaseNum", "target"]
+        )
         .agg(utterance=("text", lambda x: ", ".join(x.astype(str))))
         .reset_index()
     )
 
-    utterances["uttLength"] = utterances["utterance"].apply(
-        lambda x: len(x.split())
-    )
+    utterances["uttLength"] = utterances["utterance"].apply(lambda x: len(x.split()))
 
     # Merge in player info from trials (speaker rows only)
     # Use senderId == playerId to get the correct speaker's trial row
     speaker_trials = trials[trials["role"] == "speaker"][
-        ["gameId", "playerId", "originalGroup", "currentGroup",
-         "roundId", "repNum"]
+        ["gameId", "playerId", "originalGroup", "currentGroup", "roundId", "repNum"]
     ].drop_duplicates()
 
     utterances = utterances.merge(
         speaker_trials,
         left_on=["gameId", "roundId", "senderId"],
         right_on=["gameId", "roundId", "playerId"],
-        how="left"
+        how="left",
     )
 
     # Select and order final columns
-    cols = ["gameId", "playerId", "originalGroup", "currentGroup",
-            "blockNum", "phase", "phaseNum", "target", "repNum",
-            "utterance", "uttLength"]
+    cols = [
+        "gameId",
+        "playerId",
+        "originalGroup",
+        "currentGroup",
+        "blockNum",
+        "phase",
+        "phaseNum",
+        "target",
+        "repNum",
+        "utterance",
+        "uttLength",
+    ]
     utterances = utterances[[c for c in cols if c in utterances.columns]]
-    utterances = utterances.sort_values(
-        ["gameId", "playerId", "blockNum", "target"]
-    )
+    utterances = utterances.sort_values(["gameId", "playerId", "blockNum", "target"])
 
     return utterances
 
@@ -229,17 +300,44 @@ def build_social_guesses(player_round_df: pd.DataFrame) -> pd.DataFrame:
     pr = pr[pr["social_guess"].notna() & (pr["social_guess"] != "")].copy()
 
     if pr.empty:
-        return pd.DataFrame(columns=[
-            "gameId", "playerId", "originalGroup", "blockNum", "phase",
-            "target", "socialGuess", "socialGuessCorrect", "socialRoundScore"
-        ])
+        return pd.DataFrame(
+            columns=[
+                "gameId",
+                "playerId",
+                "originalGroup",
+                "blockNum",
+                "phase",
+                "target",
+                "socialGuess",
+                "socialGuessCorrect",
+                "socialRoundScore",
+            ]
+        )
 
-    guesses = pr[["gameID", "playerID", "original_group", "block_num",
-                   "phase", "target", "social_guess",
-                   "social_guess_correct", "social_round_score"]].copy()
-    guesses.columns = ["gameId", "playerId", "originalGroup", "blockNum",
-                        "phase", "target", "socialGuess",
-                        "socialGuessCorrect", "socialRoundScore"]
+    guesses = pr[
+        [
+            "gameID",
+            "playerID",
+            "original_group",
+            "block_num",
+            "phase",
+            "target",
+            "social_guess",
+            "social_guess_correct",
+            "social_round_score",
+        ]
+    ].copy()
+    guesses.columns = [
+        "gameId",
+        "playerId",
+        "originalGroup",
+        "blockNum",
+        "phase",
+        "target",
+        "socialGuess",
+        "socialGuessCorrect",
+        "socialRoundScore",
+    ]
 
     return guesses
 
@@ -248,14 +346,12 @@ def main():
     parser = argparse.ArgumentParser(
         description="Preprocess Empirica export data for analysis"
     )
+    parser.add_argument("input_dir", help="Path to Empirica export-data directory")
     parser.add_argument(
-        "input_dir",
-        help="Path to Empirica export-data directory"
-    )
-    parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default="analysis/data/",
-        help="Output directory for clean CSVs"
+        help="Output directory for clean CSVs",
     )
     args = parser.parse_args()
 

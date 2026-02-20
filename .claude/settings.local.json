@@ -41,7 +41,12 @@
       "Bash(head:*)",
       "Bash(uv add:*)",
       "Bash(quarto render:*)",
-      "Bash(Rscript:*)"
+      "Bash(Rscript:*)",
+      "Bash(bash)",
+      "Bash(echo:*)",
+      "Bash(ssh root@tangramcommunication.empirica.app \"which empirica && empirica export --help\")",
+      "Bash(ssh root@tangramcommunication.empirica.app \"rm /tmp/test-export.zip\")",
+      "Bash(bash copy_tajriba.sh --once)"
     ]
   }
 }

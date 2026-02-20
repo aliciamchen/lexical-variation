@@ -235,4 +235,11 @@ import { Chat } from "./components/Chat";
 
 - Live data: `experiment/.empirica/local/tajriba.json`
   - This changes to csvs by running `empirica export`
-- Backup: `sh experiment/copy_tajriba.sh`
+- Backup from production server:
+  ```bash
+  cd experiment
+  bash copy_tajriba.sh            # loop every 5 minutes (default)
+  bash copy_tajriba.sh --once     # single backup and exit
+  bash copy_tajriba.sh --help     # show usage
+  ```
+  The script SSHs into `root@tangramcommunication.empirica.app`, runs `empirica export` in `~/empirica` to produce a CSV zip, then copies it locally into `experiment/data/<timestamp>/`. Safe to run while the experiment is live. Exits automatically after 3 consecutive failures.
