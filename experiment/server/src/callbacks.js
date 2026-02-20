@@ -706,9 +706,14 @@ Empirica.onStageEnded(({ stage }) => {
         p.round.get("clicked_correct"),
       );
 
-      // Award points to correct listeners
-      correctListeners.forEach((listener) => {
-        listener.set("score", listener.get("score") + LISTENER_CORRECT_POINTS);
+      // Award points to correct listeners and save round_score
+      listeners.forEach((listener) => {
+        const isCorrect = listener.round.get("clicked_correct");
+        const listenerPoints = isCorrect ? LISTENER_CORRECT_POINTS : 0;
+        if (isCorrect) {
+          listener.set("score", listener.get("score") + LISTENER_CORRECT_POINTS);
+        }
+        listener.round.set("round_score", listenerPoints);
       });
 
       // Award points to speaker (2 * proportion of correct listeners)

@@ -11,7 +11,7 @@ export function Transition(props) {
   const { round, stage, game, player, players } = props;
   const condition = game.get("condition");
 
-  if (player.stage.get("submit")) {
+  if (player.stage?.get("submit")) {
     return (
       <div className="text-center text-gray-400 pointer-events-none">
         Please wait for other player(s).
@@ -133,7 +133,7 @@ export function Transition(props) {
             marginTop: "1rem",
           }}
         >
-          <Button handleClick={() => player.stage.set("submit", true)}>
+          <Button handleClick={() => player.stage?.set("submit", true)}>
             Continue
           </Button>
         </div>
@@ -218,7 +218,7 @@ export function Transition(props) {
             marginTop: "1rem",
           }}
         >
-          <Button handleClick={() => player.stage.set("submit", true)}>
+          <Button handleClick={() => player.stage?.set("submit", true)}>
             Continue
           </Button>
         </div>

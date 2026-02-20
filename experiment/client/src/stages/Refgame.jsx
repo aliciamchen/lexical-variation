@@ -124,8 +124,8 @@ export function Refgame(props) {
           waitingMessage = "All players responded!";
         }
         // Auto-submit this player's stage when all in group have responded
-        if (!player.stage.get("submit")) {
-          player.stage.set("submit", true);
+        if (!player.stage?.get("submit")) {
+          player.stage?.set("submit", true);
         }
       } else {
         waitingMessage = "Waiting for the players in your group to respond...";
@@ -410,7 +410,7 @@ export function Refgame(props) {
           >
             <Button
               handleClick={() => {
-                player.stage.set("submit", true);
+                player.stage?.set("submit", true);
                 setHasSubmitted(true);
               }}
             >
