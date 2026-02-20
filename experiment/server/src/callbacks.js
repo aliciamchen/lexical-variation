@@ -42,10 +42,12 @@ Empirica.onGameStart(({ game }) => {
   const treatment = game.get("treatment");
   const condition = treatment?.condition || conditions[0];
   game.set("condition", condition);
-  console.log(`Game condition: ${condition}, Treatment: ${JSON.stringify(treatment)}`);
+  console.log(
+    `Game condition: ${condition}, Treatment: ${JSON.stringify(treatment)}`,
+  );
 
   // Randomly assign tangram set (two sets with Ji et al. 2022 high-SND tangrams)
-  const tangram_set = Math.random() < 0.5 ? 0 : 1;
+  const tangram_set = 1; // Math.random() < 0.5 ? 0 : 1;
   const context = tangram_sets[tangram_set];
   console.log(`Game assigned to tangram set: ${tangram_set}`);
   game.set("tangram_set", tangram_set);
@@ -87,7 +89,7 @@ Empirica.onGameStart(({ game }) => {
     player.set("shuffled_tangrams", shuffled_tangrams);
     player.set(
       "tangramURLs",
-      shuffled_tangrams.map((tangram) => `/tangram_${tangram}.svg`)
+      shuffled_tangrams.map((tangram) => `/tangram_${tangram}.svg`),
     );
 
     // Time tracking for compensation calculation
@@ -96,7 +98,9 @@ Empirica.onGameStart(({ game }) => {
 
   // Derive actual group count from number of players (to support both test and production treatments)
   const actualGroupCount = Math.floor(game.players.length / GROUP_SIZE);
-  console.log(`Game starting with ${game.players.length} players → ${actualGroupCount} groups`);
+  console.log(
+    `Game starting with ${game.players.length} players → ${actualGroupCount} groups`,
+  );
   game.set("active_groups", GROUP_NAMES.slice(0, actualGroupCount));
 
   // Set min active groups dynamically (need at least 2 groups for 9-player, 1 group for 3-player)
@@ -110,7 +114,10 @@ Empirica.onGameStart(({ game }) => {
   game.set("numTangrams", context.length);
   game.set("groupSize", GROUP_SIZE);
   // Use lower multiplier for social condition to keep max bonus equal across conditions
-  game.set("bonusPerPoint", condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point);
+  game.set(
+    "bonusPerPoint",
+    condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point,
+  );
   game.set("listenerCorrectPoints", LISTENER_CORRECT_POINTS);
   game.set("speakerMaxPointsPerRound", SPEAKER_MAX_POINTS_PER_ROUND);
 
@@ -223,8 +230,13 @@ Empirica.onRoundStart(({ round }) => {
 
   // ============ PHASE 1 → PHASE 2 TRANSITION: ACCURACY CHECK ============
   // At the start of the Phase 2 transition, check if groups meet accuracy threshold
-  if (round.get("phase") === "transition" && round.get("transition_type") === "phase_2") {
-    console.log("Phase 1 → Phase 2 transition: Running accuracy threshold check");
+  if (
+    round.get("phase") === "transition" &&
+    round.get("transition_type") === "phase_2"
+  ) {
+    console.log(
+      "Phase 1 → Phase 2 transition: Running accuracy threshold check",
+    );
     checkPhase1AccuracyThreshold(game);
 
     // After accuracy check, game might be terminated - check again
@@ -253,11 +265,13 @@ Empirica.onRoundStart(({ round }) => {
 
     activeGroups.forEach((groupName) => {
       const groupPlayers = players.filter(
-        (p) => p.get("current_group") === groupName
+        (p) => p.get("current_group") === groupName,
       );
 
       if (groupPlayers.length === 0) {
-        console.log(`Group ${groupName} has no active players, skipping role assignment`);
+        console.log(
+          `Group ${groupName} has no active players, skipping role assignment`,
+        );
         return;
       }
 
@@ -266,27 +280,39 @@ Empirica.onRoundStart(({ round }) => {
       const speakerTargetIndex = blockNum % GROUP_SIZE;
 
       // Find the designated speaker (player with matching player_index)
-      let speaker = groupPlayers.find(p => p.get("player_index") === speakerTargetIndex);
+      let speaker = groupPlayers.find(
+        (p) => p.get("player_index") === speakerTargetIndex,
+      );
 
       // SPEAKER REASSIGNMENT: If designated speaker is not available (kicked/inactive),
       // reassign speaker role to another player in the group
       if (!speaker && groupPlayers.length > 0) {
         // Sort by player_index to ensure consistent fallback selection
-        const sortedPlayers = _.sortBy(groupPlayers, p => p.get("player_index"));
+        const sortedPlayers = _.sortBy(groupPlayers, (p) =>
+          p.get("player_index"),
+        );
 
         // Pick the next available player in rotation order
         // Use the same block-based rotation but with available players only
         const fallbackIdx = blockNum % sortedPlayers.length;
         speaker = sortedPlayers[fallbackIdx];
 
-        console.log(`SPEAKER REASSIGNMENT: Original speaker (index ${speakerTargetIndex}) not available in group ${groupName}`);
-        console.log(`  -> Reassigning to ${speaker.get("name")} (index ${speaker.get("player_index")}) for remaining trials in block ${blockNum}`);
+        console.log(
+          `SPEAKER REASSIGNMENT: Original speaker (index ${speakerTargetIndex}) not available in group ${groupName}`,
+        );
+        console.log(
+          `  -> Reassigning to ${speaker.get("name")} (index ${speaker.get("player_index")}) for remaining trials in block ${blockNum}`,
+        );
 
         // Track that speaker was reassigned (useful for debugging)
-        game.set(`speaker_reassigned_block_${blockNum}_group_${groupName}`, true);
+        game.set(
+          `speaker_reassigned_block_${blockNum}_group_${groupName}`,
+          true,
+        );
       }
 
-      const isMixedPhase2 = phase_num === 2 &&
+      const isMixedPhase2 =
+        phase_num === 2 &&
         (condition === "refer_mixed" || condition === "social_mixed");
 
       groupPlayers.forEach((player, i) => {
@@ -359,20 +385,22 @@ function reshuffleGroups(game, players) {
     targetSizes.push(baseSize + (i < extraPlayers ? 1 : 0));
   }
   // Check how many unique original groups we have
-  const uniqueOriginalGroups = new Set(players.map(p => p.get("original_group")));
+  const uniqueOriginalGroups = new Set(
+    players.map((p) => p.get("original_group")),
+  );
   const canMix = uniqueOriginalGroups.size >= 2;
 
   // Helper function to perform one reshuffling attempt
   function doReshuffle() {
     // Group players by their original_player_index
     const playersByIndex = {
-      0: players.filter(p => p.get("player_index") === 0),
-      1: players.filter(p => p.get("player_index") === 1),
-      2: players.filter(p => p.get("player_index") === 2),
+      0: players.filter((p) => p.get("player_index") === 0),
+      1: players.filter((p) => p.get("player_index") === 1),
+      2: players.filter((p) => p.get("player_index") === 2),
     };
 
     // Shuffle within each index group for randomization
-    Object.keys(playersByIndex).forEach(idx => {
+    Object.keys(playersByIndex).forEach((idx) => {
       playersByIndex[idx] = _.shuffle(playersByIndex[idx]);
     });
 
@@ -399,17 +427,24 @@ function reshuffleGroups(game, players) {
     });
 
     // Second pass: Distribute any remaining unassigned players
-    const unassignedPlayers = players.filter(p => !assignedInThisReshuffling.has(p.id));
+    const unassignedPlayers = players.filter(
+      (p) => !assignedInThisReshuffling.has(p.id),
+    );
 
     if (unassignedPlayers.length > 0) {
       let unassignedIdx = 0;
       usedGroups.forEach((groupName, groupIdx) => {
         const targetSize = targetSizes[groupIdx];
         let currentSize = players.filter(
-          p => assignedInThisReshuffling.has(p.id) && p.get("current_group") === groupName
+          (p) =>
+            assignedInThisReshuffling.has(p.id) &&
+            p.get("current_group") === groupName,
         ).length;
 
-        while (currentSize < targetSize && unassignedIdx < unassignedPlayers.length) {
+        while (
+          currentSize < targetSize &&
+          unassignedIdx < unassignedPlayers.length
+        ) {
           const player = unassignedPlayers[unassignedIdx];
           player.set("current_group", groupName);
           assignedInThisReshuffling.add(player.id);
@@ -424,8 +459,12 @@ function reshuffleGroups(game, players) {
   // Mixed = at least one group has players from 2+ different original groups
   function checkMixing() {
     for (const groupName of usedGroups) {
-      const groupPlayers = players.filter(p => p.get("current_group") === groupName);
-      const originalGroups = new Set(groupPlayers.map(p => p.get("original_group")));
+      const groupPlayers = players.filter(
+        (p) => p.get("current_group") === groupName,
+      );
+      const originalGroups = new Set(
+        groupPlayers.map((p) => p.get("original_group")),
+      );
       if (originalGroups.size >= 2) {
         return true; // At least one group is mixed
       }
@@ -440,9 +479,9 @@ function reshuffleGroups(game, players) {
 
   // Log distribution for debugging (only once)
   const playersByIndex = {
-    0: players.filter(p => p.get("player_index") === 0),
-    1: players.filter(p => p.get("player_index") === 1),
-    2: players.filter(p => p.get("player_index") === 2),
+    0: players.filter((p) => p.get("player_index") === 0),
+    1: players.filter((p) => p.get("player_index") === 1),
+    2: players.filter((p) => p.get("player_index") === 2),
   };
   if (!canMix) {
     // Only one original group remaining, mixing is impossible
@@ -459,22 +498,28 @@ function reshuffleGroups(game, players) {
     if (isMixed) {
       console.log(`Achieved mixed groups after ${attempts} attempt(s)`);
     } else {
-      console.warn(`WARNING: Could not achieve mixing after ${MAX_RESHUFFLE_ATTEMPTS} attempts`);
+      console.warn(
+        `WARNING: Could not achieve mixing after ${MAX_RESHUFFLE_ATTEMPTS} attempts`,
+      );
     }
   }
 
   // Verification: Log final group composition
   const groupComposition = {};
-  usedGroups.forEach(groupName => {
-    const groupPlayers = players.filter(p => p.get("current_group") === groupName);
-    const indices = groupPlayers.map(p => p.get("player_index"));
-    const originalGroups = [...new Set(groupPlayers.map(p => p.get("original_group")))];
+  usedGroups.forEach((groupName) => {
+    const groupPlayers = players.filter(
+      (p) => p.get("current_group") === groupName,
+    );
+    const indices = groupPlayers.map((p) => p.get("player_index"));
+    const originalGroups = [
+      ...new Set(groupPlayers.map((p) => p.get("original_group"))),
+    ];
     groupComposition[groupName] = {
       size: groupPlayers.length,
       indices: indices.sort(),
-      hasAllIndices: [0, 1, 2].every(idx => indices.includes(idx)),
+      hasAllIndices: [0, 1, 2].every((idx) => indices.includes(idx)),
       originalGroups: originalGroups.sort(),
-      isMixed: originalGroups.length >= 2
+      isMixed: originalGroups.length >= 2,
     };
   });
 
@@ -484,13 +529,21 @@ function reshuffleGroups(game, players) {
     .map(([name, _]) => name);
 
   if (undersizedGroups.length > 0) {
-    console.error(`ERROR: Groups ${undersizedGroups.join(", ")} are below MIN_GROUP_SIZE=${MIN_GROUP_SIZE}`);
+    console.error(
+      `ERROR: Groups ${undersizedGroups.join(", ")} are below MIN_GROUP_SIZE=${MIN_GROUP_SIZE}`,
+    );
   }
 
   // Warn if any group is missing an index (will need fallback for speaker selection)
-  const numComplete = Object.values(groupComposition).filter(g => g.hasAllIndices).length;
-  const numMixed = Object.values(groupComposition).filter(g => g.isMixed).length;
-  console.log(`Reshuffled ${numPlayers} players into ${numGroups} groups (${numComplete} complete, ${numMixed} mixed)`);
+  const numComplete = Object.values(groupComposition).filter(
+    (g) => g.hasAllIndices,
+  ).length;
+  const numMixed = Object.values(groupComposition).filter(
+    (g) => g.isMixed,
+  ).length;
+  console.log(
+    `Reshuffled ${numPlayers} players into ${numGroups} groups (${numComplete} complete, ${numMixed} mixed)`,
+  );
 }
 
 Empirica.onStageStart(({ stage }) => {
@@ -532,10 +585,13 @@ Empirica.onStageEnded(({ stage }) => {
       // Check if the speaker in this group sent any message
       // (listeners shouldn't be marked idle if speaker didn't send anything - they couldn't act)
       const groupPlayers = game.players.filter(
-        p => p.get("is_active") && p.get("current_group") === playerGroup
+        (p) => p.get("is_active") && p.get("current_group") === playerGroup,
       );
-      const groupSpeaker = groupPlayers.find(p => p.round.get("role") === "speaker");
-      const speakerSentMessage = groupSpeaker && chat.some((msg) => msg.sender?.id === groupSpeaker.id);
+      const groupSpeaker = groupPlayers.find(
+        (p) => p.round.get("role") === "speaker",
+      );
+      const speakerSentMessage =
+        groupSpeaker && chat.some((msg) => msg.sender?.id === groupSpeaker.id);
 
       // Determine if player was idle this round
       let wasIdle = false;
@@ -558,13 +614,13 @@ Empirica.onStageEnded(({ stage }) => {
         const idleRounds = (player.get("idle_rounds") || 0) + 1;
         player.set("idle_rounds", idleRounds);
         console.log(
-          `Player ${player.id} (${role}) idle round ${idleRounds}/${MAX_IDLE_ROUNDS}`
+          `Player ${player.id} (${role}) idle round ${idleRounds}/${MAX_IDLE_ROUNDS}`,
         );
 
         if (idleRounds >= MAX_IDLE_ROUNDS) {
           const wasSpeak = role === "speaker";
           console.log(
-            `Player ${player.id} (${role}) removed after ${MAX_IDLE_ROUNDS} idle rounds`
+            `Player ${player.id} (${role}) removed after ${MAX_IDLE_ROUNDS} idle rounds`,
           );
           player.set("is_active", false);
           player.set("ended", "player timeout");
@@ -576,11 +632,12 @@ Empirica.onStageEnded(({ stage }) => {
           if (wasSpeak) {
             const playerGroup = player.get("current_group");
             const remainingInGroup = game.players.filter(
-              p => p.get("is_active") && p.get("current_group") === playerGroup
+              (p) =>
+                p.get("is_active") && p.get("current_group") === playerGroup,
             );
             if (remainingInGroup.length >= MIN_GROUP_SIZE) {
               console.log(
-                `SPEAKER KICKED: Group ${playerGroup} has ${remainingInGroup.length} remaining players, speaker will be reassigned in next round`
+                `SPEAKER KICKED: Group ${playerGroup} has ${remainingInGroup.length} remaining players, speaker will be reassigned in next round`,
               );
             }
           }
@@ -604,21 +661,23 @@ Empirica.onStageEnded(({ stage }) => {
 
     activeGroups.forEach((groupName) => {
       const groupPlayers = players.filter(
-        (p) => p.get("is_active") && p.get("current_group") === groupName
+        (p) => p.get("is_active") && p.get("current_group") === groupName,
       );
 
       const listeners = groupPlayers.filter(
-        (p) => p.round.get("role") === "listener"
+        (p) => p.round.get("role") === "listener",
       );
       const speaker = groupPlayers.find(
-        (p) => p.round.get("role") === "speaker"
+        (p) => p.round.get("role") === "speaker",
       );
 
       if (!speaker) return;
 
       // Check if speaker sent a message this round (listeners can only act if speaker did)
       const groupChat = stage.get(`${groupName}_chat`) || [];
-      const speakerSentMessage = groupChat.some((msg) => msg.sender?.id === speaker.id);
+      const speakerSentMessage = groupChat.some(
+        (msg) => msg.sender?.id === speaker.id,
+      );
 
       // Save correctness for each listener and count correct ones
       listeners.forEach((listener) => {
@@ -643,8 +702,8 @@ Empirica.onStageEnded(({ stage }) => {
         }
       });
 
-      const correctListeners = listeners.filter(
-        (p) => p.round.get("clicked_correct")
+      const correctListeners = listeners.filter((p) =>
+        p.round.get("clicked_correct"),
       );
 
       // Award points to correct listeners
@@ -654,9 +713,10 @@ Empirica.onStageEnded(({ stage }) => {
 
       // Award points to speaker (2 * proportion of correct listeners)
       // This accommodates groups with fewer listeners after dropout
-      const speakerPoints = listeners.length > 0
-        ? 2 * (correctListeners.length / listeners.length)
-        : 0;
+      const speakerPoints =
+        listeners.length > 0
+          ? 2 * (correctListeners.length / listeners.length)
+          : 0;
       speaker.set("score", speaker.get("score") + speakerPoints);
       speaker.round.set("round_score", speakerPoints);
 
@@ -667,7 +727,7 @@ Empirica.onStageEnded(({ stage }) => {
 
         // Find listeners who are from the speaker's original group
         const listenersFromOriginalGroup = listeners.filter(
-          (l) => l.get("original_group") === speakerOriginalGroup
+          (l) => l.get("original_group") === speakerOriginalGroup,
         );
 
         listeners.forEach((listener) => {
@@ -675,7 +735,8 @@ Empirica.onStageEnded(({ stage }) => {
           const guess = listener.round.get("social_guess"); // "same_group" or "different_group"
 
           if (guess) {
-            const wasInSameGroup = speakerOriginalGroup === listenerOriginalGroup;
+            const wasInSameGroup =
+              speakerOriginalGroup === listenerOriginalGroup;
             const guessedSame = guess === "same_group";
             const correct = wasInSameGroup === guessedSame;
 
@@ -683,7 +744,9 @@ Empirica.onStageEnded(({ stage }) => {
 
             // Track cumulative social guess stats for end-of-game summary
             const totalGuesses = (listener.get("social_guess_total") || 0) + 1;
-            const correctTotal = (listener.get("social_guess_correct_total") || 0) + (correct ? 1 : 0);
+            const correctTotal =
+              (listener.get("social_guess_correct_total") || 0) +
+              (correct ? 1 : 0);
             listener.set("social_guess_total", totalGuesses);
             listener.set("social_guess_correct_total", correctTotal);
 
@@ -697,20 +760,32 @@ Empirica.onStageEnded(({ stage }) => {
 
         // Track speaker's social round score (proportional, up to 2 points)
         // Similar to tangram scoring: 2 * (proportion of original-group listeners who correctly identify)
-        const socialSpeakerPoints = listenersFromOriginalGroup.length > 0
-          ? 2 * (correctGuessesFromOriginalGroup / listenersFromOriginalGroup.length)
-          : 0;
+        const socialSpeakerPoints =
+          listenersFromOriginalGroup.length > 0
+            ? 2 *
+              (correctGuessesFromOriginalGroup /
+                listenersFromOriginalGroup.length)
+            : 0;
         speaker.round.set("social_round_score", socialSpeakerPoints);
 
         // Track speaker's cumulative social stats (how many original-group listeners guessed correctly)
-        const speakerGuessedAbout = (speaker.get("social_guessed_about_total") || 0) + listenersFromOriginalGroup.length;
-        const speakerGuessedCorrect = (speaker.get("social_guessed_about_correct") || 0) + correctGuessesFromOriginalGroup;
+        const speakerGuessedAbout =
+          (speaker.get("social_guessed_about_total") || 0) +
+          listenersFromOriginalGroup.length;
+        const speakerGuessedCorrect =
+          (speaker.get("social_guessed_about_correct") || 0) +
+          correctGuessesFromOriginalGroup;
         speaker.set("social_guessed_about_total", speakerGuessedAbout);
         speaker.set("social_guessed_about_correct", speakerGuessedCorrect);
 
         // Track cumulative proportional social speaker points
-        const cumulativeSocialSpeakerPoints = (speaker.get("social_speaker_points_total") || 0) + socialSpeakerPoints;
-        speaker.set("social_speaker_points_total", cumulativeSocialSpeakerPoints);
+        const cumulativeSocialSpeakerPoints =
+          (speaker.get("social_speaker_points_total") || 0) +
+          socialSpeakerPoints;
+        speaker.set(
+          "social_speaker_points_total",
+          cumulativeSocialSpeakerPoints,
+        );
       }
 
       // Save chat
@@ -729,14 +804,15 @@ function checkGroupViability(game) {
   const condition = game.get("condition");
 
   // Get current phase from the current round
-  const currentRound = game.rounds.find(r => !r.get("ended"));
+  const currentRound = game.rounds.find((r) => !r.get("ended"));
   const phase_num = currentRound?.get("phase_num") || 1;
-  const isMixedPhase2 = phase_num === 2 &&
+  const isMixedPhase2 =
+    phase_num === 2 &&
     (condition === "refer_mixed" || condition === "social_mixed");
 
   const viableGroups = activeGroups.filter((groupName) => {
     const groupPlayers = players.filter(
-      (p) => p.get("is_active") && p.get("original_group") === groupName
+      (p) => p.get("is_active") && p.get("original_group") === groupName,
     );
     return groupPlayers.length >= MIN_GROUP_SIZE;
   });
@@ -745,10 +821,12 @@ function checkGroupViability(game) {
   activeGroups.forEach((groupName) => {
     if (!viableGroups.includes(groupName)) {
       const remainingPlayers = players.filter(
-        (p) => p.get("is_active") && p.get("original_group") === groupName
+        (p) => p.get("is_active") && p.get("original_group") === groupName,
       );
       remainingPlayers.forEach((player) => {
-        console.log(`Removing final member ${player.id} from disbanded group ${groupName}`);
+        console.log(
+          `Removing final member ${player.id} from disbanded group ${groupName}`,
+        );
         player.set("is_active", false);
         player.set("ended", "group disbanded");
         player.set("gameEndTime", Date.now());
@@ -759,17 +837,22 @@ function checkGroupViability(game) {
         const minutesSpent = (endTime - startTime) / (1000 * 60);
         const proportionalBasePay = Math.min(
           BASE_PAY,
-          (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY
+          (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY,
         );
         // Include bonus earned so far
         const earnedBonus = player.get("bonus") || 0;
         const totalPartialPay = proportionalBasePay + earnedBonus;
 
         player.set("partialPay", Math.round(totalPartialPay * 100) / 100); // Round to 2 decimals
-        player.set("partialBasePay", Math.round(proportionalBasePay * 100) / 100);
+        player.set(
+          "partialBasePay",
+          Math.round(proportionalBasePay * 100) / 100,
+        );
         player.set("partialBonus", Math.round(earnedBonus * 100) / 100);
         player.set("minutesSpent", Math.round(minutesSpent));
-        console.log(`  -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${Math.round(minutesSpent)} minutes`);
+        console.log(
+          `  -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${Math.round(minutesSpent)} minutes`,
+        );
       });
     }
   });
@@ -779,12 +862,16 @@ function checkGroupViability(game) {
   // Check if game can continue (use dynamic min_active_groups from game)
   const minRequired = game.get("min_active_groups") || 1;
   if (viableGroups.length < minRequired) {
-    console.log(`Not enough active groups (${viableGroups.length} < ${minRequired}), ending game`);
+    console.log(
+      `Not enough active groups (${viableGroups.length} < ${minRequired}), ending game`,
+    );
 
     // Give remaining active players partial compensation and end them
-    const remainingActivePlayers = players.filter(p => p.get("is_active"));
+    const remainingActivePlayers = players.filter((p) => p.get("is_active"));
     remainingActivePlayers.forEach((player) => {
-      console.log(`Ending remaining player ${player.id} due to insufficient groups`);
+      console.log(
+        `Ending remaining player ${player.id} due to insufficient groups`,
+      );
       player.set("is_active", false);
       player.set("ended", "group disbanded");
       player.set("gameEndTime", Date.now());
@@ -795,7 +882,7 @@ function checkGroupViability(game) {
       const minutesSpent = (endTime - startTime) / (1000 * 60);
       const proportionalBasePay = Math.min(
         BASE_PAY,
-        (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY
+        (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY,
       );
       const earnedBonus = player.get("bonus") || 0;
       const totalPartialPay = proportionalBasePay + earnedBonus;
@@ -804,7 +891,9 @@ function checkGroupViability(game) {
       player.set("partialBasePay", Math.round(proportionalBasePay * 100) / 100);
       player.set("partialBonus", Math.round(earnedBonus * 100) / 100);
       player.set("minutesSpent", Math.round(minutesSpent));
-      console.log(`  -> Proportional pay: $${player.get("partialPay")} for ${Math.round(minutesSpent)} minutes`);
+      console.log(
+        `  -> Proportional pay: $${player.get("partialPay")} for ${Math.round(minutesSpent)} minutes`,
+      );
     });
 
     // Mark the game as terminated so subsequent rounds/stages are skipped
@@ -817,31 +906,44 @@ function checkGroupViability(game) {
   // After original group disbanding, some current (shuffled) groups might have only 1 player.
   // Trigger immediate reshuffling so no one plays alone for the rest of the block.
   if (isMixedPhase2) {
-    const activePlayers = players.filter(p => p.get("is_active"));
+    const activePlayers = players.filter((p) => p.get("is_active"));
 
     // Get all unique current groups that have active players
-    const currentGroupNames = [...new Set(activePlayers.map(p => p.get("current_group")))];
+    const currentGroupNames = [
+      ...new Set(activePlayers.map((p) => p.get("current_group"))),
+    ];
 
     // Check if any current group has fewer than MIN_GROUP_SIZE players
-    const hasSoloPlayer = currentGroupNames.some(groupName => {
-      const groupSize = activePlayers.filter(p => p.get("current_group") === groupName).length;
+    const hasSoloPlayer = currentGroupNames.some((groupName) => {
+      const groupSize = activePlayers.filter(
+        (p) => p.get("current_group") === groupName,
+      ).length;
       return groupSize < MIN_GROUP_SIZE;
     });
 
     if (hasSoloPlayer) {
       // Only reshuffle if we have enough players to form at least one viable group
       if (activePlayers.length >= MIN_GROUP_SIZE) {
-        console.log(`MID-BLOCK RESHUFFLE: Solo player detected in Phase 2 mixed, triggering immediate reshuffling`);
-        console.log(`  -> ${activePlayers.length} active players will be redistributed`);
+        console.log(
+          `MID-BLOCK RESHUFFLE: Solo player detected in Phase 2 mixed, triggering immediate reshuffling`,
+        );
+        console.log(
+          `  -> ${activePlayers.length} active players will be redistributed`,
+        );
 
         // Track that we did a mid-block reshuffle (for data analysis)
         const currentBlock = currentRound?.get("block_num") || 0;
         const currentTarget = currentRound?.get("target_num") || 0;
-        game.set(`midBlockReshuffle_block${currentBlock}_target${currentTarget}`, true);
+        game.set(
+          `midBlockReshuffle_block${currentBlock}_target${currentTarget}`,
+          true,
+        );
 
         reshuffleGroups(game, activePlayers);
       } else {
-        console.log(`Cannot reshuffle: only ${activePlayers.length} players remaining (need ${MIN_GROUP_SIZE})`);
+        console.log(
+          `Cannot reshuffle: only ${activePlayers.length} players remaining (need ${MIN_GROUP_SIZE})`,
+        );
       }
     }
   }
@@ -865,7 +967,7 @@ function checkPhase1AccuracyThreshold(game) {
 
   activeGroups.forEach((groupName) => {
     const groupPlayers = players.filter(
-      (p) => p.get("is_active") && p.get("original_group") === groupName
+      (p) => p.get("is_active") && p.get("original_group") === groupName,
     );
 
     if (groupPlayers.length === 0) {
@@ -899,7 +1001,9 @@ function checkPhase1AccuracyThreshold(game) {
     });
 
     // Count players meeting the threshold
-    const playersMeetingThreshold = playerAccuracies.filter((p) => p.meetsThreshold).length;
+    const playersMeetingThreshold = playerAccuracies.filter(
+      (p) => p.meetsThreshold,
+    ).length;
     const proportionMeeting = playersMeetingThreshold / groupPlayers.length;
     const groupMeetsThreshold = proportionMeeting >= PLAYER_ACCURACY_THRESHOLD;
 
@@ -911,7 +1015,9 @@ function checkPhase1AccuracyThreshold(game) {
       groupMeetsThreshold,
     };
 
-    console.log(`  -> ${playersMeetingThreshold}/${groupPlayers.length} players meet threshold (${(proportionMeeting * 100).toFixed(1)}%) - Group ${groupMeetsThreshold ? "PASSES" : "FAILS"}`);
+    console.log(
+      `  -> ${playersMeetingThreshold}/${groupPlayers.length} players meet threshold (${(proportionMeeting * 100).toFixed(1)}%) - Group ${groupMeetsThreshold ? "PASSES" : "FAILS"}`,
+    );
 
     if (groupMeetsThreshold) {
       viableGroups.push(groupName);
@@ -919,7 +1025,9 @@ function checkPhase1AccuracyThreshold(game) {
       // Remove all players in this group with proportional compensation
       console.log(`  -> Removing group ${groupName} due to low accuracy`);
       groupPlayers.forEach((player) => {
-        console.log(`    Removing player ${player.id} (${player.get("original_name")})`);
+        console.log(
+          `    Removing player ${player.id} (${player.get("original_name")})`,
+        );
         player.set("is_active", false);
         player.set("ended", "low accuracy");
         player.set("gameEndTime", Date.now());
@@ -930,16 +1038,21 @@ function checkPhase1AccuracyThreshold(game) {
         const minutesSpent = (endTime - startTime) / (1000 * 60);
         const proportionalBasePay = Math.min(
           BASE_PAY,
-          (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY
+          (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY,
         );
         const earnedBonus = player.get("bonus") || 0;
         const totalPartialPay = proportionalBasePay + earnedBonus;
 
         player.set("partialPay", Math.round(totalPartialPay * 100) / 100);
-        player.set("partialBasePay", Math.round(proportionalBasePay * 100) / 100);
+        player.set(
+          "partialBasePay",
+          Math.round(proportionalBasePay * 100) / 100,
+        );
         player.set("partialBonus", Math.round(earnedBonus * 100) / 100);
         player.set("minutesSpent", Math.round(minutesSpent));
-        console.log(`    -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${Math.round(minutesSpent)} minutes`);
+        console.log(
+          `    -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${Math.round(minutesSpent)} minutes`,
+        );
       });
     }
   });
@@ -948,17 +1061,23 @@ function checkPhase1AccuracyThreshold(game) {
   game.set("active_groups", viableGroups);
   game.set("phase1_accuracy_results", groupResults);
 
-  console.log(`\nActive groups after accuracy check: ${viableGroups.join(", ") || "NONE"}`);
+  console.log(
+    `\nActive groups after accuracy check: ${viableGroups.join(", ") || "NONE"}`,
+  );
 
   // Check if game can continue
   const minRequired = game.get("min_active_groups") || 1;
   if (viableGroups.length < minRequired) {
-    console.log(`Not enough active groups (${viableGroups.length} < ${minRequired}), ending game`);
+    console.log(
+      `Not enough active groups (${viableGroups.length} < ${minRequired}), ending game`,
+    );
 
     // Give remaining active players partial compensation and end them
     const remainingActivePlayers = players.filter((p) => p.get("is_active"));
     remainingActivePlayers.forEach((player) => {
-      console.log(`Ending remaining player ${player.id} due to insufficient groups after accuracy check`);
+      console.log(
+        `Ending remaining player ${player.id} due to insufficient groups after accuracy check`,
+      );
       player.set("is_active", false);
       player.set("ended", "insufficient groups after accuracy check");
       player.set("gameEndTime", Date.now());
@@ -968,7 +1087,7 @@ function checkPhase1AccuracyThreshold(game) {
       const minutesSpent = (endTime - startTime) / (1000 * 60);
       const proportionalBasePay = Math.min(
         BASE_PAY,
-        (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY
+        (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY,
       );
       const earnedBonus = player.get("bonus") || 0;
       const totalPartialPay = proportionalBasePay + earnedBonus;
@@ -977,13 +1096,14 @@ function checkPhase1AccuracyThreshold(game) {
       player.set("partialBasePay", Math.round(proportionalBasePay * 100) / 100);
       player.set("partialBonus", Math.round(earnedBonus * 100) / 100);
       player.set("minutesSpent", Math.round(minutesSpent));
-      console.log(`  -> Proportional pay: $${player.get("partialPay")} for ${Math.round(minutesSpent)} minutes`);
+      console.log(
+        `  -> Proportional pay: $${player.get("partialPay")} for ${Math.round(minutesSpent)} minutes`,
+      );
     });
 
     game.set("gameTerminated", true);
     console.log("Game marked as terminated after Phase 1 accuracy check");
   }
-
 }
 
 Empirica.onRoundEnded(({ round }) => {
@@ -998,14 +1118,17 @@ Empirica.onRoundEnded(({ round }) => {
   const players = game.players;
   const condition = game.get("treatment")?.condition;
   // Use lower multiplier for social condition to keep max bonus equal across conditions
-  const multiplier = condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
+  const multiplier =
+    condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
 
   players.forEach((player) => {
     // Base score from picture guessing
     const baseScore = player.get("score") || 0;
 
     // Social points (tracked separately, added to bonus only)
-    const listenerSocialPoints = (player.get("social_guess_correct_total") || 0) * SOCIAL_GUESS_CORRECT_POINTS;
+    const listenerSocialPoints =
+      (player.get("social_guess_correct_total") || 0) *
+      SOCIAL_GUESS_CORRECT_POINTS;
     // Speaker social points are now proportional (accumulated each round)
     const speakerSocialPoints = player.get("social_speaker_points_total") || 0;
     const totalScore = baseScore + listenerSocialPoints + speakerSocialPoints;
@@ -1021,21 +1144,24 @@ Empirica.onGameEnded(({ game }) => {
   const players = game.players;
   const condition = game.get("treatment")?.condition;
   // Use lower multiplier for social condition to keep max bonus equal across conditions
-  const multiplier = condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
+  const multiplier =
+    condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
 
   players.forEach((player) => {
     // Base score from picture guessing
     const baseScore = player.get("score") || 0;
 
     // Social points (tracked separately, added to bonus only)
-    const listenerSocialPoints = (player.get("social_guess_correct_total") || 0) * SOCIAL_GUESS_CORRECT_POINTS;
+    const listenerSocialPoints =
+      (player.get("social_guess_correct_total") || 0) *
+      SOCIAL_GUESS_CORRECT_POINTS;
     // Speaker social points are now proportional (accumulated each round)
     const speakerSocialPoints = player.get("social_speaker_points_total") || 0;
     const totalScore = baseScore + listenerSocialPoints + speakerSocialPoints;
 
     player.set("bonus", totalScore * multiplier);
     console.log(
-      `Player ${player.id}: Score=${baseScore}, SocialPoints=${listenerSocialPoints + speakerSocialPoints}, TotalScore=${totalScore}, Bonus=$${player.get("bonus").toFixed(2)}`
+      `Player ${player.id}: Score=${baseScore}, SocialPoints=${listenerSocialPoints + speakerSocialPoints}, TotalScore=${totalScore}, Bonus=$${player.get("bonus").toFixed(2)}`,
     );
   });
 });
