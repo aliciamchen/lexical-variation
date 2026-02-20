@@ -1,0 +1,285 @@
+---
+title: "04: Exploratory Analyses"
+format:
+  html:
+    toc: true
+    code-fold: true
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(tidyboot)
+library(here)
+data_dir <- here("analysis", "data")
+
+games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
+speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
+trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
+adjacent_sim <- read_csv(file.path(data_dir, "adjacent_similarities.csv"), show_col_types = FALSE)
+```
+
+```{r prep-data}
+# Add condition and compute global block number (blockNum resets per phase)
+utts_with_condition <- speaker_utts %>%
+  left_join(games %>% select(gameId, condition, phase1Blocks), by = "gameId") %>%
+  mutate(
+    condition = factor(condition,
+      levels = c("refer_separated", "refer_mixed", "social_mixed")),
+    globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
+  )
+
+listener_trials <- trials %>%
+  filter(role == "listener") %>%
+  mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true")) %>%
+  filter(!is.na(correct)) %>%
+  left_join(games %>% select(gameId, condition, phase1Blocks), by = "gameId") %>%
+  mutate(
+    condition = factor(condition,
+      levels = c("refer_separated", "refer_mixed", "social_mixed")),
+    globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
+  )
+
+adj_with_condition <- adjacent_sim %>%
+  left_join(games %>% select(gameId, condition, phase1Blocks), by = "gameId") %>%
+  mutate(
+    condition = factor(condition,
+      levels = c("refer_separated", "refer_mixed", "social_mixed")),
+    globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
+  )
+```
+
+# 1. Description Length in Phase 2 by Condition
+
+```{r model-phase2-length}
+p2_utts <- utts_with_condition %>%
+  filter(phaseNum == 2) %>%
+  mutate(
+    repNum_c = repNum - mean(repNum, na.rm = TRUE),
+    log_uttLength = log(uttLength + 1)
+  )
+
+n_cond <- n_distinct(p2_utts$condition)
+if (n_cond >= 2) {
+  m_p2_length <- lmer(
+    log_uttLength ~ condition * repNum_c + (1 | playerId) + (1 | target),
+    data = p2_utts,
+    control = lmerControl(optimizer = "bobyqa")
+  )
+} else {
+  m_p2_length <- lmer(
+    log_uttLength ~ repNum_c + (1 | playerId) + (1 | target),
+    data = p2_utts,
+    control = lmerControl(optimizer = "bobyqa")
+  )
+  cat("Only 1 condition; fitting without condition predictor.\n")
+}
+
+summary(m_p2_length)
+```
+
+# 2. Temporal Dynamics: Full Game
+
+```{r plot-full-temporal, fig.width=10, fig.height=10}
+phase_boundary <- games$phase1Blocks[1] - 0.5
+
+# Plot 15: Description length over ALL blocks by condition
+length_all <- utts_with_condition %>%
+  filter(!is.na(uttLength)) %>%
+  group_by(condition, globalBlock) %>%
+  tidyboot_mean(uttLength, nboot = 1000)
+
+p_length <- ggplot(length_all, aes(x = globalBlock, y = empirical_stat, color = condition)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
+              alpha = 0.12, color = NA) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  geom_vline(xintercept = phase_boundary, linetype = "dashed", alpha = 0.5) +
+  annotate("text", x = phase_boundary, y = Inf,
+           label = "Phase 1 | Phase 2", vjust = 1.5, size = 3, alpha = 0.5) +
+  labs(x = "Block", y = "Mean word count", title = "(a) Description length") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Plot 16a: Referential accuracy over all blocks
+acc_all <- listener_trials %>%
+  filter(!is.na(correct)) %>%
+  group_by(condition, globalBlock) %>%
+  tidyboot_mean(correct, nboot = 1000)
+
+p_acc <- ggplot(acc_all, aes(x = globalBlock, y = empirical_stat, color = condition)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
+              alpha = 0.12, color = NA) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  geom_hline(yintercept = 1/6, linetype = "dotted", color = "gray50") +
+  geom_vline(xintercept = phase_boundary, linetype = "dashed", alpha = 0.5) +
+  labs(x = "Block", y = "Proportion correct", title = "(b) Referential accuracy") +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Plot 16b: Adjacent similarity over all blocks
+adj_all <- adj_with_condition %>%
+  filter(!is.na(simAdjacent)) %>%
+  group_by(condition, globalBlock) %>%
+  tidyboot_mean(simAdjacent, nboot = 1000)
+
+p_sim <- ggplot(adj_all, aes(x = globalBlock, y = empirical_stat, color = condition)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
+              alpha = 0.12, color = NA) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  geom_vline(xintercept = phase_boundary, linetype = "dashed", alpha = 0.5) +
+  labs(x = "Block", y = "Cosine similarity (adjacent)", title = "(c) Convention stability") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Plot 16: Combined temporal dynamics panel
+library(patchwork)
+p_length / p_acc / p_sim +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+```
+
+# 3. UMAP Visualization
+
+```{r plot-umap, fig.width=12, fig.height=8}
+# Plot 17: UMAP embedding space
+umap_file <- file.path(data_dir, "umap_projections.csv")
+has_umap <- file.exists(umap_file)
+
+if (has_umap) {
+  umap_data <- read_csv(umap_file, show_col_types = FALSE)
+
+  # Add condition from games if not present
+  if (!"condition" %in% names(umap_data)) {
+    umap_data <- umap_data %>%
+      left_join(games %>% select(gameId, condition), by = "gameId")
+  }
+
+  umap_data <- umap_data %>%
+    mutate(
+      condition = factor(condition,
+        levels = c("refer_separated", "refer_mixed", "social_mixed")),
+      phase_label = ifelse(phaseNum == 1, "Phase 1", "Phase 2")
+    )
+
+  ggplot(umap_data, aes(x = umap_x, y = umap_y, color = originalGroup)) +
+    geom_point(alpha = 0.5, size = 1.5) +
+    facet_grid(phase_label ~ condition) +
+    labs(
+      x = "UMAP 1",
+      y = "UMAP 2",
+      color = "Original group",
+      title = "UMAP projections of speaker descriptions"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+} else {
+  cat("No UMAP projections file found. Run compute_embeddings.py first.\n")
+}
+```
+
+```{r plot-umap-example, fig.width=14, fig.height=8}
+# Plot 18: Example game trajectory
+if (has_umap && exists("umap_data")) {
+  example_game <- umap_data %>%
+    count(gameId) %>%
+    filter(n >= 20) %>%
+    slice(1) %>%
+    pull(gameId)
+
+  if (length(example_game) > 0) {
+    example_data <- umap_data %>%
+      filter(gameId == example_game) %>%
+      mutate(globalBlock = ifelse(phaseNum == 1, blockNum,
+                                   blockNum + games$phase1Blocks[1]))
+
+    ggplot(example_data, aes(x = umap_x, y = umap_y, color = originalGroup)) +
+      geom_point(size = 2, alpha = 0.7) +
+      facet_wrap(~globalBlock, ncol = 4) +
+      labs(
+        x = "UMAP 1",
+        y = "UMAP 2",
+        color = "Original group",
+        title = paste("Example game trajectory:", example_game)
+      ) +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+  }
+}
+```
+
+# 4. Utterance Properties
+
+```{r utterance-properties}
+# Geometric/body-part word lists
+geometric_words <- c(
+  "triangle", "square", "rectangle", "diamond", "circle", "line",
+  "angle", "point", "shape", "geometric", "polygon", "parallelogram",
+  "trapezoid", "hexagon", "pentagon"
+)
+
+body_words <- c(
+  "head", "arm", "leg", "body", "hand", "foot", "feet", "person",
+  "man", "woman", "standing", "sitting", "walking", "running",
+  "dancing", "jumping", "kicking", "reaching", "bending"
+)
+
+utts_props <- utts_with_condition %>%
+  mutate(
+    utt_lower = str_to_lower(utterance),
+    n_geometric = map_int(utt_lower, ~sum(str_count(.x, paste0("\\b", geometric_words, "\\b")))),
+    n_body = map_int(utt_lower, ~sum(str_count(.x, paste0("\\b", body_words, "\\b")))),
+    prop_geometric = n_geometric / uttLength,
+    prop_body = n_body / uttLength
+  )
+
+# Summary by condition and phase
+utts_props %>%
+  group_by(condition, phaseNum) %>%
+  summarise(
+    mean_geometric = mean(prop_geometric, na.rm = TRUE),
+    mean_body = mean(prop_body, na.rm = TRUE),
+    mean_length = mean(uttLength, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  knitr::kable(digits = 3,
+    caption = "Utterance properties by condition and phase")
+```
+
+```{r plot-word-types, fig.width=10, fig.height=5}
+props_long <- utts_props %>%
+  select(condition, phaseNum, blockNum, prop_geometric, prop_body) %>%
+  pivot_longer(
+    cols = c(prop_geometric, prop_body),
+    names_to = "word_type",
+    values_to = "proportion"
+  ) %>%
+  mutate(word_type = ifelse(word_type == "prop_geometric", "Geometric", "Body-part"))
+
+props_by_block <- props_long %>%
+  group_by(condition, blockNum, word_type) %>%
+  summarise(
+    mean_prop = mean(proportion, na.rm = TRUE),
+    se_prop = sd(proportion, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  )
+
+ggplot(props_by_block, aes(x = blockNum, y = mean_prop, color = condition)) +
+  geom_ribbon(aes(ymin = mean_prop - se_prop, ymax = mean_prop + se_prop, fill = condition),
+              alpha = 0.1, color = NA) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.5) +
+  facet_wrap(~word_type, scales = "free_y") +
+  labs(
+    x = "Block",
+    y = "Proportion of words",
+    color = "Condition",
+    title = "Word type proportions over blocks by condition"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```

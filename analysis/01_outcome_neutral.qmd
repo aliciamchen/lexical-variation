@@ -1,0 +1,366 @@
+---
+title: "01: Outcome-Neutral Criteria"
+format:
+  html:
+    toc: true
+    code-fold: true
+---
+
+These models must pass before proceeding to full data collection.
+All models use Phase 1 data only, pooled across conditions.
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(tidyboot)
+library(here)
+
+data_dir <- here("analysis", "data")
+
+games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
+speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
+trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
+adjacent_sim <- read_csv(file.path(data_dir, "adjacent_similarities.csv"), show_col_types = FALSE)
+pairwise_sim <- read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE)
+```
+
+```{r prep-data}
+# Phase 1 speaker utterances only
+p1_utts <- speaker_utts %>%
+  filter(phaseNum == 1) %>%
+  mutate(
+    repNum_c = repNum - mean(repNum, na.rm = TRUE),
+    log_uttLength = log(uttLength + 1),
+    participant = playerId,
+    group = originalGroup,
+    tangram = target
+  )
+
+# Phase 1 listener trials: compute per-trial accuracy
+p1_listener <- trials %>%
+  filter(phaseNum == 1, role == "listener") %>%
+  mutate(
+    correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
+    group = originalGroup,
+    tangram = target
+  )
+
+# Aggregate to per-round accuracy (proportion of listeners correct)
+# Use blockNum + 1 as repNum (blocks are 0-indexed within phase)
+p1_ref_accuracy <- p1_listener %>%
+  group_by(gameId, roundId, blockNum, tangram, group) %>%
+  summarise(
+    ref_accuracy = mean(correct, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    repNum = blockNum + 1,
+    repNum_c = repNum - mean(repNum, na.rm = TRUE)
+  )
+
+# Phase 1 adjacent similarities (phaseNum is in the CSV)
+p1_adjacent <- adjacent_sim %>%
+  filter(phaseNum == 1) %>%
+  mutate(
+    repNum_c = repNum - mean(repNum, na.rm = TRUE),
+    participant = playerId,
+    group = originalGroup,
+    tangram = target
+  )
+```
+
+# 1. Description Length Decreases Over Blocks
+
+**Criterion:** Significant negative main effect of `repNum`.
+
+```{r model-utt-length}
+m_length <- lmer(
+  log_uttLength ~ repNum_c + (repNum_c | participant) + (repNum_c | group) + (repNum_c | tangram),
+  data = p1_utts,
+  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+)
+
+summary(m_length)
+```
+
+```{r plot-utt-length, fig.width=7, fig.height=4}
+# Plot 1: Description length over blocks
+length_by_block <- p1_utts %>%
+  group_by(repNum) %>%
+  tidyboot_mean(uttLength, nboot = 1000)
+
+ggplot(length_by_block, aes(x = repNum, y = empirical_stat)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = "steelblue") +
+  geom_line(color = "steelblue", linewidth = 1) +
+  geom_point(color = "steelblue", size = 2) +
+  labs(
+    x = "Repetition (block within Phase 1)",
+    y = "Mean word count",
+    title = "Description length decreases over repetitions"
+  ) +
+  theme_minimal()
+```
+
+# 2. Listener Accuracy Increases Over Blocks
+
+**Criterion:** Significant positive main effect of `repNum`.
+
+```{r model-accuracy}
+m_accuracy <- lmer(
+  ref_accuracy ~ repNum_c + (repNum_c | group) + (repNum_c | tangram),
+  data = p1_ref_accuracy,
+  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+)
+
+summary(m_accuracy)
+```
+
+```{r plot-accuracy, fig.width=7, fig.height=4}
+# Plot 2: Listener accuracy over blocks
+acc_by_block <- p1_ref_accuracy %>%
+  filter(!is.na(ref_accuracy), !is.na(repNum)) %>%
+  group_by(repNum) %>%
+  tidyboot_mean(ref_accuracy, nboot = 1000)
+
+ggplot(acc_by_block, aes(x = repNum, y = empirical_stat)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = "forestgreen") +
+  geom_line(color = "forestgreen", linewidth = 1) +
+  geom_point(color = "forestgreen", size = 2) +
+  geom_hline(yintercept = 1/6, linetype = "dashed", color = "gray50") +
+  annotate("text", x = max(acc_by_block$repNum), y = 1/6 + 0.02,
+           label = "Chance (1/6)", hjust = 1, color = "gray50", size = 3) +
+  labs(
+    x = "Repetition (block within Phase 1)",
+    y = "Proportion correct",
+    title = "Listener accuracy increases over repetitions"
+  ) +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme_minimal()
+```
+
+# 3. Conventions Are Stable (Increasing Adjacent Similarity)
+
+**Criterion:** Significant positive main effect of `repNum`.
+
+```{r model-adjacent-sim}
+p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent))
+
+m_adjacent <- lmer(
+  simAdjacent ~ repNum_c + (repNum_c | participant) + (repNum_c | group) + (repNum_c | tangram),
+  data = p1_adjacent_valid,
+  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+)
+
+summary(m_adjacent)
+```
+
+```{r plot-adjacent-sim, fig.width=7, fig.height=4}
+# Plot 3: Adjacent similarity over blocks
+sim_by_block <- p1_adjacent_valid %>%
+  group_by(repNum) %>%
+  tidyboot_mean(simAdjacent, nboot = 1000)
+
+ggplot(sim_by_block, aes(x = repNum, y = empirical_stat)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = "darkorange") +
+  geom_line(color = "darkorange", linewidth = 1) +
+  geom_point(color = "darkorange", size = 2) +
+  labs(
+    x = "Repetition (block within Phase 1)",
+    y = "Cosine similarity (adjacent descriptions)",
+    title = "Convention stability increases over repetitions"
+  ) +
+  theme_minimal()
+```
+
+# 4. Group-Specificity Exceeds Chance
+
+**Criterion:** ≥80% of games show significant group-specificity (p < .05 via permutation test).
+
+```{r group-specificity-functions}
+fit_group_specificity <- function(pairwise_df) {
+  # Fit: similarity ~ same_group + (1 | target) + (1 | participant_pair)
+  # for each game separately
+  game_ids <- unique(pairwise_df$gameId)
+
+  results <- map_dfr(game_ids, function(gid) {
+    game_data <- pairwise_df %>% filter(gameId == gid)
+
+    if (nrow(game_data) < 5) return(NULL)
+    if (n_distinct(game_data$sameGroup) < 2) return(NULL)
+
+    tryCatch({
+      model <- lmer(
+        similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+        data = game_data,
+        control = lmerControl(optimizer = "bobyqa")
+      )
+      coefs <- coef(summary(model))
+      tibble(
+        gameId = gid,
+        coefficient = coefs["sameGroup", "Estimate"],
+        std_error = coefs["sameGroup", "Std. Error"],
+        t_value = coefs["sameGroup", "t value"]
+      )
+    }, error = function(e) NULL)
+  })
+
+  results
+}
+
+permutation_test <- function(pairwise_df, n_perm = 1000) {
+  # For each game, permute group labels and recompute group-specificity
+  game_ids <- unique(pairwise_df$gameId)
+
+  results <- map_dfr(game_ids, function(gid) {
+    game_data <- pairwise_df %>% filter(gameId == gid)
+
+    if (nrow(game_data) < 5) return(NULL)
+    if (n_distinct(game_data$sameGroup) < 2) return(NULL)
+
+    # Observed coefficient
+    obs_model <- tryCatch(
+      lmer(similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+           data = game_data, control = lmerControl(optimizer = "bobyqa")),
+      error = function(e) NULL
+    )
+    if (is.null(obs_model)) return(NULL)
+    obs_coef <- coef(summary(obs_model))["sameGroup", "Estimate"]
+
+    # Get unique speakers and their groups
+    speakers <- game_data %>%
+      select(speaker1, group1) %>%
+      rename(speaker = speaker1, group = group1) %>%
+      bind_rows(
+        game_data %>% select(speaker2, group2) %>% rename(speaker = speaker2, group = group2)
+      ) %>%
+      distinct()
+
+    # Permutation distribution
+    perm_coefs <- map_dbl(seq_len(n_perm), function(i) {
+      # Permute group assignments
+      perm_groups <- speakers %>%
+        mutate(perm_group = sample(group))
+
+      # Remap same_group using permuted assignments
+      perm_data <- game_data %>%
+        left_join(perm_groups %>% select(speaker, perm_group),
+                  by = c("speaker1" = "speaker")) %>%
+        rename(perm_group1 = perm_group) %>%
+        left_join(perm_groups %>% select(speaker, perm_group),
+                  by = c("speaker2" = "speaker")) %>%
+        rename(perm_group2 = perm_group) %>%
+        mutate(sameGroup = as.numeric(perm_group1 == perm_group2))
+
+      tryCatch({
+        perm_model <- lmer(
+          similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+          data = perm_data,
+          control = lmerControl(optimizer = "bobyqa")
+        )
+        coef(summary(perm_model))["sameGroup", "Estimate"]
+      }, error = function(e) NA_real_)
+    })
+
+    p_value <- mean(perm_coefs >= obs_coef, na.rm = TRUE)
+
+    tibble(
+      gameId = gid,
+      obs_coefficient = obs_coef,
+      perm_mean = mean(perm_coefs, na.rm = TRUE),
+      perm_sd = sd(perm_coefs, na.rm = TRUE),
+      p_value = p_value,
+      perm_coefs = list(perm_coefs)
+    )
+  })
+
+  results
+}
+```
+
+```{r compute-group-specificity}
+# Use Phase 1 final pairwise similarities
+p1_pairwise <- pairwise_sim %>% filter(window == "phase1_final")
+
+if (nrow(p1_pairwise) > 0) {
+  gs_results <- fit_group_specificity(p1_pairwise)
+  cat("Group-specificity coefficients (Phase 1 final):\n")
+  print(gs_results)
+
+  perm_results <- permutation_test(p1_pairwise, n_perm = 1000)
+  cat("\nPermutation test results:\n")
+  perm_results %>%
+    select(gameId, obs_coefficient, perm_mean, p_value) %>%
+    knitr::kable(digits = 4)
+
+  prop_significant <- mean(perm_results$p_value < 0.05)
+  cat(sprintf("\nProportion of games with significant group-specificity: %.1f%%\n",
+              prop_significant * 100))
+  cat(sprintf("Criterion (≥80%%): %s\n",
+              ifelse(prop_significant >= 0.8, "PASS", "FAIL")))
+} else {
+  cat("No Phase 1 pairwise similarity data available.\n")
+}
+```
+
+```{r plot-permutation, fig.width=10, fig.height=6}
+# Plot 4: Permutation test histograms
+if (exists("perm_results") && nrow(perm_results) > 0) {
+  perm_plot_data <- perm_results %>%
+    unnest(perm_coefs) %>%
+    rename(perm_coef = perm_coefs)
+
+  ggplot(perm_plot_data, aes(x = perm_coef)) +
+    geom_histogram(bins = 40, fill = "gray70", color = "white") +
+    geom_vline(aes(xintercept = obs_coefficient), color = "red", linewidth = 1) +
+    facet_wrap(~gameId, scales = "free_y") +
+    labs(
+      x = "Group-specificity coefficient (permuted)",
+      y = "Count",
+      title = "Permutation test: observed vs. permuted group-specificity"
+    ) +
+    theme_minimal()
+}
+```
+
+```{r plot-group-specificity-summary, fig.width=6, fig.height=4}
+# Plot 5: Group-specificity summary dot plot
+if (exists("gs_results") && nrow(gs_results) > 0) {
+  # Join condition info
+  gs_with_condition <- gs_results %>%
+    left_join(games %>% select(gameId, condition), by = "gameId")
+
+  ggplot(gs_with_condition, aes(x = condition, y = coefficient)) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+    geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
+    stat_summary(fun.data = mean_cl_boot, color = "red", size = 0.8) +
+    labs(
+      x = "Condition",
+      y = "Group-specificity coefficient",
+      title = "Group-specificity by condition (Phase 1)"
+    ) +
+    theme_minimal()
+}
+```
+
+# Summary of Outcome-Neutral Criteria
+
+```{r summary-table}
+criteria <- tibble(
+  Criterion = c(
+    "1. Description length decreases",
+    "2. Listener accuracy increases",
+    "3. Convention stability increases",
+    "4. Group-specificity exceeds chance (≥80%)"
+  ),
+  Model = c(
+    "log(uttLength) ~ repNum + REs",
+    "refAccuracy ~ repNum + REs",
+    "simAdjacent ~ repNum + REs",
+    "Permutation test"
+  ),
+  `Expected Direction` = c("Negative", "Positive", "Positive", "p < .05")
+)
+
+knitr::kable(criteria, caption = "Outcome-neutral criteria checklist")
+```

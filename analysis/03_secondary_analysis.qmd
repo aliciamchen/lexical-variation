@@ -1,0 +1,366 @@
+---
+title: "03: Secondary Analyses"
+format:
+  html:
+    toc: true
+    code-fold: true
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(tidyboot)
+library(here)
+
+data_dir <- here("analysis", "data")
+
+games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
+trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
+speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
+phase_change <- read_csv(file.path(data_dir, "phase_change_similarities.csv"), show_col_types = FALSE)
+social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
+pairwise_sim <- read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE)
+
+n_conditions <- n_distinct(games$condition)
+```
+
+# 1. Semantic Change (Phase 1 → Phase 2)
+
+Cosine similarity between final Phase 1 and final Phase 2 descriptions per participant × tangram.
+Higher similarity = less semantic change.
+
+**Predictions:** `refer_mixed` < `refer_separated`, `social_mixed` > `refer_mixed`
+
+```{r model-semantic-change}
+phase_change <- phase_change %>%
+  mutate(condition = factor(condition,
+    levels = c("refer_mixed", "refer_separated", "social_mixed")))
+
+if (n_conditions >= 2) {
+  m_semantic <- lmer(
+    simPhase1Phase2 ~ condition + (1 | playerId) + (1 | target),
+    data = phase_change,
+    control = lmerControl(optimizer = "bobyqa")
+  )
+  summary(m_semantic)
+} else {
+  # With only 1 condition, fit without condition predictor
+  m_semantic <- lmer(
+    simPhase1Phase2 ~ 1 + (1 | playerId) + (1 | target),
+    data = phase_change,
+    control = lmerControl(optimizer = "bobyqa")
+  )
+  cat(sprintf("Only %d condition(s). Intercept-only model:\n", n_conditions))
+  summary(m_semantic)
+}
+```
+
+```{r plot-semantic-change, fig.width=7, fig.height=5}
+# Plot 10: Semantic change by condition
+ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) +
+  geom_violin(alpha = 0.3) +
+  geom_jitter(width = 0.15, size = 1.5, alpha = 0.4) +
+  stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
+  labs(
+    x = "Condition",
+    y = "Cosine similarity (Phase 1 final → Phase 2 final)",
+    title = "Semantic change across phases by condition",
+    subtitle = "Higher = less change from Phase 1 to Phase 2"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+# 2. Referential Accuracy in Phase 2
+
+**Predictions:** Above chance (1/6), main effect of `repNum`, ordered: separated > mixed > social_mixed.
+
+```{r prep-accuracy}
+# Phase 2 listener accuracy
+p2_listener <- trials %>%
+  filter(phaseNum == 2, role == "listener") %>%
+  mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true")) %>%
+  left_join(games %>% select(gameId, condition), by = "gameId")
+
+# Compute per-round accuracy with repNum = blockNum + 1
+p2_round_acc <- p2_listener %>%
+  group_by(gameId, roundId, blockNum, target, condition) %>%
+  summarise(
+    ref_accuracy = mean(correct, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    repNum = blockNum + 1,
+    repNum_c = repNum - mean(repNum, na.rm = TRUE),
+    condition = factor(condition,
+      levels = c("refer_mixed", "refer_separated", "social_mixed"))
+  )
+
+# Phase 1 accuracy as covariate
+p1_game_acc <- trials %>%
+  filter(phaseNum == 1, role == "listener") %>%
+  mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true")) %>%
+  group_by(gameId) %>%
+  summarise(ref_accuracy_phase1 = mean(correct, na.rm = TRUE), .groups = "drop")
+
+p2_round_acc <- p2_round_acc %>%
+  left_join(p1_game_acc, by = "gameId")
+```
+
+```{r model-accuracy}
+n_games <- n_distinct(p2_round_acc$gameId)
+
+if (n_conditions >= 2 && n_games >= 2) {
+  m_ref_accuracy <- lmer(
+    ref_accuracy ~ condition * repNum_c + ref_accuracy_phase1 + (1 | gameId),
+    data = p2_round_acc,
+    control = lmerControl(optimizer = "bobyqa")
+  )
+} else if (n_games >= 2) {
+  m_ref_accuracy <- lmer(
+    ref_accuracy ~ repNum_c + (1 | gameId),
+    data = p2_round_acc,
+    control = lmerControl(optimizer = "bobyqa")
+  )
+  cat("Only 1 condition; fitting without condition predictor.\n")
+} else {
+  m_ref_accuracy <- lm(ref_accuracy ~ repNum_c, data = p2_round_acc)
+  cat("Only 1 game; using fixed-effects model.\n")
+}
+
+summary(m_ref_accuracy)
+```
+
+```{r plot-accuracy, fig.width=8, fig.height=5}
+# Plot 11: Referential accuracy over Phase 2 blocks by condition
+acc_by_block <- p2_listener %>%
+  filter(!is.na(correct)) %>%
+  group_by(condition, blockNum) %>%
+  tidyboot_mean(correct, nboot = 1000)
+
+ggplot(acc_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
+              alpha = 0.15, color = NA) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  geom_hline(yintercept = 1/6, linetype = "dashed", color = "gray50") +
+  annotate("text", x = max(acc_by_block$blockNum), y = 1/6 + 0.02,
+           label = "Chance", hjust = 1, color = "gray50", size = 3) +
+  labs(
+    x = "Block number",
+    y = "Proportion correct",
+    color = "Condition",
+    title = "Referential accuracy in Phase 2"
+  ) +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme_minimal()
+```
+
+# 3. In-Group vs Out-Group Listener Accuracy (social_mixed)
+
+Within `social_mixed`: do listeners understand in-group speakers better?
+
+```{r model-ingroup}
+social_listener <- trials %>%
+  filter(phaseNum == 2, role == "listener") %>%
+  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  filter(condition == "social_mixed") %>%
+  mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"))
+
+if (nrow(social_listener) > 0) {
+  # Determine in-group status: listener's original group matches speaker's original group
+  speaker_groups <- trials %>%
+    filter(role == "speaker") %>%
+    select(gameId, roundId, playerId, originalGroup) %>%
+    rename(speakerId = playerId, speakerGroup = originalGroup) %>%
+    distinct()
+
+  social_listener <- social_listener %>%
+    left_join(speaker_groups, by = c("gameId", "roundId")) %>%
+    mutate(inGroupSpeaker = as.numeric(originalGroup == speakerGroup))
+
+  m_ingroup <- tryCatch(
+    lmer(
+      correct ~ inGroupSpeaker + (1 | playerId) + (1 | speakerId) + (1 | target),
+      data = social_listener,
+      control = lmerControl(optimizer = "bobyqa")
+    ),
+    error = function(e) {
+      cat("Mixed model failed (likely sparse data):", e$message, "\n")
+      cat("Falling back to fixed-effects model.\n")
+      glm(correct ~ inGroupSpeaker, data = social_listener, family = binomial)
+    }
+  )
+
+  summary(m_ingroup)
+} else {
+  cat("No social_mixed listener data available.\n")
+}
+```
+
+```{r plot-ingroup, fig.width=6, fig.height=4}
+# Plot 12: In-group vs out-group accuracy (social_mixed)
+if (exists("social_listener") && nrow(social_listener) > 0 &&
+    "inGroupSpeaker" %in% names(social_listener)) {
+  ingroup_acc <- social_listener %>%
+    filter(!is.na(correct), !is.na(inGroupSpeaker)) %>%
+    mutate(speaker_type = ifelse(inGroupSpeaker == 1, "In-group", "Out-group")) %>%
+    group_by(speaker_type) %>%
+    tidyboot_mean(correct, nboot = 1000)
+
+  ggplot(ingroup_acc, aes(x = speaker_type, y = empirical_stat, fill = speaker_type)) +
+    geom_col(alpha = 0.7, width = 0.6) +
+    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
+    labs(
+      x = "Speaker type",
+      y = "Mean listener accuracy",
+      title = "In-group vs out-group accuracy (social_mixed)"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "none")
+}
+```
+
+# 4. Group-Specificity vs Social Accuracy Correlation
+
+Does maintaining group-specific language correlate with social identification accuracy?
+
+```{r model-gs-social}
+if (nrow(social_guesses) > 0) {
+  # Compute mean social accuracy per game
+  social_acc_by_game <- social_guesses %>%
+    mutate(correct = as.numeric(
+      socialGuessCorrect == TRUE | socialGuessCorrect == "true"
+    )) %>%
+    group_by(gameId) %>%
+    summarise(social_accuracy = mean(correct, na.rm = TRUE), .groups = "drop")
+
+  # Get Phase 2 group-specificity per game
+  gs_p2 <- pairwise_sim %>%
+    filter(window == "phase2_final") %>%
+    group_by(gameId) %>%
+    group_modify(~ {
+      if (nrow(.x) < 5 || n_distinct(.x$sameGroup) < 2) return(tibble())
+      tryCatch({
+        model <- lmer(
+          similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+          data = .x, control = lmerControl(optimizer = "bobyqa")
+        )
+        tibble(gs_phase2 = coef(summary(model))["sameGroup", "Estimate"])
+      }, error = function(e) tibble())
+    }) %>%
+    ungroup()
+
+  # Get Phase 1 group-specificity
+  gs_p1 <- pairwise_sim %>%
+    filter(window == "phase1_final") %>%
+    group_by(gameId) %>%
+    group_modify(~ {
+      if (nrow(.x) < 5 || n_distinct(.x$sameGroup) < 2) return(tibble())
+      tryCatch({
+        model <- lmer(
+          similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+          data = .x, control = lmerControl(optimizer = "bobyqa")
+        )
+        tibble(gs_phase1 = coef(summary(model))["sameGroup", "Estimate"])
+      }, error = function(e) tibble())
+    }) %>%
+    ungroup()
+
+  gs_social <- gs_p2 %>%
+    inner_join(gs_p1, by = "gameId") %>%
+    inner_join(social_acc_by_game, by = "gameId")
+
+  if (nrow(gs_social) >= 3) {
+    m_gs_social <- lm(gs_phase2 ~ social_accuracy + gs_phase1, data = gs_social)
+    summary(m_gs_social)
+  } else {
+    cat(sprintf("Not enough games (%d) for regression (need ≥3).\n", nrow(gs_social)))
+  }
+} else {
+  cat("No social guess data available.\n")
+}
+```
+
+```{r plot-gs-social, fig.width=6, fig.height=5}
+# Plot 13: Social accuracy vs group-specificity scatter
+if (exists("gs_social") && nrow(gs_social) >= 3) {
+  ggplot(gs_social, aes(x = social_accuracy, y = gs_phase2)) +
+    geom_point(size = 3) +
+    geom_smooth(method = "lm", se = TRUE, alpha = 0.2) +
+    labs(
+      x = "Mean social accuracy",
+      y = "Phase 2 group-specificity",
+      title = "Social accuracy vs group-specificity (social_mixed)"
+    ) +
+    theme_minimal()
+} else {
+  cat("Not enough data points for scatter plot.\n")
+}
+```
+
+# 5. Social-Signaling Accuracy Over Repetitions
+
+Does social identification improve over blocks?
+
+```{r model-social-accuracy}
+if (nrow(social_guesses) > 0) {
+  social_guesses_model <- social_guesses %>%
+    mutate(
+      correct = as.numeric(
+        socialGuessCorrect == TRUE | socialGuessCorrect == "true"
+      ),
+      blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
+    )
+
+  n_social_games <- n_distinct(social_guesses_model$gameId)
+  if (n_social_games >= 2) {
+    m_social_acc <- lmer(
+      correct ~ blockNum_c + (1 | gameId),
+      data = social_guesses_model,
+      control = lmerControl(optimizer = "bobyqa")
+    )
+  } else {
+    m_social_acc <- lm(correct ~ blockNum_c, data = social_guesses_model)
+    cat("Only 1 game; using fixed-effects model.\n")
+  }
+
+  summary(m_social_acc)
+
+  cat(sprintf("\nOverall social accuracy: %.1f%%\n",
+              mean(social_guesses_model$correct, na.rm = TRUE) * 100))
+  cat(sprintf("Chance level: 50%%\n"))
+} else {
+  cat("No social guess data.\n")
+}
+```
+
+```{r plot-social-accuracy, fig.width=7, fig.height=4}
+# Plot 14: Social-signaling accuracy over blocks
+if (nrow(social_guesses) > 0) {
+  social_by_block <- social_guesses %>%
+    mutate(correct = as.numeric(
+      socialGuessCorrect == TRUE | socialGuessCorrect == "true"
+    )) %>%
+    filter(!is.na(correct)) %>%
+    group_by(blockNum) %>%
+    tidyboot_mean(correct, nboot = 1000)
+
+  ggplot(social_by_block, aes(x = blockNum, y = empirical_stat)) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper),
+                alpha = 0.2, fill = "purple") +
+    geom_line(color = "purple", linewidth = 1) +
+    geom_point(color = "purple", size = 2) +
+    geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
+    annotate("text", x = max(social_by_block$blockNum), y = 0.52,
+             label = "Chance (50%)", hjust = 1, color = "gray50", size = 3) +
+    labs(
+      x = "Block number",
+      y = "Proportion correct social guesses",
+      title = "Social-signaling accuracy over Phase 2 blocks"
+    ) +
+    scale_y_continuous(limits = c(0, 1)) +
+    theme_minimal()
+}
+```

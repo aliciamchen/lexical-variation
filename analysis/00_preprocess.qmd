@@ -1,0 +1,191 @@
+---
+title: "00: Load & Validate Preprocessed Data"
+format:
+  html:
+    toc: true
+    code-fold: true
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(here)
+library(jsonlite)
+
+data_dir <- here("analysis", "data")
+```
+
+# Load Data
+
+```{r load-data}
+games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
+players <- read_csv(file.path(data_dir, "players.csv"), show_col_types = FALSE)
+trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
+messages <- read_csv(file.path(data_dir, "messages.csv"), show_col_types = FALSE)
+speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
+social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
+```
+
+# Game-Level Summary
+
+```{r game-summary}
+games %>%
+  group_by(condition) %>%
+  summarise(
+    n_games = n(),
+    mean_players = mean(numPlayers, na.rm = TRUE),
+    mean_p1_blocks = mean(phase1Blocks, na.rm = TRUE),
+    mean_p2_blocks = mean(phase2Blocks, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  knitr::kable(caption = "Games per condition")
+```
+
+# Player-Level Summary
+
+```{r player-summary}
+players %>%
+  group_by(gameId) %>%
+  summarise(
+    n_players = n(),
+    n_active = sum(isActive == TRUE | isActive == "true", na.rm = TRUE),
+    n_inactive = sum(isActive == FALSE | isActive == "false", na.rm = TRUE),
+    mean_score = mean(as.numeric(score), na.rm = TRUE),
+    mean_bonus = mean(as.numeric(bonus), na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  knitr::kable(caption = "Players per game")
+```
+
+```{r player-demographics}
+# Summarize exit survey demographics if available
+demo_cols <- names(players)[str_detect(names(players), "^exitSurvey_")]
+if (length(demo_cols) > 0) {
+  cat("Exit survey fields:", paste(demo_cols, collapse = ", "), "\n")
+
+  if ("exitSurvey_gender" %in% names(players)) {
+    players %>%
+      count(exitSurvey_gender) %>%
+      knitr::kable(caption = "Gender distribution")
+  }
+
+  if ("exitSurvey_education" %in% names(players)) {
+    players %>%
+      count(exitSurvey_education) %>%
+      knitr::kable(caption = "Education distribution")
+  }
+}
+```
+
+# Trial-Level Summary
+
+```{r trial-summary}
+cat("Total trial rows:", nrow(trials), "\n")
+cat("Unique games:", n_distinct(trials$gameId), "\n")
+cat("Unique players:", n_distinct(trials$playerId), "\n")
+
+trials %>%
+  filter(role == "listener") %>%
+  group_by(phaseNum) %>%
+  summarise(
+    n_trials = n(),
+    accuracy = mean(clickedCorrect == TRUE | clickedCorrect == "true", na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  knitr::kable(caption = "Listener accuracy by phase")
+```
+
+# Message Summary
+
+```{r message-summary}
+cat("Total messages:", nrow(messages), "\n")
+cat("Speaker messages:", sum(messages$senderRole == "speaker", na.rm = TRUE), "\n")
+cat("Listener messages:", sum(messages$senderRole == "listener", na.rm = TRUE), "\n")
+
+messages %>%
+  mutate(wordCount = str_count(text, "\\S+")) %>%
+  group_by(senderRole) %>%
+  summarise(
+    n = n(),
+    mean_words = mean(wordCount, na.rm = TRUE),
+    median_words = median(wordCount, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  knitr::kable(caption = "Message statistics by role")
+```
+
+# Speaker Utterance Summary
+
+```{r utterance-summary}
+cat("Total speaker utterances:", nrow(speaker_utts), "\n")
+
+speaker_utts %>%
+  group_by(phase, phaseNum) %>%
+  summarise(
+    n = n(),
+    mean_length = mean(uttLength, na.rm = TRUE),
+    sd_length = sd(uttLength, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  knitr::kable(caption = "Speaker utterance length by phase")
+```
+
+# Social Guesses Summary
+
+```{r social-guess-summary}
+if (nrow(social_guesses) > 0) {
+  cat("Total social guesses:", nrow(social_guesses), "\n")
+  cat("Overall accuracy:",
+      mean(social_guesses$socialGuessCorrect == TRUE |
+           social_guesses$socialGuessCorrect == "true", na.rm = TRUE), "\n")
+} else {
+  cat("No social guess data (expected for refer_separated and refer_mixed conditions)\n")
+}
+```
+
+# Exclusion Criteria Checks
+
+```{r exclusion-checks}
+# Groups where <2/3 participants achieved <2/3 accuracy in last 3 blocks of Phase 1
+listener_trials <- trials %>%
+  filter(role == "listener", phaseNum == 1)
+
+# Get phase1Blocks per game
+game_p1 <- games %>% select(gameId, phase1Blocks)
+
+listener_accuracy <- listener_trials %>%
+  left_join(game_p1, by = "gameId") %>%
+  filter(blockNum >= phase1Blocks - 3) %>%
+  group_by(gameId, playerId, originalGroup) %>%
+  summarise(
+    accuracy = mean(clickedCorrect == TRUE | clickedCorrect == "true", na.rm = TRUE),
+    n_trials = n(),
+    .groups = "drop"
+  )
+
+# Flag players below 2/3 accuracy
+listener_accuracy <- listener_accuracy %>%
+  mutate(meets_threshold = accuracy >= 2/3)
+
+# Check groups
+group_accuracy <- listener_accuracy %>%
+  group_by(gameId, originalGroup) %>%
+  summarise(
+    n_players = n(),
+    n_meeting_threshold = sum(meets_threshold),
+    prop_meeting = n_meeting_threshold / n_players,
+    group_meets = prop_meeting >= 2/3,
+    .groups = "drop"
+  )
+
+cat("\nGroup accuracy check (last 3 blocks Phase 1):\n")
+group_accuracy %>%
+  knitr::kable()
+
+excluded_groups <- group_accuracy %>% filter(!group_meets)
+if (nrow(excluded_groups) > 0) {
+  cat("\nGroups flagged for exclusion:\n")
+  print(excluded_groups)
+} else {
+  cat("\nNo groups flagged for exclusion.\n")
+}
+```

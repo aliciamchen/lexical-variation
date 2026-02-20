@@ -1,0 +1,276 @@
+---
+title: "02: Primary Analysis — H1 & H2"
+format:
+  html:
+    toc: true
+    code-fold: true
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(here)
+
+data_dir <- here("analysis", "data")
+
+games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
+pairwise_sim <- read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE)
+```
+
+# Compute Group-Specificity per Game per Phase
+
+For each game, fit:
+`similarity ~ sameGroup + (1 | target) + (1 | participantPair)`
+
+Extract the `sameGroup` coefficient as the group-specificity score.
+
+```{r fit-group-specificity}
+fit_gs_by_game_window <- function(pw_df) {
+  game_ids <- unique(pw_df$gameId)
+
+  map_dfr(game_ids, function(gid) {
+    game_data <- pw_df %>% filter(gameId == gid)
+
+    if (nrow(game_data) < 5) return(NULL)
+    if (n_distinct(game_data$sameGroup) < 2) return(NULL)
+
+    tryCatch({
+      model <- lmer(
+        similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+        data = game_data,
+        control = lmerControl(optimizer = "bobyqa")
+      )
+      coefs <- coef(summary(model))
+      tibble(
+        gameId = gid,
+        coefficient = coefs["sameGroup", "Estimate"],
+        std_error = coefs["sameGroup", "Std. Error"],
+        t_value = coefs["sameGroup", "t value"]
+      )
+    }, error = function(e) NULL)
+  })
+}
+
+# Phase 1 final
+gs_p1 <- pairwise_sim %>%
+  filter(window == "phase1_final") %>%
+  fit_gs_by_game_window() %>%
+  rename(gs_phase1 = coefficient, se_phase1 = std_error) %>%
+  select(gameId, gs_phase1, se_phase1)
+
+# Phase 2 final
+gs_p2 <- pairwise_sim %>%
+  filter(window == "phase2_final") %>%
+  fit_gs_by_game_window() %>%
+  rename(gs_phase2 = coefficient, se_phase2 = std_error) %>%
+  select(gameId, gs_phase2, se_phase2)
+
+# Combine
+gs_combined <- gs_p1 %>%
+  inner_join(gs_p2, by = "gameId") %>%
+  left_join(games %>% select(gameId, condition), by = "gameId")
+
+cat("Group-specificity estimates:\n")
+gs_combined %>%
+  knitr::kable(digits = 4, caption = "Group-specificity by game and phase")
+```
+
+# Weighted Least Squares Regression
+
+```
+group_specificity_phase2 ~ condition + group_specificity_phase1
+```
+Weights: `1 / SE_phase2^2` (inverse variance of Phase 2 estimates).
+
+```{r wls-model}
+gs_combined <- gs_combined %>%
+  mutate(
+    weight = 1 / se_phase2^2,
+    condition = factor(condition, levels = c("refer_mixed", "refer_separated", "social_mixed"))
+  )
+
+n_conditions <- n_distinct(gs_combined$condition)
+
+if (n_conditions >= 2) {
+  wls_model <- lm(
+    gs_phase2 ~ condition + gs_phase1,
+    data = gs_combined,
+    weights = weight
+  )
+  summary(wls_model)
+} else {
+  cat(sprintf("Only %d condition(s) in data (%s). Need ≥2 for WLS model.\n",
+              n_conditions, paste(unique(gs_combined$condition), collapse = ", ")))
+  wls_model <- NULL
+}
+```
+
+# Planned Contrasts
+
+Two-tailed tests at α = 0.05.
+
+- **H1:** `refer_separated > refer_mixed`
+- **H2:** `social_mixed > refer_mixed`
+
+```{r planned-contrasts}
+if (!is.null(wls_model) && n_conditions >= 3) {
+  em <- emmeans(wls_model, "condition")
+  contrasts <- contrast(em, list(
+    H1_sep_vs_mixed = c(-1, 1, 0),   # refer_separated - refer_mixed
+    H2_social_vs_mixed = c(-1, 0, 1)  # social_mixed - refer_mixed
+  ))
+  summary(contrasts, infer = c(TRUE, TRUE))
+} else {
+  cat("Skipping contrasts: need all 3 conditions.\n")
+  contrasts <- NULL
+}
+```
+
+```{r contrast-details}
+if (!is.null(contrasts)) {
+  cat("\nDetailed contrast results:\n")
+  contrast_summary <- summary(contrasts, infer = c(TRUE, TRUE))
+  for (i in seq_len(nrow(contrast_summary))) {
+    row <- contrast_summary[i, ]
+    cat(sprintf(
+      "\n%s:\n  Estimate = %.4f, 95%% CI [%.4f, %.4f], p = %.4f\n",
+      row$contrast, row$estimate, row$lower.CL, row$upper.CL, row$p.value
+    ))
+  }
+}
+```
+
+# Plots
+
+```{r plot-gs-paired, fig.width=8, fig.height=5}
+# Plot 6: Group-specificity Phase 1 vs Phase 2 by condition
+gs_long <- gs_combined %>%
+  pivot_longer(
+    cols = c(gs_phase1, gs_phase2),
+    names_to = "phase",
+    values_to = "group_specificity"
+  ) %>%
+  mutate(phase = ifelse(phase == "gs_phase1", "Phase 1", "Phase 2"))
+
+ggplot(gs_long, aes(x = phase, y = group_specificity, group = gameId)) +
+  geom_line(alpha = 0.5, color = "gray50") +
+  geom_point(aes(color = condition), size = 3) +
+  facet_wrap(~condition) +
+  labs(
+    x = "Phase",
+    y = "Group-specificity coefficient",
+    title = "Group-specificity across phases by condition"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r plot-gs-phase2, fig.width=7, fig.height=5}
+# Plot 7: Phase 2 group-specificity by condition (primary result)
+ggplot(gs_combined, aes(x = condition, y = gs_phase2, fill = condition)) +
+  geom_violin(alpha = 0.3) +
+  geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
+  stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  labs(
+    x = "Condition",
+    y = "Phase 2 group-specificity",
+    title = "Group-specificity in Phase 2 by condition"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r plot-wls-forest, fig.width=7, fig.height=4}
+# Plot 8: WLS coefficient forest plot
+if (!is.null(wls_model)) {
+  wls_coefs <- broom::tidy(wls_model, conf.int = TRUE) %>%
+    filter(term != "(Intercept)")
+
+  ggplot(wls_coefs, aes(x = estimate, y = term)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
+    geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +
+    geom_point(size = 3) +
+    labs(
+      x = "Coefficient estimate",
+      y = "",
+      title = "WLS model coefficients"
+    ) +
+    theme_minimal()
+} else {
+  cat("WLS model not fitted (insufficient conditions).\n")
+}
+```
+
+```{r plot-within-between, fig.width=10, fig.height=5}
+# Plot 9: Within- vs between-group similarity by condition
+pw_summary <- pairwise_sim %>%
+  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  mutate(
+    groupType = ifelse(sameGroup == 1, "Within-group", "Between-group"),
+    phase = ifelse(window == "phase1_final", "Phase 1 final", "Phase 2 final")
+  )
+
+pw_means <- pw_summary %>%
+  group_by(condition, phase, groupType) %>%
+  summarise(
+    mean_sim = mean(similarity, na.rm = TRUE),
+    se_sim = sd(similarity, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  )
+
+ggplot(pw_means, aes(x = condition, y = mean_sim, fill = groupType)) +
+  geom_col(position = position_dodge(0.8), width = 0.7, alpha = 0.8) +
+  geom_errorbar(
+    aes(ymin = mean_sim - se_sim, ymax = mean_sim + se_sim),
+    position = position_dodge(0.8), width = 0.2
+  ) +
+  facet_wrap(~phase) +
+  labs(
+    x = "Condition",
+    y = "Mean cosine similarity",
+    fill = "Group type",
+    title = "Within- vs between-group similarity by condition and phase"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+```
+
+# Optional: Bayes Factors (if null results)
+
+Uncomment and run if contrasts are non-significant.
+
+```{r bayes-factors, eval=FALSE}
+# library(brms)
+# library(bridgesampling)
+#
+# # Refit with brms using Cauchy(0, sqrt(2)/2) prior on condition effects
+# prior <- c(
+#   set_prior("cauchy(0, 0.707)", class = "b")
+# )
+#
+# brm_model <- brm(
+#   gs_phase2 | weights(weight) ~ condition + gs_phase1,
+#   data = gs_combined,
+#   prior = prior,
+#   iter = 10000,
+#   warmup = 2000,
+#   chains = 4,
+#   save_pars = save_pars(all = TRUE)
+# )
+#
+# # Compute Bayes factors via bridge sampling
+# brm_null <- brm(
+#   gs_phase2 | weights(weight) ~ gs_phase1,
+#   data = gs_combined,
+#   iter = 10000,
+#   warmup = 2000,
+#   chains = 4,
+#   save_pars = save_pars(all = TRUE)
+# )
+#
+# bf <- bayes_factor(brm_model, brm_null)
+# cat("Bayes factor (full vs null):", bf$bf, "\n")
+```
