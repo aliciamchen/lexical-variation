@@ -236,11 +236,14 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
   }
   await pages[0]?.waitForTimeout(500);
 
-  // Listeners click tangrams
+  // Listeners send messages and click tangrams
   for (let i = 0; i < pages.length; i++) {
     if (skipIndices.includes(i)) continue;
     const info = await getPlayerInfo(pages[i]);
     if (info?.role === 'listener') {
+      // Listener sends a chat message before clicking
+      await speakerSendMessage(pages[i], 'ok');
+
       // Each listener's targetIndex is the correct grid position in THEIR shuffled view
       let clickIdx = info.targetIndex >= 0 ? info.targetIndex : 0;
 
