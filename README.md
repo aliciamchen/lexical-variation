@@ -1,96 +1,53 @@
 # lexical-variation
 
-## Running the experiment
+Multiplayer reference game experiment built with [Empirica](https://empirica.ly/) studying lexical variation and social signaling. 9 players in 3 groups describe tangram images to each other across two phases, with experimental conditions affecting group dynamics in Phase 2.
 
-The experiment is created using Empirica. You need to install it: 
+## Setup
+
+Install Empirica:
 
 ```bash
 curl -fsS https://install.empirica.dev | sh
 ```
 
-To run the experiment locally: 
+Install dependencies:
 
 ```bash
-cd experiment
-empirica
-```
+# JavaScript (experiment)
+cd experiment && npm install
 
-Remove the tajriba file between instances of testing: 
-
-```bash
-rm .empirica/local/tajriba.json
-```
-
-## Custom Chat Component
-
-This project uses a custom Chat component (`experiment/client/src/components/Chat.jsx`) instead of the default Empirica Chat. This eliminates the need for any `node_modules` patches.
-
-The custom Chat component provides:
-- **Role labels**: Shows "(Speaker)" or "(Listener)" after player names
-- **Identity masking**: Uses `display_name` and `display_avatar` in Phase 2 mixed conditions
-- **Timestamps**: Shows 5-second increments (5s, 10s, 15s...) instead of "now" for recent messages
-- **Square avatars**: Matches the UI style of other avatars in the game
-- **DiceBear fallback**: Uses identicon avatars when player avatar is not set
-
-No `node_modules` patches are required.
-
-## Dependencies
-
-The R packages are managed by `renv` and the Python packages are managed by [uv](https://docs.astral.sh/uv/).
-
-The R version is `4.5.2`.
-
-```bash
-# Install Python dependencies
+# Python (analysis)
 uv sync
 
+# R (analysis)
 # In R: renv::restore()
 ```
 
 Note: `rpy2` requires R to be installed. Cairo-based packages may require: `brew install cairo pango`
 
-## Testing the experiment
+## Running the experiment
 
-The experiment has a Playwright test suite with 46 spec files covering all 3 conditions, idle detection, group viability, UI, timing, and more. The server is managed automatically by the test framework. See [`experiment/README.md`](experiment/README.md) for full documentation.
+See [`experiment/README.md`](experiment/README.md) for full documentation on local development, production deployment, running sessions, copying data, error monitoring, and testing.
+
+Quick start for local development:
 
 ```bash
 cd experiment
-npm install
-npx playwright install chromium
-
-# Run tests (test mode: shorter games)
-npx playwright test
-
-# Run with production timing (6+6 blocks, 45s selection)
-TEST_MODE=false npx playwright test
-
-# Run a specific test group
-npx playwright test --project=group-1
-
-# Run a specific category
-npx playwright test tests/happy-path/
-
-# Run tests headful
-npx playwright test --headed
-
-# View report
-npx playwright show-report
+rm .empirica/local/tajriba.json
+empirica
 ```
 
-## Running experiment on server
+- Admin: http://localhost:3000/admin
+- Players: http://localhost:3000/
+- Production: https://tangramcommunication.empirica.app/
 
-We are using the instructions at https://docs.empirica.ly/guides/deploying-my-experiment/ubuntu-tutorial
+## Testing
 
-`ssh root@tangramcommunication.empirica.app`
+```bash
+cd experiment
+npx playwright test              # test mode (shorter games)
+npx playwright test --headed     # visible browser
+npx playwright show-report       # view report
+```
 
-Run `empirica bundle` in `experiment`
-
-`scp lexical-variation.tar.zst root@tangramcommunication.empirica.app:~/empirica/empirica.tar.zst`
-
-the experiment is available at https://tangramcommunication.empirica.app/
-
-Admin console: https://tangramcommunication.empirica.app/admin
-
-Copy data back to machine: `scp root@tangramcommunication.empirica.app:~/empirica/*.zip .`
-
-In the experiment directory, run `copy_tajriba.sh` to copy the zip file from the server. This runs `empirica export` on the server and copies the file every 5 min
+See [`experiment/README.md`](experiment/README.md) for details on test architecture and writing new tests.

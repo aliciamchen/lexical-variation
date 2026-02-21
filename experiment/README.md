@@ -1,44 +1,67 @@
 # Interactive experiment
 
-## Custom Chat Component
-
-This project uses a custom Chat component (`client/src/components/Chat.jsx`) instead of the default Empirica Chat. This eliminates the need for any `node_modules` patches.
-
-The custom Chat component provides:
-- **Role labels**: Shows "(Speaker)" or "(Listener)" after player names
-- **Identity masking**: Uses `display_name` and `display_avatar` in Phase 2 mixed conditions
-- **Timestamps**: Shows 5-second increments (5s, 10s, 15s...) instead of "now" for recent messages
-- **Square avatars**: Matches the UI style of other avatars in the game
-- **DiceBear fallback**: Uses identicon avatars when player avatar is not set
-
-No `node_modules` patches are required.
-
-## Running the experiment
-
-### Local Development
+## Local development
 
 ```bash
 cd experiment
-rm .empirica/local/tajriba.json  # Fresh database
+rm .empirica/local/tajriba.json  # fresh database
 empirica
 ```
 
 - Admin: http://localhost:3000/admin
 - Players: http://localhost:3000/
 
-### Production Deployment
+Click "New Batch" in admin, select a treatment, then open 9 player tabs and click "New Player" in each.
+
+## Production deployment
+
+The production server is at `tangramcommunication.empirica.app`, following the [Empirica Ubuntu deployment guide](https://docs.empirica.ly/guides/deploying-my-experiment/ubuntu-tutorial).
+
+### Deploying a new build
 
 ```bash
+cd experiment
 empirica bundle
-scp prod-comp.tar.zst root@45.55.59.202:~
-empirica serve prod-comp.tar.zst
+scp lexical-variation.tar.zst root@tangramcommunication.empirica.app:~/empirica/empirica.tar.zst
 ```
 
-Production URL: http://45.55.59.202:3000/
+The server is configured to automatically restart empirica when the bundle file is updated. 
 
-### Data Backup
+If you want to do it manually:
 
-Back up experiment data from the production server:
+```bash
+ssh root@tangramcommunication.empirica.app
+cd ~/empirica
+# Remove the tajriba file from the server if needed: 
+rm .empirica/local/tajriba.json
+
+empirica serve empirica.tar.zst
+```
+
+### Running an experiment session
+
+1. **Verify the server is running**: SSH in and check the `empirica` process is alive
+2. **Open the admin panel**: https://tangramcommunication.empirica.app/admin
+3. **Open Sentry**: https://lexical-variation-project.sentry.io/ (monitors client errors, replays, performance)
+4. **Create a batch**: click "New Batch", select the treatment (condition), use default lobby config
+5. **Start the batch**: click the play button
+6. **Share the player URL**: https://tangramcommunication.empirica.app/ (participants arrive via Prolific)
+7. **Monitor**: watch the admin panel for player arrivals and game progress
+8. **Start `copy_tajriba.sh`** locally to back up data every 5 minutes (see below)
+
+### Testing on the production server
+
+Open 9 isolated Chrome windows pointing at the production URL:
+
+```bash
+bash experiment/open_players.sh        # open 9 players (default)
+bash experiment/open_players.sh 3      # open 3 players
+bash experiment/open_players.sh clean  # remove temp profiles
+```
+
+## Copying data locally
+
+The `copy_tajriba.sh` script SSHs into the production server, runs `empirica export` to produce a CSV zip, and copies it into `data/<timestamp>/`. Safe to run while the experiment is live.
 
 ```bash
 cd experiment
@@ -47,13 +70,24 @@ bash copy_tajriba.sh --once     # single backup and exit
 bash copy_tajriba.sh --help     # show usage
 ```
 
-The script SSHs into the production server, runs `empirica export` to produce a CSV zip, then copies it locally into `data/<timestamp>/`. Safe to run while the experiment is live. Exits automatically after 3 consecutive failures.
+Exits automatically after 3 consecutive failures. Press Ctrl-C to stop the loop.
 
-## Playwright Tests
+## Error monitoring (Sentry)
 
-The test suite covers the full experiment lifecycle: happy paths for all 3 conditions, idle detection, group viability, lobby edge cases, UI verification, timing, data integrity, condition-specific behavior, compensation, and score display. There are 46 spec files across 12 categories.
+Client errors are reported to Sentry via `@sentry/react` (configured in `client/src/index.jsx`).
 
-### Prerequisites
+- **Organization**: `lexical-variation-project`
+- **Project**: `javascript-react`
+- **Dashboard**: https://lexical-variation-project.sentry.io/
+- **Features**: error tracking, session replays (100%), browser tracing, structured logs
+
+During pilot sessions, keep the Sentry dashboard open to watch for client errors, slow page loads, and websocket disconnections.
+
+## Playwright tests
+
+46 spec files across 12 categories covering all 3 conditions, idle detection, group viability, UI, timing, and more. The Empirica server is managed automatically by the test framework.
+
+### Setup
 
 ```bash
 cd experiment
@@ -61,40 +95,32 @@ npm install
 npx playwright install chromium
 ```
 
-The Empirica server is managed automatically by the test framework — no need to start it manually.
-
-### Running Tests
+### Running tests
 
 ```bash
-# Run the full suite (test mode: 3+2 blocks, 120s selection, 5 idle rounds)
+# Full suite (test mode: 3+2 blocks, 120s selection, 5 idle rounds)
 npx playwright test
 
-# Run with production timing (6+6 blocks, 45s selection, 2 idle rounds)
+# Production timing (6+6 blocks, 45s selection, 2 idle rounds)
 TEST_MODE=false npx playwright test
 
-# Run a specific test group
+# Specific test group
 npx playwright test --project=group-1
 
-# Run a single spec file
+# Specific category or file
+npx playwright test tests/happy-path/
 npx playwright test tests/happy-path/refer-separated.spec.ts
 
-# Run a category of tests
-npx playwright test tests/idle-detection/
-npx playwright test tests/happy-path/
-
-# Run tests matching a name pattern
-npx playwright test -g "social_mixed"
-
-# Run with visible browser
+# Visible browser
 npx playwright test --headed
 
-# View the HTML report after a run
+# View report
 npx playwright show-report
 ```
 
-### Test Architecture
+### Test architecture
 
-Tests are split into 4 project groups in `playwright.config.ts`. Between each group, the Empirica server is restarted (tajriba.json deleted) to prevent state accumulation. Execution order: `setup-1 → group-1 → setup-2 → group-2 → setup-3 → group-3 → setup-4 → group-4`.
+Tests are split into 4 project groups in `playwright.config.ts`. Between each group, the server is restarted (tajriba.json deleted) to prevent state accumulation.
 
 | Group | Categories | Description |
 |-------|-----------|-------------|
@@ -103,48 +129,19 @@ Tests are split into 4 project groups in `playwright.config.ts`. Between each gr
 | group-3 | data-integrity, condition-specific, score-display | Data and conditions |
 | group-4 | idle-detection, group-viability, compensation | Dropout handling |
 
-### Test Categories
+### Writing new tests
 
-| Category | Files | What it tests |
-|---|---|---|
-| `happy-path/` | 3 | Full game completion for each condition |
-| `communication/` | 2 | Chat messaging and identity masking |
-| `idle-detection/` | 4 | Speaker/listener idle kicks and warnings |
-| `group-viability/` | 6 | Group disbanding, game termination, dropouts, mid-block reshuffle |
-| `lobby/` | 2 | Lobby timeout, quiz failure |
-| `ui-verification/` | 8 | Intro, game screen, feedback, transitions, exit survey, sorry pages |
-| `timing/` | 3 | Selection, feedback, and transition auto-advance |
-| `data-integrity/` | 5 | Player, round, chat, social, and game data attributes |
-| `condition-specific/` | 3 | Detailed checks for each experimental condition |
-| `edge-cases/` | 4 | Fast completion, tangram randomization, accuracy threshold, multiple batches |
-| `compensation/` | 4 | Prolific codes and partial pay for each exit path |
-| `score-display/` | 2 | Real-time scores and social guessing summary |
+Test helpers in `tests/helpers/`:
 
-### Configuration
+- **`player-manager.ts`** — manages 9 browser contexts/pages
+- **`admin.ts`** — creates batches via admin UI
+- **`game-actions.ts`** — `playRound()`, `playBlock()`, `handleTransition()`, `completeExitSurvey()`
+- **`assertions.ts`** — `expectPlayerInGame()`, `expectCondition()`, `expectSocialGuessUI()`
+- **`constants.ts`** — game config values mirrored from `shared/constants.js`
+- **`selectors.ts`** — centralized DOM selectors
+- **`server-manager.ts`** — server lifecycle (start/stop/reset)
 
-Tests are configured in `playwright.config.ts`:
-
-- **Workers:** 1 (serial execution — multiplayer games are stateful)
-- **Timeout:** 10 minutes per test in test mode, 90 minutes in production mode
-- **Retries:** 0 (game state is not resumable)
-- **Browser:** Chromium only
-- **Artifacts:** Screenshots, traces, and video are saved on failure
-
-`TEST_MODE` in `shared/constants.js` is controlled by the `TEST_MODE` environment variable (defaults to `false` for production). When `true`, it shortens phases to 3 + 2 blocks (instead of 6 + 6) and increases idle tolerance. The test framework sets `TEST_MODE=true` automatically via `server-manager.ts`.
-
-### Writing New Tests
-
-Test helpers are in `tests/helpers/`:
-
-- **`player-manager.ts`** — Manages 9 browser contexts/pages for multiplayer testing
-- **`admin.ts`** — Creates batches via the admin interface
-- **`game-actions.ts`** — High-level actions: `playRound()`, `playBlock()`, `handleTransition()`, `completeExitSurvey()`
-- **`assertions.ts`** — Custom assertions: `expectPlayerInGame()`, `expectCondition()`, `expectSocialGuessUI()`
-- **`constants.ts`** — Game config values mirrored from `shared/constants.js`
-- **`selectors.ts`** — Centralized DOM selectors
-- **`server-manager.ts`** — Server lifecycle (start/stop/reset)
-
-Typical test structure:
+Typical pattern:
 
 ```typescript
 test.describe.serial('My Test Suite', () => {
@@ -172,3 +169,5 @@ test.describe.serial('My Test Suite', () => {
   });
 });
 ```
+
+Config: `workers: 1`, `retries: 0`, Chromium only. Screenshots/traces/video saved on failure. `TEST_MODE` is set automatically by the test framework.

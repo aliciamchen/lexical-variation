@@ -47,7 +47,9 @@ Empirica.onGameStart(({ game }) => {
   );
 
   // Randomly assign tangram set (two sets with Ji et al. 2022 high-SND tangrams)
-  const tangram_set = 1; // Math.random() < 0.5 ? 0 : 1;
+  // TODO: Restore randomization for full data collection: Math.random() < 0.5 ? 0 : 1
+  // Hardcoded to set 1 during pilot to reduce variability while debugging
+  const tangram_set = 1;
   const context = tangram_sets[tangram_set];
   console.log(`Game assigned to tangram set: ${tangram_set}`);
   game.set("tangram_set", tangram_set);

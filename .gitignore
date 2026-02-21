@@ -23,3 +23,4 @@ lexical-variation*/
 *.tar.zst
 .mcp.json
 .zed
+review*.md
