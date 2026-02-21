@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { usePlayer } from "@empirica/core/player/classic/react";
 import { Button } from "../components/Button";
 
 export function Quiz({ next }) {
+  const player = usePlayer();
   const [answers, setAnswers] = useState({});
   const [attempts, setAttempts] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -91,6 +93,7 @@ export function Quiz({ next }) {
 
       if (newAttempts >= MAX_ATTEMPTS) {
         setFailed(true);
+        player.set("exitReason", "quiz failed");
       } else {
         alert(
           `Some answers are incorrect. You have ${

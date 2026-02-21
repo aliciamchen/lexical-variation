@@ -624,6 +624,7 @@ Empirica.onStageEnded(({ stage }) => {
           );
           player.set("is_active", false);
           player.set("ended", "player timeout");
+          player.set("exitReason", "player timeout");
           player.set("gameEndTime", Date.now());
           // Idle players get NO compensation
           player.set("partialPay", 0);
@@ -834,6 +835,7 @@ function checkGroupViability(game) {
         );
         player.set("is_active", false);
         player.set("ended", "group disbanded");
+        player.set("exitReason", "group disbanded");
         player.set("gameEndTime", Date.now());
 
         // Calculate proportional pay based on time spent + earned bonus
@@ -879,6 +881,7 @@ function checkGroupViability(game) {
       );
       player.set("is_active", false);
       player.set("ended", "group disbanded");
+      player.set("exitReason", "group disbanded");
       player.set("gameEndTime", Date.now());
 
       // Calculate proportional pay based on time spent + earned bonus
@@ -1035,6 +1038,7 @@ function checkPhase1AccuracyThreshold(game) {
         );
         player.set("is_active", false);
         player.set("ended", "low accuracy");
+        player.set("exitReason", "low accuracy");
         player.set("gameEndTime", Date.now());
 
         // Calculate proportional pay based on time spent + earned bonus
@@ -1085,6 +1089,7 @@ function checkPhase1AccuracyThreshold(game) {
       );
       player.set("is_active", false);
       player.set("ended", "insufficient groups after accuracy check");
+      player.set("exitReason", "insufficient groups after accuracy check");
       player.set("gameEndTime", Date.now());
 
       const startTime = player.get("gameStartTime");

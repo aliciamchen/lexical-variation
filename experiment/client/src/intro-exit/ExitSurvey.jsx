@@ -18,7 +18,9 @@ export function ExitSurvey({ next }) {
   const [education, setEducation] = useState("");
   const [understood, setUnderstood] = useState("");
 
-  const endedReason = player.get("ended");
+  // Use exitReason (our custom attribute) first — Empirica can overwrite
+  // "ended" to "game ended" when the game finishes, clobbering our value.
+  const endedReason = player.get("exitReason") || player.get("ended");
   const isDisbanded =
     endedReason === "group disbanded" ||
     endedReason === "low accuracy" ||

@@ -5,18 +5,21 @@ import { LOBBY_TIMEOUT_PAY } from "../constants";
 
 export function Sorry() {
   const player = usePlayer();
-  const endedReason = player.get("ended");
+  // Use exitReason (our custom attribute) first — Empirica can overwrite
+  // "ended" to "game ended" when the game finishes, clobbering our value.
+  const exitReason = player.get("exitReason");
+  const endedReason = exitReason || player.get("ended");
   const partialPay = player.get("partialPay");
   const partialBasePay = player.get("partialBasePay");
   const partialBonus = player.get("partialBonus");
-  const minutesSpent = player.get("minutesSpent");
   const gameStartTime = player.get("gameStartTime");
 
   // Detect lobby timeout: player never started a game (no gameStartTime)
   // and wasn't explicitly kicked for another reason
   const isLobbyTimeout = !gameStartTime &&
     endedReason !== "player timeout" &&
-    endedReason !== "group disbanded";
+    endedReason !== "group disbanded" &&
+    endedReason !== "quiz failed";
 
   // Different messages based on why the player was removed
   let title = "Game Ended";
@@ -25,7 +28,21 @@ export function Sorry() {
   let compensationMessage = null;
   let showCompensation = true;
 
-  if (isLobbyTimeout || endedReason === "lobby timeout") {
+  if (endedReason === "quiz failed") {
+    title = "Quiz Failed";
+    message = (
+      <>
+        <p>
+          Unfortunately, you were not able to pass the comprehension quiz.
+          You will not be able to participate in this study.
+        </p>
+        <p className="mt-2">
+          Please return this study on Prolific so another participant can take your place.
+        </p>
+      </>
+    );
+    showCompensation = false;
+  } else if (isLobbyTimeout || endedReason === "lobby timeout") {
     title = "Waiting Room Timeout";
     message = (
       <>
@@ -56,63 +73,21 @@ export function Sorry() {
     );
     // Idle players do NOT receive compensation
     showCompensation = false;
-  } else if (endedReason === "group disbanded") {
-    title = "Group Disbanded";
+  } else if (
+    endedReason === "group disbanded" ||
+    endedReason === "low accuracy" ||
+    endedReason === "insufficient groups after accuracy check"
+  ) {
+    // These players already saw the full explanation on the ExitSurvey page.
+    // This page just shows the Prolific completion code.
+    title = "Completion Code";
     const payAmount = partialPay != null ? partialPay.toFixed(2) : "0.00";
     const basePayAmount = partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
     const bonusAmount = partialBonus != null ? partialBonus.toFixed(2) : "0.00";
-    const timeMsg = minutesSpent != null ? `${minutesSpent} minutes` : "your time";
     message = (
-      <>
-        <p>
-          Unfortunately, too many members of your original group left the game, and we were
-          unable to continue the experiment with the remaining players.
-        </p>
-        <p className="mt-2">
-          This is not your fault - we apologize for the inconvenience. You will receive
-          compensation proportional to the time you spent ({timeMsg}) plus any bonus you earned.
-        </p>
-      </>
-    );
-    compensationCode = "CFTYDMIY";
-    compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
-  } else if (endedReason === "low accuracy") {
-    title = "Game Ended Early";
-    const payAmount = partialPay != null ? partialPay.toFixed(2) : "0.00";
-    const basePayAmount = partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
-    const bonusAmount = partialBonus != null ? partialBonus.toFixed(2) : "0.00";
-    const timeMsg = minutesSpent != null ? `${minutesSpent} minutes` : "your time";
-    message = (
-      <>
-        <p>
-          Unfortunately, your group's accuracy during Phase 1 was below the threshold required
-          to continue to Phase 2.
-        </p>
-        <p className="mt-2">
-          We apologize for the inconvenience. You will receive compensation proportional to
-          the time you spent ({timeMsg}) plus any bonus you earned.
-        </p>
-      </>
-    );
-    compensationCode = "CFTYDMIY";
-    compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
-  } else if (endedReason === "insufficient groups after accuracy check") {
-    title = "Game Ended Early";
-    const payAmount = partialPay != null ? partialPay.toFixed(2) : "0.00";
-    const basePayAmount = partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
-    const bonusAmount = partialBonus != null ? partialBonus.toFixed(2) : "0.00";
-    const timeMsg = minutesSpent != null ? `${minutesSpent} minutes` : "your time";
-    message = (
-      <>
-        <p>
-          Unfortunately, too many groups did not meet the accuracy threshold during Phase 1,
-          and we were unable to continue the experiment.
-        </p>
-        <p className="mt-2">
-          This is not your fault - we apologize for the inconvenience. You will receive
-          compensation proportional to the time you spent ({timeMsg}) plus any bonus you earned.
-        </p>
-      </>
+      <p>
+        Thank you for completing the exit survey. Please use the code below to receive your payment.
+      </p>
     );
     compensationCode = "CFTYDMIY";
     compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
@@ -134,14 +109,14 @@ export function Sorry() {
   }
 
   // Determine exit reason for data attribute
-  let exitReason = endedReason || "unknown";
-  if (isLobbyTimeout) exitReason = "lobby_timeout";
+  let dataExitReason = endedReason || "unknown";
+  if (isLobbyTimeout) dataExitReason = "lobby_timeout";
 
   return (
     <div
       className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
       data-testid="sorry-screen"
-      data-exit-reason={exitReason}
+      data-exit-reason={dataExitReason}
       data-prolific-code={showCompensation && compensationCode ? compensationCode : "none"}
       data-partial-pay={partialPay?.toFixed(2) || "0.00"}
       data-player-id={player?.id || "unknown"}
