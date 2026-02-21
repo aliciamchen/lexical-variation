@@ -61,6 +61,7 @@ export default defineConfig({
   define: {
     "process.env": {
       NODE_ENV: process.env.NODE_ENV || "development",
+      TEST_MODE: process.env.TEST_MODE || "false",
     },
   },
 });

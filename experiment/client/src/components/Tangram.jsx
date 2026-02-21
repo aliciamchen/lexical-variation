@@ -63,7 +63,6 @@ export function Tangram(props) {
     }
 
     const handleClick = (e) => {
-      console.log("click2");
       if (stage.get("name") == "Feedback") {
         return;
       }
@@ -85,7 +84,6 @@ export function Tangram(props) {
 
         // Double-check we're still in Selection before auto-submitting
         if (allResponded && stage.get("name") === "Selection") {
-          console.log("All responded, submitting group:", playersInGroup);
           playersInGroup.forEach((p) => {
             p.stage.set("submit", true);
           });

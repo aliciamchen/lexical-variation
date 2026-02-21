@@ -7,7 +7,7 @@ export const TEST_MODE = process.env.TEST_MODE !== 'false';
 
 // Timing
 export const SELECTION_DURATION = TEST_MODE ? 120 : 45;
-export const FEEDBACK_DURATION = 10;
+export const FEEDBACK_DURATION = 15;
 export const TRANSITION_DURATION = 60;
 export const BONUS_INFO_DURATION = 30;
 

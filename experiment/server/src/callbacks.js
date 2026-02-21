@@ -906,6 +906,7 @@ function checkGroupViability(game) {
 
     // Mark the game as terminated so subsequent rounds/stages are skipped
     game.set("gameTerminated", true);
+    game.end("ended", "all players removed");
     console.log("Game marked as terminated - remaining rounds will be skipped");
     return; // Exit early, no need to check for solo players
   }
@@ -1112,6 +1113,7 @@ function checkPhase1AccuracyThreshold(game) {
     });
 
     game.set("gameTerminated", true);
+    game.end("ended", "all players removed");
     console.log("Game marked as terminated after Phase 1 accuracy check");
   }
 }
