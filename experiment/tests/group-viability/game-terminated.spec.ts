@@ -26,6 +26,7 @@ import {
   clickContinue,
   isOnExitScreen,
   isInGame,
+  completeDisbandedExitSurveys,
 } from '../helpers/game-actions';
 import {
   expectPlayerInGame,
@@ -188,16 +189,20 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
     const groupC = groupNames[2];
     const groupCIndices = groupPageIndices[groupC];
 
+    // Disbanded players see ExitSurvey before Sorry — complete all surveys
+    await completeDisbandedExitSurveys(pages);
+
     // Group C players were never idle - they should have been terminated
     // due to insufficient groups remaining
     for (const idx of groupCIndices) {
       const exitInfo = await getExitInfo(pages[idx]);
       expect(exitInfo).not.toBeNull();
+      expect(exitInfo!.type).toBe('sorry');
 
       // They should have "group disbanded" reason (game termination uses same reason)
       expect(exitInfo!.exitReason).toBe('group disbanded');
 
-      // They should get the DISBANDED2026 code
+      // They should get the CFTYDMIY code
       expect(exitInfo!.prolificCode).toBe(PROLIFIC_CODES.disbanded);
 
       // They should have partial pay > 0 (they participated but game ended early)

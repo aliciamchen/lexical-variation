@@ -18,9 +18,21 @@ export function ExitSurvey({ next }) {
   const [education, setEducation] = useState("");
   const [understood, setUnderstood] = useState("");
 
+  const endedReason = player.get("ended");
+  const isDisbanded =
+    endedReason === "group disbanded" ||
+    endedReason === "low accuracy" ||
+    endedReason === "insufficient groups after accuracy check";
+
   // Get player's score and bonus
   const score = player.get("score") || 0;
   const bonus = player.get("bonus") || 0;
+
+  // Partial pay info for disbanded players
+  const partialPay = player.get("partialPay");
+  const partialBasePay = player.get("partialBasePay");
+  const partialBonus = player.get("partialBonus");
+  const minutesSpent = player.get("minutesSpent");
 
   const [submitted, setSubmitted] = useState(false);
 
@@ -35,7 +47,12 @@ export function ExitSurvey({ next }) {
       education,
       understood,
     });
-    setSubmitted(true);
+    if (isDisbanded) {
+      // Go directly to Sorry page which shows the code
+      next();
+    } else {
+      setSubmitted(true);
+    }
   }
 
   function handleEducationChange(e) {
@@ -48,7 +65,7 @@ export function ExitSurvey({ next }) {
 
   if (submitted) {
     return (
-      <div className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8" data-testid="exit-survey" data-ended-reason={endedReason || "game ended"}>
         <Alert title="Thank you!">
           <p>
             You earned <strong>{score} points</strong> for a bonus of{" "}
@@ -71,8 +88,53 @@ export function ExitSurvey({ next }) {
     );
   }
 
-  return (
-    <div className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+  // Build the header alert based on whether game ended normally or was disbanded
+  let headerAlert;
+  if (isDisbanded) {
+    const payAmount = partialPay != null ? partialPay.toFixed(2) : "0.00";
+    const basePayAmount = partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
+    const bonusAmount = partialBonus != null ? partialBonus.toFixed(2) : "0.00";
+    const timeMsg = minutesSpent != null ? `${minutesSpent} minutes` : "your time";
+
+    let explanation;
+    if (endedReason === "group disbanded") {
+      explanation = (
+        <p>
+          Unfortunately, too many members of your original group left the game, and we were
+          unable to continue the experiment with the remaining players.
+        </p>
+      );
+    } else if (endedReason === "low accuracy") {
+      explanation = (
+        <p>
+          Unfortunately, your group's accuracy during Phase 1 was below the threshold required
+          to continue to Phase 2.
+        </p>
+      );
+    } else {
+      explanation = (
+        <p>
+          Unfortunately, too many groups did not meet the accuracy threshold during Phase 1,
+          and we were unable to continue the experiment.
+        </p>
+      );
+    }
+
+    headerAlert = (
+      <Alert title="Game Ended Early">
+        {explanation}
+        <p className="mt-2">
+          This is not your fault - we apologize for the inconvenience. You will receive
+          compensation of <strong>${payAmount}</strong> (${basePayAmount} base + ${bonusAmount} bonus)
+          for {timeMsg} spent.
+        </p>
+        <p className="mt-2">
+          Please complete this survey to receive your Prolific completion code.
+        </p>
+      </Alert>
+    );
+  } else {
+    headerAlert = (
       <Alert title="Game Complete!">
         <p>
           You earned <strong>{score} points</strong> for a bonus of{" "}
@@ -83,7 +145,16 @@ export function ExitSurvey({ next }) {
           total compensation is{" "}
           <strong>${(BASE_PAY + bonus).toFixed(2)}</strong>.
         </p>
+        <p className="mt-2">
+          Please complete this survey to receive your Prolific completion code.
+        </p>
       </Alert>
+    );
+  }
+
+  return (
+    <div className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8" data-testid="exit-survey" data-ended-reason={endedReason || "game ended"}>
+      {headerAlert}
 
       <form
         className="mt-12 space-y-8 divide-y divide-gray-200"

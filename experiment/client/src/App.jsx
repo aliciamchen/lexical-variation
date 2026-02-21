@@ -22,10 +22,17 @@ export default function App() {
   }
 
   function exitSteps({ game, player }) {
-    if (player.get("ended") == "game ended") {
+    const ended = player.get("ended");
+    if (ended === "game ended") {
       return [ExitSurvey];
-    } else if (player.get("ended") == "game terminated") {
+    } else if (ended === "game terminated") {
       return [Failed];
+    } else if (
+      ended === "group disbanded" ||
+      ended === "low accuracy" ||
+      ended === "insufficient groups after accuracy check"
+    ) {
+      return [ExitSurvey, Sorry];
     } else {
       return [Sorry];
     }

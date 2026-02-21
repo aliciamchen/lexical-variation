@@ -1,9 +1,9 @@
 /**
  * TEST_PLAN 10.3: Group Disbanded Compensation
  *
- * Group-disbanded players get proportional pay and DISBANDED2026 code.
+ * Group-disbanded players get proportional pay and CFTYDMIY code.
  * Make 2 LISTENERS from the same group idle until kicked. The remaining
- * group member (speaker) gets "group disbanded". Verify data-prolific-code="DISBANDED2026"
+ * group member (speaker) gets "group disbanded". Verify data-prolific-code="CFTYDMIY"
  * and data-partial-pay is > "0.00".
  *
  * IMPORTANT: The 2 idle players must be LISTENERS (not the speaker).
@@ -27,6 +27,7 @@ import {
   isOnExitScreen,
   isInGame,
   getExitInfo,
+  completeDisbandedExitSurveys,
 } from '../helpers/game-actions';
 import {
   expectPlayerInGame,
@@ -106,11 +107,11 @@ test.describe.serial('Compensation: Group Disbanded (TEST_PLAN 10.3)', () => {
     await pages[0].waitForTimeout(5000);
   });
 
-  test('disbanded player sees DISBANDED2026 code and partial pay > 0.00', async () => {
+  test('disbanded player sees CFTYDMIY code and partial pay > 0.00', async () => {
     const pages = pm.getPages();
 
     // Wait until we have at least 3 removed players (2 idle + 1 disbanded).
-    // The sorry screen renders inside game-container via the Inactive component.
+    // Disbanded players now see ExitSurvey first (type: 'exit-survey'), then Sorry.
     let removed = await getRemovedPlayers(pages);
     const start = Date.now();
     while (removed.length < 3 && Date.now() - start < 120_000) {
@@ -126,18 +127,17 @@ test.describe.serial('Compensation: Group Disbanded (TEST_PLAN 10.3)', () => {
     // There should be at least 1 disbanded player (the remaining member of the group)
     expect(disbandedPlayers.length).toBeGreaterThanOrEqual(1);
 
-    for (const { page, info } of disbandedPlayers) {
-      // Verify the sorry screen is visible
-      expect(await isOnExitScreen(page)).toBe(true);
+    // Disbanded players are on ExitSurvey — complete it so they reach Sorry
+    await completeDisbandedExitSurveys(pages);
 
-      // Verify data-prolific-code is DISBANDED2026
-      expect(info.prolificCode).toBe(PROLIFIC_CODES.disbanded);
-
-      // Also verify via DOM attribute directly
+    // Now verify the Sorry screen for each disbanded player
+    for (const { page } of disbandedPlayers) {
       const sorryScreen = page.locator(SORRY_SCREEN);
       await expect(sorryScreen).toBeVisible({ timeout: 10_000 });
+
+      // Verify data-prolific-code is CFTYDMIY
       const codeAttr = await sorryScreen.getAttribute('data-prolific-code');
-      expect(codeAttr).toBe('DISBANDED2026');
+      expect(codeAttr).toBe('CFTYDMIY');
 
       // Verify data-partial-pay is greater than "0.00"
       const partialPayAttr = await sorryScreen.getAttribute('data-partial-pay');

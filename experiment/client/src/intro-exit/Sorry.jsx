@@ -38,7 +38,7 @@ export function Sorry() {
         </p>
       </>
     );
-    compensationCode = "LOBBYTIMEOUT";
+    compensationCode = "CMZUY3MK";
     compensationMessage = `$${LOBBY_TIMEOUT_PAY.toFixed(2)} for your waiting time`;
   } else if (endedReason === "player timeout") {
     title = "Removed for Inactivity";
@@ -74,7 +74,7 @@ export function Sorry() {
         </p>
       </>
     );
-    compensationCode = "DISBANDED2026";
+    compensationCode = "CFTYDMIY";
     compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
   } else if (endedReason === "low accuracy") {
     title = "Game Ended Early";
@@ -94,7 +94,7 @@ export function Sorry() {
         </p>
       </>
     );
-    compensationCode = "DISBANDED2026";
+    compensationCode = "CFTYDMIY";
     compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
   } else if (endedReason === "insufficient groups after accuracy check") {
     title = "Game Ended Early";
@@ -114,7 +114,7 @@ export function Sorry() {
         </p>
       </>
     );
-    compensationCode = "DISBANDED2026";
+    compensationCode = "CFTYDMIY";
     compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
   } else {
     // Default / unknown reason

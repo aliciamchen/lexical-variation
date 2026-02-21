@@ -71,8 +71,8 @@ export const QUIZ_ANSWERS = {
 export const PROLIFIC_CODES = {
   completion: 'C2I8XDMC',
   quizFail: 'QUIZFAIL2026',
-  lobbyTimeout: 'LOBBYTIMEOUT',
-  disbanded: 'DISBANDED2026',
+  lobbyTimeout: 'CMZUY3MK',
+  disbanded: 'CFTYDMIY',
 };
 
 // Treatments as shown in admin dropdown

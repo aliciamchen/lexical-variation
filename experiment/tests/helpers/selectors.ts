@@ -25,9 +25,10 @@ export const TANGRAM_ITEMS = '.tangrams.grid > div';
 export const CHAT_INPUT = 'textarea';
 export const CHAT_MESSAGES = '.chat-messages';
 
-// Exit screens (Sorry.jsx, Quiz.jsx)
+// Exit screens (Sorry.jsx, Quiz.jsx, ExitSurvey.jsx)
 export const SORRY_SCREEN = '[data-testid="sorry-screen"]';
 export const QUIZ_FAILED_SCREEN = '[data-testid="quiz-failed-screen"]';
+export const EXIT_SURVEY = '[data-testid="exit-survey"]';
 export const EXIT_REASON = '[data-exit-reason]';
 export const PROLIFIC_CODE = '[data-prolific-code]';
 export const PARTIAL_PAY = '[data-partial-pay]';

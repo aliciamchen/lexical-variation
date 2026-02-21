@@ -1,7 +1,7 @@
 /**
  * TEST_PLAN 10.4: Lobby Timeout Compensation
  *
- * Lobby timeout players get the LOBBYTIMEOUT code.
+ * Lobby timeout players get the CMZUY3MK code.
  * Create just 3 players for a 9-player game, wait for lobby timeout,
  * verify they see the correct code.
  *
@@ -17,7 +17,7 @@ import { SORRY_SCREEN, PROLIFIC_CODE } from '../helpers/selectors';
 test.describe.serial('Compensation: Lobby Timeout (TEST_PLAN 10.4)', () => {
   test.skip(true, 'Requires specific lobby timeout settings; takes 5+ minutes to run');
 
-  test('players see LOBBYTIMEOUT code when game cannot start', async ({ browser }) => {
+  test('players see CMZUY3MK code when game cannot start', async ({ browser }) => {
     // Increase timeout since we need to wait for lobby timeout (5 minutes)
     test.setTimeout(600_000);
 
@@ -55,18 +55,18 @@ test.describe.serial('Compensation: Lobby Timeout (TEST_PLAN 10.4)', () => {
       expect(exitInfo).not.toBeNull();
     }
 
-    // Verify each player sees the sorry screen with LOBBYTIMEOUT code
+    // Verify each player sees the sorry screen with CMZUY3MK code
     for (const page of playerPages) {
       const sorryScreen = page.locator(SORRY_SCREEN);
       await expect(sorryScreen).toBeVisible({ timeout: 10_000 });
 
-      // Verify data-prolific-code is LOBBYTIMEOUT
+      // Verify data-prolific-code is CMZUY3MK
       const prolificCode = await sorryScreen.getAttribute('data-prolific-code');
       expect(prolificCode).toBe(PROLIFIC_CODES.lobbyTimeout);
 
       // Also verify the page content mentions the code
       const content = await page.textContent('body');
-      expect(content).toContain('LOBBYTIMEOUT');
+      expect(content).toContain('CMZUY3MK');
 
       // Verify that the compensation amount is mentioned ($2 for lobby timeout)
       expect(content).toContain(`$${LOBBY_TIMEOUT_PAY.toFixed(2)}`);

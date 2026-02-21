@@ -2,7 +2,7 @@
  * TEST_PLAN 3.4: Two Players Drop from Same Group (Group Disbanded)
  *
  * Goal: When 2 players from the same original group go idle and get kicked,
- * the remaining player sees "group disbanded" with code DISBANDED2026
+ * the remaining player sees "group disbanded" with code CFTYDMIY
  * and receives partial pay > 0.
  *
  * IMPORTANT: The 2 idle players must be LISTENERS (not the speaker).
@@ -24,6 +24,7 @@ import {
   waitForExitScreen,
   isOnExitScreen,
   isInGame,
+  completeDisbandedExitSurveys,
 } from '../helpers/game-actions';
 import {
   expectPlayerInGame,
@@ -126,7 +127,7 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
     }
   });
 
-  test('remaining group member sees "group disbanded" with DISBANDED2026 and partial pay > 0', async () => {
+  test('remaining group member sees "group disbanded" with CFTYDMIY and partial pay > 0', async () => {
     const pages = pm.getPages();
 
     // Find the remaining player from the disbanded group
@@ -138,15 +139,21 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
     // There should be at least 1 disbanded player (the remaining member of the group)
     expect(disbandedPlayers.length).toBeGreaterThanOrEqual(1);
 
-    for (const { page, info } of disbandedPlayers) {
-      // Verify they see the exit screen
-      expect(await isOnExitScreen(page)).toBe(true);
+    // Disbanded players are on ExitSurvey — complete it so they reach Sorry
+    await completeDisbandedExitSurveys(pages);
 
-      // Verify the prolific code is DISBANDED2026
-      expect(info.prolificCode).toBe(PROLIFIC_CODES.disbanded);
+    // Now verify the Sorry screen for each disbanded player
+    for (const { page } of disbandedPlayers) {
+      const info = await getExitInfo(page);
+      expect(info).not.toBeNull();
+      expect(info!.type).toBe('sorry');
+      expect(info!.exitReason).toBe('group disbanded');
+
+      // Verify the prolific code is CFTYDMIY
+      expect(info!.prolificCode).toBe(PROLIFIC_CODES.disbanded);
 
       // Verify partial pay is greater than 0 (proportional compensation)
-      const partialPay = parseFloat(info.partialPay || '0');
+      const partialPay = parseFloat(info!.partialPay || '0');
       expect(partialPay).toBeGreaterThan(0);
     }
   });

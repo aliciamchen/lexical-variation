@@ -117,7 +117,6 @@ export function Quiz({ next }) {
         className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
         data-testid="quiz-failed-screen"
         data-exit-reason="quiz_failed"
-        data-prolific-code="QUIZFAIL2026"
       >
         <div
           style={{
@@ -137,8 +136,8 @@ export function Quiz({ next }) {
             participate in this study.
           </p>
           <p style={{ marginTop: "10px" }}>
-            Please submit the following code on Prolific to receive partial
-            compensation for your time: <strong>QUIZFAIL2026</strong>
+            Please return this study on Prolific so another participant can take
+            your place.
           </p>
           <p style={{ marginTop: "10px" }}>
             Thank you for your interest in our study.

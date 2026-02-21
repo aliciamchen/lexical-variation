@@ -1,5 +1,5 @@
 import { Page } from '@playwright/test';
-import { GAME_CONTAINER, TASK, SORRY_SCREEN, QUIZ_FAILED_SCREEN, TANGRAM_ITEMS } from './selectors';
+import { GAME_CONTAINER, TASK, SORRY_SCREEN, QUIZ_FAILED_SCREEN, EXIT_SURVEY, TANGRAM_ITEMS } from './selectors';
 import { SELECTION_DURATION, FEEDBACK_DURATION } from './constants';
 
 // ============ TYPES ============
@@ -18,7 +18,7 @@ export interface PlayerInfo {
 }
 
 export interface ExitInfo {
-  type: 'sorry' | 'quiz-failed';
+  type: 'sorry' | 'quiz-failed' | 'exit-survey';
   exitReason: string | null;
   prolificCode: string | null;
   partialPay: string | null;
@@ -64,15 +64,27 @@ export async function getExitInfo(page: Page): Promise<ExitInfo | null> {
     return await page.evaluate(() => {
       const sorry = document.querySelector('[data-testid="sorry-screen"]');
       const quizFailed = document.querySelector('[data-testid="quiz-failed-screen"]');
+      const exitSurvey = document.querySelector('[data-testid="exit-survey"]');
       const el = sorry || quizFailed;
-      if (!el) return null;
-      return {
-        type: sorry ? 'sorry' as const : 'quiz-failed' as const,
-        exitReason: el.getAttribute('data-exit-reason'),
-        prolificCode: el.getAttribute('data-prolific-code'),
-        partialPay: el.getAttribute('data-partial-pay'),
-        playerId: el.getAttribute('data-player-id'),
-      };
+      if (el) {
+        return {
+          type: sorry ? 'sorry' as const : 'quiz-failed' as const,
+          exitReason: el.getAttribute('data-exit-reason'),
+          prolificCode: el.getAttribute('data-prolific-code'),
+          partialPay: el.getAttribute('data-partial-pay'),
+          playerId: el.getAttribute('data-player-id'),
+        };
+      }
+      if (exitSurvey) {
+        return {
+          type: 'exit-survey' as const,
+          exitReason: exitSurvey.getAttribute('data-ended-reason'),
+          prolificCode: null,
+          partialPay: null,
+          playerId: null,
+        };
+      }
+      return null;
     });
   } catch {
     return null;
@@ -86,13 +98,17 @@ export async function isInGame(page: Page): Promise<boolean> {
   // when a player is kicked mid-game. Exclude those players.
   const sorry = page.locator(SORRY_SCREEN);
   if ((await sorry.count()) > 0) return false;
+  // Exit survey means the player has left the game (disbanded flow)
+  const exitSurvey = page.locator(EXIT_SURVEY);
+  if ((await exitSurvey.count()) > 0) return false;
   return true;
 }
 
 export async function isOnExitScreen(page: Page): Promise<boolean> {
   const sorry = page.locator(SORRY_SCREEN);
   const quizFailed = page.locator(QUIZ_FAILED_SCREEN);
-  return (await sorry.count()) > 0 || (await quizFailed.count()) > 0;
+  const exitSurvey = page.locator(EXIT_SURVEY);
+  return (await sorry.count()) > 0 || (await quizFailed.count()) > 0 || (await exitSurvey.count()) > 0;
 }
 
 // ============ INTRO FLOW ============
@@ -408,13 +424,34 @@ export async function completeExitSurvey(page: Page): Promise<void> {
     await page.getByRole('button', { name: /submit/i }).click();
     await page.waitForTimeout(500);
 
-    // Click Finish on the confirmation page (shows Prolific code)
+    // Normal completion: shows confirmation page with Finish button.
+    // Disbanded: Submit calls next() immediately → navigates to Sorry page (no Finish button).
     const finishButton = page.getByRole('button', { name: /finish/i });
-    await finishButton.waitFor({ state: 'visible', timeout: 5000 });
-    await finishButton.click();
-    await page.waitForTimeout(500);
+    try {
+      await finishButton.waitFor({ state: 'visible', timeout: 3000 });
+      await finishButton.click();
+      await page.waitForTimeout(500);
+    } catch {
+      // Disbanded flow — no Finish button, already navigated to Sorry
+    }
   } catch {
     // Survey fields may vary
+  }
+}
+
+/**
+ * Complete the exit survey for all disbanded players in the given page list.
+ * Disbanded players see ExitSurvey before Sorry. This helper finds them,
+ * submits the survey, and waits for them to reach the Sorry page.
+ */
+export async function completeDisbandedExitSurveys(pages: Page[]): Promise<void> {
+  for (const page of pages) {
+    const exitSurvey = page.locator(EXIT_SURVEY);
+    if ((await exitSurvey.count()) > 0) {
+      await completeExitSurvey(page);
+      // Wait for Sorry screen to appear after survey submission
+      await page.locator(SORRY_SCREEN).waitFor({ state: 'visible', timeout: 10_000 });
+    }
   }
 }
 
@@ -458,7 +495,8 @@ export async function waitForExitScreen(page: Page, timeout = 120_000): Promise<
     // Use Playwright's native waitFor (MutationObserver-based) instead of manual polling.
     // This catches DOM changes in real-time, even if the sorry screen briefly disappears
     // during Empirica's transition from game view to exit steps.
-    await page.locator('[data-testid="sorry-screen"], [data-testid="quiz-failed-screen"]')
+    // Also detect exit-survey (disbanded players see ExitSurvey before Sorry).
+    await page.locator('[data-testid="sorry-screen"], [data-testid="quiz-failed-screen"], [data-testid="exit-survey"]')
       .first()
       .waitFor({ state: 'attached', timeout });
     // Small delay for React to finish rendering data attributes
@@ -509,12 +547,14 @@ export async function getPlayersByGroup(pages: Page[]): Promise<Record<string, {
 export async function getRemovedPlayers(pages: Page[]): Promise<{ page: Page; info: ExitInfo }[]> {
   const removed: { page: Page; info: ExitInfo }[] = [];
   for (const page of pages) {
-    // First check via locator (more reliable than page.evaluate for detecting DOM presence)
+    // Check via locator (more reliable than page.evaluate for detecting DOM presence)
     const sorryLocator = page.locator('[data-testid="sorry-screen"]');
     const quizFailLocator = page.locator('[data-testid="quiz-failed-screen"]');
+    const exitSurveyLocator = page.locator('[data-testid="exit-survey"]');
     const hasSorry = (await sorryLocator.count()) > 0;
     const hasQuizFail = (await quizFailLocator.count()) > 0;
-    if (hasSorry || hasQuizFail) {
+    const hasExitSurvey = (await exitSurveyLocator.count()) > 0;
+    if (hasSorry || hasQuizFail || hasExitSurvey) {
       const info = await getExitInfo(page);
       if (info) {
         removed.push({ page, info });

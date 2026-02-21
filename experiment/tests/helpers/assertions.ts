@@ -1,5 +1,5 @@
 import { Page, expect } from '@playwright/test';
-import { GAME_CONTAINER, SORRY_SCREEN, QUIZ_FAILED_SCREEN, SOCIAL_GUESS_CONTAINER } from './selectors';
+import { GAME_CONTAINER, SORRY_SCREEN, QUIZ_FAILED_SCREEN, EXIT_SURVEY, SOCIAL_GUESS_CONTAINER } from './selectors';
 import { getPlayerInfo, getExitInfo } from './game-actions';
 
 /**
@@ -19,14 +19,21 @@ export async function expectPlayerOnExitScreen(
 ): Promise<void> {
   const sorry = page.locator(SORRY_SCREEN);
   const quizFailed = page.locator(QUIZ_FAILED_SCREEN);
-  await expect(sorry.or(quizFailed)).toBeVisible({ timeout: 30_000 });
+  const exitSurvey = page.locator(EXIT_SURVEY);
+  await expect(sorry.or(quizFailed).or(exitSurvey)).toBeVisible({ timeout: 30_000 });
 
   if (reason) {
+    // Check data-exit-reason on Sorry/QuizFailed, or data-ended-reason on ExitSurvey
     const el = sorry.or(quizFailed);
-    await expect(el).toHaveAttribute('data-exit-reason', reason);
+    if ((await el.count()) > 0) {
+      await expect(el).toHaveAttribute('data-exit-reason', reason);
+    } else {
+      await expect(exitSurvey).toHaveAttribute('data-ended-reason', reason);
+    }
   }
 
   if (code) {
+    // Prolific code is only on Sorry/QuizFailed screens (not ExitSurvey)
     const el = sorry.or(quizFailed);
     await expect(el).toHaveAttribute('data-prolific-code', code);
   }

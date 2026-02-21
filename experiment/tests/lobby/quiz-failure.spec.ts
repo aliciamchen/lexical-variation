@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import { createBatch } from '../helpers/admin';
-import { PROLIFIC_CODES } from '../helpers/constants';
 import { QUIZ_FAILED_SCREEN } from '../helpers/selectors';
 
 // TEST_PLAN 4.2: Player fails comprehension quiz 3 times and is shown failure screen
@@ -70,12 +69,11 @@ test.describe.serial('Lobby: quiz failure after 3 attempts', () => {
     // Verify the data attributes on the quiz-failed screen
     await expect(quizFailedScreen).toHaveAttribute('data-testid', 'quiz-failed-screen');
     await expect(quizFailedScreen).toHaveAttribute('data-exit-reason', 'quiz_failed');
-    await expect(quizFailedScreen).toHaveAttribute('data-prolific-code', PROLIFIC_CODES.quizFail);
 
-    // Verify the failure message content
+    // Verify the failure message content — no code, player is asked to return the study
     const screenText = await quizFailedScreen.textContent();
     expect(screenText).toContain('Quiz Failed');
-    expect(screenText).toContain(PROLIFIC_CODES.quizFail);
+    expect(screenText).toContain('return this study on Prolific');
 
     // Cleanup
     await playerContext.close();

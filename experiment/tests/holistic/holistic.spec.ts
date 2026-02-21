@@ -20,10 +20,12 @@ import { createBatch } from '../helpers/admin';
 import {
   completeIntro,
   getPlayerInfo,
+  getExitInfo,
   playRound,
   handleTransition,
   clickContinue,
   completeExitSurvey,
+  completeDisbandedExitSurveys,
   getActivePlayers,
   waitForStage,
   waitForExitScreen,
@@ -169,11 +171,12 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
         await page.waitForTimeout(500);
       }
 
-      // Verify quiz-failed screen
+      // Verify quiz-failed screen — no code, player is asked to return the study
       const quizFailedScreen = page.locator(QUIZ_FAILED_SCREEN);
       await expect(quizFailedScreen).toBeVisible({ timeout: 10_000 });
       await expect(quizFailedScreen).toHaveAttribute('data-exit-reason', 'quiz_failed');
-      await expect(quizFailedScreen).toHaveAttribute('data-prolific-code', PROLIFIC_CODES.quizFail);
+      const screenText = await quizFailedScreen.textContent();
+      expect(screenText).toContain('return this study on Prolific');
     }
   });
 
@@ -475,10 +478,18 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     expect(idleExitInfo).not.toBeNull();
     expect(idleExitInfo!.exitReason).toBe('player timeout');
 
-    // The remaining member of the 2-member group should be disbanded
-    const disbandedExitInfo = await waitForExitScreen(gamePages[disbandedTargetIdx], 60_000);
+    // The remaining member of the 2-member group should be disbanded.
+    // Disbanded players now see ExitSurvey first, then Sorry.
+    const disbandedInitialInfo = await waitForExitScreen(gamePages[disbandedTargetIdx], 60_000);
+    expect(disbandedInitialInfo).not.toBeNull();
+    expect(disbandedInitialInfo!.exitReason).toBe('group disbanded');
+
+    // Complete the exit survey so the player reaches the Sorry page with code/pay
+    await completeDisbandedExitSurveys(gamePages);
+
+    const disbandedExitInfo = await getExitInfo(gamePages[disbandedTargetIdx]);
     expect(disbandedExitInfo).not.toBeNull();
-    expect(disbandedExitInfo!.exitReason).toBe('group disbanded');
+    expect(disbandedExitInfo!.type).toBe('sorry');
     expect(disbandedExitInfo!.prolificCode).toBe(PROLIFIC_CODES.disbanded);
     expect(parseFloat(disbandedExitInfo!.partialPay || '0')).toBeGreaterThan(0);
   });
@@ -579,7 +590,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
   test('3 overflow players are not in the game', async () => {
     // Overflow players may land on different screens depending on when they tried
     // to join:
-    // - Empirica lobby timeout screen ("Waiting Room Timeout" + LOBBYTIMEOUT code)
+    // - Empirica lobby timeout screen ("Waiting Room Timeout" + CMZUY3MK code)
     // - Empirica "No experiments available" screen (if batch was already full)
     // - Custom sorry screen with data-testid
     // All that matters is they're NOT in the active game.
@@ -605,10 +616,10 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
   // ─── Test 19: Final accounting — verify player counts ───
   test('final accounting: all 15 players accounted for', async () => {
     // Individual outcomes were verified in their respective tests:
-    //   - Test 3: 3 quiz failures with QUIZFAIL2026 code
+    //   - Test 3: 3 quiz failures (no code, asked to return study)
     //   - Test 8: speaker kicked with "player timeout"
     //   - Test 10: listener kicked with "player timeout"
-    //   - Test 15: Phase 2 idle kicked + 1 disbanded with DISBANDED2026
+    //   - Test 15: Phase 2 idle kicked + 1 disbanded with CFTYDMIY
     //   - Test 17: 5 survivors completed exit survey with C2I8XDMC code
     //   - Test 18: 3 lobby overflow not in game
     //
