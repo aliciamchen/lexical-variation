@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a multiplayer reference game experiment built with Empirica studying lexical variation and social signaling. Players communicate about tangram images in groups, with different experimental conditions affecting group dynamics in Phase 2.
 
-A writeup of the framing and goals of the experiments is in Social_and_referential_goals_in_language_variation-10.pdf
+A writeup of the framing and goals of the experiments (for submission as a registered report) is in `writing/Social_and_referential_goals_in_language_variation-12.pdf`. Note that in the introduction of that document there is an Experiment 2 planned; that is not written out yet, all of the methods in there are for Experiment 1, which should correspond to the code in this repository. 
 
 **Experimental Design:**
 - 9 players in 3 groups of 3

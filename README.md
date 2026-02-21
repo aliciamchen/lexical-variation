@@ -92,3 +92,5 @@ the experiment is available at https://tangramcommunication.empirica.app/
 Admin console: https://tangramcommunication.empirica.app/admin
 
 Copy data back to machine: `scp root@tangramcommunication.empirica.app:~/empirica/*.zip .`
+
+In the experiment directory, run `copy_tajriba.sh` to copy the zip file from the server. This runs `empirica export` on the server and copies the file every 5 min
