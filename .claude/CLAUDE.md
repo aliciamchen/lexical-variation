@@ -231,6 +231,24 @@ import { Chat } from "./components/Chat";
 />
 ```
 
+## Sentry (Error Monitoring)
+
+The client app reports errors to Sentry via `@sentry/react`. A Sentry MCP server is connected, so you can query production issues directly.
+
+**Project details:**
+- Organization: `lexical-variation-project`
+- Project: `javascript-react`
+- Region URL: `https://us.sentry.io`
+- Production URL: `https://tangramcommunication.empirica.app/`
+
+**Available MCP tools:**
+- `search_issues` — list grouped issues (e.g. unresolved bugs)
+- `get_issue_details` — stacktrace and event details for a specific issue ID
+- `search_events` — count/aggregate errors or find individual events
+- `analyze_issue_with_seer` — AI root cause analysis with code fix suggestions
+
+**Workflow:** When investigating production bugs, check Sentry for recent issues, then cross-reference the stacktrace with the client source in `experiment/client/src/`. Reference issue IDs in commit messages (e.g. `Fixes JAVASCRIPT-REACT-1`) to auto-resolve issues on merge.
+
 ## Data
 
 - Live data: `experiment/.empirica/local/tajriba.json`
