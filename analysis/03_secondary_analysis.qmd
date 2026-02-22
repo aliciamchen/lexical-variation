@@ -13,14 +13,18 @@ library(lmerTest)
 library(tidyboot)
 library(here)
 
-data_dir <- here("analysis", "data")
+data_dir <- here("analysis", "processed")
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
 speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
-phase_change <- read_csv(file.path(data_dir, "phase_change_similarities.csv"), show_col_types = FALSE)
 social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
-pairwise_sim <- read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE)
+
+has_phase_change <- file.exists(file.path(data_dir, "phase_change_similarities.csv"))
+has_pairwise <- file.exists(file.path(data_dir, "pairwise_similarities.csv"))
+
+phase_change <- if (has_phase_change) read_csv(file.path(data_dir, "phase_change_similarities.csv"), show_col_types = FALSE) else tibble()
+pairwise_sim <- if (has_pairwise) read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
 
 n_conditions <- n_distinct(games$condition)
 ```
@@ -33,6 +37,9 @@ Higher similarity = less semantic change.
 **Predictions:** `refer_mixed` < `refer_separated`, `social_mixed` > `refer_mixed`
 
 ```{r model-semantic-change}
+if (!has_phase_change || nrow(phase_change) == 0) {
+  cat("Skipping: phase_change_similarities.csv not found. Run compute_embeddings.py first.\n")
+} else {
 phase_change <- phase_change %>%
   mutate(condition = factor(condition,
     levels = c("refer_mixed", "refer_separated", "social_mixed")))
@@ -54,9 +61,11 @@ if (n_conditions >= 2) {
   cat(sprintf("Only %d condition(s). Intercept-only model:\n", n_conditions))
   summary(m_semantic)
 }
+} # end has_phase_change
 ```
 
 ```{r plot-semantic-change, fig.width=7, fig.height=5}
+if (has_phase_change && nrow(phase_change) > 0) {
 # Plot 10: Semantic change by condition
 ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) +
   geom_violin(alpha = 0.3) +
@@ -70,6 +79,7 @@ ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) 
   ) +
   theme_minimal() +
   theme(legend.position = "none")
+}
 ```
 
 # 2. Referential Accuracy in Phase 2
@@ -227,7 +237,9 @@ if (exists("social_listener") && nrow(social_listener) > 0 &&
 Does maintaining group-specific language correlate with social identification accuracy?
 
 ```{r model-gs-social}
-if (nrow(social_guesses) > 0) {
+if (!has_pairwise || nrow(pairwise_sim) == 0) {
+  cat("Skipping: pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
+} else if (nrow(social_guesses) > 0) {
   # Compute mean social accuracy per game
   social_acc_by_game <- social_guesses %>%
     mutate(correct = as.numeric(

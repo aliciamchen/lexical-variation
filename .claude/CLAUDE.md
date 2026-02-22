@@ -261,3 +261,64 @@ The client app reports errors to Sentry via `@sentry/react`. A Sentry MCP server
   bash copy_tajriba.sh --help     # show usage
   ```
   The script SSHs into `root@tangramcommunication.empirica.app`, runs `empirica export` in `~/empirica` to produce a CSV zip, then copies it locally into `experiment/data/<timestamp>/`. Safe to run while the experiment is live. Exits automatically after 3 consecutive failures.
+
+### Analysis Pipeline
+
+`analysis/run_pipeline.py` is the single entry point that processes a raw Empirica export zip into analysis-ready data, figures, and rendered notebooks.
+
+**Running the pipeline:**
+
+```bash
+# Process the most recent zip under experiment/data/
+uv run python analysis/run_pipeline.py
+
+# Process a specific zip
+uv run python analysis/run_pipeline.py experiment/data/20260222_125327/empirica-export-20260222_132407.zip
+
+# Skip slow steps
+uv run python analysis/run_pipeline.py --skip-embeddings   # skip SBERT (~minutes)
+uv run python analysis/run_pipeline.py --skip-visualize    # skip plots/animations
+uv run python analysis/run_pipeline.py --skip-render       # skip Quarto notebooks
+```
+
+**Pipeline steps:**
+
+1. **Unzip** — extracts the Empirica export to a temp directory
+2. **Extract bonuses** — writes `bonuses.csv` with Prolific IDs + bonus amounts (before anonymizing)
+3. **Anonymize** — copies raw CSVs to `raw/`, stripping `participantIdentifier` and related columns from `player.csv`
+4. **Preprocess** — runs `preprocessing.py` to produce analysis-ready CSVs (`games.csv`, `trials.csv`, `messages.csv`, etc.)
+5. **Embeddings** — runs `compute_embeddings.py` for SBERT embeddings, similarity metrics, and UMAP projections
+6. **Visualize** — runs `visualize_pilot.py` and `animate_umap.py` for all auto-discovered conditions
+7. **Render** — renders Quarto notebooks (`00_preprocess.qmd` through `05_exit_survey.qmd`)
+
+**Output structure** (datetime extracted from zip filename):
+
+```
+analysis/20260222_132407/
+├── bonuses.csv              # Prolific IDs + bonus amounts (sensitive)
+├── raw/                     # Anonymized raw Empirica export CSVs
+│   ├── game.csv
+│   ├── player.csv           # participantIdentifier REMOVED
+│   ├── playerRound.csv
+│   └── ...
+├── data/                    # Preprocessed analysis-ready CSVs
+│   ├── games.csv
+│   ├── trials.csv
+│   ├── messages.csv
+│   ├── speaker_utterances.csv
+│   ├── embeddings.npy
+│   ├── umap_projections.csv
+│   └── ...
+└── figures/                 # Plots and animations
+    ├── pilot_social_mixed_listener_accuracy.png
+    └── ...
+```
+
+**Symlink:** The pipeline creates/updates `analysis/processed -> analysis/{datetime}/data/` so that Quarto notebooks (which read from `analysis/processed/`) always point to the most recently processed dataset.
+
+**Individual scripts** can also be run standalone with `--data-dir` and `--output-dir`:
+
+```bash
+uv run python analysis/visualize_pilot.py --data-dir analysis/20260222_132407/data/ --output-dir analysis/20260222_132407/figures/
+uv run python analysis/animate_umap.py --data-dir analysis/20260222_132407/data/ --output-dir analysis/20260222_132407/figures/
+```

@@ -11,7 +11,7 @@ library(tidyverse)
 library(here)
 library(jsonlite)
 
-data_dir <- here("analysis", "data")
+data_dir <- here("analysis", "processed")
 ```
 
 # Load Data

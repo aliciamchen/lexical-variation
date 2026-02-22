@@ -45,12 +45,12 @@ unzip <exported-file>.zip -d export-data/
 ## Step 2: Preprocess raw data
 
 ```bash
-uv run python analysis/preprocessing.py experiment/export-data/ --output analysis/data/
+uv run python analysis/preprocessing.py experiment/export-data/ --output analysis/processed/
 ```
 
 **Input:** `experiment/export-data/{game,player,playerRound,round}.csv`
 
-**Output** (in `analysis/data/`):
+**Output** (in `analysis/processed/`):
 
 | File | Description |
 |------|-------------|
@@ -64,10 +64,10 @@ uv run python analysis/preprocessing.py experiment/export-data/ --output analysi
 ## Step 3: Compute embeddings and similarity metrics
 
 ```bash
-uv run python analysis/compute_embeddings.py analysis/data/ --output analysis/data/
+uv run python analysis/compute_embeddings.py analysis/processed/ --output analysis/processed/
 ```
 
-**Output** (in `analysis/data/`):
+**Output** (in `analysis/processed/`):
 
 | File | Description |
 |------|-------------|

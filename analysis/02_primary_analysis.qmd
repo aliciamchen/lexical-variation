@@ -13,10 +13,18 @@ library(lmerTest)
 library(emmeans)
 library(here)
 
-data_dir <- here("analysis", "data")
+data_dir <- here("analysis", "processed")
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
-pairwise_sim <- read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE)
+
+has_pairwise <- file.exists(file.path(data_dir, "pairwise_similarities.csv"))
+if (!has_pairwise) {
+  cat("WARNING: pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
+  cat("Most analyses in this notebook will be skipped.\n")
+  pairwise_sim <- tibble()
+} else {
+  pairwise_sim <- read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE)
+}
 ```
 
 # Compute Group-Specificity per Game per Phase
@@ -27,6 +35,9 @@ For each game, fit:
 Extract the `sameGroup` coefficient as the group-specificity score.
 
 ```{r fit-group-specificity}
+if (!has_pairwise || nrow(pairwise_sim) == 0) {
+  cat("Skipping group-specificity analysis: no pairwise similarity data.\n")
+} else {
 fit_gs_by_game_window <- function(pw_df) {
   game_ids <- unique(pw_df$gameId)
 
@@ -75,6 +86,7 @@ gs_combined <- gs_p1 %>%
 cat("Group-specificity estimates:\n")
 gs_combined %>%
   knitr::kable(digits = 4, caption = "Group-specificity by game and phase")
+} # end has_pairwise
 ```
 
 # Weighted Least Squares Regression
@@ -85,6 +97,9 @@ group_specificity_phase2 ~ condition + group_specificity_phase1
 Weights: `1 / SE_phase2^2` (inverse variance of Phase 2 estimates).
 
 ```{r wls-model}
+if (!exists("gs_combined")) {
+  cat("Skipping: no group-specificity data.\n")
+} else {
 gs_combined <- gs_combined %>%
   mutate(
     weight = 1 / se_phase2^2,
@@ -105,6 +120,7 @@ if (n_conditions >= 2) {
               n_conditions, paste(unique(gs_combined$condition), collapse = ", ")))
   wls_model <- NULL
 }
+} # end exists("gs_combined")
 ```
 
 # Planned Contrasts
@@ -145,6 +161,9 @@ if (!is.null(contrasts)) {
 # Plots
 
 ```{r plot-gs-paired, fig.width=8, fig.height=5}
+if (!exists("gs_combined")) {
+  cat("Skipping plot: no group-specificity data.\n")
+} else {
 # Plot 6: Group-specificity Phase 1 vs Phase 2 by condition
 gs_long <- gs_combined %>%
   pivot_longer(
@@ -165,9 +184,13 @@ ggplot(gs_long, aes(x = phase, y = group_specificity, group = gameId)) +
   ) +
   theme_minimal() +
   theme(legend.position = "none")
+}
 ```
 
 ```{r plot-gs-phase2, fig.width=7, fig.height=5}
+if (!exists("gs_combined")) {
+  cat("Skipping plot: no group-specificity data.\n")
+} else {
 # Plot 7: Phase 2 group-specificity by condition (primary result)
 ggplot(gs_combined, aes(x = condition, y = gs_phase2, fill = condition)) +
   geom_violin(alpha = 0.3) +
@@ -181,6 +204,7 @@ ggplot(gs_combined, aes(x = condition, y = gs_phase2, fill = condition)) +
   ) +
   theme_minimal() +
   theme(legend.position = "none")
+}
 ```
 
 ```{r plot-wls-forest, fig.width=7, fig.height=4}
@@ -205,6 +229,9 @@ if (!is.null(wls_model)) {
 ```
 
 ```{r plot-within-between, fig.width=10, fig.height=5}
+if (!has_pairwise || nrow(pairwise_sim) == 0) {
+  cat("Skipping plot: no pairwise similarity data.\n")
+} else {
 # Plot 9: Within- vs between-group similarity by condition
 pw_summary <- pairwise_sim %>%
   left_join(games %>% select(gameId, condition), by = "gameId") %>%
@@ -236,6 +263,7 @@ ggplot(pw_means, aes(x = condition, y = mean_sim, fill = groupType)) +
   ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 20, hjust = 1))
+}
 ```
 
 # Optional: Bayes Factors (if null results)

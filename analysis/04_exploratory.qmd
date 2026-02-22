@@ -12,12 +12,14 @@ library(lme4)
 library(lmerTest)
 library(tidyboot)
 library(here)
-data_dir <- here("analysis", "data")
+data_dir <- here("analysis", "processed")
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
 trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
-adjacent_sim <- read_csv(file.path(data_dir, "adjacent_similarities.csv"), show_col_types = FALSE)
+
+has_adjacent <- file.exists(file.path(data_dir, "adjacent_similarities.csv"))
+adjacent_sim <- if (has_adjacent) read_csv(file.path(data_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
 ```
 
 ```{r prep-data}
@@ -41,13 +43,15 @@ listener_trials <- trials %>%
     globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
   )
 
-adj_with_condition <- adjacent_sim %>%
-  left_join(games %>% select(gameId, condition, phase1Blocks), by = "gameId") %>%
-  mutate(
-    condition = factor(condition,
-      levels = c("refer_separated", "refer_mixed", "social_mixed")),
-    globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
-  )
+if (has_adjacent && nrow(adjacent_sim) > 0) {
+  adj_with_condition <- adjacent_sim %>%
+    left_join(games %>% select(gameId, condition, phase1Blocks), by = "gameId") %>%
+    mutate(
+      condition = factor(condition,
+        levels = c("refer_separated", "refer_mixed", "social_mixed")),
+      globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
+    )
+}
 ```
 
 # 1. Description Length in Phase 2 by Condition
@@ -121,26 +125,34 @@ p_acc <- ggplot(acc_all, aes(x = globalBlock, y = empirical_stat, color = condit
   theme(legend.position = "bottom")
 
 # Plot 16b: Adjacent similarity over all blocks
-adj_all <- adj_with_condition %>%
-  filter(!is.na(simAdjacent)) %>%
-  group_by(condition, globalBlock) %>%
-  tidyboot_mean(simAdjacent, nboot = 1000)
+if (exists("adj_with_condition")) {
+  adj_all <- adj_with_condition %>%
+    filter(!is.na(simAdjacent)) %>%
+    group_by(condition, globalBlock) %>%
+    tidyboot_mean(simAdjacent, nboot = 1000)
 
-p_sim <- ggplot(adj_all, aes(x = globalBlock, y = empirical_stat, color = condition)) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
-              alpha = 0.12, color = NA) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 2) +
-  geom_vline(xintercept = phase_boundary, linetype = "dashed", alpha = 0.5) +
-  labs(x = "Block", y = "Cosine similarity (adjacent)", title = "(c) Convention stability") +
-  theme_minimal() +
-  theme(legend.position = "bottom")
+  p_sim <- ggplot(adj_all, aes(x = globalBlock, y = empirical_stat, color = condition)) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
+                alpha = 0.12, color = NA) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2) +
+    geom_vline(xintercept = phase_boundary, linetype = "dashed", alpha = 0.5) +
+    labs(x = "Block", y = "Cosine similarity (adjacent)", title = "(c) Convention stability") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+}
 
 # Plot 16: Combined temporal dynamics panel
 library(patchwork)
-p_length / p_acc / p_sim +
-  plot_layout(guides = "collect") &
-  theme(legend.position = "bottom")
+if (exists("p_sim")) {
+  p_length / p_acc / p_sim +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")
+} else {
+  p_length / p_acc +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")
+}
 ```
 
 # 3. UMAP Visualization

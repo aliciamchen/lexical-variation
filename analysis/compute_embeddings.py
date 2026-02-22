@@ -5,7 +5,7 @@ Loads speaker_utterances.csv, computes sentence embeddings using
 paraphrase-MiniLM-L12-v2, and produces similarity CSVs.
 
 Usage:
-    uv run python analysis/compute_embeddings.py analysis/data/ --output analysis/data/
+    uv run python analysis/compute_embeddings.py analysis/processed/ --output analysis/processed/
 """
 
 import argparse
@@ -206,7 +206,7 @@ def main():
     )
     parser.add_argument(
         "data_dir",
-        help="Path to analysis/data/ directory with preprocessed CSVs"
+        help="Path to analysis/processed/ directory with preprocessed CSVs"
     )
     parser.add_argument(
         "--output", "-o",

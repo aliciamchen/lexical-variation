@@ -24,3 +24,5 @@ lexical-variation*/
 .mcp.json
 .zed
 review*.md
+analysis/outputs
+raw

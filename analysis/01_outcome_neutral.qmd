@@ -16,13 +16,17 @@ library(lmerTest)
 library(tidyboot)
 library(here)
 
-data_dir <- here("analysis", "data")
+data_dir <- here("analysis", "processed")
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
 trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
-adjacent_sim <- read_csv(file.path(data_dir, "adjacent_similarities.csv"), show_col_types = FALSE)
-pairwise_sim <- read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE)
+
+has_adjacent <- file.exists(file.path(data_dir, "adjacent_similarities.csv"))
+has_pairwise <- file.exists(file.path(data_dir, "pairwise_similarities.csv"))
+
+adjacent_sim <- if (has_adjacent) read_csv(file.path(data_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
+pairwise_sim <- if (has_pairwise) read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
 ```
 
 ```{r prep-data}
@@ -60,14 +64,16 @@ p1_ref_accuracy <- p1_listener %>%
   )
 
 # Phase 1 adjacent similarities (phaseNum is in the CSV)
-p1_adjacent <- adjacent_sim %>%
-  filter(phaseNum == 1) %>%
-  mutate(
-    repNum_c = repNum - mean(repNum, na.rm = TRUE),
-    participant = playerId,
-    group = originalGroup,
-    tangram = target
-  )
+if (has_adjacent) {
+  p1_adjacent <- adjacent_sim %>%
+    filter(phaseNum == 1) %>%
+    mutate(
+      repNum_c = repNum - mean(repNum, na.rm = TRUE),
+      participant = playerId,
+      group = originalGroup,
+      tangram = target
+    )
+}
 ```
 
 # 1. Description Length Decreases Over Blocks
@@ -144,33 +150,39 @@ ggplot(acc_by_block, aes(x = repNum, y = empirical_stat)) +
 **Criterion:** Significant positive main effect of `repNum`.
 
 ```{r model-adjacent-sim}
-p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent))
+if (has_adjacent) {
+  p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent))
 
-m_adjacent <- lmer(
-  simAdjacent ~ repNum_c + (repNum_c | participant) + (repNum_c | group) + (repNum_c | tangram),
-  data = p1_adjacent_valid,
-  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
-)
+  m_adjacent <- lmer(
+    simAdjacent ~ repNum_c + (repNum_c | participant) + (repNum_c | group) + (repNum_c | tangram),
+    data = p1_adjacent_valid,
+    control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+  )
 
-summary(m_adjacent)
+  summary(m_adjacent)
+} else {
+  cat("Skipping: adjacent_similarities.csv not found. Run compute_embeddings.py first.\n")
+}
 ```
 
 ```{r plot-adjacent-sim, fig.width=7, fig.height=4}
-# Plot 3: Adjacent similarity over blocks
-sim_by_block <- p1_adjacent_valid %>%
-  group_by(repNum) %>%
-  tidyboot_mean(simAdjacent, nboot = 1000)
+if (has_adjacent && exists("p1_adjacent_valid")) {
+  # Plot 3: Adjacent similarity over blocks
+  sim_by_block <- p1_adjacent_valid %>%
+    group_by(repNum) %>%
+    tidyboot_mean(simAdjacent, nboot = 1000)
 
-ggplot(sim_by_block, aes(x = repNum, y = empirical_stat)) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = "darkorange") +
-  geom_line(color = "darkorange", linewidth = 1) +
-  geom_point(color = "darkorange", size = 2) +
-  labs(
-    x = "Repetition (block within Phase 1)",
-    y = "Cosine similarity (adjacent descriptions)",
-    title = "Convention stability increases over repetitions"
-  ) +
-  theme_minimal()
+  ggplot(sim_by_block, aes(x = repNum, y = empirical_stat)) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = "darkorange") +
+    geom_line(color = "darkorange", linewidth = 1) +
+    geom_point(color = "darkorange", size = 2) +
+    labs(
+      x = "Repetition (block within Phase 1)",
+      y = "Cosine similarity (adjacent descriptions)",
+      title = "Convention stability increases over repetitions"
+    ) +
+    theme_minimal()
+}
 ```
 
 # 4. Group-Specificity Exceeds Chance
@@ -279,6 +291,9 @@ permutation_test <- function(pairwise_df, n_perm = 1000) {
 ```
 
 ```{r compute-group-specificity}
+if (!has_pairwise) {
+  cat("Skipping: pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
+} else {
 # Use Phase 1 final pairwise similarities
 p1_pairwise <- pairwise_sim %>% filter(window == "phase1_final")
 
@@ -301,6 +316,7 @@ if (nrow(p1_pairwise) > 0) {
 } else {
   cat("No Phase 1 pairwise similarity data available.\n")
 }
+} # end has_pairwise
 ```
 
 ```{r plot-permutation, fig.width=10, fig.height=6}
