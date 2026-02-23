@@ -74,8 +74,8 @@ def compute_pairwise_similarities(
             continue
 
         for s1, s2 in combinations(speakers, 2):
-            s1_data = group_data[group_data["playerId"] == s1].iloc[0]
-            s2_data = group_data[group_data["playerId"] == s2].iloc[0]
+            s1_data = group_data[group_data["playerId"] == s1].iloc[-1]
+            s2_data = group_data[group_data["playerId"] == s2].iloc[-1]
 
             emb1 = embeddings[int(s1_data["embedding_idx"])]
             emb2 = embeddings[int(s2_data["embedding_idx"])]

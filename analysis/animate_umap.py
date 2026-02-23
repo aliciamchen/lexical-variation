@@ -28,13 +28,9 @@ from matplotlib.collections import LineCollection
 from matplotlib.lines import Line2D
 from matplotlib.offsetbox import AnnotationBbox, OffsetImage
 
-SVG_DIR = Path("experiment/client/public")
+from plot_style import apply_style, GROUP_COLORS, GROUP_ORDER, format_condition
 
-# ---------------------------------------------------------------------------
-# Style constants (match visualize_pilot.py)
-# ---------------------------------------------------------------------------
-GROUP_PALETTE = {"A": "steelblue", "B": "coral", "C": "forestgreen"}
-GROUP_ORDER = ["A", "B", "C"]
+SVG_DIR = Path("experiment/client/public")
 
 TANGRAM_MARKERS = {
     "page1-128": "o",
@@ -60,7 +56,7 @@ def discover_conditions(data_dir: Path) -> dict[str, list[str]]:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def condition_label(condition):
+def format_condition(condition):
     """Format condition name for display in titles."""
     return condition.replace("_", " ")
 
@@ -135,11 +131,7 @@ def build_trajectory_segments(centroid_df, current_block, color):
 # Video 1: 2x3 tangram grid
 # ---------------------------------------------------------------------------
 def make_tangram_grid_video(df, condition="", output_dir=None):
-    sns.set_theme(
-        style="ticks",
-        font_scale=1.3,
-        rc={"font.family": "sans-serif", "font.sans-serif": ["DejaVu Sans"]},
-    )
+    apply_style()
 
     fig, axes = plt.subplots(2, 3, figsize=(16, 10))
     axes_flat = axes.flatten()
@@ -181,7 +173,7 @@ def make_tangram_grid_video(df, condition="", output_dir=None):
 
         for g in GROUP_ORDER:
             sc = ax.scatter(
-                [], [], c=GROUP_PALETTE[g], s=60, edgecolors="none", label=g
+                [], [], c=GROUP_COLORS[g], s=60, edgecolors="none", label=g
             )
             scatters[(i, g)] = sc
             line_collections[(i, g)] = None
@@ -197,7 +189,7 @@ def make_tangram_grid_video(df, condition="", output_dir=None):
     def update(frame):
         current_block = frame
         suptitle.set_text(
-            f"{condition_label(condition)} pilot — {block_label(current_block)}"
+            f"{format_condition(condition)} pilot — {block_label(current_block)}"
         )
 
         for i, target in enumerate(TANGRAM_ORDER):
@@ -218,7 +210,7 @@ def make_tangram_grid_video(df, condition="", output_dir=None):
                     )
                     scatters[(i, g)].set_offsets(offsets)
                     scatters[(i, g)].set_alpha(None)
-                    base_color = plt.matplotlib.colors.to_rgba(GROUP_PALETTE[g])
+                    base_color = plt.matplotlib.colors.to_rgba(GROUP_COLORS[g])
                     rgba = np.tile(base_color, (len(pts), 1))
                     rgba[:, 3] = alphas
                     scatters[(i, g)].set_facecolors(rgba)
@@ -232,7 +224,7 @@ def make_tangram_grid_video(df, condition="", output_dir=None):
                 ckey = (g, target)
                 if ckey in centroids:
                     lc = build_trajectory_segments(
-                        centroids[ckey], current_block, GROUP_PALETTE[g]
+                        centroids[ckey], current_block, GROUP_COLORS[g]
                     )
                     if lc is not None:
                         ax.add_collection(lc)
@@ -252,11 +244,7 @@ def make_tangram_grid_video(df, condition="", output_dir=None):
 # Video 2: Single plot, all tangrams
 # ---------------------------------------------------------------------------
 def make_all_tangrams_video(df, condition="", output_dir=None):
-    sns.set_theme(
-        style="ticks",
-        font_scale=1.4,
-        rc={"font.family": "sans-serif", "font.sans-serif": ["DejaVu Sans"]},
-    )
+    apply_style()
 
     fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -279,7 +267,7 @@ def make_all_tangrams_video(df, condition="", output_dir=None):
         for target in TANGRAM_ORDER:
             marker = TANGRAM_MARKERS[target]
             sc = ax.scatter(
-                [], [], c=GROUP_PALETTE[g], s=70, marker=marker, edgecolors="none"
+                [], [], c=GROUP_COLORS[g], s=70, marker=marker, edgecolors="none"
             )
             scatters[(g, target)] = sc
             line_collections[(g, target)] = None
@@ -291,7 +279,7 @@ def make_all_tangrams_video(df, condition="", output_dir=None):
             [0],
             marker="o",
             color="w",
-            markerfacecolor=GROUP_PALETTE[g],
+            markerfacecolor=GROUP_COLORS[g],
             markersize=10,
             label=g,
         )
@@ -327,7 +315,7 @@ def make_all_tangrams_video(df, condition="", output_dir=None):
         current_block = frame
 
         title.set_text(
-            f"{condition_label(condition)} pilot — {block_label(current_block)}"
+            f"{format_condition(condition)} pilot — {block_label(current_block)}"
         )
 
         for g in GROUP_ORDER:
@@ -348,7 +336,7 @@ def make_all_tangrams_video(df, condition="", output_dir=None):
                         [fade_alpha(b, current_block) for b in pts["block"]]
                     )
                     scatters[(g, target)].set_offsets(offsets)
-                    base_color = plt.matplotlib.colors.to_rgba(GROUP_PALETTE[g])
+                    base_color = plt.matplotlib.colors.to_rgba(GROUP_COLORS[g])
                     rgba = np.tile(base_color, (len(pts), 1))
                     rgba[:, 3] = alphas
                     scatters[(g, target)].set_facecolors(rgba)
@@ -362,7 +350,7 @@ def make_all_tangrams_video(df, condition="", output_dir=None):
                 ckey = (g, target)
                 if ckey in centroids:
                     lc = build_trajectory_segments(
-                        centroids[ckey], current_block, GROUP_PALETTE[g]
+                        centroids[ckey], current_block, GROUP_COLORS[g]
                     )
                     if lc is not None:
                         ax.add_collection(lc)

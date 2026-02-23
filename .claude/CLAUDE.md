@@ -288,7 +288,7 @@ uv run python analysis/run_pipeline.py --skip-render       # skip Quarto noteboo
 3. **Anonymize** — copies raw CSVs to `raw/`, stripping `participantIdentifier` and related columns from `player.csv`
 4. **Preprocess** — runs `preprocessing.py` to produce analysis-ready CSVs (`games.csv`, `trials.csv`, `messages.csv`, etc.)
 5. **Embeddings** — runs `compute_embeddings.py` for SBERT embeddings, similarity metrics, and UMAP projections
-6. **Visualize** — runs `visualize_pilot.py` and `animate_umap.py` for all auto-discovered conditions
+6. **Visualize** — runs `pilot_analysis.py` and `animate_umap.py` for all auto-discovered conditions
 7. **Render** — renders Quarto notebooks (`00_preprocess.qmd` through `05_exit_survey.qmd`)
 
 **Output structure** (datetime extracted from zip filename):
@@ -319,6 +319,6 @@ analysis/20260222_132407/
 **Individual scripts** can also be run standalone with `--data-dir` and `--output-dir`:
 
 ```bash
-uv run python analysis/visualize_pilot.py --data-dir analysis/20260222_132407/data/ --output-dir analysis/20260222_132407/figures/
+uv run python analysis/pilot_analysis.py --data-dir analysis/20260222_132407/data/ --output-dir analysis/20260222_132407/figures/
 uv run python analysis/animate_umap.py --data-dir analysis/20260222_132407/data/ --output-dir analysis/20260222_132407/figures/
 ```

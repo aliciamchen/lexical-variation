@@ -144,15 +144,15 @@ def step_embeddings(data_dir: Path) -> None:
 
 
 def step_visualize(data_dir: Path, figures_dir: Path) -> None:
-    """Step 6: Run visualize_pilot.py and animate_umap.py for all conditions."""
+    """Step 6: Run pilot_analysis.py and animate_umap.py for all conditions."""
     print(f"\n{'=' * 60}")
     print("Step 6: Generating visualizations")
     print(f"{'=' * 60}")
 
     figures_dir.mkdir(parents=True, exist_ok=True)
 
-    # visualize_pilot.py
-    vis_script = ANALYSIS_DIR / "visualize_pilot.py"
+    # pilot_analysis.py
+    vis_script = ANALYSIS_DIR / "pilot_analysis.py"
     cmd = [
         sys.executable,
         str(vis_script),
@@ -161,7 +161,7 @@ def step_visualize(data_dir: Path, figures_dir: Path) -> None:
         "--output-dir",
         str(figures_dir),
     ]
-    print(f"\n  Running visualize_pilot.py ...")
+    print(f"\n  Running pilot_analysis.py ...")
     subprocess.run(cmd, check=True)
 
     # animate_umap.py
@@ -259,7 +259,7 @@ def main():
     output_dir = ANALYSIS_DIR / datetime_str
     raw_dir = output_dir / "raw"
     data_dir = output_dir / "data"
-    figures_dir = output_dir / "figures"
+    figures_dir = output_dir / "outputs"
 
     print(f"Zip: {zip_path}")
     print(f"Output: {output_dir}")
