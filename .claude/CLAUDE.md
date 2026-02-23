@@ -314,7 +314,7 @@ analysis/20260222_132407/
     └── ...
 ```
 
-**Symlink:** The pipeline creates/updates `analysis/processed -> analysis/{datetime}/data/` so that Quarto notebooks (which read from `analysis/processed/`) always point to the most recently processed dataset.
+**Symlink:** The pipeline creates/updates `analysis/processed_data -> analysis/{datetime}/data/` so that Quarto notebooks (which read from `analysis/processed_data/`) always point to the most recently processed dataset.
 
 **Individual scripts** can also be run standalone with `--data-dir` and `--output-dir`:
 
