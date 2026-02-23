@@ -195,28 +195,28 @@ def step_render_quarto() -> None:
 
 
 def update_data_symlink(datetime_str: str) -> None:
-    """Create/update symlink: analysis/processed -> analysis/{datetime}/data/."""
-    symlink_path = ANALYSIS_DIR / "processed"
+    """Create/update symlink: analysis/processed_data -> analysis/{datetime}/data/."""
+    symlink_path = ANALYSIS_DIR / "processed_data"
     target = Path(datetime_str) / "data"  # relative to analysis/
 
     # If it's an existing symlink, remove it
     if symlink_path.is_symlink():
         symlink_path.unlink()
         symlink_path.symlink_to(target)
-        print(f"\n  Updated symlink: analysis/processed -> {target}")
+        print(f"\n  Updated symlink: analysis/processed_data -> {target}")
     elif symlink_path.is_dir():
-        # First run: current analysis/processed is a real directory.
+        # First run: current analysis/processed_data is a real directory.
         # Rename it out of the way, then create the symlink.
         backup = ANALYSIS_DIR / "data.bak"
         if backup.exists():
             shutil.rmtree(backup)
         symlink_path.rename(backup)
         symlink_path.symlink_to(target)
-        print(f"\n  Moved existing analysis/processed/ to analysis/processed.bak/")
-        print(f"  Created symlink: analysis/processed -> {target}")
+        print(f"\n  Moved existing analysis/processed_data/ to analysis/processed_data.bak/")
+        print(f"  Created symlink: analysis/processed_data -> {target}")
     else:
         symlink_path.symlink_to(target)
-        print(f"\n  Created symlink: analysis/processed -> {target}")
+        print(f"\n  Created symlink: analysis/processed_data -> {target}")
 
 
 def main():
@@ -316,7 +316,7 @@ def main():
     print(f"  Processed: {data_dir}")
     if not args.skip_visualize:
         print(f"  Figures:  {figures_dir}")
-    print(f"  Symlink:  analysis/processed -> {datetime_str}/data/")
+    print(f"  Symlink:  analysis/processed_data -> {datetime_str}/data/")
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ library(lme4)
 library(lmerTest)
 library(tidyboot)
 library(here)
-data_dir <- here("analysis", "processed")
+data_dir <- here("analysis", "processed_data")
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)

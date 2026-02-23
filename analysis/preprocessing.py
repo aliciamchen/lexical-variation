@@ -4,7 +4,7 @@ Preprocessing script for Empirica experiment data.
 Parses raw Empirica export CSVs and produces clean analysis-ready CSVs.
 
 Usage:
-    uv run python analysis/preprocessing.py experiment/export-data/ --output analysis/processed/
+    uv run python analysis/preprocessing.py experiment/export-data/ --output analysis/processed_data/
 """
 
 import argparse
@@ -410,7 +410,7 @@ def main():
     parser.add_argument(
         "--output",
         "-o",
-        default="analysis/processed/",
+        default="analysis/processed_data/",
         help="Output directory for clean CSVs",
     )
     args = parser.parse_args()

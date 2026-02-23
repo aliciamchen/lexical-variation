@@ -13,7 +13,7 @@ library(lmerTest)
 library(emmeans)
 library(here)
 
-data_dir <- here("analysis", "processed")
+data_dir <- here("analysis", "processed_data")
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 

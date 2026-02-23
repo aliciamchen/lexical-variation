@@ -10,7 +10,7 @@ format:
 library(tidyverse)
 library(here)
 
-data_dir <- here("analysis", "processed")
+data_dir <- here("analysis", "processed_data")
 ```
 
 # Load & Clean

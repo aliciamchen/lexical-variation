@@ -40,7 +40,7 @@ BONUS_PER_POINT_SOCIAL = 0.04
 VALID_NAMES = {"Repi", "Minu", "Laju", "Hera", "Zuda", "Bavi", "Lika", "Felu", "Nori"}
 
 # Data directory
-DATA_DIR = Path(__file__).parent / "processed"
+DATA_DIR = Path(__file__).parent / "processed_data"
 
 
 # ============ FIXTURES ============

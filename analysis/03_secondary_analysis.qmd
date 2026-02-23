@@ -13,7 +13,7 @@ library(lmerTest)
 library(tidyboot)
 library(here)
 
-data_dir <- here("analysis", "processed")
+data_dir <- here("analysis", "processed_data")
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)

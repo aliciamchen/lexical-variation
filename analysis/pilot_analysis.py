@@ -622,8 +622,8 @@ def visualize_condition(condition, game_ids, data_dir, output_dir):
 def main():
     parser = argparse.ArgumentParser(description="Pilot data analysis and visualization")
     parser.add_argument(
-        "--data-dir", default="analysis/processed/",
-        help="Path to preprocessed CSVs (default: analysis/processed/)",
+        "--data-dir", default="analysis/processed_data/",
+        help="Path to preprocessed CSVs (default: analysis/processed_data/)",
     )
     parser.add_argument(
         "--output-dir", default=None,

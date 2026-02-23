@@ -379,8 +379,8 @@ def main():
     )
     parser.add_argument(
         "--data-dir",
-        default="analysis/processed/",
-        help="Path to directory containing preprocessed CSVs (default: analysis/processed/)",
+        default="analysis/processed_data/",
+        help="Path to directory containing preprocessed CSVs (default: analysis/processed_data/)",
     )
     parser.add_argument(
         "--output-dir",
