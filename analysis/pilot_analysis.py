@@ -385,6 +385,124 @@ def plot_phase_change_comparison(data, output_dir, conditions):
     print(f"  Saved phase_change_comparison.png")
 
 
+# ── Faceted by-condition plots (shared y-axis) ────────────────
+
+def _facet_legend_right(g, title="Original group"):
+    """Place a compact legend to the right of a FacetGrid without a huge gap."""
+    # Remove any auto-generated legend
+    if g._legend is not None:
+        g._legend.remove()
+    # Place legend just outside the last axis
+    last_ax = g.axes.flat[-1]
+    last_ax.legend(title=title, bbox_to_anchor=(1.04, 0.5), loc="center left",
+                   fontsize=11, title_fontsize=11, frameon=False)
+
+
+def plot_faceted_metrics(data, output_dir, conditions):
+    """FacetGrid plots: columns = conditions, hue = original group, shared y-axis."""
+    utterances = data["utterances"]
+    trials = data["trials"]
+    adjacent = data["adjacent"]
+
+    condition_order = sorted(conditions)
+    condition_labels = {c: format_condition(c) for c in condition_order}
+
+    # --- Description length ---
+    utt = continuous_block(utterances[utterances["condition"].isin(conditions)])
+    utt["condition_label"] = utt["condition"].map(condition_labels)
+    label_order = [condition_labels[c] for c in condition_order]
+
+    g = sns.FacetGrid(
+        utt, col="condition_label", col_order=label_order,
+        hue="originalGroup", hue_order=GROUP_ORDER, palette=GROUP_COLORS,
+        sharey=True, height=4, aspect=1.0,
+    )
+    g.map_dataframe(sns.lineplot, x="block", y="uttLength", marker="o", markersize=5, errorbar=None)
+    for ax in g.axes.flat:
+        add_phase_boundary(ax)
+    g.set_axis_labels("Block", "Word count")
+    g.set_titles("{col_name}")
+    _facet_legend_right(g)
+    g.figure.suptitle("Description length", y=1.02)
+    g.figure.savefig(output_dir / "facet_description_length.png", dpi=150, bbox_inches="tight")
+    plt.close(g.figure)
+    print(f"  Saved facet_description_length.png")
+
+    # --- Listener accuracy ---
+    listener = continuous_block(
+        trials[(trials["role"] == "listener") & trials["condition"].isin(conditions)]
+    ).copy()
+    listener["correct"] = listener["clickedCorrect"].astype(float)
+    listener["condition_label"] = listener["condition"].map(condition_labels)
+
+    g = sns.FacetGrid(
+        listener, col="condition_label", col_order=label_order,
+        hue="originalGroup", hue_order=GROUP_ORDER, palette=GROUP_COLORS,
+        sharey=True, height=4, aspect=1.0,
+    )
+    g.map_dataframe(sns.lineplot, x="block", y="correct", marker="o", markersize=5, errorbar=None)
+    for ax in g.axes.flat:
+        add_phase_boundary(ax)
+        add_chance_line(ax, 1 / 6, "Chance (1/6)")
+        ax.set_ylim(0, 1.05)
+    g.set_axis_labels("Block", "Accuracy")
+    g.set_titles("{col_name}")
+    _facet_legend_right(g)
+    g.figure.suptitle("Listener accuracy", y=1.02)
+    g.figure.savefig(output_dir / "facet_listener_accuracy.png", dpi=150, bbox_inches="tight")
+    plt.close(g.figure)
+    print(f"  Saved facet_listener_accuracy.png")
+
+    # --- Convention stability ---
+    adj = continuous_block(
+        adjacent[adjacent["simAdjacent"].notna() & adjacent["condition"].isin(conditions)]
+    ).copy()
+    adj["condition_label"] = adj["condition"].map(condition_labels)
+
+    g = sns.FacetGrid(
+        adj, col="condition_label", col_order=label_order,
+        hue="originalGroup", hue_order=GROUP_ORDER, palette=GROUP_COLORS,
+        sharey=True, height=4, aspect=1.0,
+    )
+    g.map_dataframe(sns.lineplot, x="block", y="simAdjacent", marker="o", markersize=5, errorbar=None)
+    for ax in g.axes.flat:
+        add_phase_boundary(ax)
+        ax.set_ylim(0, 1.05)
+    g.set_axis_labels("Block", "Cosine similarity")
+    g.set_titles("{col_name}")
+    _facet_legend_right(g)
+    g.figure.suptitle("Convention stability", y=1.02)
+    g.figure.savefig(output_dir / "facet_convention_stability.png", dpi=150, bbox_inches="tight")
+    plt.close(g.figure)
+    print(f"  Saved facet_convention_stability.png")
+
+    # --- Phase change similarity ---
+    phase_change = data["phase_change"]
+    if not phase_change.empty:
+        pc = phase_change[phase_change["condition"].isin(conditions)].copy()
+        pc["condition_label"] = pc["condition"].map(condition_labels)
+        pc_label_order = [condition_labels[c] for c in condition_order if c in pc["condition"].unique()]
+
+        if not pc.empty:
+            g = sns.FacetGrid(
+                pc, col="condition_label", col_order=pc_label_order,
+                sharey=True, height=4, aspect=1.0,
+            )
+            g.map_dataframe(sns.boxplot, x="originalGroup", y="simPhase1Phase2",
+                            order=GROUP_ORDER, palette=GROUP_COLORS, width=0.5)
+            g.map_dataframe(sns.stripplot, x="originalGroup", y="simPhase1Phase2",
+                            order=GROUP_ORDER, color="black", alpha=0.4, size=3, jitter=True)
+            for ax in g.axes.flat:
+                ax.set_ylim(0, 1.05)
+                sns.despine(ax=ax)
+            g.set_axis_labels("Original group", "Cosine similarity")
+            g.set_titles("{col_name}")
+            g.figure.suptitle("Phase 1 → 2 description stability", y=1.02)
+            g.figure.savefig(output_dir / "facet_phase_change.png", dpi=150, bbox_inches="tight")
+            plt.close(g.figure)
+            print(f"  Saved facet_phase_change.png")
+
+
 # ── Composite overview figure ─────────────────────────────────
 
 def plot_composite(data, output_dir, conditions):
@@ -683,6 +801,11 @@ def main():
         print("\nCross-condition comparison plots:")
         plot_cross_condition(all_data, output_dir, conditions_list)
         plot_phase_change_comparison(all_data, output_dir, conditions_list)
+
+    # Faceted by-condition plots (shared y-axis)
+    if len(conditions_list) >= 2:
+        print("\nFaceted by-condition plots:")
+        plot_faceted_metrics(all_data, output_dir, conditions_list)
 
     # Composite overview
     print("\nComposite overview:")
