@@ -16,7 +16,8 @@ export function Sorry() {
 
   // Detect lobby timeout: player never started a game (no gameStartTime)
   // and wasn't explicitly kicked for another reason
-  const isLobbyTimeout = !gameStartTime &&
+  const isLobbyTimeout =
+    !gameStartTime &&
     endedReason !== "player timeout" &&
     endedReason !== "group disbanded" &&
     endedReason !== "quiz failed";
@@ -33,41 +34,45 @@ export function Sorry() {
     message = (
       <>
         <p>
-          Unfortunately, you were not able to pass the comprehension quiz.
-          You will not be able to participate in this study.
+          Unfortunately, you were not able to pass the comprehension quiz. You
+          will not be able to participate in this study.
         </p>
         <p className="mt-2">
-          Please return this study on Prolific so another participant can take your place.
+          Please return this study on Prolific so another participant can take
+          your place.
         </p>
       </>
     );
     showCompensation = false;
   } else if (isLobbyTimeout || endedReason === "lobby timeout") {
-    title = "Waiting Room Timeout";
+    title = "Participant Recruitment Issue";
     message = (
       <>
         <p>
-          Unfortunately, we were unable to find enough participants to start the game within
-          the waiting time limit.
+          Unfortunately, we were unable to find enough participants to start a
+          new game, or the players you were assigned to play with have already
+          found partners and started.
         </p>
         <p className="mt-2">
-          We apologize for the wait. You will receive compensation for your time in the waiting room.
+          We apologize for the inconvenience. You will receive compensation for
+          your time spent.
         </p>
       </>
     );
     compensationCode = "CMZUY3MK";
-    compensationMessage = `$${LOBBY_TIMEOUT_PAY.toFixed(2)} for your waiting time`;
+    compensationMessage = `$${LOBBY_TIMEOUT_PAY.toFixed(2)} for your time spent`;
   } else if (endedReason === "player timeout") {
     title = "Removed for Inactivity";
     message = (
       <>
         <p>
-          You were removed from the game because you were inactive for 2 consecutive rounds.
-          This may have happened because you didn't send any messages or make any selections.
+          You were removed from the game because you were inactive for multiple
+          consecutive rounds. This may have happened because you didn't send any
+          messages or make any selections.
         </p>
         <p className="mt-2">
-          We understand that technical issues or distractions can occur. If you believe this was
-          an error, please contact the researcher on Prolific.
+          We understand that technical issues or distractions can occur. If you
+          believe this was an error, please contact the researcher on Prolific.
         </p>
       </>
     );
@@ -82,11 +87,13 @@ export function Sorry() {
     // This page just shows the Prolific completion code.
     title = "Completion Code";
     const payAmount = partialPay != null ? partialPay.toFixed(2) : "0.00";
-    const basePayAmount = partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
+    const basePayAmount =
+      partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
     const bonusAmount = partialBonus != null ? partialBonus.toFixed(2) : "0.00";
     message = (
       <p>
-        Thank you for completing the exit survey. Please use the code below to receive your payment.
+        Thank you for completing the exit survey. Please use the code below to
+        receive your payment.
       </p>
     );
     compensationCode = "CFTYDMIY";
@@ -117,19 +124,19 @@ export function Sorry() {
       className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
       data-testid="sorry-screen"
       data-exit-reason={dataExitReason}
-      data-prolific-code={showCompensation && compensationCode ? compensationCode : "none"}
+      data-prolific-code={
+        showCompensation && compensationCode ? compensationCode : "none"
+      }
       data-partial-pay={partialPay?.toFixed(2) || "0.00"}
       data-player-id={player?.id || "unknown"}
     >
-      <Alert title={title}>
-        {message}
-      </Alert>
+      <Alert title={title}>{message}</Alert>
 
       {showCompensation && compensationCode ? (
         <Alert title="Payment">
           <p>
-            Please submit the following code on Prolific to receive {compensationMessage}:{" "}
-            <strong>{compensationCode}</strong>
+            Please submit the following code on Prolific to receive{" "}
+            {compensationMessage}: <strong>{compensationCode}</strong>
           </p>
           <p className="pt-1">
             Thank you for your time and willingness to participate in our study.
@@ -141,11 +148,11 @@ export function Sorry() {
             Unfortunately, you will not receive compensation for this session.
           </p>
           <p className="pt-1">
-            If you believe this was an error, please contact the researcher on Prolific.
+            If you believe this was an error, please contact the researcher on
+            Prolific.
           </p>
         </Alert>
       )}
-
     </div>
   );
 }

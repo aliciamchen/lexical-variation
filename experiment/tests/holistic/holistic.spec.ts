@@ -363,7 +363,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     test.slow();
     const active = await getActivePlayers(gamePages);
 
-    // We've played: 2 normal + MAX_IDLE_ROUNDS(2) speaker idle + 2 normal + MAX_IDLE_ROUNDS(2) listener idle = 8 rounds
+    // We've played: 2 normal + MAX_IDLE_ROUNDS speaker idle + 2 normal + MAX_IDLE_ROUNDS listener idle rounds
     // Phase 1 total: PHASE_1_BLOCKS * ROUNDS_PER_BLOCK = 6 * 6 = 36 rounds
     // Remaining: 36 - 8 = 28 rounds
     const roundsPlayed = 2 + MAX_IDLE_ROUNDS + 2 + MAX_IDLE_ROUNDS;
@@ -590,7 +590,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
   test('3 overflow players are not in the game', async () => {
     // Overflow players may land on different screens depending on when they tried
     // to join:
-    // - Empirica lobby timeout screen ("Waiting Room Timeout" + CMZUY3MK code)
+    // - Empirica lobby timeout screen ("Participant Recruitment Issue" + CMZUY3MK code)
     // - Empirica "No experiments available" screen (if batch was already full)
     // - Custom sorry screen with data-testid
     // All that matters is they're NOT in the active game.
@@ -602,7 +602,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
       // Check what screen they're on (informational, not a hard assertion on screen type)
       const content = await page.textContent('body');
       const hasLobbyTimeout = content?.includes(PROLIFIC_CODES.lobbyTimeout) ||
-        content?.includes('Waiting Room Timeout');
+        content?.includes('Participant Recruitment Issue');
       const hasNoExperiments = content?.includes('No experiments available');
       const hasSorryScreen = (await page.locator(SORRY_SCREEN).count()) > 0;
       // At least one of these states should be true

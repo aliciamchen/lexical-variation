@@ -27,16 +27,16 @@ export const PHASE_1_ROUNDS = PHASE_1_BLOCKS * ROUNDS_PER_BLOCK;
 export const PHASE_2_ROUNDS = PHASE_2_BLOCKS * ROUNDS_PER_BLOCK;
 
 // Dropout
-export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 2;
+export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 3;
 export const MIN_GROUP_SIZE = 2;
 
 // Scoring
 export const LISTENER_CORRECT_POINTS = 2;
 export const SPEAKER_MAX_POINTS_PER_ROUND = 2;
-export const SOCIAL_GUESS_CORRECT_POINTS = 2;
-export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 2;
+export const SOCIAL_GUESS_CORRECT_POINTS = 4;
+export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 4;
 export const BONUS_PER_POINT = 0.05;
-export const BONUS_PER_POINT_SOCIAL = 0.04;
+export const BONUS_PER_POINT_SOCIAL = 0.03;
 
 // Compensation
 export const BASE_PAY = 12;

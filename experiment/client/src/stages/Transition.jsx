@@ -5,6 +5,7 @@ import {
   NUM_TANGRAMS,
   LISTENER_CORRECT_POINTS,
   SOCIAL_GUESS_CORRECT_POINTS,
+  SOCIAL_SPEAKER_POINTS_PER_CORRECT,
 } from "../constants";
 
 export function Transition(props) {
@@ -70,9 +71,10 @@ export function Transition(props) {
             <strong>New task:</strong> After clicking on a picture, listeners
             will also guess whether the speaker was in their{" "}
             <em>original group</em> from Phase 1. Speakers and listeners will be
-            rewarded for correct guesses. For these guesses, we won't tell you
-            whether you were correct or not, but you will see the overall
-            results at the end of the game.
+            rewarded for correct guesses. In this phase, you will be{" "}
+            <strong>primarily rewarded for these responses</strong>. For these
+            guesses, we won't immediately tell you whether you were correct or
+            not, but you will see the overall results at the end of the game.
           </p>
           <p style={{ marginTop: 8 }}>
             Remember to limit your messages to describing the current target
@@ -115,14 +117,15 @@ export function Transition(props) {
               <>
                 <li>
                   Listeners earn{" "}
-                  <strong>{SOCIAL_GUESS_CORRECT_POINTS} bonus points</strong>{" "}
-                  for correctly guessing whether the speaker was in their
-                  original group.
+                  <strong>{SOCIAL_GUESS_CORRECT_POINTS} points</strong> for
+                  correctly guessing whether the speaker was in their original
+                  group.
                 </li>
                 <li>
-                  Speakers earn up to <strong>2 bonus points</strong> based on
-                  the proportion of listeners from their original group who
-                  correctly identify them.
+                  Speakers earn up to{" "}
+                  <strong>{SOCIAL_SPEAKER_POINTS_PER_CORRECT} points</strong>{" "}
+                  based on the proportion of listeners from their original group
+                  who correctly identify them.
                 </li>
               </>
             )}
@@ -202,7 +205,7 @@ export function Transition(props) {
                 <strong>{socialGuessedAboutCorrect}</strong> out of{" "}
                 <strong>{socialGuessedAboutTotal}</strong> times (
                 {Math.round(
-                  (socialGuessedAboutCorrect / socialGuessedAboutTotal) * 100
+                  (socialGuessedAboutCorrect / socialGuessedAboutTotal) * 100,
                 )}
                 %).
               </p>

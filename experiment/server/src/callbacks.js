@@ -17,6 +17,7 @@ import {
   LISTENER_CORRECT_POINTS,
   SPEAKER_MAX_POINTS_PER_ROUND,
   SOCIAL_GUESS_CORRECT_POINTS,
+  SOCIAL_SPEAKER_POINTS_PER_CORRECT,
   MAX_IDLE_ROUNDS,
   MIN_GROUP_SIZE,
   TEST_MODE,
@@ -770,7 +771,7 @@ Empirica.onStageEnded(({ stage }) => {
         // Similar to tangram scoring: 2 * (proportion of original-group listeners who correctly identify)
         const socialSpeakerPoints =
           listenersFromOriginalGroup.length > 0
-            ? 2 *
+            ? SOCIAL_SPEAKER_POINTS_PER_CORRECT *
               (correctGuessesFromOriginalGroup /
                 listenersFromOriginalGroup.length)
             : 0;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Tangram } from "../components/Tangram.jsx";
 import { Button } from "../components/Button.jsx";
-import { PHASE_1_BLOCKS, PHASE_2_BLOCKS } from "../constants";
+import { PHASE_1_BLOCKS, PHASE_2_BLOCKS, MAX_IDLE_ROUNDS } from "../constants";
 
 export function Refgame(props) {
   const { round, stage, game, player, players } = props;
@@ -162,9 +162,9 @@ export function Refgame(props) {
     }
   }
 
-  // Check if player was idle in the previous round (idle_rounds === 1 means first warning)
+  // Check if player was idle in previous rounds — show warning for any idle count below threshold
   const idleRounds = player.get("idle_rounds") || 0;
-  const wasIdleLastRound = idleRounds === 1;
+  const showIdleWarning = idleRounds > 0 && idleRounds < MAX_IDLE_ROUNDS;
 
   if (hasSubmitted && stage.get("name") == "Feedback") {
     return (
@@ -365,7 +365,7 @@ export function Refgame(props) {
           </p>
         )}
 
-        {wasIdleLastRound && stage.get("name") == "Feedback" && (
+        {showIdleWarning && stage.get("name") == "Feedback" && (
           <p
             style={{
               marginTop: 12,
@@ -378,7 +378,7 @@ export function Refgame(props) {
               borderRadius: "6px",
             }}
           >
-            Warning: You were inactive last round. If you are inactive again, you will be removed from the experiment and will not receive any pay.
+            Warning: You have been inactive for {idleRounds} round(s). If you continue to be inactive, you will be removed from the experiment and will not receive any pay.
           </p>
         )}
 

@@ -11,7 +11,6 @@ import {
   PHASE_2_BLOCKS,
   SELECTION_DURATION,
   LISTENER_CORRECT_POINTS,
-  BONUS_PER_POINT,
   GROUP_SIZE,
   getAvatarUrl,
   avatar_seeds,
@@ -314,8 +313,7 @@ export function Introduction5({ next }) {
         <li>No points are awarded for incorrect selections or timeouts.</li>
       </ul>
       <p>
-        At the end of the game, your total points are converted to a bonus at a
-        rate of <strong>${BONUS_PER_POINT.toFixed(2)} per point</strong>.
+        At the end of the game, your total points are converted to a bonus payment.
       </p>
       <p>
         After you pass the comprehension quiz, you will be put into a waiting

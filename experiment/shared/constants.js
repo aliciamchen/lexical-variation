@@ -15,7 +15,7 @@ export const TEST_MODE =
 // |----------------------|---------|------------|--------------------------------------|
 // | TEST_MODE            | true    | false      | Master toggle                        |
 // | SELECTION_DURATION   | 120     | 45         | Seconds for selection stage          |
-// | MAX_IDLE_ROUNDS      | 5       | 2          | Rounds before idle kick              |
+// | MAX_IDLE_ROUNDS      | 5       | 3          | Rounds before idle kick              |
 // | PHASE_1_BLOCKS       | 2       | 6          | Blocks in Phase 1                    |
 // | PHASE_2_BLOCKS       | 2       | 6          | Blocks in Phase 2                    |
 
@@ -117,11 +117,11 @@ export const bonus_per_point = BONUS_PER_POINT; // Alias for server compatibilit
 export const LISTENER_CORRECT_POINTS = 2;
 // Speaker scoring: 2 * (proportion of correct listeners) - max 2 points per round
 export const SPEAKER_MAX_POINTS_PER_ROUND = 2;
-export const SOCIAL_GUESS_CORRECT_POINTS = 2;
+export const SOCIAL_GUESS_CORRECT_POINTS = 4;
 // Speaker bonus: points for each original-group listener who correctly identifies them
-export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 2;
+export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 4;
 // Social condition has more scoring opportunities, so lower multiplier to keep max bonus similar
-export const BONUS_PER_POINT_SOCIAL = 0.04;
+export const BONUS_PER_POINT_SOCIAL = 0.03;
 
 // ============ COMPENSATION ============
 export const BASE_PAY = 12; // dollars
@@ -131,7 +131,7 @@ export const LOBBY_TIMEOUT_PAY = 2; // dollars for players who couldn't find a m
 export const EXPECTED_GAME_DURATION_MIN = 45; // midpoint of 30-45 minute estimate
 
 // ============ DROPOUT HANDLING ============
-export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 2; // TEST: 5 rounds tolerance
+export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 3; // TEST: 5 rounds tolerance
 export const MIN_GROUP_SIZE = 2; // Minimum players needed to continue in a group
 // MIN_ACTIVE_GROUPS is derived dynamically in callbacks.js based on actual group count
 
