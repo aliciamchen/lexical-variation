@@ -149,8 +149,8 @@ export function Introduction3({ next }) {
         a communication game with the players in your group.
       </p>
       <p>
-        Everyone playing the game sees the same set of {all_tangrams.length} pictures,
-        which will look something like this:
+        Everyone playing the game sees the same set of {all_tangrams.length}{" "}
+        pictures, which will look something like this:
       </p>
       <div className="tangrams grid">{tangramsNoTarget}</div>
       <p>
@@ -202,8 +202,8 @@ export function Introduction4({ next }) {
           {self
             ? " (You) (Listener)"
             : p.role === "listener"
-            ? " (Listener)"
-            : " (Speaker)"}
+              ? " (Listener)"
+              : " (Speaker)"}
         </span>
       </div>
     );
@@ -273,8 +273,8 @@ export function Introduction4({ next }) {
         <strong>will not receive your pay</strong>.
       </p>
       <p>
-        Each block consists of {NUM_TANGRAMS} rounds (one for each picture). The
-        Speaker role rotates each block. In Phase 1, there are{" "}
+        In each block, participants will describe {NUM_TANGRAMS} of the
+        pictures. The Speaker role rotates each block. In Phase 1, there are{" "}
         <strong>{PHASE_1_BLOCKS} blocks</strong>, so each player will be the
         Speaker for {formatSpeakerTimes(PHASE_1_BLOCKS, GROUP_SIZE)} of the
         blocks.
@@ -314,7 +314,8 @@ export function Introduction5({ next }) {
         <li>No points are awarded for incorrect selections or timeouts.</li>
       </ul>
       <p>
-        At the end of the game, your total points are converted to a bonus payment.
+        At the end of the game, your total points are converted to a bonus
+        payment.
       </p>
       <p>
         After you pass the comprehension quiz, you will be put into a waiting
