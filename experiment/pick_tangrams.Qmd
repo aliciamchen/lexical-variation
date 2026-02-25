@@ -7,7 +7,7 @@ format:
     code-fold: false
 ---
 
-We want to pick 6 tangrams from Ji et al. (2022) with high Shape Naming Divergence (SND). These are the tangrams that are likely more opaque
+We want to pick 12 tangrams from Ji et al. (2022) with high Shape Naming Divergence (SND). These are the tangrams that are likely more opaque
 
 ```{python}
 import pandas as pd
@@ -137,22 +137,28 @@ selected_tangrams = [
     "page1-129",
     "page7-81",
     "page6-149",
-    "page3-121"
+    "page9-46",
+    "page9-27",
+    "page8-183",
+    "page7-107",
+    "page3-121",
+    "page5-64",
+    "page5-28"
 ]
 
 for tangram in selected_tangrams:
     make_tangram_black(tangram)
 ```
 
-View the resulting 6 tangrams in a 2x3 grid
+View the resulting 12 tangrams in a 3x4 grid
 
 ```{python}
 import cairosvg
 from PIL import Image
 from io import BytesIO
 
-def save_tangram_grid(tangram_keys, save_dir="client/public/", cols=3, output_file="tangram_grid.png"):
-    """Save tangrams as a grid image."""
+def show_tangram_grid_plot(tangram_keys, save_dir="client/public/", cols=4):
+    """Display tangrams in a grid with labels."""
     rows = (len(tangram_keys) + cols - 1) // cols
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 3, rows * 3))
     axes = axes.flatten()
@@ -163,17 +169,16 @@ def save_tangram_grid(tangram_keys, save_dir="client/public/", cols=3, output_fi
         png_data = cairosvg.svg2png(url=filepath)
         img = Image.open(BytesIO(png_data))
         axes[i].imshow(img)
+        axes[i].set_title(key, fontsize=10)
         axes[i].axis('off')
 
     # Hide any unused subplots
     for j in range(len(tangram_keys), len(axes)):
         axes[j].axis('off')
 
-    plt.subplots_adjust(wspace=0.3, hspace=0.3)
-    plt.savefig(output_file, dpi=150, bbox_inches='tight', facecolor='white')
+    plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.show()
-    print(f"Saved grid to {output_file}")
 
-save_tangram_grid(selected_tangrams, cols=3, output_file="tangram_grid.png")
+show_tangram_grid_plot(selected_tangrams, cols=4)
 ```
 
