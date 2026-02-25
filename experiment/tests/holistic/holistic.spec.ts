@@ -1,7 +1,8 @@
 /**
  * Holistic End-to-End Test: social_mixed with 15 players, dropouts, reshuffling
  *
- * Production mode (TEST_MODE=false): 6+6 blocks, 45s selection, 2 idle rounds.
+ * Runs with production timing (TEST_MODE=false): 6+6 blocks, 45s selection, 3 idle rounds.
+ * The side-effect import below forces production mode before constants are loaded.
  *
  * Scenario:
  * - 15 players log on; 3 fail the quiz
@@ -13,8 +14,9 @@
  * - 5 players reshuffled into 2 groups, complete Phase 2 with social guessing
  * - Exit surveys for 5 survivors
  *
- * Run: TEST_MODE=false npx playwright test --project=setup-5 --project=group-holistic --reporter=list
+ * Run: npx playwright test --project=setup-5 --project=group-holistic --reporter=list
  */
+import '../helpers/set-production-mode';
 import { test, expect, BrowserContext, Page } from '@playwright/test';
 import { createBatch } from '../helpers/admin';
 import {
@@ -364,8 +366,8 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     const active = await getActivePlayers(gamePages);
 
     // We've played: 2 normal + MAX_IDLE_ROUNDS speaker idle + 2 normal + MAX_IDLE_ROUNDS listener idle rounds
-    // Phase 1 total: PHASE_1_BLOCKS * ROUNDS_PER_BLOCK = 6 * 6 = 36 rounds
-    // Remaining: 36 - 8 = 28 rounds
+    // Phase 1 total: PHASE_1_BLOCKS * ROUNDS_PER_BLOCK rounds
+    // Remaining = total - roundsPlayed
     const roundsPlayed = 2 + MAX_IDLE_ROUNDS + 2 + MAX_IDLE_ROUNDS;
     const totalPhase1Rounds = PHASE_1_BLOCKS * ROUNDS_PER_BLOCK;
     const remaining = totalPhase1Rounds - roundsPlayed;
