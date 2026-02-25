@@ -7,6 +7,7 @@ import {
   BASE_PAY,
   MAX_BONUS,
   NUM_TANGRAMS,
+  all_tangrams,
   PHASE_1_BLOCKS,
   PHASE_2_BLOCKS,
   SELECTION_DURATION,
@@ -115,10 +116,10 @@ export function Introduction2({ next }) {
 }
 
 export function Introduction3({ next }) {
-  let sampleTangrams = ["A", "B", "C", "D", "E", "F"];
+  let sampleTangrams = all_tangrams;
   let tangramsNoTarget;
   let tangramsWithTarget;
-  let sampleTarget = "C";
+  let sampleTarget = all_tangrams[2]; // pick one as example target
 
   tangramsNoTarget = sampleTangrams.map((tangram, index) => (
     <TangramInstructions
@@ -148,7 +149,7 @@ export function Introduction3({ next }) {
         a communication game with the players in your group.
       </p>
       <p>
-        Everyone playing the game sees the same set of {NUM_TANGRAMS} pictures,
+        Everyone playing the game sees the same set of {all_tangrams.length} pictures,
         which will look something like this:
       </p>
       <div className="tangrams grid">{tangramsNoTarget}</div>
@@ -328,15 +329,15 @@ export function Introduction5({ next }) {
 
 export function TangramInstructions(props) {
   const { tangram, target, tangram_num } = props;
-  const row = 1 + Math.floor(tangram_num / 3);
-  const column = 1 + (tangram_num % 3);
+  const row = 1 + Math.floor(tangram_num / 4);
+  const column = 1 + (tangram_num % 4);
   let mystyle = {
-    background: "url(tangram_" + tangram + ".png)",
+    background: "url(tangram_" + tangram + ".svg)",
     backgroundSize: "85%",
     backgroundRepeat: "no-repeat",
     backgroundPosition: "center",
-    width: "15vh",
-    height: "15vh",
+    width: "10vh",
+    height: "10vh",
     gridRow: row,
     gridColumn: column,
     margin: "0.5rem",

@@ -12,7 +12,7 @@ import {
   PLAYER_NAME_ATTR,
   PLAYER_GROUP_ATTR,
 } from '../helpers/selectors';
-import { NUM_TANGRAMS } from '../helpers/constants';
+import { NUM_DISPLAY_TANGRAMS } from '../helpers/constants';
 
 /**
  * TEST_PLAN 5.2: Verify game screen elements.
@@ -78,7 +78,7 @@ test.describe.serial('UI Verification: Game Screen Elements (5.2)', () => {
     expect(['A', 'B', 'C']).toContain(playerGroup);
   });
 
-  test('(b) tangram grid shows 6 tangrams', async () => {
+  test('(b) tangram grid shows 12 tangrams', async () => {
     const pages = pm.getPages();
     const page = pages[0];
 
@@ -87,7 +87,7 @@ test.describe.serial('UI Verification: Game Screen Elements (5.2)', () => {
 
     const tangrams = page.locator(TANGRAM_ITEMS);
     const count = await tangrams.count();
-    expect(count).toBe(NUM_TANGRAMS);
+    expect(count).toBe(NUM_DISPLAY_TANGRAMS);
   });
 
   test('(c) chat input visible during Selection stage', async () => {

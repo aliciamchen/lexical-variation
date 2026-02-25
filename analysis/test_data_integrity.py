@@ -1517,12 +1517,12 @@ class TestTangramIdentity:
 
     TANGRAM_SETS = {
         0: {
-            "page1-129", "page3-121", "page3-182",
-            "page4-157", "page6-149", "page7-81",
+            "page3-182", "page7-107", "page9-27",
+            "page5-28", "page7-81", "page9-46",
         },
         1: {
-            "page3-85", "page3-136", "page5-64",
-            "page9-46", "page9-27", "page1-128",
+            "page4-157", "page1-129", "page6-149",
+            "page8-183", "page3-121", "page5-64",
         },
     }
 

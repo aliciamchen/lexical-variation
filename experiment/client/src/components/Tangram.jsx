@@ -17,19 +17,19 @@ export function Tangram(props) {
     ...rest
   } = props;
 
-  // Make tangram grid
-  const row = 1 + Math.floor(tangram_num / 3);
-  const column = 1 + (tangram_num % 3);
+  // Make tangram grid (3 rows × 4 columns for 12 tangrams)
+  const row = 1 + Math.floor(tangram_num / 4);
+  const column = 1 + (tangram_num % 4);
   let mystyle = {
     background: "url(tangram_" + tangram + ".svg)",
     backgroundSize: "85%",
     backgroundRepeat: "no-repeat",
     backgroundPosition: "center",
-    width: "12vh",
-    height: "12vh",
+    width: "10vh",
+    height: "10vh",
     gridRow: row,
     gridColumn: column,
-    margin: "0.8rem",
+    margin: "0.5rem",
   };
 
   // Phase 1 and Phase 2: Refgame

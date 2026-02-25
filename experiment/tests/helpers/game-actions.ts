@@ -265,7 +265,7 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
 
       // Wrong groups click wrong tangram
       if (wrongGroups.includes(info.originalGroup!)) {
-        clickIdx = (clickIdx + 3) % 6;
+        clickIdx = (clickIdx + 6) % 12;
       }
 
       await listenerClickTangram(pages[i], clickIdx);

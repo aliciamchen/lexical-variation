@@ -23,7 +23,7 @@ import {
 } from '../helpers/assertions';
 import {
   PLAYER_COUNT,
-  NUM_TANGRAMS,
+  NUM_DISPLAY_TANGRAMS,
 } from '../helpers/constants';
 import { TANGRAM_ITEMS } from '../helpers/selectors';
 
@@ -90,9 +90,9 @@ test.describe.serial('Edge Case: Tangram Randomization (TEST_PLAN 9.2-9.3)', () 
     // We should have grid orders for all 9 players
     expect(gridOrders.length).toBe(PLAYER_COUNT);
 
-    // Each player should see NUM_TANGRAMS tangrams
+    // Each player should see NUM_DISPLAY_TANGRAMS tangrams
     for (const order of gridOrders) {
-      expect(order.length).toBe(NUM_TANGRAMS);
+      expect(order.length).toBe(NUM_DISPLAY_TANGRAMS);
     }
 
     // Verify that NOT all players have the exact same order
@@ -163,7 +163,7 @@ test.describe.serial('Edge Case: Tangram Randomization (TEST_PLAN 9.2-9.3)', () 
       const speaker = members.find(m => m.role === 'speaker');
       if (speaker) {
         expect(speaker.targetIndex).toBeGreaterThanOrEqual(0);
-        expect(speaker.targetIndex).toBeLessThan(NUM_TANGRAMS);
+        expect(speaker.targetIndex).toBeLessThan(NUM_DISPLAY_TANGRAMS);
       }
     }
   });
