@@ -44,7 +44,7 @@ def show_tangram(key):
     return SVG(response.content)
 ```
 
-Show top 30 tangrams (highest SND) in a grid
+Show top 40 tangrams (highest SND) in a grid
 
 ```{python}
 def show_tangram_grid(tangrams, cols=6):
@@ -66,9 +66,9 @@ def show_tangram_grid(tangrams, cols=6):
     html += '</div>'
     display(HTML(html))
 
-# Top 30 tangrams (highest SND values)
-top_30 = snd_vals_sorted[-30:][::-1]  # Reverse to show highest first
-show_tangram_grid(top_30, cols=6)
+# Top 40 tangrams (highest SND values)
+top_40 = snd_vals_sorted[-40:][::-1]  # Reverse to show highest first
+show_tangram_grid(top_40, cols=6)
 ```
 
 Convert selected tangrams to black silhouettes
@@ -139,7 +139,7 @@ selected_tangrams = [
     "page6-149",
     "page9-46",
     "page9-27",
-    "page8-183",
+    "page7-26",
     "page7-107",
     "page3-121",
     "page5-64",

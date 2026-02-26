@@ -30,16 +30,16 @@ export const BONUS_INFO_DURATION = 30; // End game bonus info (same for both)
 // All 12 tangrams displayed in the grid (from pick_tangrams.Qmd)
 export const all_tangrams = [
   "page3-182", "page4-157", "page1-129", "page7-81",
-  "page6-149", "page9-46", "page9-27", "page8-183",
+  "page6-149", "page9-46", "page9-27", "page7-26",
   "page7-107", "page3-121", "page5-64", "page5-28",
 ];
 
 // Two sets of 6 target tangrams (the other 6 are distractors)
 // Set 0 targets: page3-182, page7-107, page9-27, page5-28, page7-81, page9-46
-// Set 1 targets: page4-157, page1-129, page6-149, page8-183, page3-121, page5-64
+// Set 1 targets: page4-157, page1-129, page6-149, page7-26, page3-121, page5-64
 export const tangram_sets = {
   0: ["page3-182", "page7-107", "page9-27", "page5-28", "page7-81", "page9-46"],
-  1: ["page4-157", "page1-129", "page6-149", "page8-183", "page3-121", "page5-64"],
+  1: ["page4-157", "page1-129", "page6-149", "page7-26", "page3-121", "page5-64"],
 };
 
 // ============ PLAYER CONFIGURATION ============
