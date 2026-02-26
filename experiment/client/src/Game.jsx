@@ -107,6 +107,8 @@ export function Game() {
             player={player}
             scope={stage}
             attribute={`${playerGroup}_chat`}
+            typingAttribute={`${playerGroup}_typing`}
+            groupPlayers={playersInGroup}
             customPlayerName={customPlayerName}
           />
         </div>

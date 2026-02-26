@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { usePlayer } from "@empirica/core/player/classic/react";
 
 /**
@@ -9,8 +9,15 @@ import { usePlayer } from "@empirica/core/player/classic/react";
  * - Fix timestamp display (5-second increments instead of all "now")
  * - Fix avatar display for DiceBear URLs
  * - Use square avatars to match the rest of the UI
+ * - Show typing indicators for other players
  */
-export function Chat({ scope, attribute = "messages", customPlayerName }) {
+export function Chat({
+  scope,
+  attribute = "messages",
+  customPlayerName,
+  typingAttribute,
+  groupPlayers = [],
+}) {
   const player = usePlayer();
 
   if (!scope || !player) {
@@ -39,12 +46,43 @@ export function Chat({ scope, attribute = "messages", customPlayerName }) {
     ]);
   };
 
+  const setTyping = useCallback(
+    (isTyping) => {
+      if (!typingAttribute) return;
+      const current = scope.get(typingAttribute) || {};
+      if (isTyping) {
+        scope.set(typingAttribute, { ...current, [player.id]: Date.now() });
+      } else {
+        const { [player.id]: _, ...rest } = current;
+        scope.set(typingAttribute, rest);
+      }
+    },
+    [scope, typingAttribute, player.id]
+  );
+
   const msgs = scope.get(attribute) || [];
+
+  // Build typing names from scope state
+  const typingNames = [];
+  if (typingAttribute) {
+    const typingState = scope.get(typingAttribute) || {};
+    const now = Date.now();
+    for (const [pid, timestamp] of Object.entries(typingState)) {
+      if (pid === player.id) continue;
+      if (now - timestamp > 3000) continue;
+      const p = groupPlayers.find((gp) => gp.id === pid);
+      if (p) {
+        const name = customPlayerName ? customPlayerName(p) : p.get("name") || "Player";
+        typingNames.push(name);
+      }
+    }
+  }
 
   return (
     <div className="h-full w-full flex flex-col">
       <Messages msgs={msgs} />
-      <Input onNewMessage={handleNewMessage} />
+      <TypingIndicator names={typingNames} />
+      <Input onNewMessage={handleNewMessage} setTyping={setTyping} />
     </div>
   );
 }
@@ -120,8 +158,68 @@ function MessageComp({ msg }) {
   );
 }
 
-function Input({ onNewMessage }) {
+function TypingIndicator({ names }) {
+  if (names.length === 0) return null;
+
+  const text =
+    names.length === 1
+      ? `${names[0]} is typing`
+      : `${names.join(" and ")} are typing`;
+
+  return (
+    <div className="px-3 py-1 text-xs text-gray-400 flex items-center gap-1">
+      <span>{text}</span>
+      <span className="typing-dots">
+        <span className="typing-dot" />
+        <span className="typing-dot" />
+        <span className="typing-dot" />
+      </span>
+      <style>{`
+        .typing-dots {
+          display: inline-flex;
+          gap: 2px;
+          align-items: center;
+        }
+        .typing-dot {
+          width: 3px;
+          height: 3px;
+          border-radius: 50%;
+          background-color: #9ca3af;
+          animation: typing-pulse 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(2) {
+          animation-delay: 0.2s;
+        }
+        .typing-dot:nth-child(3) {
+          animation-delay: 0.4s;
+        }
+        @keyframes typing-pulse {
+          0%, 80%, 100% { opacity: 0.3; }
+          40% { opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function Input({ onNewMessage, setTyping }) {
   const [text, setText] = useState("");
+  const typingTimeoutRef = useRef(null);
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, []);
+
+  const handleTyping = useCallback(() => {
+    setTyping(true);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      setTyping(false);
+    }, 2000);
+  }, [setTyping]);
 
   const resize = (e) => {
     const target = e.target;
@@ -139,6 +237,9 @@ function Input({ onNewMessage }) {
     }
     onNewMessage(txt);
     setText("");
+    // Clear typing state on send
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    setTyping(false);
   };
 
   const handleKeyDown = (e) => {
@@ -162,7 +263,10 @@ function Input({ onNewMessage }) {
         onKeyDown={handleKeyDown}
         onKeyUp={resize}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (e.target.value.trim()) handleTyping();
+        }}
       />
       <button
         type="button"
