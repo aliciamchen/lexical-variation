@@ -154,7 +154,7 @@ export function Introduction3({ next }) {
       </p>
       <div className="tangrams grid">{tangramsNoTarget}</div>
       <p>
-        In each trial, one of the players in the group is assigned the{" "}
+        In each round, one of the players in the group is assigned the{" "}
         <strong>Speaker</strong> role and the other two are assigned the{" "}
         <strong>Listener</strong> role.
       </p>

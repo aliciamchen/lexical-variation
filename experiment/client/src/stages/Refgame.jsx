@@ -19,7 +19,9 @@ export function Refgame(props) {
   const correct = player.round.get("clicked") == target;
 
   // Compute target index for testing purposes
-  const targetIndex = shuffled_tangrams ? shuffled_tangrams.indexOf(target) : -1;
+  const targetIndex = shuffled_tangrams
+    ? shuffled_tangrams.indexOf(target)
+    : -1;
   const condition = game.get("condition");
   const phase_num = round.get("phase_num");
   const block_num = round.get("block_num");
@@ -48,9 +50,13 @@ export function Refgame(props) {
   // Render player status indicator
   const renderPlayer = (p, self = false) => {
     // In mixed conditions during Phase 2, use display_name and display_avatar
-    const isMixed = (condition === "refer_mixed" || condition === "social_mixed") && phase_num === 2;
+    const isMixed =
+      (condition === "refer_mixed" || condition === "social_mixed") &&
+      phase_num === 2;
     const displayName = isMixed ? p.round.get("display_name") : p.get("name");
-    const displayAvatar = isMixed ? p.round.get("display_avatar") : p.get("avatar");
+    const displayAvatar = isMixed
+      ? p.round.get("display_avatar")
+      : p.get("avatar");
 
     return (
       <div className="player" key={p.id}>
@@ -62,8 +68,8 @@ export function Refgame(props) {
           {self
             ? " (You)"
             : p.round.get("role") === "listener"
-            ? " (Listener)"
-            : " (Speaker)"}
+              ? " (Listener)"
+              : " (Speaker)"}
         </span>
       </div>
     );
@@ -71,7 +77,9 @@ export function Refgame(props) {
 
   // Use current_group for player grouping
   const playerGroup = player.get("current_group");
-  const playersInGroup = players.filter((p) => p.get("current_group") === playerGroup && p.get("is_active"));
+  const playersInGroup = players.filter(
+    (p) => p.get("current_group") === playerGroup && p.get("is_active"),
+  );
   const otherPlayers = playersInGroup.filter((p) => p.id !== player.id);
 
   // Check if group is smaller than expected (someone left/was idle)
@@ -83,10 +91,11 @@ export function Refgame(props) {
   // (chat is saved to player.round at end of Selection stage in callbacks.js)
   const isSelectionStage = stage.get("name") === "Selection";
   const playerGroupChat = isSelectionStage
-    ? (stage.get(`${playerGroup}_chat`) || [])
-    : (player.round.get("chat") || []);
+    ? stage.get(`${playerGroup}_chat`) || []
+    : player.round.get("chat") || [];
   const speaker = playersInGroup.find((p) => p.round.get("role") === "speaker");
-  const speakerSentMessage = speaker && playerGroupChat.some((msg) => msg.sender?.id === speaker.id);
+  const speakerSentMessage =
+    speaker && playerGroupChat.some((msg) => msg.sender?.id === speaker.id);
 
   // Check if speaker is missing (was kicked mid-block)
   const speakerMissing = !speaker && isListener;
@@ -102,7 +111,8 @@ export function Refgame(props) {
     // For social_mixed, listeners need both tangram click AND social guess
     const hasClicked = player.round.get("clicked");
     const hasSocialGuess = player.round.get("social_guess");
-    const playerResponded = player.round.get("role") === "speaker" ||
+    const playerResponded =
+      player.round.get("role") === "speaker" ||
       (hasClicked && (!isSocialMixed || hasSocialGuess));
 
     if (playerResponded) {
@@ -139,16 +149,20 @@ export function Refgame(props) {
     if (player.round.get("role") == "listener") {
       // Check if speaker was missing (kicked) or idle (didn't send any message)
       if (!speaker) {
-        feedback = "Your speaker was removed from the game. A new speaker will be assigned.";
+        feedback =
+          "Your speaker was removed from the game. A new speaker will be assigned.";
       } else if (!speakerSentMessage) {
-        feedback = "The speaker did not send a message this round. No points were awarded.";
+        feedback =
+          "The speaker did not send a message this round. No points were awarded.";
       } else if (!player.round.get("clicked")) {
         // Listener didn't respond in time
-        feedback = "You did not respond in time. You earned no points this round.";
+        feedback =
+          "You did not respond in time. You earned no points this round.";
       } else if (correct) {
         feedback = "Correct! You earned 2 points for the picture.";
       } else {
-        feedback = "Ooops, that wasn't the target! You earned no points this round from guessing the picture.";
+        feedback =
+          "Ooops, that wasn't the target! You earned no points this round from guessing the picture.";
       }
     }
     if (player.round.get("role") == "speaker") {
@@ -158,7 +172,8 @@ export function Refgame(props) {
 
     // Add social feedback for social_mixed condition in Phase 2
     if (isSocialMixed) {
-      socialFeedback = "Total in-group guessing score will be shown at the end of the experiment.";
+      socialFeedback =
+        "Total in-group guessing score will be shown at the end of the experiment.";
     }
   }
 
@@ -190,29 +205,42 @@ export function Refgame(props) {
 
     if (hasSocialGuess) {
       return (
-        <div className="social-guess-container" style={{
-          marginTop: 16,
-          padding: 16,
-          backgroundColor: "#f0f9ff",
-          borderRadius: 8,
-          textAlign: "center"
-        }}>
+        <div
+          className="social-guess-container"
+          style={{
+            marginTop: 16,
+            padding: 16,
+            backgroundColor: "#f0f9ff",
+            borderRadius: 8,
+            textAlign: "center",
+          }}
+        >
           <p style={{ color: "#666" }}>
-            You guessed: <strong>{hasSocialGuess === "same_group" ? "Same group" : "Different group"}</strong>
+            You guessed:{" "}
+            <strong>
+              {hasSocialGuess === "same_group"
+                ? "Same group"
+                : "Different group"}
+            </strong>
           </p>
         </div>
       );
     }
 
     return (
-      <div className="social-guess-container" style={{
-        marginTop: 16,
-        padding: 16,
-        backgroundColor: "#fff7ed",
-        borderRadius: 8,
-        border: "2px solid #f97316"
-      }}>
-        <p style={{ textAlign: "center", marginBottom: 12, fontWeight: "bold" }}>
+      <div
+        className="social-guess-container"
+        style={{
+          marginTop: 16,
+          padding: 16,
+          backgroundColor: "#fff7ed",
+          borderRadius: 8,
+          border: "2px solid #f97316",
+        }}
+      >
+        <p
+          style={{ textAlign: "center", marginBottom: 12, fontWeight: "bold" }}
+        >
           Was the speaker in your original group (from Phase 1)?
         </p>
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
@@ -225,7 +253,7 @@ export function Refgame(props) {
               color: "white",
               border: "none",
               borderRadius: 4,
-              cursor: "pointer"
+              cursor: "pointer",
             }}
           >
             Yes, same group
@@ -239,13 +267,20 @@ export function Refgame(props) {
               color: "white",
               border: "none",
               borderRadius: 4,
-              cursor: "pointer"
+              cursor: "pointer",
             }}
           >
             No, different group
           </button>
         </div>
-        <p style={{ textAlign: "center", marginTop: 8, fontSize: "0.85rem", color: "#666" }}>
+        <p
+          style={{
+            textAlign: "center",
+            marginTop: 8,
+            fontSize: "0.85rem",
+            color: "#666",
+          }}
+        >
           You'll see how well you did at the end of the game.
         </p>
       </div>
@@ -262,16 +297,19 @@ export function Refgame(props) {
       <div className="status">
         <div className="players card">
           <h3 style={{ textAlign: "center", marginBottom: "10px" }}>
-            Your Group | Phase {phase_num} - Block {displayBlockNum} of {totalBlocks}
+            Your Group | Phase {phase_num} - Block {displayBlockNum} of{" "}
+            {totalBlocks}
           </h3>
           {groupIsSmaller && (
-            <p style={{
-              textAlign: "center",
-              fontSize: "0.85rem",
-              color: "#dc2626",
-              marginBottom: "8px",
-              fontStyle: "italic"
-            }}>
+            <p
+              style={{
+                textAlign: "center",
+                fontSize: "0.85rem",
+                color: "#dc2626",
+                marginBottom: "8px",
+                fontStyle: "italic",
+              }}
+            >
               Your group is smaller because a player left or was inactive.
             </p>
           )}
@@ -295,9 +333,13 @@ export function Refgame(props) {
             {" "}
             {player.round.get("role") == "speaker"
               ? "You are the speaker. Please describe the picture in the box to the other players." +
-                (isSocialMixed ? " You will also be rewarded if listeners from your original group correctly identify you as a member of their group." : "")
+                (isSocialMixed
+                  ? " You will also be rewarded if listeners from your original group correctly identify you as a member of their group."
+                  : "")
               : "You are a listener. Please click on the picture that the speaker describes." +
-                (isSocialMixed ? " Then guess whether the speaker was in your original group." : "")}
+                (isSocialMixed
+                  ? " Then guess whether the speaker was in your original group."
+                  : "")}
           </p>
         </div>
 
@@ -318,7 +360,8 @@ export function Refgame(props) {
               width: "100%",
             }}
           >
-            Your group's speaker was removed. A new speaker will be assigned next round.
+            Your group's speaker was removed. A new speaker will be assigned
+            next round.
           </h3>
         )}
 
@@ -378,27 +421,31 @@ export function Refgame(props) {
               borderRadius: "6px",
             }}
           >
-            Warning: You have been inactive for {idleRounds} round(s). If you continue to be inactive, you will be removed from the experiment and will not receive any pay.
+            Warning: You have been inactive for {idleRounds} round(s). If you
+            continue to be inactive, you will be removed from the experiment and
+            will not receive any pay.
           </p>
         )}
 
         {stage.get("name") == "Feedback" &&
           (condition === "refer_mixed" || condition === "social_mixed") &&
           phase_num === 2 &&
-          round.get("target_num") === 5 &&
-          block_num < (game.get("phase2Blocks") || PHASE_2_BLOCKS) - 1 && (
-          <p
-            style={{
-              marginTop: 12,
-              textAlign: "center",
-              color: "#6b7280",
-              fontStyle: "italic",
-              width: "100%",
-            }}
-          >
-            Shuffling players for the next block...
-          </p>
-        )}
+          !(
+            round.get("target_num") === 5 &&
+            block_num >= (game.get("phase2Blocks") || PHASE_2_BLOCKS) - 1
+          ) && (
+            <p
+              style={{
+                marginTop: 12,
+                textAlign: "center",
+                color: "#6b7280",
+                fontStyle: "italic",
+                width: "100%",
+              }}
+            >
+              Shuffling players for the next round...
+            </p>
+          )}
 
         {stage.get("name") == "Feedback" && (
           <div

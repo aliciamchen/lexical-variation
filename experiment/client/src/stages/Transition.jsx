@@ -42,11 +42,10 @@ export function Transition(props) {
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>
             In this phase, players from all groups will be{" "}
-            <strong>mixed together</strong>. At the start of each block (every{" "}
-            {NUM_TANGRAMS} rounds), you will be randomly assigned to play with
-            different players. These people may or may not be from your original
-            group. Player identities will be hidden: Everyone will appear as
-            "Player" with anonymous avatars.
+            <strong>mixed together</strong>. Every round, you will be randomly
+            assigned to play with different players. These people may or may not
+            be from your original group. Player identities will be hidden:
+            Everyone will appear as "Player" with anonymous avatars.
           </p>
           <p style={{ marginTop: 8 }}>
             Your goal remains the same: describe the pictures to help your
@@ -61,11 +60,10 @@ export function Transition(props) {
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>
             In this phase, players from all groups will be{" "}
-            <strong>mixed together</strong>. At the start of each block (every{" "}
-            {NUM_TANGRAMS} rounds), you will be randomly assigned to play with
-            different players. These people may or may not be from your original
-            group. Player identities will be hidden: Everyone will appear as
-            "Player" with anonymous avatars.
+            <strong>mixed together</strong>. Every round, you will be randomly
+            assigned to play with different players. These people may or may not
+            be from your original group. Player identities will be hidden:
+            Everyone will appear as "Player" with anonymous avatars.
           </p>
           <p style={{ marginTop: 8 }}>
             <strong>New task:</strong> After clicking on a picture, listeners
