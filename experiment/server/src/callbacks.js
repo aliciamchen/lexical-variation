@@ -751,6 +751,16 @@ Empirica.onStageEnded(({ stage }) => {
             const correct = wasInSameGroup === guessedSame;
 
             listener.round.set("social_guess_correct", correct);
+            listener.round.set("speaker_was_same_group", wasInSameGroup);
+            listener.round.set(
+              "social_round_score",
+              correct ? SOCIAL_GUESS_CORRECT_POINTS : 0,
+            );
+            listener.set(
+              "score",
+              listener.get("score") +
+                (correct ? SOCIAL_GUESS_CORRECT_POINTS : 0),
+            );
 
             // Track cumulative social guess stats for end-of-game summary
             const totalGuesses = (listener.get("social_guess_total") || 0) + 1;
@@ -777,6 +787,15 @@ Empirica.onStageEnded(({ stage }) => {
                 listenersFromOriginalGroup.length)
             : 0;
         speaker.round.set("social_round_score", socialSpeakerPoints);
+        speaker.round.set(
+          "social_recognized_count",
+          correctGuessesFromOriginalGroup,
+        );
+        speaker.round.set(
+          "social_original_group_listeners",
+          listenersFromOriginalGroup.length,
+        );
+        speaker.set("score", speaker.get("score") + socialSpeakerPoints);
 
         // Track speaker's cumulative social stats (how many original-group listeners guessed correctly)
         const speakerGuessedAbout =
@@ -1138,17 +1157,7 @@ Empirica.onRoundEnded(({ round }) => {
     condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
 
   players.forEach((player) => {
-    // Base score from picture guessing
-    const baseScore = player.get("score") || 0;
-
-    // Social points (tracked separately, added to bonus only)
-    const listenerSocialPoints =
-      (player.get("social_guess_correct_total") || 0) *
-      SOCIAL_GUESS_CORRECT_POINTS;
-    // Speaker social points are now proportional (accumulated each round)
-    const speakerSocialPoints = player.get("social_speaker_points_total") || 0;
-    const totalScore = baseScore + listenerSocialPoints + speakerSocialPoints;
-
+    const totalScore = player.get("score") || 0;
     player.set("bonus", totalScore * multiplier);
   });
 });
@@ -1164,20 +1173,10 @@ Empirica.onGameEnded(({ game }) => {
     condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
 
   players.forEach((player) => {
-    // Base score from picture guessing
-    const baseScore = player.get("score") || 0;
-
-    // Social points (tracked separately, added to bonus only)
-    const listenerSocialPoints =
-      (player.get("social_guess_correct_total") || 0) *
-      SOCIAL_GUESS_CORRECT_POINTS;
-    // Speaker social points are now proportional (accumulated each round)
-    const speakerSocialPoints = player.get("social_speaker_points_total") || 0;
-    const totalScore = baseScore + listenerSocialPoints + speakerSocialPoints;
-
+    const totalScore = player.get("score") || 0;
     player.set("bonus", totalScore * multiplier);
     console.log(
-      `Player ${player.id}: Score=${baseScore}, SocialPoints=${listenerSocialPoints + speakerSocialPoints}, TotalScore=${totalScore}, Bonus=$${player.get("bonus").toFixed(2)}`,
+      `Player ${player.id}: TotalScore=${totalScore}, Bonus=$${player.get("bonus").toFixed(2)}`,
     );
   });
 });

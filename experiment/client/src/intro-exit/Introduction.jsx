@@ -320,8 +320,8 @@ export function Introduction5({ next }) {
       <p>
         After you pass the comprehension quiz, you will be put into a waiting
         lobby. When there are enough players to start the game, the game will
-        begin. Please note that it might take a few minutes to find enough
-        players.
+        begin. Please note that it might take up to 10 minutes to find enough
+        players. A sound will play when the game starts.
       </p>
       <p>If you experience issues, please contact us on Prolific.</p>
     </div>

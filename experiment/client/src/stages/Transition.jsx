@@ -48,10 +48,8 @@ export function Transition(props) {
             Everyone will appear as "Player" with anonymous avatars.
           </p>
           <p style={{ marginTop: 8 }}>
-            Your goal remains the same: describe the pictures to help your
-            listeners identify them correctly. Remember to limit your messages
-            to describing the current target picture only, and to not chat about
-            any other topics.
+            Remember to limit your messages to describing the current target
+            picture only, and to not chat about any other topics.
           </p>
         </div>
       );
@@ -66,13 +64,16 @@ export function Transition(props) {
             Everyone will appear as "Player" with anonymous avatars.
           </p>
           <p style={{ marginTop: 8 }}>
-            <strong>New task:</strong> After clicking on a picture, listeners
-            will also guess whether the speaker was in their{" "}
-            <em>original group</em> from Phase 1. Speakers and listeners will be
-            rewarded for correct guesses. In this phase, you will be{" "}
-            <strong>primarily rewarded for these responses</strong>. For these
-            guesses, we won't immediately tell you whether you were correct or
-            not, but you will see the overall results at the end of the game.
+            <strong>
+              New goal: After clicking on a picture, listeners will also guess
+              whether the speaker was in their <em>original group</em> from
+              Phase 1.
+            </strong>{" "}
+            As a speaker, you will be rewarded if members from your original
+            group correctly recognize you as a member of their group. As a
+            listener, you will be rewarded if you correctly guess whether or not
+            the speaker was in your original group. After each round, you'll see
+            feedback on whether your guess was correct.
           </p>
           <p style={{ marginTop: 8 }}>
             Remember to limit your messages to describing the current target

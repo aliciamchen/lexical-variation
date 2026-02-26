@@ -144,8 +144,12 @@ export function Refgame(props) {
   }
 
   let feedback = "";
-  let socialFeedback = "";
   if (stage.get("name") == "Feedback") {
+    const pictureRoundScore = player.round.get("round_score") || 0;
+    const socialRoundScore = player.round.get("social_round_score") || 0;
+    const combinedScore =
+      Math.round((pictureRoundScore + socialRoundScore) * 100) / 100;
+
     if (player.round.get("role") == "listener") {
       // Check if speaker was missing (kicked) or idle (didn't send any message)
       if (!speaker) {
@@ -158,6 +162,24 @@ export function Refgame(props) {
         // Listener didn't respond in time
         feedback =
           "You did not respond in time. You earned no points this round.";
+      } else if (isSocialMixed) {
+        // Social mixed: show picture feedback + social feedback + combined score
+        const pictureFeedback = correct
+          ? "Correct! You identified the target picture."
+          : "That wasn't the target picture.";
+
+        const socialGuess = player.round.get("social_guess");
+        const socialCorrect = player.round.get("social_guess_correct");
+        const speakerWasSameGroup = player.round.get("speaker_was_same_group");
+
+        let socialLine = "";
+        if (socialGuess) {
+          socialLine = socialCorrect
+            ? ` Speaker identity guess correct: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`
+            : ` Speaker identity guess incorrect: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`;
+        }
+
+        feedback = `${pictureFeedback}${socialLine} You earned ${combinedScore} ${combinedScore == 1 ? "point" : "points"} this round.`;
       } else if (correct) {
         feedback = "Correct! You earned 2 points for the picture.";
       } else {
@@ -166,14 +188,24 @@ export function Refgame(props) {
       }
     }
     if (player.round.get("role") == "speaker") {
-      const roundScore = player.round.get("round_score") || 0;
-      feedback = `You earned ${roundScore} ${roundScore == 1 ? `point` : `points`} this round from picture guessing.`;
-    }
+      if (isSocialMixed) {
+        const recognizedCount = player.round.get("social_recognized_count");
+        const originalGroupListeners = player.round.get(
+          "social_original_group_listeners",
+        );
 
-    // Add social feedback for social_mixed condition in Phase 2
-    if (isSocialMixed) {
-      socialFeedback =
-        "Total in-group guessing score will be shown at the end of the experiment.";
+        let socialLine = "";
+        if (originalGroupListeners === 0) {
+          socialLine =
+            " No members from your original group were listeners this round.";
+        } else {
+          socialLine = ` ${recognizedCount} out of ${originalGroupListeners} ${originalGroupListeners == 1 ? "member" : "members"} from your original group recognized you this round.`;
+        }
+
+        feedback = `${socialLine} You earned ${Math.round(combinedScore)} ${Math.round(combinedScore) == 1 ? "point" : "points"} this round.`;
+      } else {
+        feedback = `You earned ${pictureRoundScore} ${pictureRoundScore == 1 ? "point" : "points"} this round.`;
+      }
     }
   }
 
@@ -273,16 +305,6 @@ export function Refgame(props) {
             No, different group
           </button>
         </div>
-        <p
-          style={{
-            textAlign: "center",
-            marginTop: 8,
-            fontSize: "0.85rem",
-            color: "#666",
-          }}
-        >
-          You'll see how well you did at the end of the game.
-        </p>
       </div>
     );
   };
@@ -392,20 +414,6 @@ export function Refgame(props) {
           >
             <>{feedback}</>
           </h3>
-        )}
-
-        {socialFeedback && stage.get("name") == "Feedback" && (
-          <p
-            style={{
-              marginTop: 8,
-              textAlign: "center",
-              color: "#6b7280",
-              fontStyle: "italic",
-              width: "100%",
-            }}
-          >
-            {socialFeedback}
-          </p>
         )}
 
         {showIdleWarning && stage.get("name") == "Feedback" && (
