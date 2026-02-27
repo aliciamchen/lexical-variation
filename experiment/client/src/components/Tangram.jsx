@@ -14,6 +14,7 @@ export function Tangram(props) {
     game,
     target,
     onSelect,
+    localSelection,
     ...rest
   } = props;
 
@@ -70,6 +71,12 @@ export function Tangram(props) {
       // Only register click for listener and only after the speaker has sent a message
       // (isClickable already checks these conditions, but re-check for safety)
       if (isClickable) {
+        // In simultaneous mode, update local state instead of committing
+        if (onSelect) {
+          onSelect(tangram);
+          return;
+        }
+
         player.round.set("clicked", tangram);
 
         // Check if all listeners have now responded (only after registering a click)
@@ -99,13 +106,26 @@ export function Tangram(props) {
       });
     }
 
-    // Show listeners what they've clicked
+    // Show listeners what they've clicked (committed selection)
     if (
       (stage.get("name") == "Selection") &
       (tangram == player.round.get("clicked"))
     ) {
       _.extend(mystyle, {
         outline: `10px solid #A9A9A9`,
+        zIndex: "9",
+      });
+    }
+
+    // Show local (uncommitted) selection in simultaneous mode
+    if (
+      stage.get("name") === "Selection" &&
+      localSelection &&
+      tangram === localSelection &&
+      !player.round.get("clicked")
+    ) {
+      _.extend(mystyle, {
+        outline: `4px dashed #2563eb`,
         zIndex: "9",
       });
     }

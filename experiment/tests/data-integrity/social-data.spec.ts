@@ -30,6 +30,7 @@ import {
   expectPlayerInGame,
   expectSocialGuessUI,
 } from '../helpers/assertions';
+import { SIMULTANEOUS_SUBMIT } from '../helpers/selectors';
 import {
   PHASE_1_BLOCKS,
   ROUNDS_PER_BLOCK,
@@ -116,16 +117,19 @@ test.describe.serial('Data Integrity: Social Guess Data (TEST_PLAN 7.4)', () => 
     }
     expect(listenerPage).not.toBeNull();
 
-    // Click a tangram
-    await listenerClickTangram(listenerPage!, 0);
-    await listenerPage!.waitForTimeout(500);
-
-    // Social guess UI should appear
+    // Social guess UI should already be visible (simultaneous mode)
     await expectSocialGuessUI(listenerPage!);
 
-    // Make the guess: "same group"
+    // Click a tangram (local selection)
+    await listenerClickTangram(listenerPage!, 0);
+    await listenerPage!.waitForTimeout(300);
+
+    // Make the guess: "same group" (local selection)
     const guessed = await makeSocialGuess(listenerPage!, 'same');
     expect(guessed).toBe(true);
+
+    // Submit both selections
+    await listenerPage!.locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
 
     // Wait for confirmation to render
     await listenerPage!.waitForTimeout(1000);
@@ -169,11 +173,13 @@ test.describe.serial('Data Integrity: Social Guess Data (TEST_PLAN 7.4)', () => 
       const info = await getPlayerInfo(page);
       if (info?.role === 'listener' && info.currentGroup === speakerGroup2 && info.phase === 2) {
         await listenerClickTangram(page, 1);
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const guessed = await makeSocialGuess(page, 'different');
         expect(guessed).toBe(true);
 
+        // Submit both selections
+        await page.locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
         await page.waitForTimeout(1000);
 
         // Verify the confirmation text for "Different group"

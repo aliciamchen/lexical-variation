@@ -1,11 +1,11 @@
 /**
  * TEST_PLAN 11.2: Social Mixed Score Display
  *
- * In social_mixed, social guessing scores are NOT shown during the game,
- * only at the end. Set up a social_mixed game, play into Phase 2 with social
- * guessing. Verify that "social" score or "guess" score is not displayed
- * during gameplay. After the game ends (bonus_info stage), verify the social
- * guessing summary IS shown (text like "Social Guessing Summary").
+ * In social_mixed, social guessing feedback is shown per-trial during Phase 2.
+ * Set up a social_mixed game, play into Phase 2 with social guessing. Verify
+ * that listeners see "identity guess" feedback and speakers see "recognized you"
+ * feedback during gameplay. After the game ends (bonus_info stage), verify the
+ * social guessing summary IS shown (text like "Social Guessing Summary").
  */
 import { test, expect } from '@playwright/test';
 import { PlayerManager } from '../helpers/player-manager';
@@ -75,7 +75,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
     await handleTransition(pages);
   });
 
-  test('social guessing scores are NOT shown during Phase 2 gameplay', async () => {
+  test('social guessing feedback IS shown during Phase 2 gameplay', async () => {
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
@@ -85,30 +85,30 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
     // Wait for feedback stage
     await active[0].waitForTimeout(2000);
 
-    // Check that during gameplay, social guessing scores are not displayed
-    // in the Profile section. The Profile component shows "Score" with a number,
-    // but this should only be the referential score, not social guess scores.
-    // There should be no "social" or "guess" score label visible during gameplay.
+    // Check that during gameplay, social guessing feedback is displayed.
+    // Listeners should see "identity guess" text and speakers should see "recognized you" text.
+    let foundListenerFeedback = false;
+    let foundSpeakerFeedback = false;
+
     for (const page of active) {
       const bodyContent = await page.textContent('body');
 
-      // The feedback text says "Total in-group guessing score will be shown at
-      // the end of the experiment" - this confirms scores are hidden during gameplay.
-      // Verify there is no separate "social score" or "guess score" counter visible.
-      // The Profile section only shows a single "Score" label.
-      const profileSection = page.locator('[data-player-name]').locator('..');
-      const profileText = await profileSection.textContent();
-
-      // The profile should have exactly one "Score" label - no "Social Score" etc.
-      const socialScoreVisible =
-        profileText?.toLowerCase().includes('social score') ||
-        profileText?.toLowerCase().includes('guess score') ||
-        profileText?.toLowerCase().includes('social points');
-      expect(
-        socialScoreVisible,
-        'Social guessing score should NOT be displayed during gameplay',
-      ).toBeFalsy();
+      if (bodyContent?.includes('identity guess')) {
+        foundListenerFeedback = true;
+      }
+      if (bodyContent?.includes('recognized you') || bodyContent?.includes('No members from your original group')) {
+        foundSpeakerFeedback = true;
+      }
     }
+
+    expect(
+      foundListenerFeedback,
+      'Listener social feedback should be shown during Phase 2 gameplay',
+    ).toBe(true);
+    expect(
+      foundSpeakerFeedback,
+      'Speaker social feedback should be shown during Phase 2 gameplay',
+    ).toBe(true);
   });
 
   test('complete remaining Phase 2 rounds with social guessing', async () => {

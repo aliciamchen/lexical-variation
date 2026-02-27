@@ -1,5 +1,5 @@
 import { Page } from '@playwright/test';
-import { GAME_CONTAINER, TASK, SORRY_SCREEN, QUIZ_FAILED_SCREEN, EXIT_SURVEY, TANGRAM_ITEMS } from './selectors';
+import { GAME_CONTAINER, TASK, SORRY_SCREEN, QUIZ_FAILED_SCREEN, EXIT_SURVEY, TANGRAM_ITEMS, SIMULTANEOUS_SUBMIT } from './selectors';
 import { SELECTION_DURATION, FEEDBACK_DURATION } from './constants';
 
 // ============ TYPES ============
@@ -270,10 +270,16 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
 
       await listenerClickTangram(pages[i], clickIdx);
 
-      // Social guess if needed
+      // Social guess if needed (simultaneous mode: click Submit after both selections)
       if (doSocialGuess) {
         await pages[i].waitForTimeout(500);
         await makeSocialGuess(pages[i], 'same');
+        // Click the simultaneous Submit button to commit both selections
+        try {
+          await pages[i].locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
+        } catch {
+          // Fallback: button may not exist if not in simultaneous mode
+        }
       }
     }
   }

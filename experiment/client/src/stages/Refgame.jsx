@@ -6,13 +6,17 @@ import { PHASE_1_BLOCKS, PHASE_2_BLOCKS, MAX_IDLE_ROUNDS } from "../constants";
 export function Refgame(props) {
   const { round, stage, game, player, players } = props;
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [localTangramSelection, setLocalTangramSelection] = useState(null);
+  const [localSocialGuess, setLocalSocialGuess] = useState(null);
 
-  // Reset the local submission state when stage changes
+  // Reset local state when stage/round changes
   useEffect(() => {
     if (stage.get("name") === "Feedback") {
       setHasSubmitted(false);
     }
-  }, [stage.get("name")]);
+    setLocalTangramSelection(null);
+    setLocalSocialGuess(null);
+  }, [stage.get("name"), round.get("target_num")]);
 
   const target = round.get("target");
   const shuffled_tangrams = player.get("shuffled_tangrams");
@@ -29,6 +33,8 @@ export function Refgame(props) {
   // Determine if social guessing is enabled
   const isSocialMixed = condition === "social_mixed" && phase_num === 2;
   const isListener = player.round.get("role") === "listener";
+  const simultaneousMode =
+    isSocialMixed && isListener && stage.get("name") === "Selection";
 
   let tangramsToRender;
   if (shuffled_tangrams) {
@@ -43,6 +49,12 @@ export function Refgame(props) {
         player={player}
         players={players}
         target={target}
+        {...(simultaneousMode
+          ? {
+              onSelect: setLocalTangramSelection,
+              localSelection: localTangramSelection,
+            }
+          : {})}
       />
     ));
   }
@@ -175,13 +187,26 @@ export function Refgame(props) {
         let socialLine = "";
         if (socialGuess) {
           socialLine = socialCorrect
-            ? ` Speaker identity guess correct: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`
-            : ` Speaker identity guess incorrect: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`;
+            ? `Speaker identity guess correct: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`
+            : `Speaker identity guess incorrect: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`;
         }
 
-        feedback = `${pictureFeedback}${socialLine} You earned ${combinedScore} ${combinedScore == 1 ? "point" : "points"} this round.`;
+        const pointsLine = `You earned ${combinedScore} ${combinedScore == 1 ? "point" : "points"} this round.`;
+        feedback = (
+          <>
+            {pictureFeedback}
+            {socialLine && (
+              <>
+                <br />
+                {socialLine}
+              </>
+            )}
+            <br />
+            {pointsLine}
+          </>
+        );
       } else if (correct) {
-        feedback = "Correct! You earned 2 points for the picture.";
+        feedback = "Correct! You earned 2 points.";
       } else {
         feedback =
           "Ooops, that wasn't the target! You earned no points this round from guessing the picture.";
@@ -197,12 +222,19 @@ export function Refgame(props) {
         let socialLine = "";
         if (originalGroupListeners === 0) {
           socialLine =
-            " No members from your original group were listeners this round.";
+            "No members from your original group were listeners this round.";
         } else {
-          socialLine = ` ${recognizedCount} out of ${originalGroupListeners} ${originalGroupListeners == 1 ? "member" : "members"} from your original group recognized you this round.`;
+          socialLine = `${recognizedCount} out of ${originalGroupListeners} ${originalGroupListeners == 1 ? "member" : "members"} from your original group recognized you this round.`;
         }
 
-        feedback = `${socialLine} You earned ${Math.round(combinedScore)} ${Math.round(combinedScore) == 1 ? "point" : "points"} this round.`;
+        const pointsLine = `You earned ${Math.round(combinedScore)} ${Math.round(combinedScore) == 1 ? "point" : "points"} this round.`;
+        feedback = (
+          <>
+            {socialLine}
+            <br />
+            {pointsLine}
+          </>
+        );
       } else {
         feedback = `You earned ${pictureRoundScore} ${pictureRoundScore == 1 ? "point" : "points"} this round.`;
       }
@@ -221,20 +253,21 @@ export function Refgame(props) {
     );
   }
 
+  // Commit both selections in simultaneous mode
+  const handleSimultaneousSubmit = () => {
+    if (!localTangramSelection || !localSocialGuess) return;
+    player.round.set("clicked", localTangramSelection);
+    player.round.set("social_guess", localSocialGuess);
+  };
+
   // Social guess component for listeners in social_mixed condition
   const renderSocialGuess = () => {
     if (!isSocialMixed || !isListener || stage.get("name") !== "Selection") {
       return null;
     }
 
-    const hasClicked = player.round.get("clicked");
+    // After submit, show confirmation
     const hasSocialGuess = player.round.get("social_guess");
-
-    // Only show after tangram is clicked
-    if (!hasClicked) {
-      return null;
-    }
-
     if (hasSocialGuess) {
       return (
         <div
@@ -259,6 +292,8 @@ export function Refgame(props) {
       );
     }
 
+    // Toggle-style buttons using local state
+    const currentGuess = localSocialGuess;
     return (
       <div
         className="social-guess-container"
@@ -278,31 +313,67 @@ export function Refgame(props) {
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
           <button
             className="button"
-            onClick={() => player.round.set("social_guess", "same_group")}
+            onClick={() => setLocalSocialGuess("same_group")}
             style={{
               padding: "8px 16px",
-              backgroundColor: "#22c55e",
+              backgroundColor:
+                currentGuess === "same_group" ? "#16a34a" : "#22c55e",
               color: "white",
-              border: "none",
+              border: currentGuess === "same_group" ? "3px solid #000" : "none",
               borderRadius: 4,
               cursor: "pointer",
+              fontWeight: currentGuess === "same_group" ? "bold" : "normal",
             }}
           >
             Yes, same group
           </button>
           <button
             className="button"
-            onClick={() => player.round.set("social_guess", "different_group")}
+            onClick={() => setLocalSocialGuess("different_group")}
             style={{
               padding: "8px 16px",
-              backgroundColor: "#ef4444",
+              backgroundColor:
+                currentGuess === "different_group" ? "#dc2626" : "#ef4444",
               color: "white",
-              border: "none",
+              border:
+                currentGuess === "different_group" ? "3px solid #000" : "none",
               borderRadius: 4,
               cursor: "pointer",
+              fontWeight:
+                currentGuess === "different_group" ? "bold" : "normal",
             }}
           >
             No, different group
+          </button>
+        </div>
+
+        {/* Submit button — only enabled when both selections are made */}
+        <div
+          style={{ display: "flex", justifyContent: "center", marginTop: 16 }}
+        >
+          <button
+            data-testid="simultaneous-submit"
+            className="button"
+            onClick={handleSimultaneousSubmit}
+            disabled={!localTangramSelection || !localSocialGuess}
+            style={{
+              padding: "10px 24px",
+              backgroundColor:
+                localTangramSelection && localSocialGuess
+                  ? "#2563eb"
+                  : "#9ca3af",
+              color: "white",
+              border: "none",
+              borderRadius: 6,
+              cursor:
+                localTangramSelection && localSocialGuess
+                  ? "pointer"
+                  : "not-allowed",
+              fontSize: "1rem",
+              fontWeight: "bold",
+            }}
+          >
+            Submit
           </button>
         </div>
       </div>
@@ -360,7 +431,7 @@ export function Refgame(props) {
                   : "")
               : "You are a listener. Please click on the picture that the speaker describes." +
                 (isSocialMixed
-                  ? " Then guess whether the speaker was in your original group."
+                  ? " Also guess whether the speaker was in your original group, then submit both answers."
                   : "")}
           </p>
         </div>

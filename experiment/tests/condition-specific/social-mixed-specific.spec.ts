@@ -3,7 +3,7 @@
  *
  * Verifies social_mixed condition specifics:
  * (a) Phase 1: same as refer_separated (no social guess UI, real names, groups unchanged)
- * (b) Phase 2: reshuffled + masked + social guess UI appears after listener clicks tangram
+ * (b) Phase 2: reshuffled + masked + social guess UI appears simultaneously with tangram grid
  * (c) Social guess buttons: "Yes, same group" and "No, different group"
  * (d) After guessing, confirmation shown
  */
@@ -39,7 +39,7 @@ import {
   ROUNDS_PER_BLOCK,
   PLAYER_NAMES,
 } from '../helpers/constants';
-import { SOCIAL_GUESS_CONTAINER } from '../helpers/selectors';
+import { SOCIAL_GUESS_CONTAINER, SIMULTANEOUS_SUBMIT } from '../helpers/selectors';
 
 test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
   let pm: PlayerManager;
@@ -159,7 +159,7 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
     }
   });
 
-  test('(b) Phase 2: social guess UI appears after listener clicks tangram', async () => {
+  test('(b) Phase 2: social guess UI appears simultaneously with tangram grid', async () => {
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
@@ -174,36 +174,36 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
     }
     await active[0]?.waitForTimeout(500);
 
-    // Find a listener, click tangram, and verify social guess UI appears
+    // Verify social guess UI is already visible BEFORE clicking tangram
     let socialGuessVerified = false;
     for (const page of active) {
       const info = await getPlayerInfo(page);
       if (info?.role === 'listener' && info.phase === 2) {
-        const targetIdx = groupTargets[info.currentGroup!] ?? 0;
-        await listenerClickTangram(page, targetIdx);
-        await page.waitForTimeout(500);
-
-        // Social guess UI should appear
+        // Social guess UI should already be visible (simultaneous mode)
         await expectSocialGuessUI(page);
         socialGuessVerified = true;
 
-        // Make the guess to continue the round
+        // Now click tangram and make social guess, then submit both
+        const targetIdx = groupTargets[info.currentGroup!] ?? 0;
+        await listenerClickTangram(page, targetIdx);
+        await page.waitForTimeout(300);
         await makeSocialGuess(page, 'same');
+        await page.locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
         break;
       }
     }
     expect(socialGuessVerified).toBe(true);
 
-    // Complete remaining listeners' clicks and social guesses for this round
+    // Complete remaining listeners' clicks, social guesses, and submits
     for (const page of active) {
       const info = await getPlayerInfo(page);
       if (info?.role === 'listener' && info.phase === 2) {
-        // Check if this listener still needs to act (hasn't already clicked)
         try {
           const targetIdx = groupTargets[info.currentGroup!] ?? 0;
           await listenerClickTangram(page, targetIdx);
-          await page.waitForTimeout(500);
+          await page.waitForTimeout(300);
           await makeSocialGuess(page, 'different');
+          await page.locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
         } catch {
           // Already completed
         }
@@ -234,15 +234,11 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
     }
     await active[0]?.waitForTimeout(500);
 
-    // Find a listener, click tangram, and check the button labels
+    // Social guess buttons should be visible simultaneously (before clicking tangram)
     let buttonsVerified = false;
     for (const page of active) {
       const info = await getPlayerInfo(page);
       if (info?.role === 'listener' && info.phase === 2) {
-        const targetIdx = groupTargets[info.currentGroup!] ?? 0;
-        await listenerClickTangram(page, targetIdx);
-        await page.waitForTimeout(500);
-
         // Verify both buttons are present with the correct labels
         const sameGroupBtn = page.getByRole('button', { name: /yes, same group/i });
         const diffGroupBtn = page.getByRole('button', { name: /no, different group/i });
@@ -251,8 +247,12 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
         await expect(diffGroupBtn).toBeVisible({ timeout: 5000 });
         buttonsVerified = true;
 
-        // Make the guess to proceed
+        // Make both selections and submit
+        const targetIdx = groupTargets[info.currentGroup!] ?? 0;
+        await listenerClickTangram(page, targetIdx);
+        await page.waitForTimeout(300);
         await makeSocialGuess(page, 'different');
+        await page.locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
         break;
       }
     }
@@ -265,8 +265,9 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
         try {
           const targetIdx = groupTargets[info.currentGroup!] ?? 0;
           await listenerClickTangram(page, targetIdx);
-          await page.waitForTimeout(500);
+          await page.waitForTimeout(300);
           await makeSocialGuess(page, 'same');
+          await page.locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
         } catch {
           // Already completed
         }
@@ -275,7 +276,7 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
     await active[0]?.waitForTimeout(500);
   });
 
-  test('(d) after guessing, confirmation shown (social guess container updates)', async () => {
+  test('(d) after submitting, confirmation shown (social guess container updates)', async () => {
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
@@ -296,33 +297,28 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
     }
     await active[0]?.waitForTimeout(500);
 
-    // Find a listener, click tangram, make guess, and verify confirmation
+    // Find a listener, select tangram + social guess, submit, and verify confirmation
     for (const page of active) {
       const info = await getPlayerInfo(page);
       if (info?.role === 'listener' && info.phase === 2) {
         const targetIdx = groupTargets[info.currentGroup!] ?? 0;
         await listenerClickTangram(page, targetIdx);
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
-        // Make social guess
+        // Make social guess (local state) and submit
         await makeSocialGuess(page, 'same');
+        await page.locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
         await page.waitForTimeout(500);
 
-        // After guessing, the social guess buttons should no longer be clickable
-        // or a confirmation message should appear. The social guess container
-        // should still be visible but in a "completed" state.
-        const bodyText = await page.textContent('body');
-        // After making a guess, the buttons should disappear or a confirmation
-        // should replace them. Verify the guess buttons are gone.
+        // After submitting, the social guess buttons should be replaced by confirmation.
+        // The guess buttons should be gone (confirmation replaces them).
         const sameGroupBtn = page.getByRole('button', { name: /yes, same group/i });
         const btnCount = await sameGroupBtn.count();
-        // After guessing, the buttons should either be hidden or disabled
-        if (btnCount > 0) {
-          const isDisabled = await sameGroupBtn.isDisabled();
-          // Either the button is gone (count 0) or disabled
-          expect(isDisabled).toBe(true);
-        }
-        // If count is 0, that means confirmation replaced the buttons - that's correct too
+        expect(btnCount).toBe(0);
+
+        // Verify confirmation text is shown
+        const bodyText = await page.textContent('body');
+        expect(bodyText).toContain('You guessed:');
         break;
       }
     }
@@ -334,8 +330,9 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
         try {
           const targetIdx = groupTargets[info.currentGroup!] ?? 0;
           await listenerClickTangram(page, targetIdx);
-          await page.waitForTimeout(500);
+          await page.waitForTimeout(300);
           await makeSocialGuess(page, 'different');
+          await page.locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
         } catch {
           // Already completed
         }

@@ -20,6 +20,7 @@ import {
   expectIdentityMasked,
   expectSocialGuessUI,
 } from '../helpers/assertions';
+import { SIMULTANEOUS_SUBMIT } from '../helpers/selectors';
 import {
   PHASE_1_BLOCKS,
   PHASE_2_BLOCKS,
@@ -98,12 +99,21 @@ test.describe.serial('Happy Path: social_mixed', () => {
     await handleTransition(pages);
   });
 
-  test('Phase 2: social guess UI appears for listeners after clicking', async () => {
+  test('Phase 2: social guess UI appears simultaneously with tangram grid', async () => {
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
     // Wait for Phase 2 Selection stage so .task element is rendered
     await waitForStage(active[0], 'Selection', 120_000);
+
+    // Social guess UI should already be visible for listeners (simultaneous mode)
+    for (const page of active) {
+      const info = await getPlayerInfo(page);
+      if (info?.role === 'listener' && info.phase === 2) {
+        await expectSocialGuessUI(page);
+        break;
+      }
+    }
 
     // Find a speaker, note their group, and send a message
     let speakerGroup: string | null = null;
@@ -119,19 +129,17 @@ test.describe.serial('Happy Path: social_mixed', () => {
     // Allow time for message to propagate to listeners via Empirica state
     await active[0]?.waitForTimeout(2000);
 
-    // Find a listener IN THE SAME GROUP as the speaker, click tangram, verify social guess UI
+    // Find a listener IN THE SAME GROUP as the speaker, click tangram, social guess, and submit
     for (const page of active) {
       const info = await getPlayerInfo(page);
       if (info?.role === 'listener' && info.phase === 2 && info.currentGroup === speakerGroup) {
         const clickIdx = info.targetIndex >= 0 ? info.targetIndex : 0;
         await listenerClickTangram(page, clickIdx);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
 
-        // Social guess UI should now be visible
-        await expectSocialGuessUI(page);
-
-        // Make the guess to proceed
+        // Make the guess and submit both
         await makeSocialGuess(page, 'same');
+        await page.locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
         break;
       }
     }
@@ -162,6 +170,11 @@ test.describe.serial('Happy Path: social_mixed', () => {
         await listenerClickTangram(page, clickIdx);
         await page.waitForTimeout(300);
         await makeSocialGuess(page, 'same');
+        try {
+          await page.locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
+        } catch {
+          // May have already been submitted
+        }
       }
     }
     await active[0]?.waitForTimeout(1000);

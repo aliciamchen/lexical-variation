@@ -23,8 +23,8 @@ const isTestMode = process.env.TEST_MODE !== 'false';
  * | group-4 | idle-detection, group-viability, compensation     |
  * | group-holistic | holistic end-to-end (social_mixed, 15 players) |
  *
- * Run holistic test standalone:
- *   TEST_MODE=false npx playwright test --project=setup-5 --project=group-holistic --reporter=list
+ * Run holistic test standalone (always uses production timing):
+ *   npx playwright test --project=setup-5 --project=group-holistic --reporter=list
  */
 export default defineConfig({
   testDir: './tests',
@@ -100,11 +100,11 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
 
-    // ── Holistic end-to-end test ──
+    // ── Holistic end-to-end test (production timing) ──
     {
       name: 'setup-5',
       // dependencies: ['group-4'], // Uncomment to chain after group-4 in full suite
-      testMatch: 'reset-server.setup.ts',
+      testMatch: 'reset-server-production.setup.ts',
     },
     {
       name: 'group-holistic',

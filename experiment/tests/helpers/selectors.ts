@@ -36,6 +36,7 @@ export const PLAYER_ID = '[data-player-id]';
 
 // Social guess (Refgame.jsx)
 export const SOCIAL_GUESS_CONTAINER = '.social-guess-container';
+export const SIMULTANEOUS_SUBMIT = '[data-testid="simultaneous-submit"]';
 
 // Feedback
 export const FEEDBACK_INDICATOR = '.feedbackIndicator';
