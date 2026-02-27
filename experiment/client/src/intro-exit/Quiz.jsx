@@ -6,7 +6,9 @@ export function Quiz({ next }) {
   const player = usePlayer();
   const [answers, setAnswers] = useState({});
   const [attempts, setAttempts] = useState(0);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState(
+    player.get("exitReason") === "quiz failed"
+  );
 
   const MAX_ATTEMPTS = 3;
 
@@ -86,6 +88,10 @@ export function Quiz({ next }) {
 
     if (allCorrect) {
       alert("Congratulations, you answered all questions correctly!");
+      // Clear any prior quiz failure so it doesn't poison the exit flow
+      if (player.get("exitReason") === "quiz failed") {
+        player.set("exitReason", null);
+      }
       next();
     } else {
       const newAttempts = attempts + 1;
