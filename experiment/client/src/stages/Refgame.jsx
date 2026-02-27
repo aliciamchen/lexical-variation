@@ -241,11 +241,25 @@ export function Refgame(props) {
           socialText = `${recognizedCount} out of ${originalGroupListeners} ${originalGroupListeners == 1 ? "member" : "members"} from your original group recognized you this round.`;
         }
 
+        let cardStyle;
+        if (originalGroupListeners === 0) {
+          // No original group listeners — neutral purple
+          cardStyle = { backgroundColor: "#f5f3ff", color: "#7c3aed" };
+        } else if (recognizedCount === 0) {
+          // None recognized — red
+          cardStyle = { backgroundColor: "#fef2f2", color: "#dc2626" };
+        } else if (recognizedCount === originalGroupListeners) {
+          // All recognized — green
+          cardStyle = { backgroundColor: "#f0fdf4", color: "#16a34a" };
+        } else {
+          // Some recognized — purple
+          cardStyle = { backgroundColor: "#f5f3ff", color: "#7c3aed" };
+        }
+
         const socialCard = (
           <div
             style={{
-              backgroundColor: "#f5f3ff",
-              color: "#7c3aed",
+              ...cardStyle,
               fontWeight: "600",
               padding: "10px 14px",
               borderRadius: 6,
@@ -347,7 +361,7 @@ export function Refgame(props) {
             style={{
               padding: "8px 16px",
               backgroundColor:
-                currentGuess === "same_group" ? "#16a34a" : "#22c55e",
+                currentGuess === "same_group" ? "#4b5563" : "#9ca3af",
               color: "white",
               border: currentGuess === "same_group" ? "3px solid #000" : "none",
               borderRadius: 4,
@@ -363,7 +377,7 @@ export function Refgame(props) {
             style={{
               padding: "8px 16px",
               backgroundColor:
-                currentGuess === "different_group" ? "#dc2626" : "#ef4444",
+                currentGuess === "different_group" ? "#4b5563" : "#9ca3af",
               color: "white",
               border:
                 currentGuess === "different_group" ? "3px solid #000" : "none",
