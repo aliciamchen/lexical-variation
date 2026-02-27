@@ -175,7 +175,7 @@ export function Refgame(props) {
         feedback =
           "You did not respond in time. You earned no points this round.";
       } else if (isSocialMixed) {
-        // Social mixed: show picture feedback + social feedback + combined score
+        // Social mixed: show picture feedback + social feedback card + combined score
         const pictureFeedback = correct
           ? "Correct! You identified the target picture."
           : "That wasn't the target picture.";
@@ -184,24 +184,27 @@ export function Refgame(props) {
         const socialCorrect = player.round.get("social_guess_correct");
         const speakerWasSameGroup = player.round.get("speaker_was_same_group");
 
-        let socialLine = "";
+        let socialCard = null;
         if (socialGuess) {
-          socialLine = socialCorrect
+          const cardStyle = socialCorrect
+            ? { backgroundColor: "#f0fdf4", color: "#16a34a" }
+            : { backgroundColor: "#fef2f2", color: "#dc2626" };
+          const prefix = socialCorrect ? "\u2713 " : "\u2717 ";
+          const text = socialCorrect
             ? `Speaker identity guess correct: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`
             : `Speaker identity guess incorrect: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`;
+          socialCard = (
+            <div style={{ ...cardStyle, fontWeight: "600", padding: "10px 14px", borderRadius: 6, margin: "10px auto", maxWidth: "70%", textAlign: "left" }}>
+              {prefix}{text}
+            </div>
+          );
         }
 
         const pointsLine = `You earned ${combinedScore} ${combinedScore == 1 ? "point" : "points"} this round.`;
         feedback = (
           <>
             {pictureFeedback}
-            {socialLine && (
-              <>
-                <br />
-                {socialLine}
-              </>
-            )}
-            <br />
+            {socialCard}
             {pointsLine}
           </>
         );
@@ -219,19 +222,24 @@ export function Refgame(props) {
           "social_original_group_listeners",
         );
 
-        let socialLine = "";
+        let socialText = "";
         if (originalGroupListeners === 0) {
-          socialLine =
+          socialText =
             "No members from your original group were listeners this round.";
         } else {
-          socialLine = `${recognizedCount} out of ${originalGroupListeners} ${originalGroupListeners == 1 ? "member" : "members"} from your original group recognized you this round.`;
+          socialText = `${recognizedCount} out of ${originalGroupListeners} ${originalGroupListeners == 1 ? "member" : "members"} from your original group recognized you this round.`;
         }
+
+        const socialCard = (
+          <div style={{ backgroundColor: "#f5f3ff", color: "#7c3aed", fontWeight: "600", padding: "10px 14px", borderRadius: 6, margin: "10px auto", maxWidth: "70%", textAlign: "left" }}>
+            {socialText}
+          </div>
+        );
 
         const pointsLine = `You earned ${Math.round(combinedScore)} ${Math.round(combinedScore) == 1 ? "point" : "points"} this round.`;
         feedback = (
           <>
-            {socialLine}
-            <br />
+            {socialCard}
             {pointsLine}
           </>
         );

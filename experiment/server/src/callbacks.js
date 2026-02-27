@@ -261,7 +261,7 @@ Empirica.onRoundStart(({ round }) => {
       phase_num === 2 &&
       (condition === "refer_mixed" || condition === "social_mixed")
     ) {
-      reshuffleGroups(game, players);
+      reshuffleGroups(game, players, blockNum);
     }
 
     // Set roles for each group
@@ -362,11 +362,73 @@ Empirica.onRoundStart(({ round }) => {
   }
 });
 
+// Precomputed derangements for small N (permutations with no fixed points)
+const DERANGEMENTS = {
+  2: [[1, 0]],
+  3: [
+    [1, 2, 0],
+    [2, 0, 1],
+  ],
+};
+
+// Constrained reshuffling: guarantees exactly 1 in-group listener per group per trial.
+// Works when the active players form a complete N×N matrix (N original groups × N player indices).
+// Returns true if successful, false if the matrix is irregular (fall back to best-effort).
+function doConstrainedReshuffle(players, usedGroups, blockNum) {
+  const speakerIdx = blockNum % GROUP_SIZE;
+  const listenerIndices = [0, 1, 2].filter((i) => i !== speakerIdx);
+
+  // Build lookup: playersByIndex[playerIndex][originalGroup] = player
+  const playersByIndex = {};
+  for (let idx = 0; idx < GROUP_SIZE; idx++) {
+    playersByIndex[idx] = {};
+  }
+  for (const p of players) {
+    playersByIndex[p.get("player_index")][p.get("original_group")] = p;
+  }
+
+  // Check: each index must have exactly one player per original group,
+  // and the number of original groups must equal usedGroups
+  const originalGroups = [
+    ...new Set(players.map((p) => p.get("original_group"))),
+  ].sort();
+  const N = originalGroups.length;
+  if (N !== usedGroups.length) return false;
+  if (!DERANGEMENTS[N]) return false; // Only handle N=2 and N=3
+  for (let idx = 0; idx < GROUP_SIZE; idx++) {
+    if (Object.keys(playersByIndex[idx]).length !== N) return false;
+  }
+
+  // Random permutation for speakers: maps index i -> sigma[i]
+  const sigma = _.shuffle(_.range(N));
+
+  // One listener index uses the same permutation (always in-group with speaker)
+  // The other listener index uses sigma composed with a derangement (always out-of-group)
+  const matchIdx = _.sample(listenerIndices);
+  const derangeIdx = listenerIndices.find((i) => i !== matchIdx);
+
+  // Compose: sigma_derange[i] = sigma[D[i]]
+  const D = _.sample(DERANGEMENTS[N]);
+  const sigma_derange = D.map((d) => sigma[d]);
+
+  // Assign all players to their reshuffled groups
+  for (let i = 0; i < N; i++) {
+    const og = originalGroups[i];
+    playersByIndex[speakerIdx][og].set("current_group", usedGroups[sigma[i]]);
+    playersByIndex[matchIdx][og].set("current_group", usedGroups[sigma[i]]);
+    playersByIndex[derangeIdx][og].set(
+      "current_group",
+      usedGroups[sigma_derange[i]],
+    );
+  }
+  return true;
+}
+
 // Helper function to reshuffle groups for mixed conditions with BALANCED assignment
 // Goal: Each group should have one player from each original_player_index (0, 1, 2)
 // This ensures speaker rotation (blockNum % 3) works consistently across conditions
 // Additionally: Ensures groups are MIXED (players from different original groups together)
-function reshuffleGroups(game, players) {
+function reshuffleGroups(game, players, blockNum) {
   const activeGroups = game.get("active_groups") || GROUP_NAMES;
   const numPlayers = players.length;
 
@@ -380,6 +442,51 @@ function reshuffleGroups(game, players) {
   }
 
   const usedGroups = activeGroups.slice(0, numGroups);
+
+  // Try constrained reshuffling first (guarantees exactly 1 in-group listener)
+  if (blockNum !== undefined && doConstrainedReshuffle(players, usedGroups, blockNum)) {
+    // Verify: each group of 3 has exactly 1 in-group listener
+    const speakerTargetIndex = blockNum % GROUP_SIZE;
+    usedGroups.forEach((groupName) => {
+      const gp = players.filter(
+        (p) => p.get("current_group") === groupName,
+      );
+      if (gp.length < GROUP_SIZE) return; // Skip groups of 2
+      const sp = gp.find(
+        (p) => p.get("player_index") === speakerTargetIndex,
+      );
+      if (!sp) return;
+      const listeners = gp.filter((p) => p !== sp);
+      const inGroup = listeners.filter(
+        (p) => p.get("original_group") === sp.get("original_group"),
+      );
+      console.assert(
+        inGroup.length === 1,
+        `Group ${groupName}: expected 1 in-group listener, got ${inGroup.length}`,
+      );
+    });
+
+    // Log final composition
+    console.log(
+      `Constrained reshuffle succeeded (block ${blockNum}, speaker_idx ${speakerTargetIndex}):`,
+    );
+    usedGroups.forEach((groupName) => {
+      const gp = players.filter(
+        (p) => p.get("current_group") === groupName,
+      );
+      console.log(
+        `  Group ${groupName}: ${gp.map((p) => `${p.get("name") || p.id}(og=${p.get("original_group")}, idx=${p.get("player_index")})`).join(", ")}`,
+      );
+    });
+    return;
+  }
+
+  // Fall through to best-effort reshuffling (irregular dropout patterns)
+  if (blockNum !== undefined) {
+    console.log(
+      `Constrained reshuffle failed for block ${blockNum}, falling back to best-effort`,
+    );
+  }
 
   // Calculate target group sizes for even distribution
   const baseSize = Math.floor(numPlayers / numGroups);
@@ -971,7 +1078,7 @@ function checkGroupViability(game) {
           true,
         );
 
-        reshuffleGroups(game, activePlayers);
+        reshuffleGroups(game, activePlayers, currentBlock);
       } else {
         console.log(
           `Cannot reshuffle: only ${activePlayers.length} players remaining (need ${MIN_GROUP_SIZE})`,

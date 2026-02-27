@@ -230,17 +230,16 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
     }
   });
 
-  test('(b) Phase 2: reshuffling happens at block boundaries', async () => {
+  test('(b) Phase 2: per-trial reshuffling across blocks', async () => {
     test.slow(); // Phase 2 is 12 rounds, takes several minutes
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
-    // Play Phase 2 blocks and track group assignments at block boundaries
+    // Track group assignments at first round of each block (for between-block comparison)
     const blockGroupAssignments: Record<number, Record<number, string>> = {};
 
     for (let block = 0; block < PHASE_2_BLOCKS; block++) {
       // For blocks after the first, wait for the game to advance to the new block
-      // (previous block's last Feedback must complete and reshuffling must occur)
       if (block > 0) {
         const waitStart = Date.now();
         while (Date.now() - waitStart < 60_000) {
@@ -250,7 +249,7 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
         }
       }
 
-      // Record current groups at start of each block
+      // Record current groups at start of each block (first round only)
       blockGroupAssignments[block] = {};
       for (let i = 0; i < active.length; i++) {
         const info = await getPlayerInfo(active[i]);
@@ -259,22 +258,14 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
         }
       }
 
-      // Play rounds within this block
+      // Play rounds within this block (groups may change every trial)
       for (let round = 0; round < ROUNDS_PER_BLOCK; round++) {
         await playRound(active);
-
-        // Within a block, groups should NOT change
-        for (let i = 0; i < active.length; i++) {
-          const info = await getPlayerInfo(active[i]);
-          if (info?.currentGroup && blockGroupAssignments[block][i]) {
-            expect(info.currentGroup).toBe(blockGroupAssignments[block][i]);
-          }
-        }
       }
     }
 
     // Verify that groups changed between at least some block boundaries
-    // (reshuffling should happen between blocks)
+    // (with per-trial reshuffling, consecutive blocks should almost certainly differ)
     if (PHASE_2_BLOCKS > 1) {
       let anyGroupChanged = false;
       for (let i = 0; i < active.length; i++) {
@@ -287,8 +278,6 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
           break;
         }
       }
-      // It is possible (but extremely unlikely with 9 players) that reshuffling
-      // produces the same assignment. Use soft assertion to not fail the entire suite.
       expect.soft(anyGroupChanged, 'Expected group reshuffling between blocks (extremely unlikely to be same)').toBe(true);
     }
   });

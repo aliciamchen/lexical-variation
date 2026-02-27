@@ -273,7 +273,7 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
       // Social guess if needed (simultaneous mode: click Submit after both selections)
       if (doSocialGuess) {
         await pages[i].waitForTimeout(500);
-        await makeSocialGuess(pages[i], 'same');
+        await makeSocialGuess(pages[i], i % 2 === 0 ? 'same' : 'different');
         // Click the simultaneous Submit button to commit both selections
         try {
           await pages[i].locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
