@@ -194,8 +194,19 @@ export function Refgame(props) {
             ? `Speaker identity guess correct: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`
             : `Speaker identity guess incorrect: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`;
           socialCard = (
-            <div style={{ ...cardStyle, fontWeight: "600", padding: "10px 14px", borderRadius: 6, margin: "10px auto", maxWidth: "70%", textAlign: "left" }}>
-              {prefix}{text}
+            <div
+              style={{
+                ...cardStyle,
+                fontWeight: "600",
+                padding: "10px 14px",
+                borderRadius: 6,
+                margin: "10px auto",
+                maxWidth: "70%",
+                textAlign: "left",
+              }}
+            >
+              {prefix}
+              {text}
             </div>
           );
         }
@@ -231,7 +242,18 @@ export function Refgame(props) {
         }
 
         const socialCard = (
-          <div style={{ backgroundColor: "#f5f3ff", color: "#7c3aed", fontWeight: "600", padding: "10px 14px", borderRadius: 6, margin: "10px auto", maxWidth: "70%", textAlign: "left" }}>
+          <div
+            style={{
+              backgroundColor: "#f5f3ff",
+              color: "#7c3aed",
+              fontWeight: "600",
+              padding: "10px 14px",
+              borderRadius: 6,
+              margin: "10px auto",
+              maxWidth: "70%",
+              textAlign: "left",
+            }}
+          >
             {socialText}
           </div>
         );
@@ -439,7 +461,7 @@ export function Refgame(props) {
                   : "")
               : "You are a listener. Please click on the picture that the speaker describes." +
                 (isSocialMixed
-                  ? " Also guess whether the speaker was in your original group, then submit both answers."
+                  ? " Also guess whether the speaker was in your original group."
                   : "")}
           </p>
         </div>

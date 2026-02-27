@@ -90,7 +90,7 @@ export function Game() {
     >
       <div className="h-full w-full flex flex-col">
         <Profile />
-        <div className="h-full flex items-center justify-center">
+        <div className="h-full flex items-start justify-center overflow-y-auto">
           <Task
             round={round}
             stage={stage}
