@@ -102,8 +102,8 @@ export function Transition(props) {
         </p>
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
           <strong>Note:</strong> You have less time in Phase 2 (
-          {PHASE2_SELECTION_DURATION} seconds) for the listeners to select the
-          target picture in each round, so please act quickly.
+          {PHASE2_SELECTION_DURATION} seconds) for the listeners to respond in
+          each round, so please act quickly.
         </p>
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
           <strong>
