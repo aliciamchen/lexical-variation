@@ -342,6 +342,10 @@ export function Introduction5({ next }) {
         players. A sound will play when the game starts.
       </p>
       <p>If you experience issues, please contact us on Prolific.</p>
+      <p>
+        This is the end of the instructions. Press Next to proceed to the
+        comprehension quiz.
+      </p>
     </div>
   );
 }

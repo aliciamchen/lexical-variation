@@ -23,6 +23,7 @@ import {
   MIN_GROUP_SIZE,
   TEST_MODE,
   SELECTION_DURATION,
+  PHASE2_SELECTION_DURATION,
   FEEDBACK_DURATION,
   TRANSITION_DURATION,
   BONUS_INFO_DURATION,
@@ -195,7 +196,7 @@ Empirica.onGameStart(({ game }) => {
       });
       round.addStage({
         name: "Selection",
-        duration: SELECTION_DURATION,
+        duration: PHASE2_SELECTION_DURATION,
       });
       round.addStage({
         name: "Feedback",

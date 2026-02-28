@@ -3,6 +3,7 @@ import { Button } from "../components/Button";
 import {
   PHASE_2_BLOCKS,
   NUM_TANGRAMS,
+  PHASE2_SELECTION_DURATION,
   LISTENER_CORRECT_POINTS,
   SOCIAL_GUESS_CORRECT_POINTS,
   SOCIAL_SPEAKER_POINTS_PER_CORRECT,
@@ -98,6 +99,11 @@ export function Transition(props) {
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
           Phase 2 consists of {PHASE_2_BLOCKS} blocks. Each block has{" "}
           {NUM_TANGRAMS} rounds, just like in Phase 1.
+        </p>
+        <p className="instruction-prompt" style={{ marginTop: 8 }}>
+          <strong>Note:</strong> You have less time in Phase 2 (
+          {PHASE2_SELECTION_DURATION} seconds) for the listeners to select the
+          target picture in each round, so please act quickly.
         </p>
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
           <strong>

@@ -116,14 +116,10 @@ export async function isOnExitScreen(page: Page): Promise<boolean> {
 export async function completeIntro(page: Page, playerName?: string): Promise<void> {
   const identifier = playerName || `player_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-  // Step 1: Wait for and handle Empirica built-in consent ("I AGREE")
-  // Use explicit wait instead of conditional count (avoids race with page loading)
-  try {
-    await page.getByRole('button', { name: /agree/i }).click({ timeout: 10_000 });
-    await page.waitForTimeout(500);
-  } catch {
-    // Consent dialog may have already been accepted or not shown
-  }
+  // Step 1: Custom consent page (now shown before identifier entry)
+  await page.getByRole('button', { name: /consent/i }).waitFor({ state: 'visible', timeout: 15_000 });
+  await page.getByRole('button', { name: /consent/i }).click();
+  await page.waitForTimeout(500);
 
   // Step 2: Wait for textbox to appear, then enter player identifier
   await page.getByRole('textbox').waitFor({ state: 'visible', timeout: 15_000 });
@@ -131,17 +127,13 @@ export async function completeIntro(page: Page, playerName?: string): Promise<vo
   await page.getByRole('button', { name: /enter/i }).click();
   await page.waitForTimeout(500);
 
-  // Step 3: Custom consent page - click "I consent"
-  await page.getByRole('button', { name: /consent/i }).click({ timeout: 10_000 });
-  await page.waitForTimeout(300);
-
-  // Step 4: 5 intro/instruction pages
+  // Step 3: 5 intro/instruction pages
   for (let j = 0; j < 5; j++) {
     await page.getByRole('button', { name: /next/i }).click({ timeout: 10_000 });
     await page.waitForTimeout(200);
   }
 
-  // Step 5: Quiz answers - wait for first radio to be visible (quiz page loaded)
+  // Step 4: Quiz answers - wait for first radio to be visible (quiz page loaded)
   await page.getByRole('radio', { name: /describe the target picture/i }).waitFor({ state: 'visible', timeout: 10_000 });
   await page.getByRole('radio', { name: /describe the target picture/i }).click();
   await page.getByRole('radio', { name: /removed from the game/i }).click();

@@ -7,6 +7,7 @@ export const TEST_MODE = process.env.TEST_MODE !== 'false';
 
 // Timing
 export const SELECTION_DURATION = TEST_MODE ? 120 : 45;
+export const PHASE2_SELECTION_DURATION = TEST_MODE ? 120 : 25;
 export const FEEDBACK_DURATION = 15;
 export const TRANSITION_DURATION = 60;
 export const BONUS_INFO_DURATION = 30;
@@ -40,7 +41,7 @@ export const BONUS_PER_POINT = 0.05;
 export const BONUS_PER_POINT_SOCIAL = 0.03;
 
 // Compensation
-export const BASE_PAY = 12;
+export const BASE_PAY = 9;
 export const LOBBY_TIMEOUT_PAY = 2;
 export const MAX_BONUS = 8;
 

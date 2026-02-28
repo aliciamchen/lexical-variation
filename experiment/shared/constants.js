@@ -14,14 +14,16 @@ export const TEST_MODE =
 // | Setting              | Testing | Production | Description                          |
 // |----------------------|---------|------------|--------------------------------------|
 // | TEST_MODE            | true    | false      | Master toggle                        |
-// | SELECTION_DURATION   | 120     | 45         | Seconds for selection stage          |
+// | SELECTION_DURATION   | 120     | 45         | Seconds for Phase 1 selection stage  |
+// | PHASE2_SEL_DURATION  | 120     | 25         | Seconds for Phase 2 selection stage  |
 // | MAX_IDLE_ROUNDS      | 5       | 3          | Rounds before idle kick              |
 // | PHASE_1_BLOCKS       | 2       | 6          | Blocks in Phase 1                    |
 // | PHASE_2_BLOCKS       | 2       | 6          | Blocks in Phase 2                    |
 
 // ============ TIMING CONFIGURATION ============
 // Stage durations in seconds
-export const SELECTION_DURATION = TEST_MODE ? 120 : 45; // Selection stage (TEST: 120s)
+export const SELECTION_DURATION = TEST_MODE ? 120 : 45; // Phase 1 selection stage (TEST: 120s)
+export const PHASE2_SELECTION_DURATION = TEST_MODE ? 120 : 25; // Phase 2 selection stage (TEST: 120s)
 export const FEEDBACK_DURATION = 15; // Feedback stage (same for both)
 export const TRANSITION_DURATION = 60; // Phase transition (same for both)
 export const BONUS_INFO_DURATION = 30; // End game bonus info (same for both)
@@ -125,7 +127,7 @@ export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 4;
 export const BONUS_PER_POINT_SOCIAL = 0.03;
 
 // ============ COMPENSATION ============
-export const BASE_PAY = 12; // dollars
+export const BASE_PAY = 9; // dollars
 export const LOBBY_TIMEOUT_PAY = 2; // dollars for players who couldn't find a match in lobby
 
 // Expected game duration in minutes (used for proportional compensation)
@@ -160,7 +162,7 @@ export const SPEAKER_TIMES_PHASE_1 = PHASE_1_BLOCKS / GROUP_SIZE;
 export const MAX_BONUS = 8;
 
 // Estimated time in minutes
-export const ESTIMATED_TIME = 60;
+export const ESTIMATED_TIME = 45;
 
 // Log warning if in test mode (only runs on server)
 if (typeof window === "undefined" && TEST_MODE) {
