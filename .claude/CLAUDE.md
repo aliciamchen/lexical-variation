@@ -12,7 +12,7 @@ A writeup of the framing and goals of the experiments (for submission as a regis
 - 9 players in 3 groups of 3
 - Phase 1: Within-group reference game (6 blocks)
 - Phase 2: Continued reference game with condition-dependent behavior (6 blocks)
-- Conditions: `refer_separated` (same groups), `refer_mixed` (shuffled groups, masked identities), `social_mixed` (shuffled + social guessing task)
+- Conditions: `refer_separated` (same groups), `refer_mixed` (groups reshuffled every trial, masked identities), `social_mixed` (reshuffled every trial + social guessing task)
 
 The TODOS.md file contains a list of things that need to be done to complete the experiment.
 
@@ -34,6 +34,24 @@ To test:
 - click "new batch" on the admin console. "complete" refers to the assignment method, we want to do complete assignment. we can select treatment on the dropdown, lobby config is default shared fail. then click "create"
 - open player interface at `localhost:3000/`
   - press "new player" to start a new player, we need to click this 9 times to get 9 players
+
+### Testing with Playwright MCP (interactive)
+
+You can use the Playwright MCP browser tools to manually test the experiment with multiple simulated players. This is useful for verifying UI changes without running the full test suite.
+
+**Setup:**
+1. Start the server in background: `cd experiment && rm .empirica/local/tajriba.json && empirica`
+2. Navigate to `http://localhost:3000/admin` and create+start a batch
+3. Use `browser_run_code` to create 9 player contexts and walk them through the intro
+
+**Key lessons:**
+- **Dialog handler first**: The quiz uses `window.alert()` which blocks Playwright. Register `page.on('dialog', async d => await d.accept())` on each player page *before* submitting the quiz, not after.
+- **Player intro flow**: I AGREE → Enter identifier → I consent → 5x Next → Quiz (6 radio answers) → Submit. See exact quiz answer text in `experiment/client/src/intro-exit/Quiz.jsx`.
+- **Globals don't persist**: `globalThis.__var` set in one `browser_run_code` call is NOT available in the next. Instead, access player pages via `browser.contexts()` (admin is `contexts[0]`, players are `contexts[1..9]`, each has `.pages()[0]`).
+- **Inactivity kicks**: The selection timer runs during testing. If you spend too long inspecting state between actions, players get kicked for inactivity. Work quickly or use TEST_MODE (longer timeouts).
+- **`fill()` vs real typing**: Playwright's `fill()` sets the value but doesn't fire React `onChange`. Follow `fill()` with `dispatchEvent('input')` to trigger typing indicators and other onChange-dependent state.
+- **Killing the server**: Use `lsof -ti :3000 -ti :8844 | xargs kill -9` to free both the Empirica server port (3000) and Vite dev server port (8844) before restarting.
+- **Finding players by role**: Use `.task` element's data attributes: `data-role` (speaker/listener), `data-current-group` (A/B/C) to identify which browser context belongs to which role/group.
 
 ### Playwright Tests
 
@@ -193,7 +211,7 @@ Note: `rpy2` requires R to be installed. Cairo-based packages (`cairosvg`) may r
 
 ### Identity Masking (Phase 2 Mixed Conditions)
 
-In `refer_mixed` and `social_mixed`:
+In `refer_mixed` and `social_mixed`, groups are reshuffled every trial (not per-block). Anonymous avatars are seeded per trial (`anon_block${blockNum}_trial${targetNum}_player${anonIndex}`) so the same player gets different avatars each round:
 - `player.round.set("display_avatar/name")` for UI display
 - `player.set("avatar/name")` overwritten for chat masking
 - `player.get("original_avatar/name")` preserved for restoration
@@ -202,34 +220,6 @@ In `refer_mixed` and `social_mixed`:
 
 - `original_group`: Persists throughout game (A, B, C)
 - `current_group`: Changes each block in mixed conditions
-
-## Custom Chat Component
-
-The project uses a custom Chat component at `experiment/client/src/components/Chat.jsx` instead of the Empirica Chat component. This avoids needing to patch `node_modules` (which gets overwritten on `npm install` and has Vite caching issues).
-
-The custom Chat component includes:
-- **Role labels**: Shows "(Speaker)" or "(Listener)" after player names
-- **Identity masking**: Uses `display_name` in Phase 2 mixed conditions (shows "Player" instead of real name)
-- **Timestamp display**: Shows 5-second increments for recent messages instead of all "now"
-- **Square avatars**: Uses `rounded-md` instead of `rounded-full` to match the rest of the UI
-- **DiceBear fallback**: Generates identicon avatars for players without custom avatars
-
-Usage in `Game.jsx`:
-```jsx
-import { Chat } from "./components/Chat";
-
-// In the component:
-<Chat
-  scope={stage}
-  attribute={`${playerGroup}_chat`}
-  customPlayerName={(p) => {
-    const displayName = isMixed ? p.round?.get("display_name") : p.get("name");
-    const role = p.round?.get("role");
-    const roleLabel = role === "speaker" ? "(Speaker)" : "(Listener)";
-    return `${displayName || "Player"} ${roleLabel}`;
-  }}
-/>
-```
 
 ## Sentry (Error Monitoring)
 
@@ -279,6 +269,15 @@ uv run python analysis/run_pipeline.py experiment/data/20260222_125327/empirica-
 uv run python analysis/run_pipeline.py --skip-embeddings   # skip SBERT (~minutes)
 uv run python analysis/run_pipeline.py --skip-visualize    # skip plots/animations
 uv run python analysis/run_pipeline.py --skip-render       # skip Quarto notebooks
+```
+
+**Browsing runs:**
+
+```bash
+uv run python analysis/run_pipeline.py list                               # list all runs with metadata
+uv run python analysis/run_pipeline.py status                             # show processed_data symlink target
+uv run python analysis/run_pipeline.py bonuses                            # print latest bonuses
+uv run python analysis/run_pipeline.py bonuses --run 20260225_210047      # specific run's bonuses
 ```
 
 **Pipeline steps:**
