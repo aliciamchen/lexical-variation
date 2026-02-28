@@ -35,10 +35,10 @@ export const MIN_GROUP_SIZE = 2;
 // Scoring
 export const LISTENER_CORRECT_POINTS = 2;
 export const SPEAKER_MAX_POINTS_PER_ROUND = 2;
-export const SOCIAL_GUESS_CORRECT_POINTS = 4;
-export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 4;
+export const SOCIAL_GUESS_CORRECT_POINTS = 6;
+export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 6;
 export const BONUS_PER_POINT = 0.05;
-export const BONUS_PER_POINT_SOCIAL = 0.03;
+export const BONUS_PER_POINT_SOCIAL = 0.023;
 
 // Compensation
 export const BASE_PAY = 9;

@@ -47,7 +47,7 @@ import {
   MAX_IDLE_ROUNDS,
   MIN_GROUP_SIZE,
 } from '../helpers/constants';
-import { QUIZ_FAILED_SCREEN, SORRY_SCREEN } from '../helpers/selectors';
+import { QUIZ_FAILED_SCREEN, SORRY_SCREEN, TANGRAM_ITEMS } from '../helpers/selectors';
 
 // 15 unique player names (9 from constants + 6 extras)
 const ALL_NAMES = [...PLAYER_NAMES, 'Toku', 'Wari', 'Kemi', 'Dobu', 'Saji', 'Pela'];
@@ -113,12 +113,12 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
         }
       }
 
-      // Wait for Empirica UI
+      // Wait for Empirica UI (consent page loads first)
       const start = Date.now();
       while (Date.now() - start < 15_000) {
-        const agree = page.getByRole('button', { name: /agree/i });
+        const consent = page.getByRole('button', { name: /consent/i });
         const textbox = page.getByRole('textbox');
-        if ((await agree.count()) > 0 || (await textbox.count()) > 0) break;
+        if ((await consent.count()) > 0 || (await textbox.count()) > 0) break;
         await page.waitForTimeout(500);
       }
       await page.waitForTimeout(300);
@@ -133,23 +133,16 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
       const page = allPages[i];
       const name = ALL_NAMES[i];
 
-      // Empirica consent
-      try {
-        await page.getByRole('button', { name: /agree/i }).click({ timeout: 10_000 });
-        await page.waitForTimeout(500);
-      } catch {
-        // Already accepted
-      }
+      // Custom consent (shown before identifier)
+      await page.getByRole('button', { name: /consent/i }).waitFor({ state: 'visible', timeout: 15_000 });
+      await page.getByRole('button', { name: /consent/i }).click();
+      await page.waitForTimeout(500);
 
       // Identifier
       await page.getByRole('textbox').waitFor({ state: 'visible', timeout: 15_000 });
       await page.getByRole('textbox').fill(name);
       await page.getByRole('button', { name: /enter/i }).click();
       await page.waitForTimeout(500);
-
-      // Custom consent
-      await page.getByRole('button', { name: /consent/i }).click({ timeout: 10_000 });
-      await page.waitForTimeout(300);
 
       // 5 instruction pages
       for (let j = 0; j < 5; j++) {
@@ -242,12 +235,45 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     await expectCondition(gamePages[0], 'social_mixed');
   });
 
-  // ─── Test 6: Phase 1 — play 2 normal rounds ───
+  // ─── Test 6: Phase 1 — play 2 rounds (one with all wrong clicks) ───
   test('Phase 1: play first 2 normal rounds', async () => {
     test.slow();
-    for (let r = 0; r < 2; r++) {
-      await playRound(gamePages);
+    const allGroups = Object.keys(groupPageIndices);
+
+    // Round 1: all listeners click correctly
+    await playRound(gamePages);
+
+    // Round 2: all listeners click wrong tangram (no correct clicks)
+    await playRound(gamePages, { wrongGroups: allGroups });
+
+    // Verify feedback: target tangram should always show green outline,
+    // even when nobody clicked it (tests the feedback fix)
+    let listenerPage: Page | null = null;
+    for (const page of gamePages) {
+      const info = await getPlayerInfo(page);
+      if (info?.role === 'listener') {
+        listenerPage = page;
+        break;
+      }
     }
+    expect(listenerPage).not.toBeNull();
+    await waitForStage(listenerPage!, 'Feedback', 15_000);
+
+    const info = await getPlayerInfo(listenerPage!);
+    const tangrams = listenerPage!.locator(TANGRAM_ITEMS);
+
+    // Target tangram should have green outline
+    const targetStyle = await tangrams.nth(info!.targetIndex).evaluate(
+      (el) => (el as HTMLElement).style.outline,
+    );
+    expect(targetStyle).toContain('green');
+
+    // Wrong-clicked tangram should have red outline
+    const wrongIdx = (info!.targetIndex + 6) % 12;
+    const wrongStyle = await tangrams.nth(wrongIdx).evaluate(
+      (el) => (el as HTMLElement).style.outline,
+    );
+    expect(wrongStyle).toContain('red');
 
     // All 9 should still be active
     const active = await getActivePlayers(gamePages);
@@ -534,6 +560,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     // off due to round advancement during kicks/reshuffles), play until the
     // game reaches bonus_info or exits Phase 2.
     const maxRounds = PHASE_2_BLOCKS * ROUNDS_PER_BLOCK;
+    const allGroups = Object.keys(groupPageIndices);
     for (let r = 0; r < maxRounds; r++) {
       // Check if we've reached the end (bonus_info or game over)
       const monitorInfo = await getPlayerInfo(active[0]);
@@ -548,7 +575,12 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
       active = await getActivePlayers(gamePages);
       if (active.length < MIN_GROUP_SIZE * 2) break; // Not enough for viable groups
 
-      await playRound(active, { doSocialGuess: true });
+      // Every 3rd round, all listeners click wrong tangram
+      if (r % 3 === 0) {
+        await playRound(active, { doSocialGuess: true, wrongGroups: allGroups });
+      } else {
+        await playRound(active, { doSocialGuess: true });
+      }
     }
   });
 
