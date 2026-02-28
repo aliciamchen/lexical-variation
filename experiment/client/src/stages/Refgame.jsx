@@ -264,8 +264,9 @@ export function Refgame(props) {
               padding: "10px 14px",
               borderRadius: 6,
               margin: "10px auto",
+              width: "fit-content",
               maxWidth: "70%",
-              textAlign: "left",
+              textAlign: "center",
             }}
           >
             {socialText}
