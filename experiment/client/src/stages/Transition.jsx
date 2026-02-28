@@ -15,7 +15,7 @@ export function Transition(props) {
 
   if (player.stage?.get("submit")) {
     return (
-      <div className="text-center text-gray-400 pointer-events-none">
+      <div className="h-full w-full flex items-center justify-center text-gray-400 pointer-events-none">
         Please wait for other player(s).
       </div>
     );
