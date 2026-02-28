@@ -223,7 +223,7 @@ export function Refgame(props) {
         feedback = "Correct! You earned 2 points.";
       } else {
         feedback =
-          "Ooops, that wasn't the target! You earned no points this round from guessing the picture.";
+          "Ooops, that wasn't the target! You earned no points this round.";
       }
     }
     if (player.round.get("role") == "speaker") {

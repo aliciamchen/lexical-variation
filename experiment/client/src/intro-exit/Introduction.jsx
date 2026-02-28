@@ -199,10 +199,9 @@ export function Introduction3({ next }) {
         guessed.
       </p>
       <p>
-        <strong>Important:</strong> Your messages should describe what the
-        target picture looks like and help listeners identify the picture from
-        the set. Do not chat about any other topics. Failure to follow this rule
-        may result in not receiving your pay.
+        <strong>Important:</strong> Please stay on task, and do not chat about
+        any other topics. Failure to follow this rule may result in not
+        receiving your pay.
       </p>
     </div>
   );

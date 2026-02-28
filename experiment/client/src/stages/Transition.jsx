@@ -77,7 +77,16 @@ export function Transition(props) {
             feedback on whether your guess was correct.
           </p>
           <p style={{ marginTop: 8 }}>
-            Remember to limit your messages to describing the current target
+            <strong>
+              Most of your bonus in this phase comes from the social guessing
+              task.
+            </strong>{" "}
+            The majority of your bonus comes from correctly guessing group
+            membership (as a listener) and being recognized by your original
+            group members (as a speaker).
+          </p>
+          <p style={{ marginTop: 8 }}>
+            Remember to limit your messages to be about the current target
             picture only, and to not chat about any other topics.
           </p>
         </div>

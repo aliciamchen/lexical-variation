@@ -145,13 +145,22 @@ export function Tangram(props) {
         }
       });
     }
-    if (
-      (stage.get("name") == "Feedback") &
-      _.some(playersInGroup, (p) => p.round.get("clicked") == tangram)
-    ) {
-      const color = tangram == target ? "green" : "red";
+    // Always highlight the target in green during Feedback
+    if (stage.get("name") === "Feedback" && tangram === target) {
       _.extend(mystyle, {
-        outline: `10px solid ${color}`,
+        outline: "10px solid green",
+        zIndex: "9",
+      });
+    }
+
+    // Highlight non-target clicked tangrams in red during Feedback
+    if (
+      stage.get("name") === "Feedback" &&
+      tangram !== target &&
+      _.some(playersInGroup, (p) => p.round.get("clicked") === tangram)
+    ) {
+      _.extend(mystyle, {
+        outline: "10px solid red",
         zIndex: "9",
       });
     }

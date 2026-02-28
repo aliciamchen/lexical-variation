@@ -120,11 +120,11 @@ export const bonus_per_point = BONUS_PER_POINT; // Alias for server compatibilit
 export const LISTENER_CORRECT_POINTS = 2;
 // Speaker scoring: 2 * (proportion of correct listeners) - max 2 points per round
 export const SPEAKER_MAX_POINTS_PER_ROUND = 2;
-export const SOCIAL_GUESS_CORRECT_POINTS = 4;
+export const SOCIAL_GUESS_CORRECT_POINTS = 6;
 // Speaker bonus: points for each original-group listener who correctly identifies them
-export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 4;
+export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 6;
 // Social condition has more scoring opportunities, so lower multiplier to keep max bonus similar
-export const BONUS_PER_POINT_SOCIAL = 0.03;
+export const BONUS_PER_POINT_SOCIAL = 0.023;
 
 // ============ COMPENSATION ============
 export const BASE_PAY = 9; // dollars
