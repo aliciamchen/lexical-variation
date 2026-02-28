@@ -2,19 +2,100 @@
 
 ## Overview
 
-The analysis pipeline processes raw Empirica export data through two Python preprocessing steps, then runs statistical analyses in R via Quarto documents.
+`run_pipeline.py` is the single entry point for processing raw Empirica export zips into analysis-ready data, figures, and rendered Quarto notebooks. It also provides subcommands for browsing past runs.
 
 ```
-experiment/export-data/  (raw Empirica CSVs)
+experiment/data/<timestamp>/empirica-export-*.zip
         |
         v
-  preprocessing.py       (Python: parse → clean CSVs)
+  run_pipeline.py              (unzip → bonuses → anonymize → preprocess → embeddings → visualize → render)
         |
         v
-  compute_embeddings.py  (Python: SBERT embeddings + similarity metrics)
-        |
-        v
-  00–04_*.qmd            (R: statistical models + plots)
+  analysis/<datetime>/         (timestamped output directory)
+  ├── bonuses.csv              (Prolific IDs + bonus amounts)
+  ├── raw/                     (anonymized raw Empirica CSVs)
+  ├── data/                    (preprocessed analysis-ready CSVs)
+  └── outputs/                 (plots and animations)
+```
+
+## Fetching data from production
+
+```bash
+cd experiment
+bash copy_tajriba.sh            # loop every 5 minutes
+bash copy_tajriba.sh --once     # single backup
+```
+
+This SSHs into the production server, runs `empirica export`, and copies the zip locally to `experiment/data/<timestamp>/`.
+
+## Running the pipeline
+
+```bash
+# Process the most recent zip
+uv run python analysis/run_pipeline.py
+
+# Process a specific zip
+uv run python analysis/run_pipeline.py experiment/data/20260222_125327/empirica-export-20260222_132407.zip
+
+# Skip slow steps
+uv run python analysis/run_pipeline.py --skip-embeddings   # skip SBERT (~minutes)
+uv run python analysis/run_pipeline.py --skip-visualize    # skip plots/animations
+uv run python analysis/run_pipeline.py --skip-render       # skip Quarto notebooks
+```
+
+The pipeline creates/updates a symlink `analysis/processed_data -> analysis/<datetime>/data/` so that Quarto notebooks always read from the latest run.
+
+## Browsing runs
+
+```bash
+# List all runs with metadata
+uv run python analysis/run_pipeline.py list
+
+# Show what processed_data points to
+uv run python analysis/run_pipeline.py status
+
+# Print bonus CSV (latest or specific run)
+uv run python analysis/run_pipeline.py bonuses
+uv run python analysis/run_pipeline.py bonuses --run 20260225_210047
+```
+
+## Output structure
+
+Each pipeline run produces a timestamped directory:
+
+```
+analysis/20260227_123619/
+├── bonuses.csv              # Prolific IDs + bonus amounts (sensitive)
+├── raw/                     # Anonymized raw Empirica export CSVs
+│   ├── game.csv
+│   ├── player.csv           # participantIdentifier REMOVED
+│   ├── playerRound.csv
+│   └── ...
+├── data/                    # Preprocessed analysis-ready CSVs
+│   ├── games.csv
+│   ├── trials.csv
+│   ├── messages.csv
+│   ├── speaker_utterances.csv
+│   ├── embeddings.npy
+│   ├── umap_projections.csv
+│   └── ...
+└── outputs/                 # Plots and animations
+    ├── pilot_social_mixed_listener_accuracy.png
+    └── ...
+```
+
+## Standalone exploratory scripts
+
+These scripts run standalone analyses on preprocessed data. Both default to reading from `analysis/processed_data` but accept `--data-dir`:
+
+```bash
+# Contact network analysis (refer_mixed condition)
+uv run python analysis/contact_network_analysis.py
+uv run python analysis/contact_network_analysis.py --data-dir analysis/20260225_210047/data
+
+# Label dynamics analysis (refer_mixed condition)
+uv run python analysis/label_dynamics_analysis.py
+uv run python analysis/label_dynamics_analysis.py --data-dir analysis/20260225_210047/data
 ```
 
 ## Prerequisites
@@ -22,80 +103,6 @@ experiment/export-data/  (raw Empirica CSVs)
 - **Python** (managed by [uv](https://docs.astral.sh/uv/)): pandas, sentence-transformers, umap-learn
 - **R** (managed by renv): tidyverse, lme4, lmerTest, emmeans, tidyboot, patchwork, here
 - **Quarto** for rendering `.qmd` files
-
-Install R packages if needed:
-
-```bash
-Rscript -e 'renv::restore()'
-```
-
-## Step 1: Export data from Empirica
-
-```bash
-cd experiment
-empirica export
-```
-
-This produces a `.zip` file. Unzip it and move the contents to `experiment/export-data/`:
-
-```bash
-unzip <exported-file>.zip -d export-data/
-```
-
-## Step 2: Preprocess raw data
-
-```bash
-uv run python analysis/preprocessing.py experiment/export-data/ --output analysis/processed_data/
-```
-
-**Input:** `experiment/export-data/{game,player,playerRound,round}.csv`
-
-**Output** (in `analysis/processed_data/`):
-
-| File | Description |
-|------|-------------|
-| `games.csv` | 1 row per game (condition, block counts) |
-| `players.csv` | 1 row per player (demographics, scores, exit survey) |
-| `trials.csv` | 1 row per player per round (role, clicks, accuracy) |
-| `messages.csv` | 1 row per chat message (sender, role, text, timestamp) |
-| `speaker_utterances.csv` | 1 row per speaker per trial (concatenated messages, word count) |
-| `social_guesses.csv` | 1 row per social guess (social_mixed condition only) |
-
-## Step 3: Compute embeddings and similarity metrics
-
-```bash
-uv run python analysis/compute_embeddings.py analysis/processed_data/ --output analysis/processed_data/
-```
-
-**Output** (in `analysis/processed_data/`):
-
-| File | Description |
-|------|-------------|
-| `embeddings.npy` | SBERT embeddings, shape (N, 384) |
-| `adjacent_similarities.csv` | Cosine similarity between successive descriptions of the same tangram |
-| `pairwise_similarities.csv` | All speaker-pair similarities for Phase 1 and Phase 2 final windows |
-| `phase_change_similarities.csv` | Similarity between final Phase 1 and Phase 2 descriptions per participant × tangram |
-| `umap_projections.csv` | 2D UMAP coordinates for each utterance |
-
-## Step 4: Render analysis documents
-
-Render from the **project root** (so renv activates correctly):
-
-```bash
-quarto render analysis/00_preprocess.qmd
-quarto render analysis/01_outcome_neutral.qmd
-quarto render analysis/02_primary_analysis.qmd
-quarto render analysis/03_secondary_analysis.qmd
-quarto render analysis/04_exploratory.qmd
-```
-
-Or render all at once:
-
-```bash
-for f in analysis/0*.qmd; do quarto render "$f"; done
-```
-
-HTML output goes to `_output/analysis/`.
 
 ## Analysis documents
 
@@ -109,7 +116,6 @@ HTML output goes to `_output/analysis/`.
 
 ## Notes
 
-- The SBERT model used is `paraphrase-MiniLM-L12-v2` (384-dimensional embeddings), same as the power analysis.
-- Pairwise similarity windows: "phase1_final" and "phase2_final" each use the last 3 blocks of the respective phase.
+- The SBERT model used is `paraphrase-MiniLM-L12-v2` (384-dimensional embeddings).
 - `blockNum` in the data is 0-indexed within each phase (resets to 0 at start of Phase 2).
-- Models in the Qmd files gracefully handle single-condition or single-game test data by falling back to simpler models.
+- Timestamped output directories are git-ignored. Only scripts and notebooks are tracked.

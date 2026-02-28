@@ -1,15 +1,18 @@
 """
 Unified analysis pipeline: from raw Empirica zip to figures.
 
-Takes a zip from copy_tajriba.sh output, extracts bonuses, anonymizes data,
-runs preprocessing, embeddings, visualizations, and optionally renders Quarto.
-
 Usage:
     uv run python analysis/run_pipeline.py                                    # most recent zip
     uv run python analysis/run_pipeline.py path/to/empirica-export-*.zip      # specific zip
     uv run python analysis/run_pipeline.py --skip-embeddings                  # skip slow SBERT step
     uv run python analysis/run_pipeline.py --skip-render                      # skip Quarto render
     uv run python analysis/run_pipeline.py --skip-visualize                   # skip plots/animations
+
+Subcommands:
+    uv run python analysis/run_pipeline.py list                               # list all runs
+    uv run python analysis/run_pipeline.py bonuses                            # print latest bonuses
+    uv run python analysis/run_pipeline.py bonuses --run 20260225_210047      # specific run
+    uv run python analysis/run_pipeline.py status                             # show symlink target
 """
 
 import argparse
@@ -28,6 +31,9 @@ ANALYSIS_DIR = PROJECT_ROOT / "analysis"
 EXPERIMENT_DATA_DIR = PROJECT_ROOT / "experiment" / "data"
 
 ZIP_PATTERN = re.compile(r"empirica-export-(\d{8}_\d{6})\.zip")
+TIMESTAMP_DIR_PATTERN = re.compile(r"^\d{8}_\d{6}$")
+
+SUBCOMMANDS = {"list", "bonuses", "status", "run"}
 
 # Columns to strip from player.csv for anonymization
 SENSITIVE_COLUMNS = [
@@ -219,7 +225,155 @@ def update_data_symlink(datetime_str: str) -> None:
         print(f"\n  Created symlink: analysis/processed_data -> {target}")
 
 
+def find_timestamped_dirs() -> list[Path]:
+    """Find all timestamped output directories under analysis/."""
+    dirs = []
+    for d in sorted(ANALYSIS_DIR.iterdir(), reverse=True):
+        if d.is_dir() and TIMESTAMP_DIR_PATTERN.match(d.name):
+            dirs.append(d)
+    return dirs
+
+
+def get_active_run() -> str | None:
+    """Return the datetime string the processed_data symlink points to, or None."""
+    symlink = ANALYSIS_DIR / "processed_data"
+    if symlink.is_symlink():
+        target = symlink.resolve()
+        # target is .../analysis/<datetime>/data
+        if target.name == "data" and TIMESTAMP_DIR_PATTERN.match(target.parent.name):
+            return target.parent.name
+    return None
+
+
+def cmd_list():
+    """List all analysis runs with metadata."""
+    dirs = find_timestamped_dirs()
+    if not dirs:
+        print("No analysis runs found.")
+        return
+
+    active = get_active_run()
+
+    print(f"\n{'Analysis Runs':}")
+    print(f"{'─' * 90}")
+
+    for d in dirs:
+        dt = d.name
+        active_tag = "  *active*" if dt == active else ""
+
+        # Read metadata from games.csv if available
+        games_path = d / "data" / "games.csv"
+        game_info = ""
+        player_info = ""
+        if games_path.exists():
+            try:
+                games = pd.read_csv(games_path)
+                n_games = len(games)
+                conditions = ", ".join(sorted(games["condition"].dropna().unique()))
+                game_info = f"{n_games} game{'s' if n_games != 1 else ''} ({conditions})"
+
+                players_path = d / "data" / "players.csv"
+                if players_path.exists():
+                    players = pd.read_csv(players_path)
+                    player_info = f"{len(players)} players"
+            except Exception:
+                game_info = "(error reading metadata)"
+
+        # Check for bonuses
+        has_bonuses = "yes" if (d / "bonuses.csv").exists() else "no"
+
+        # Count output files
+        n_outputs = sum(1 for _ in d.rglob("*") if _.is_file())
+
+        parts = [f"  {dt}{active_tag:<10}"]
+        if game_info:
+            parts.append(game_info)
+        if player_info:
+            parts.append(player_info)
+        parts.append(f"bonuses: {has_bonuses}")
+        parts.append(f"{n_outputs} outputs")
+
+        print("  ".join(parts))
+
+    print()
+
+
+def cmd_bonuses(run_name: str | None = None):
+    """Print bonus CSV for a specific or latest run."""
+    if run_name:
+        bonus_dir = ANALYSIS_DIR / run_name
+    else:
+        dirs = find_timestamped_dirs()
+        if not dirs:
+            print("No analysis runs found.", file=sys.stderr)
+            sys.exit(1)
+        bonus_dir = dirs[0]  # most recent
+
+    bonus_path = bonus_dir / "bonuses.csv"
+    if not bonus_path.exists():
+        print(f"No bonuses.csv in {bonus_dir.name}", file=sys.stderr)
+        sys.exit(1)
+
+    df = pd.read_csv(bonus_path)
+    print(f"\nBonuses for run {bonus_dir.name}:")
+    print(f"{'─' * 50}")
+    print(df.to_string(index=False))
+    print(f"{'─' * 50}")
+    print(f"  Total: ${df['bonus'].sum():.2f} across {len(df)} players")
+    print(f"  Mean:  ${df['bonus'].mean():.2f}")
+    print()
+
+
+def cmd_status():
+    """Show what the processed_data symlink points to."""
+    symlink = ANALYSIS_DIR / "processed_data"
+
+    if symlink.is_symlink():
+        target = symlink.readlink()
+        active = get_active_run()
+        print(f"\n  processed_data -> {target}")
+        if active:
+            games_path = ANALYSIS_DIR / active / "data" / "games.csv"
+            if games_path.exists():
+                try:
+                    games = pd.read_csv(games_path)
+                    conditions = ", ".join(sorted(games["condition"].dropna().unique()))
+                    print(f"  Run: {active}")
+                    print(f"  Games: {len(games)} ({conditions})")
+                except Exception:
+                    pass
+    elif symlink.is_dir():
+        print(f"\n  processed_data is a real directory (not a symlink)")
+    elif not symlink.exists():
+        print(f"\n  processed_data does not exist. Run the pipeline first.")
+    print()
+
+
 def main():
+    # Check if first arg is a subcommand
+    if len(sys.argv) > 1 and sys.argv[1] in SUBCOMMANDS:
+        subcmd = sys.argv[1]
+        if subcmd == "list":
+            cmd_list()
+            return
+        elif subcmd == "status":
+            cmd_status()
+            return
+        elif subcmd == "bonuses":
+            run_name = None
+            if "--run" in sys.argv:
+                idx = sys.argv.index("--run")
+                if idx + 1 < len(sys.argv):
+                    run_name = sys.argv[idx + 1]
+                else:
+                    print("--run requires a value", file=sys.stderr)
+                    sys.exit(1)
+            cmd_bonuses(run_name)
+            return
+        elif subcmd == "run":
+            # Strip "run" from argv so argparse sees the rest
+            sys.argv = [sys.argv[0]] + sys.argv[2:]
+
     parser = argparse.ArgumentParser(
         description="Run the full analysis pipeline from an Empirica export zip",
     )

@@ -9,12 +9,28 @@ Usage:
 """
 
 import argparse
+import re
 from itertools import combinations
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
+
+# Basic English stopwords for term retention metric
+STOPWORDS = frozenset(
+    "i me my myself we our ours ourselves you your yours yourself yourselves "
+    "he him his himself she her hers herself it its itself they them their "
+    "theirs themselves what which who whom this that these those am is are was "
+    "were be been being have has had having do does did doing a an the and but "
+    "if or because as until while of at by for with about against between "
+    "through during before after above below to from up down in out on off "
+    "over under again further then once here there when where why how all both "
+    "each few more most other some such no nor not only own same so than too "
+    "very s t can will just don should now d ll m o re ve y ain aren couldn "
+    "didn doesn hadn hasn haven isn ma mightn mustn needn shan shouldn wasn "
+    "weren won wouldn like one also would could".split()
+)
 
 
 def compute_embeddings(utterances: pd.DataFrame, model: SentenceTransformer) -> np.ndarray:
@@ -156,6 +172,577 @@ def compute_phase_change_similarities(
     return pd.DataFrame(rows)
 
 
+def compute_first_phrase_pairwise(
+    utterances: pd.DataFrame,
+    model: SentenceTransformer,
+    window_name: str,
+) -> pd.DataFrame:
+    """
+    Extract the first clause/phrase of each utterance (before the first comma
+    or period), embed it, and compute pairwise similarity between speaker pairs.
+
+    Returns a DataFrame with the same columns as compute_pairwise_similarities
+    plus metric="first_phrase".
+    """
+    df = utterances.copy()
+    # Extract first phrase: text before first comma or period
+    df["first_phrase"] = df["utterance"].fillna("").apply(
+        lambda u: re.split(r"[,.]", u)[0].strip()
+    )
+    # Replace empty first phrases with full utterance (single-word descriptions)
+    mask = df["first_phrase"] == ""
+    df.loc[mask, "first_phrase"] = df.loc[mask, "utterance"].fillna("")
+
+    fp_embeddings = model.encode(df["first_phrase"].tolist(), show_progress_bar=False)
+    df["embedding_idx"] = range(len(df))
+
+    rows = []
+    for (game, target), group_data in df.groupby(["gameId", "target"]):
+        speakers = group_data["playerId"].unique()
+        if len(speakers) < 2:
+            continue
+        for s1, s2 in combinations(speakers, 2):
+            s1_data = group_data[group_data["playerId"] == s1].iloc[-1]
+            s2_data = group_data[group_data["playerId"] == s2].iloc[-1]
+            emb1 = fp_embeddings[int(s1_data["embedding_idx"])]
+            emb2 = fp_embeddings[int(s2_data["embedding_idx"])]
+            sim = model.similarity(emb1, emb2).item()
+
+            group1 = s1_data.get("originalGroup", "")
+            group2 = s2_data.get("originalGroup", "")
+
+            rows.append({
+                "gameId": game,
+                "target": target,
+                "speaker1": s1,
+                "speaker2": s2,
+                "group1": group1,
+                "group2": group2,
+                "sameGroup": 1 if group1 == group2 else 0,
+                "similarity": sim,
+                "window": window_name,
+                "metric": "first_phrase",
+            })
+
+    return pd.DataFrame(rows)
+
+
+def compute_block_pairwise(
+    utterances: pd.DataFrame,
+    model: SentenceTransformer,
+    games: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    For each Phase 2 block, compute pairwise cosine similarity between all
+    speaker pairs on the same tangram. Tracks convergence trajectory over time.
+    """
+    df = utterances[utterances["phaseNum"] == 2].copy()
+    if df.empty:
+        return pd.DataFrame()
+
+    # Embed all Phase 2 utterances
+    embeddings = model.encode(df["utterance"].fillna("").tolist(), show_progress_bar=False)
+    df["embedding_idx"] = range(len(df))
+
+    rows = []
+    for (game, block, target), group_data in df.groupby(["gameId", "blockNum", "target"]):
+        speakers = group_data["playerId"].unique()
+        if len(speakers) < 2:
+            continue
+        for s1, s2 in combinations(speakers, 2):
+            s1_rows = group_data[group_data["playerId"] == s1]
+            s2_rows = group_data[group_data["playerId"] == s2]
+            if s1_rows.empty or s2_rows.empty:
+                continue
+            s1_data = s1_rows.iloc[-1]
+            s2_data = s2_rows.iloc[-1]
+            emb1 = embeddings[int(s1_data["embedding_idx"])]
+            emb2 = embeddings[int(s2_data["embedding_idx"])]
+            sim = model.similarity(emb1, emb2).item()
+
+            group1 = s1_data.get("originalGroup", "")
+            group2 = s2_data.get("originalGroup", "")
+
+            rows.append({
+                "gameId": game,
+                "target": target,
+                "speaker1": s1,
+                "speaker2": s2,
+                "group1": group1,
+                "group2": group2,
+                "sameGroup": 1 if group1 == group2 else 0,
+                "similarity": sim,
+                "blockNum": block,
+                "phaseNum": 2,
+            })
+
+    return pd.DataFrame(rows)
+
+
+def extract_content_words(text: str) -> set[str]:
+    """Extract non-stopword content words (lowercase, len>1) from text."""
+    words = re.findall(r"[a-z]+", text.lower())
+    return {w for w in words if w not in STOPWORDS and len(w) > 1}
+
+
+def compute_term_retention(
+    utterances: pd.DataFrame,
+    games: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    For each speaker × tangram, check what proportion of content words from
+    their final Phase 1 description appear in each Phase 2 description.
+    """
+
+    game_conditions = games.set_index("gameId")["condition"].to_dict()
+    df = utterances.copy()
+
+    rows = []
+    for (game, player, target), group_data in df.groupby(["gameId", "playerId", "target"]):
+        p1 = group_data[group_data["phaseNum"] == 1]
+        p2 = group_data[group_data["phaseNum"] == 2]
+        if p1.empty or p2.empty:
+            continue
+
+        # Final Phase 1 utterance
+        final_p1 = p1.loc[p1["blockNum"].idxmax()]
+        p1_terms = extract_content_words(str(final_p1["utterance"]))
+        if not p1_terms:
+            continue
+
+        original_group = final_p1.get("originalGroup", "")
+
+        for _, row in p2.iterrows():
+            p2_terms = extract_content_words(str(row["utterance"]))
+            retained = p1_terms & p2_terms
+            retention = len(retained) / len(p1_terms)
+
+            rows.append({
+                "gameId": game,
+                "playerId": player,
+                "originalGroup": original_group,
+                "target": target,
+                "blockNum": int(row["blockNum"]),
+                "phaseNum": 2,
+                "retention": retention,
+                "p1Terms": " ".join(sorted(p1_terms)),
+                "condition": game_conditions.get(game, ""),
+            })
+
+    return pd.DataFrame(rows)
+
+
+def compute_alternative_structures(
+    utterances: pd.DataFrame,
+    games: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Detect 'X or Y' and 'X / Y' alternative-structure patterns in Phase 2
+    speaker utterances.  Filters false positives where words adjacent to 'or'
+    are stopwords (e.g. 'sort or kind of').
+    """
+    game_conditions = games.set_index("gameId")["condition"].to_dict()
+    p2 = utterances[utterances["phaseNum"] == 2].copy()
+    if p2.empty:
+        return pd.DataFrame()
+
+    or_pattern = re.compile(r"\b(\w+)\s+or\s+(\w+)\b", re.IGNORECASE)
+    slash_pattern = re.compile(r"\w+\s*/\s*\w+")
+
+    rows = []
+    for _, row in p2.iterrows():
+        text = str(row.get("utterance", ""))
+        # "or" patterns — filter when either adjacent word is a stopword
+        or_matches = or_pattern.findall(text)
+        n_or = sum(
+            1 for w1, w2 in or_matches
+            if w1.lower() not in STOPWORDS and w2.lower() not in STOPWORDS
+        )
+        n_slash = len(slash_pattern.findall(text))
+        n_alt = n_or + n_slash
+
+        rows.append({
+            "gameId": row["gameId"],
+            "playerId": row["playerId"],
+            "originalGroup": row.get("originalGroup", ""),
+            "target": row["target"],
+            "blockNum": int(row["blockNum"]),
+            "phaseNum": 2,
+            "nOrPatterns": n_or,
+            "nSlashPatterns": n_slash,
+            "nAlternatives": n_alt,
+            "hasAlternatives": int(n_alt > 0),
+            "condition": game_conditions.get(row["gameId"], ""),
+        })
+
+    return pd.DataFrame(rows)
+
+
+def compute_length_retention(
+    utterances: pd.DataFrame,
+    term_retention: pd.DataFrame,
+    games: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Join Phase 2 speaker utterances to term retention on
+    (gameId, playerId, target, blockNum).
+    """
+    if term_retention.empty:
+        return pd.DataFrame()
+
+    game_conditions = games.set_index("gameId")["condition"].to_dict()
+
+    p2 = utterances[utterances["phaseNum"] == 2].copy()
+    p2["blockNum"] = p2["blockNum"].astype(int)
+    tr = term_retention.copy()
+    tr["blockNum"] = tr["blockNum"].astype(int)
+
+    merged = p2.merge(
+        tr[["gameId", "playerId", "target", "blockNum", "retention"]],
+        on=["gameId", "playerId", "target", "blockNum"],
+        how="inner",
+    )
+
+    result = merged[["gameId", "playerId", "originalGroup", "target",
+                      "blockNum", "uttLength", "retention"]].copy()
+    result["condition"] = result["gameId"].map(game_conditions)
+    return result
+
+
+def compute_social_guess_retention(
+    social_guesses: pd.DataFrame,
+    trials: pd.DataFrame,
+    term_retention: pd.DataFrame,
+    games: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Join social guesses to speaker term retention via trials to test whether
+    higher speaker retention predicts better social guessing accuracy.
+    Only social_mixed games have social guess data.
+    """
+    if social_guesses.empty or term_retention.empty or trials.empty:
+        return pd.DataFrame()
+
+    game_conditions = games.set_index("gameId")["condition"].to_dict()
+
+    sg = social_guesses.copy()
+    tr = trials.copy()
+
+    # Listener trials (the guesser is a listener) — get roundId, currentGroup
+    listener_trials = tr[tr["role"] == "listener"][
+        ["gameId", "playerId", "blockNum", "target", "roundId", "currentGroup"]
+    ].copy()
+    listener_trials["blockNum"] = listener_trials["blockNum"].astype(int)
+    sg["blockNum"] = sg["blockNum"].astype(int)
+
+    # Step 1: link guesser to their listener trial → roundId, currentGroup
+    merged = sg.merge(
+        listener_trials,
+        on=["gameId", "playerId", "blockNum", "target"],
+        how="inner",
+    )
+
+    # Step 2: find the speaker for that (gameId, roundId, currentGroup)
+    speaker_trials = tr[tr["role"] == "speaker"][
+        ["gameId", "roundId", "currentGroup", "playerId", "originalGroup"]
+    ].rename(columns={"playerId": "speakerId", "originalGroup": "speakerOriginalGroup"})
+
+    merged = merged.merge(
+        speaker_trials,
+        on=["gameId", "roundId", "currentGroup"],
+        how="inner",
+    )
+
+    # Step 3: join speaker's term retention
+    tr_data = term_retention.copy()
+    tr_data["blockNum"] = tr_data["blockNum"].astype(int)
+    speaker_ret = tr_data[["gameId", "playerId", "target", "blockNum", "retention"]].rename(
+        columns={"playerId": "speakerId", "retention": "speakerRetention"}
+    )
+    merged = merged.merge(
+        speaker_ret,
+        on=["gameId", "speakerId", "target", "blockNum"],
+        how="left",
+    )
+
+    # speakerWasSameGroup: was the speaker from the same original group as the guesser?
+    merged["speakerWasSameGroup"] = (
+        merged["originalGroup"] == merged["speakerOriginalGroup"]
+    ).astype(int)
+
+    result = merged[[
+        "gameId", "playerId", "originalGroup", "blockNum", "target",
+        "socialGuess", "socialGuessCorrect", "speakerId",
+        "speakerOriginalGroup", "speakerRetention", "speakerWasSameGroup",
+    ]].copy()
+    result["condition"] = result["gameId"].map(game_conditions)
+    return result
+
+
+def _get_group_specific_terms(
+    utterances: pd.DataFrame,
+) -> dict[tuple, dict[str, tuple[set[str], set[str]]]]:
+    """For each (gameId, target), return {groupLabel: (all_terms, specific_terms)}.
+
+    Uses each group's final Phase 1 utterance to extract content words.
+    Specific terms = group's words minus all other groups' words.
+    """
+    p1 = utterances[utterances["phaseNum"] == 1]
+    result = {}
+
+    for (game_id, target), tgt_p1 in p1.groupby(["gameId", "target"]):
+        group_terms: dict[str, set[str]] = {}
+        for grp, grp_data in tgt_p1.groupby("originalGroup"):
+            final = grp_data.loc[grp_data["blockNum"].idxmax()]
+            group_terms[grp] = extract_content_words(str(final["utterance"]))
+
+        groups = list(group_terms.keys())
+        if len(groups) < 2:
+            continue
+
+        group_info: dict[str, tuple[set[str], set[str]]] = {}
+        for grp in groups:
+            others = set()
+            for other_grp in groups:
+                if other_grp != grp:
+                    others |= group_terms[other_grp]
+            group_info[grp] = (group_terms[grp], group_terms[grp] - others)
+
+        result[(game_id, target)] = group_info
+
+    return result
+
+
+def compute_cross_group_borrowing(
+    utterances: pd.DataFrame,
+    games: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    For each Phase 2 utterance, measure what proportion of another group's
+    unique Phase 1 terms the speaker has adopted (cross-group borrowing).
+    """
+    game_conditions = games.set_index("gameId")["condition"].to_dict()
+    group_specific = _get_group_specific_terms(utterances)
+
+    p2 = utterances[utterances["phaseNum"] == 2]
+    rows = []
+    for _, utt_row in p2.iterrows():
+        game_id = utt_row["gameId"]
+        target = utt_row["target"]
+        key = (game_id, target)
+        if key not in group_specific:
+            continue
+
+        speaker_group = utt_row.get("originalGroup", "")
+        utt_words = extract_content_words(str(utt_row["utterance"]))
+
+        for source_grp, (_, specific_terms) in group_specific[key].items():
+            if source_grp == speaker_group:
+                continue  # skip own group
+            if not specific_terms:
+                continue  # no unique terms to borrow
+
+            borrowed = utt_words & specific_terms
+            rows.append({
+                "gameId": game_id,
+                "playerId": utt_row["playerId"],
+                "originalGroup": speaker_group,
+                "target": target,
+                "blockNum": int(utt_row["blockNum"]),
+                "sourceGroup": source_grp,
+                "nSourceTerms": len(specific_terms),
+                "nBorrowed": len(borrowed),
+                "borrowingRate": len(borrowed) / len(specific_terms),
+                "condition": game_conditions.get(game_id, ""),
+            })
+
+    return pd.DataFrame(rows)
+
+
+def compute_audience_design(
+    utterances: pd.DataFrame,
+    trials: pd.DataFrame,
+    term_retention: pd.DataFrame,
+    games: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    For each Phase 2 speaker utterance, classify the audience composition
+    (all_same / mixed / all_different) and measure description length and
+    term retention by audience type.
+    """
+    if trials.empty:
+        return pd.DataFrame()
+
+    game_conditions = games.set_index("gameId")["condition"].to_dict()
+
+    p2_utt = utterances[utterances["phaseNum"] == 2].copy()
+    p2_utt["blockNum"] = p2_utt["blockNum"].astype(int)
+
+    # Speaker trials: link (gameId, playerId, blockNum, target) → roundId
+    # currentGroup already exists in utterances, so only pull roundId from trials
+    speaker_trials = trials[trials["role"] == "speaker"][
+        ["gameId", "playerId", "blockNum", "target", "roundId"]
+    ].copy()
+    speaker_trials["blockNum"] = speaker_trials["blockNum"].astype(int)
+
+    merged = p2_utt.merge(
+        speaker_trials,
+        on=["gameId", "playerId", "blockNum", "target"],
+        how="inner",
+    )
+
+    # Listener trials: for each (gameId, roundId, currentGroup) find listeners
+    listener_trials = trials[trials["role"] == "listener"][
+        ["gameId", "roundId", "currentGroup", "playerId", "originalGroup"]
+    ].rename(columns={"playerId": "listenerId", "originalGroup": "listenerOriginalGroup"})
+
+    rows = []
+    for _, row in merged.iterrows():
+        listeners = listener_trials[
+            (listener_trials["gameId"] == row["gameId"]) &
+            (listener_trials["roundId"] == row["roundId"]) &
+            (listener_trials["currentGroup"] == row["currentGroup"])
+        ]
+        speaker_orig = row["originalGroup"]
+        n_same = (listeners["listenerOriginalGroup"] == speaker_orig).sum()
+        n_diff = (listeners["listenerOriginalGroup"] != speaker_orig).sum()
+
+        if n_diff == 0:
+            audience_type = "all_same"
+        elif n_same == 0:
+            audience_type = "all_different"
+        else:
+            audience_type = "mixed"
+
+        rows.append({
+            "gameId": row["gameId"],
+            "playerId": row["playerId"],
+            "originalGroup": speaker_orig,
+            "currentGroup": row["currentGroup"],
+            "target": row["target"],
+            "blockNum": row["blockNum"],
+            "uttLength": row["uttLength"],
+            "nSameGroupListeners": int(n_same),
+            "nDiffGroupListeners": int(n_diff),
+            "audienceType": audience_type,
+            "condition": game_conditions.get(row["gameId"], ""),
+        })
+
+    result = pd.DataFrame(rows)
+
+    # Left-join term retention
+    if not result.empty and not term_retention.empty:
+        tr = term_retention.copy()
+        tr["blockNum"] = tr["blockNum"].astype(int)
+        result = result.merge(
+            tr[["gameId", "playerId", "target", "blockNum", "retention"]],
+            on=["gameId", "playerId", "target", "blockNum"],
+            how="left",
+        )
+
+    return result
+
+
+def compute_term_dominance(
+    utterances: pd.DataFrame,
+    games: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    For each Phase 2 utterance, classify which group's specific Phase 1 terms
+    dominate (highest overlap count).
+
+    Returns per-utterance rows with dominantTermSource (group label, "tied",
+    or "none"), counts per group, and a usesOwnGroupTerms flag.
+    """
+    game_conditions = games.set_index("gameId")["condition"].to_dict()
+    group_specific = _get_group_specific_terms(utterances)
+
+    p2 = utterances[utterances["phaseNum"] == 2]
+    rows = []
+    for _, utt_row in p2.iterrows():
+        game_id = utt_row["gameId"]
+        target = utt_row["target"]
+        key = (game_id, target)
+        if key not in group_specific:
+            continue
+
+        speaker_group = utt_row.get("originalGroup", "")
+        utt_words = extract_content_words(str(utt_row["utterance"]))
+
+        counts: dict[str, int] = {}
+        for grp, (_, specific_terms) in group_specific[key].items():
+            counts[grp] = len(utt_words & specific_terms)
+
+        total = sum(counts.values())
+        if total == 0:
+            dominant = "none"
+        else:
+            max_count = max(counts.values())
+            winners = [g for g, c in counts.items() if c == max_count]
+            dominant = winners[0] if len(winners) == 1 else "tied"
+
+        row = {
+            "gameId": game_id,
+            "target": target,
+            "blockNum": int(utt_row["blockNum"]),
+            "playerId": utt_row["playerId"],
+            "originalGroup": speaker_group,
+            "dominantTermSource": dominant,
+            "totalSpecificTermsUsed": total,
+            "usesOwnGroupTerms": int(counts.get(speaker_group, 0) > 0),
+            "condition": game_conditions.get(game_id, ""),
+        }
+        # Per-group counts (A/B/C)
+        for grp in sorted(group_specific[key].keys()):
+            row[f"nTermsFrom{grp}"] = counts.get(grp, 0)
+
+        rows.append(row)
+
+    return pd.DataFrame(rows)
+
+
+def compute_hedging_trajectory(
+    alt_structures: pd.DataFrame,
+    games: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Aggregate alternative_structures.csv to per-speaker-per-block level,
+    tracking hedging rate and a cumulative hasEverHedged flag.
+    """
+    if alt_structures.empty:
+        return pd.DataFrame()
+
+    game_conditions = games.set_index("gameId")["condition"].to_dict()
+    df = alt_structures.copy()
+
+    rows = []
+    for (game_id, player_id), player_data in df.groupby(["gameId", "playerId"]):
+        original_group = player_data["originalGroup"].iloc[0]
+        ever_hedged = False
+
+        for block_num in sorted(player_data["blockNum"].unique()):
+            block_data = player_data[player_data["blockNum"] == block_num]
+            n_utt = len(block_data)
+            n_with_alt = int(block_data["hasAlternatives"].sum())
+            rate = n_with_alt / n_utt if n_utt > 0 else 0.0
+            if n_with_alt > 0:
+                ever_hedged = True
+
+            rows.append({
+                "gameId": game_id,
+                "playerId": player_id,
+                "originalGroup": original_group,
+                "blockNum": int(block_num),
+                "nUtterances": n_utt,
+                "nWithAlternatives": n_with_alt,
+                "hedgingRate": rate,
+                "hasEverHedged": int(ever_hedged),
+                "condition": game_conditions.get(game_id, ""),
+            })
+
+    return pd.DataFrame(rows)
+
+
 def get_window_utterances(
     utterances: pd.DataFrame,
     games: pd.DataFrame,
@@ -265,6 +852,86 @@ def main():
     pairwise = pd.concat([pairwise_p1, pairwise_p2], ignore_index=True)
     pairwise.to_csv(output_dir / "pairwise_similarities.csv", index=False)
     print(f"  Total pairwise: {len(pairwise)} rows")
+
+    # --- New metric 1: First-phrase pairwise similarity ---
+    print("Computing first-phrase pairwise similarities...")
+    fp_frames = []
+    if not p1_utts.empty:
+        fp_p1 = compute_first_phrase_pairwise(p1_utts, model, "phase1_final")
+        fp_frames.append(fp_p1)
+        print(f"  Phase 1 final: {len(fp_p1)} pairs")
+    if not p2_utts.empty:
+        fp_p2 = compute_first_phrase_pairwise(p2_utts, model, "phase2_final")
+        fp_frames.append(fp_p2)
+        print(f"  Phase 2 final: {len(fp_p2)} pairs")
+    first_phrase_pw = pd.concat(fp_frames, ignore_index=True) if fp_frames else pd.DataFrame()
+    first_phrase_pw.to_csv(output_dir / "first_phrase_similarities.csv", index=False)
+    print(f"  Total first-phrase pairwise: {len(first_phrase_pw)} rows")
+
+    # --- New metric 2: Block-by-block pairwise convergence ---
+    print("Computing block-by-block pairwise similarities...")
+    block_pw = compute_block_pairwise(utterances, model, games)
+    block_pw.to_csv(output_dir / "block_pairwise_similarities.csv", index=False)
+    print(f"  Block pairwise: {len(block_pw)} rows")
+
+    # --- New metric 3: Phase 1 term retention ---
+    print("Computing Phase 1 term retention...")
+    term_retention = compute_term_retention(utterances, games)
+    term_retention.to_csv(output_dir / "term_retention.csv", index=False)
+    print(f"  Term retention: {len(term_retention)} rows")
+
+    # Load additional data for follow-up analyses
+    trials = pd.read_csv(data_dir / "trials.csv")
+    social_path = data_dir / "social_guesses.csv"
+    social_guesses = pd.read_csv(social_path) if social_path.exists() else pd.DataFrame()
+
+    # --- Follow-up analysis 1: Alternative structures ---
+    print("Computing alternative structures...")
+    alt_structures = compute_alternative_structures(utterances, games)
+    alt_structures.to_csv(output_dir / "alternative_structures.csv", index=False)
+    n_with = alt_structures["hasAlternatives"].sum() if not alt_structures.empty else 0
+    print(f"  Alternative structures: {len(alt_structures)} rows, {n_with} with alternatives")
+
+    # --- Follow-up analysis 2: Length × retention ---
+    print("Computing length × retention...")
+    length_retention = compute_length_retention(utterances, term_retention, games)
+    length_retention.to_csv(output_dir / "length_retention.csv", index=False)
+    print(f"  Length-retention: {len(length_retention)} rows")
+
+    # --- Follow-up analysis 3: Social guess × retention ---
+    if not social_guesses.empty:
+        print("Computing social guess × retention...")
+        social_guess_retention = compute_social_guess_retention(
+            social_guesses, trials, term_retention, games
+        )
+        social_guess_retention.to_csv(output_dir / "social_guess_retention.csv", index=False)
+        print(f"  Social guess-retention: {len(social_guess_retention)} rows")
+    else:
+        print("No social guesses data — skipping social guess × retention")
+
+    # --- Follow-up analysis 4: Cross-group borrowing ---
+    print("Computing cross-group borrowing...")
+    borrowing = compute_cross_group_borrowing(utterances, games)
+    borrowing.to_csv(output_dir / "cross_group_borrowing.csv", index=False)
+    print(f"  Cross-group borrowing: {len(borrowing)} rows")
+
+    # --- Follow-up analysis 5: Audience design ---
+    print("Computing audience design...")
+    audience = compute_audience_design(utterances, trials, term_retention, games)
+    audience.to_csv(output_dir / "audience_design.csv", index=False)
+    print(f"  Audience design: {len(audience)} rows")
+
+    # --- Follow-up analysis 6: Term dominance ---
+    print("Computing term dominance...")
+    term_dominance = compute_term_dominance(utterances, games)
+    term_dominance.to_csv(output_dir / "term_dominance.csv", index=False)
+    print(f"  Term dominance: {len(term_dominance)} rows")
+
+    # --- Follow-up analysis 7: Hedging trajectory ---
+    print("Computing hedging trajectory...")
+    hedging_trajectory = compute_hedging_trajectory(alt_structures, games)
+    hedging_trajectory.to_csv(output_dir / "hedging_trajectory.csv", index=False)
+    print(f"  Hedging trajectory: {len(hedging_trajectory)} rows")
 
     print("Computing phase change similarities...")
     phase_change = compute_phase_change_similarities(

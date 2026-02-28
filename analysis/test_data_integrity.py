@@ -32,9 +32,10 @@ VALID_SOCIAL_GUESSES = {"same_group", "different_group"}
 # Scoring
 LISTENER_CORRECT_POINTS = 2
 SPEAKER_MAX_POINTS_PER_ROUND = 2
-SOCIAL_GUESS_CORRECT_POINTS = 2
+SOCIAL_GUESS_CORRECT_POINTS = 4
+SOCIAL_SPEAKER_POINTS_PER_CORRECT = 4
 BONUS_PER_POINT = 0.05
-BONUS_PER_POINT_SOCIAL = 0.04
+BONUS_PER_POINT_SOCIAL = 0.03
 
 # Names from constants.js
 VALID_NAMES = {"Repi", "Minu", "Laju", "Hera", "Zuda", "Bavi", "Lika", "Felu", "Nori"}
@@ -293,18 +294,21 @@ class TestPlayerAssignment:
                 f"Game {gid}: duplicate original names found: {names}"
             )
 
-    def test_idle_player_has_idle_rounds_2(self, idle_players):
-        """Idle players should have been removed after 2 consecutive idle rounds."""
+    def test_idle_player_has_idle_rounds_at_threshold(self, idle_players):
+        """Idle players should have been removed after MAX_IDLE_ROUNDS consecutive idle rounds."""
+        MAX_IDLE_ROUNDS = 3
         for _, p in idle_players.iterrows():
-            assert p["idleRounds"] == 2, (
-                f"Idle player {p['playerId']}: expected idleRounds=2, "
+            assert p["idleRounds"] == MAX_IDLE_ROUNDS, (
+                f"Idle player {p['playerId']}: expected idleRounds={MAX_IDLE_ROUNDS}, "
                 f"got {p['idleRounds']}"
             )
 
-    def test_active_players_have_zero_idle_rounds(self, active_players):
+    def test_active_players_below_idle_threshold(self, active_players):
+        """Active players should have fewer idle rounds than the removal threshold."""
+        MAX_IDLE_ROUNDS = 3
         for _, p in active_players.iterrows():
-            assert p["idleRounds"] == 0, (
-                f"Active player {p['playerId']}: expected idleRounds=0, "
+            assert p["idleRounds"] < MAX_IDLE_ROUNDS, (
+                f"Active player {p['playerId']}: expected idleRounds < {MAX_IDLE_ROUNDS}, "
                 f"got {p['idleRounds']}"
             )
 
@@ -374,7 +378,7 @@ class TestRoleAssignment:
         This check only applies to stable groups where:
         - All GROUP_SIZE members are present in every block
         - The group composition doesn't change (i.e., not Phase 2 of
-          mixed conditions where groups are reshuffled each block)
+          mixed conditions where groups are reshuffled each trial)
         - No player was removed mid-phase
 
         When a player has been removed or groups are reshuffled, the
@@ -456,36 +460,62 @@ class TestPhaseStructure:
         )
 
     def test_block_nums_range(self, trials):
-        """BlockNum should be 0-5 in both phases."""
+        """BlockNum values should be within expected range (games may end early due to dropouts)."""
         expected_blocks = set(range(PHASE_1_BLOCKS))
         for pn in [1, 2]:
             phase_trials = trials[trials["phaseNum"] == pn]
+            if phase_trials.empty:
+                continue
             actual_blocks = set(int(b) for b in phase_trials["blockNum"].unique())
-            assert actual_blocks == expected_blocks, (
-                f"Phase {pn}: expected blocks {expected_blocks}, "
-                f"got {actual_blocks}"
+            assert actual_blocks.issubset(expected_blocks), (
+                f"Phase {pn}: blocks {actual_blocks} not subset of {expected_blocks}"
             )
 
-    def test_trials_per_block_per_group(self, trials, game_ids):
-        """Each group should have NUM_TANGRAMS * GROUP_SIZE trials per block
-        (one trial per player per tangram), minus any removed players.
+    def test_trials_per_block_per_group(self, trials, game_ids, game_condition_map):
+        """Each group should have the right number of trials per block.
+
+        In stable groups (Phase 1, or Phase 2 refer_separated), each
+        (block, group) should have n_players * NUM_TANGRAMS trials.
+
+        In mixed Phase 2, groups are reshuffled each trial, so we check
+        per (roundId, currentGroup) that each player appears exactly once.
         """
         for gid in game_ids:
             game_trials = trials[trials["gameId"] == gid]
+            condition = game_condition_map.get(gid)
+            is_mixed = condition in ("refer_mixed", "social_mixed")
+
             for pn in game_trials["phaseNum"].unique():
                 phase_trials = game_trials[game_trials["phaseNum"] == pn]
-                for bn in phase_trials["blockNum"].unique():
-                    block = phase_trials[phase_trials["blockNum"] == bn]
-                    for grp in block["currentGroup"].unique():
-                        group_block = block[block["currentGroup"] == grp]
-                        n_players = group_block["playerId"].nunique()
-                        expected = n_players * NUM_TANGRAMS
-                        actual = len(group_block)
-                        assert actual == expected, (
-                            f"Game {gid}, phase {pn}, block {bn}, group {grp}: "
-                            f"expected {expected} trials ({n_players} players * "
-                            f"{NUM_TANGRAMS} tangrams), got {actual}"
-                        )
+
+                if is_mixed and pn == 2:
+                    # Per-trial check: within each round, each group's
+                    # players should all appear exactly once
+                    for rid in phase_trials["roundId"].unique():
+                        round_data = phase_trials[phase_trials["roundId"] == rid]
+                        for grp in round_data["currentGroup"].unique():
+                            group_round = round_data[round_data["currentGroup"] == grp]
+                            n_players = group_round["playerId"].nunique()
+                            actual = len(group_round)
+                            assert actual == n_players, (
+                                f"Game {gid}, phase {pn}, round {rid}, group {grp}: "
+                                f"expected {n_players} trials (one per player), "
+                                f"got {actual}"
+                            )
+                else:
+                    # Stable groups: check per (block, group)
+                    for bn in phase_trials["blockNum"].unique():
+                        block = phase_trials[phase_trials["blockNum"] == bn]
+                        for grp in block["currentGroup"].unique():
+                            group_block = block[block["currentGroup"] == grp]
+                            n_players = group_block["playerId"].nunique()
+                            expected = n_players * NUM_TANGRAMS
+                            actual = len(group_block)
+                            assert actual == expected, (
+                                f"Game {gid}, phase {pn}, block {bn}, group {grp}: "
+                                f"expected {expected} trials ({n_players} players * "
+                                f"{NUM_TANGRAMS} tangrams), got {actual}"
+                            )
 
 
 # ============ 6. TARGET COVERAGE ============
@@ -519,28 +549,52 @@ class TestTargetCoverage:
                                 f"{targets}"
                             )
 
-    def test_all_players_in_group_see_same_targets(self, trials, game_ids):
-        """Within a group+block, all players should see the same set of targets."""
+    def test_all_players_in_group_see_same_targets(
+        self, trials, game_ids, game_condition_map
+    ):
+        """Within a group, all players should see the same target each round.
+
+        For stable groups (Phase 1, refer_separated Phase 2), we check per
+        (block, group). For mixed Phase 2, groups change each trial, so we
+        check per (roundId, currentGroup) that all players share the same target.
+        """
         for gid in game_ids:
             game_trials = trials[trials["gameId"] == gid]
+            condition = game_condition_map.get(gid)
+            is_mixed = condition in ("refer_mixed", "social_mixed")
+
             for pn in game_trials["phaseNum"].unique():
                 phase_trials = game_trials[game_trials["phaseNum"] == pn]
-                for bn in phase_trials["blockNum"].unique():
-                    block = phase_trials[phase_trials["blockNum"] == bn]
-                    for grp in block["currentGroup"].unique():
-                        group_block = block[block["currentGroup"] == grp]
-                        target_sets = []
-                        for pid in group_block["playerId"].unique():
-                            player_targets = set(
-                                group_block[group_block["playerId"] == pid]["target"]
+
+                if is_mixed and pn == 2:
+                    # Per-trial check: within each round, all players in the
+                    # same current group should see the same target
+                    for rid in phase_trials["roundId"].unique():
+                        round_data = phase_trials[phase_trials["roundId"] == rid]
+                        for grp in round_data["currentGroup"].unique():
+                            group_round = round_data[round_data["currentGroup"] == grp]
+                            targets = group_round["target"].unique()
+                            assert len(targets) == 1, (
+                                f"Game {gid}, phase {pn}, round {rid}, group {grp}: "
+                                f"players see different targets: {targets}"
                             )
-                            target_sets.append(player_targets)
-                        # All players should have the same target set
-                        for ts in target_sets[1:]:
-                            assert ts == target_sets[0], (
-                                f"Game {gid}, phase {pn}, block {bn}, group {grp}: "
-                                f"players see different target sets"
-                            )
+                else:
+                    # Stable groups: check per (block, group)
+                    for bn in phase_trials["blockNum"].unique():
+                        block = phase_trials[phase_trials["blockNum"] == bn]
+                        for grp in block["currentGroup"].unique():
+                            group_block = block[block["currentGroup"] == grp]
+                            target_sets = []
+                            for pid in group_block["playerId"].unique():
+                                player_targets = set(
+                                    group_block[group_block["playerId"] == pid]["target"]
+                                )
+                                target_sets.append(player_targets)
+                            for ts in target_sets[1:]:
+                                assert ts == target_sets[0], (
+                                    f"Game {gid}, phase {pn}, block {bn}, group {grp}: "
+                                    f"players see different target sets"
+                                )
 
 
 # ============ 7. SHUFFLING IN PHASE 2 ============
@@ -592,8 +646,11 @@ class TestShuffling:
             )
 
     def test_mixed_groups_are_truly_mixed(self, trials, game_condition_map):
-        """In mixed Phase 2 blocks, at least one group should contain
-        players from 2+ original groups.
+        """In mixed Phase 2, each group should contain players from 2+
+        original groups (per trial, since groups are reshuffled each trial).
+
+        With constrained reshuffling and all 9 players active, ALL groups
+        are guaranteed mixed. We check per (roundId, currentGroup).
         """
         for gid, cond in game_condition_map.items():
             if cond not in ("refer_mixed", "social_mixed"):
@@ -602,39 +659,102 @@ class TestShuffling:
             p2 = game_trials[game_trials["phaseNum"] == 2]
             if len(p2) == 0:
                 continue
-            for bn in p2["blockNum"].unique():
-                block = p2[p2["blockNum"] == bn]
+            for rid in p2["roundId"].unique():
+                round_data = p2[p2["roundId"] == rid]
                 any_mixed = False
-                for grp in block["currentGroup"].unique():
-                    group_data = block[block["currentGroup"] == grp]
+                for grp in round_data["currentGroup"].unique():
+                    group_data = round_data[round_data["currentGroup"] == grp]
                     original_groups = group_data["originalGroup"].nunique()
                     if original_groups >= 2:
                         any_mixed = True
                         break
                 assert any_mixed, (
-                    f"Game {gid} ({cond}), Phase 2 block {bn}: "
+                    f"Game {gid} ({cond}), Phase 2 round {rid}: "
                     f"no group has players from 2+ original groups"
                 )
 
     def test_reshuffling_preserves_group_sizes(self, trials, game_condition_map):
         """After reshuffling, each group should still have GROUP_SIZE members
         (or GROUP_SIZE-1 if a player was removed).
+
+        Groups are reshuffled each trial, so check per (roundId, currentGroup).
         """
         for gid, cond in game_condition_map.items():
             if cond not in ("refer_mixed", "social_mixed"):
                 continue
             game_trials = trials[trials["gameId"] == gid]
             p2 = game_trials[game_trials["phaseNum"] == 2]
-            for bn in p2["blockNum"].unique():
-                block = p2[p2["blockNum"] == bn]
-                for grp in block["currentGroup"].unique():
-                    group_data = block[block["currentGroup"] == grp]
+            for rid in p2["roundId"].unique():
+                round_data = p2[p2["roundId"] == rid]
+                for grp in round_data["currentGroup"].unique():
+                    group_data = round_data[round_data["currentGroup"] == grp]
                     n_players = group_data["playerId"].nunique()
                     assert n_players in [GROUP_SIZE - 1, GROUP_SIZE], (
-                        f"Game {gid} ({cond}), Phase 2 block {bn}, group {grp}: "
+                        f"Game {gid} ({cond}), Phase 2 round {rid}, group {grp}: "
                         f"expected {GROUP_SIZE} or {GROUP_SIZE - 1} players, "
                         f"got {n_players}"
                     )
+
+
+# ============ 7b. IN-GROUP LISTENER CONSTRAINT ============
+
+
+class TestInGroupListenerConstraint:
+    """Validate that constrained reshuffling produces exactly 1 in-group listener.
+
+    In Phase 2 mixed conditions, when all 9 players (3 original groups × 3
+    player indices) are active, each group of 3 should have exactly 1 listener
+    who shares the speaker's original group.
+    """
+
+    def test_exactly_one_ingroup_listener(self, trials, game_condition_map):
+        """For each trial in Phase 2 mixed conditions with a full group of 3,
+        the speaker should have exactly 1 listener from their original group.
+        """
+        violations = []
+        for gid, cond in game_condition_map.items():
+            if cond not in ("refer_mixed", "social_mixed"):
+                continue
+            game_trials = trials[trials["gameId"] == gid]
+            p2 = game_trials[game_trials["phaseNum"] == 2]
+            if len(p2) == 0:
+                continue
+
+            # Check how many active players are in each round
+            for rid in p2["roundId"].unique():
+                round_data = p2[p2["roundId"] == rid]
+                total_active = round_data["playerId"].nunique()
+
+                for grp in round_data["currentGroup"].unique():
+                    group_data = round_data[round_data["currentGroup"] == grp]
+                    n_players = group_data["playerId"].nunique()
+
+                    # Only check groups of exactly 3 with all 9 active
+                    if n_players != GROUP_SIZE or total_active != 9:
+                        continue
+
+                    speaker_rows = group_data[group_data["role"] == "speaker"]
+                    if len(speaker_rows) == 0:
+                        continue
+                    speaker_og = speaker_rows.iloc[0]["originalGroup"]
+
+                    listener_rows = group_data[group_data["role"] == "listener"]
+                    ingroup_listeners = listener_rows[
+                        listener_rows["originalGroup"] == speaker_og
+                    ]
+
+                    if len(ingroup_listeners) != 1:
+                        violations.append(
+                            f"Game {gid}, round {rid}, group {grp}: "
+                            f"speaker og={speaker_og}, "
+                            f"in-group listeners={len(ingroup_listeners)} "
+                            f"(expected 1)"
+                        )
+
+        assert len(violations) == 0, (
+            f"In-group listener constraint violated in {len(violations)} "
+            f"trials:\n" + "\n".join(violations[:10])
+        )
 
 
 # ============ 8. IDENTITY MASKING ============
@@ -931,8 +1051,9 @@ class TestSocialGuessing:
         assert not invalid, f"Invalid social guess values: {invalid}"
 
     def test_social_guess_correct_is_boolean(self, social_guesses):
-        """socialGuessCorrect should be boolean."""
-        values = set(social_guesses["socialGuessCorrect"].unique())
+        """socialGuessCorrect should be boolean (NaN allowed for idle rounds where speaker didn't send a message)."""
+        non_null = social_guesses["socialGuessCorrect"].dropna()
+        values = set(non_null.unique())
         assert values <= {True, False}, (
             f"socialGuessCorrect has non-boolean values: {values}"
         )
@@ -1014,6 +1135,9 @@ class TestSocialGuessing:
                 guessed_same = guess["socialGuess"] == "same_group"
                 expected_correct = same_group == guessed_same
 
+                # NaN means scoring didn't run (e.g., speaker was idle)
+                if pd.isna(guess["socialGuessCorrect"]):
+                    continue
                 assert guess["socialGuessCorrect"] == expected_correct, (
                     f"Social guess correctness mismatch: "
                     f"listener orig={listener_original}, "
@@ -1448,7 +1572,7 @@ class TestPerGame:
         When a group member has been removed, remaining players take on
         extra speaking blocks. For a group of 2, each player speaks in
         3 blocks per phase. In mixed Phase 2, groups are reshuffled each
-        block so the effective group size may vary.
+        trial so the effective group size may vary.
 
         This test checks that each player speaks in at least 2 blocks and
         that the total speaker-blocks across all group members sum to
@@ -1522,7 +1646,7 @@ class TestTangramIdentity:
         },
         1: {
             "page4-157", "page1-129", "page6-149",
-            "page8-183", "page3-121", "page5-64",
+            "page7-26", "page3-121", "page5-64",
         },
     }
 

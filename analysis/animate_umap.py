@@ -32,15 +32,13 @@ from plot_style import apply_style, GROUP_COLORS, GROUP_ORDER, format_condition
 
 SVG_DIR = Path("experiment/client/public")
 
-TANGRAM_MARKERS = {
-    "page1-128": "o",
-    "page3-136": "s",
-    "page3-85": "^",
-    "page5-64": "D",
-    "page9-27": "v",
-    "page9-46": "P",
-}
-TANGRAM_ORDER = sorted(TANGRAM_MARKERS.keys())
+MARKER_CYCLE = ["o", "s", "^", "D", "v", "P", "X", "*", "h", "p", "d", "H"]
+
+
+def get_tangram_markers(tangrams: list[str]) -> dict[str, str]:
+    """Build tangram -> marker mapping from a list of tangram IDs."""
+    ordered = sorted(tangrams)
+    return {t: MARKER_CYCLE[i % len(MARKER_CYCLE)] for i, t in enumerate(ordered)}
 
 N_BLOCKS = 12  # 6 Phase 1 + 6 Phase 2
 FPS = 2
@@ -133,8 +131,13 @@ def build_trajectory_segments(centroid_df, current_block, color):
 def make_tangram_grid_video(df, condition="", output_dir=None):
     apply_style()
 
-    fig, axes = plt.subplots(2, 3, figsize=(16, 10))
-    axes_flat = axes.flatten()
+    tangram_order = sorted(df["target"].unique())
+    n = len(tangram_order)
+    ncols = min(n, 3)
+    nrows = -(-n // ncols)  # ceiling division
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=(16, 5 * nrows))
+    axes_flat = np.atleast_1d(axes).flatten()
 
     # Fixed axis limits (with padding)
     pad = 0.5
@@ -142,7 +145,7 @@ def make_tangram_grid_video(df, condition="", output_dir=None):
     y_min, y_max = df["umap_y"].min() - pad, df["umap_y"].max() + pad
 
     # Load tangram images
-    tangram_imgs = {t: load_tangram_image(t, size_px=60) for t in TANGRAM_ORDER}
+    tangram_imgs = {t: load_tangram_image(t, size_px=60) for t in tangram_order}
 
     # Precompute centroids for trajectory lines
     centroids = compute_centroids(df)
@@ -151,7 +154,7 @@ def make_tangram_grid_video(df, condition="", output_dir=None):
     scatters = {}  # (tangram_idx, group) -> PathCollection
     # Track line collections so we can remove/replace each frame
     line_collections = {}  # (tangram_idx, group) -> LineCollection or None
-    for i, target in enumerate(TANGRAM_ORDER):
+    for i, target in enumerate(tangram_order):
         ax = axes_flat[i]
         ax.set_xlim(x_min, x_max)
         ax.set_ylim(y_min, y_max)
@@ -178,6 +181,10 @@ def make_tangram_grid_video(df, condition="", output_dir=None):
             scatters[(i, g)] = sc
             line_collections[(i, g)] = None
 
+    # Hide any unused axes
+    for j in range(n, len(axes_flat)):
+        axes_flat[j].set_visible(False)
+
     # Shared legend on first subplot
     axes_flat[0].legend(title="Group", loc="lower left")
 
@@ -192,7 +199,7 @@ def make_tangram_grid_video(df, condition="", output_dir=None):
             f"{format_condition(condition)} pilot — {block_label(current_block)}"
         )
 
-        for i, target in enumerate(TANGRAM_ORDER):
+        for i, target in enumerate(tangram_order):
             ax = axes_flat[i]
             sub = df[df["target"] == target]
 
@@ -246,6 +253,9 @@ def make_tangram_grid_video(df, condition="", output_dir=None):
 def make_all_tangrams_video(df, condition="", output_dir=None):
     apply_style()
 
+    tangram_order = sorted(df["target"].unique())
+    tangram_markers = get_tangram_markers(tangram_order)
+
     fig, ax = plt.subplots(figsize=(10, 8))
 
     pad = 0.5
@@ -264,8 +274,8 @@ def make_all_tangrams_video(df, condition="", output_dir=None):
     scatters = {}
     line_collections = {}
     for g in GROUP_ORDER:
-        for target in TANGRAM_ORDER:
-            marker = TANGRAM_MARKERS[target]
+        for target in tangram_order:
+            marker = tangram_markers[target]
             sc = ax.scatter(
                 [], [], c=GROUP_COLORS[g], s=70, marker=marker, edgecolors="none"
             )
@@ -297,13 +307,13 @@ def make_all_tangrams_video(df, condition="", output_dir=None):
         Line2D(
             [0],
             [0],
-            marker=TANGRAM_MARKERS[t],
+            marker=tangram_markers[t],
             color="w",
             markerfacecolor="gray",
             markersize=10,
             label=t,
         )
-        for t in TANGRAM_ORDER
+        for t in tangram_order
     ]
     leg2 = ax.legend(handles=tangram_handles, title="Tangram", loc="lower right")
 
@@ -319,7 +329,7 @@ def make_all_tangrams_video(df, condition="", output_dir=None):
         )
 
         for g in GROUP_ORDER:
-            for target in TANGRAM_ORDER:
+            for target in tangram_order:
                 # --- Scatter points ---
                 mask = (
                     (df["originalGroup"] == g)
