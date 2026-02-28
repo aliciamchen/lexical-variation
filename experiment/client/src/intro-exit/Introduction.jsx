@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { usePlayer } from "@empirica/core/player/classic/react";
+import * as Sentry from "@sentry/react";
 import { Button } from "../components/Button";
 import { Quiz } from "./Quiz";
 import _ from "lodash";
@@ -32,7 +34,23 @@ function formatSpeakerTimes(blocks, groupSize) {
 }
 
 export function Introduction({ next }) {
+  const player = usePlayer();
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (player?.id) {
+      Sentry.setUser({
+        id: player.id,
+        username: player.get("name"),
+      });
+
+      // Save Prolific URL params as named player attributes
+      const urlParams = new URLSearchParams(window.location.search);
+      player.set("prolificPid", urlParams.get("PROLIFIC_PID") || "");
+      player.set("studyId", urlParams.get("STUDY_ID") || "");
+      player.set("sessionId", urlParams.get("SESSION_ID") || "");
+    }
+  }, [player?.id]);
 
   const instructionComponents = [
     <Introduction1 />,
@@ -173,18 +191,18 @@ export function Introduction3({ next }) {
         work.
       </p>
       <p>
-        <strong>Important:</strong> Your messages should describe what the
-        target picture looks like and help listeners identify the picture from
-        the set. Do not chat about any other topics. Failure to follow this rule
-        may result in not receiving your pay.
-      </p>
-      <p>
         After the Speaker sends a message, the Listeners read it and each click
         the picture they believe is the target. Listeners cannot click until the
         Speaker sends a message. Listeners can also respond by sending messages
         back through the chatbox. At the end of each round, everyone will be
         given feedback about what the correct picture was and what the Listeners
         guessed.
+      </p>
+      <p>
+        <strong>Important:</strong> Your messages should describe what the
+        target picture looks like and help listeners identify the picture from
+        the set. Do not chat about any other topics. Failure to follow this rule
+        may result in not receiving your pay.
       </p>
     </div>
   );

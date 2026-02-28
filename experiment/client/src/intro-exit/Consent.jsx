@@ -1,21 +1,8 @@
-import React, { useEffect } from "react";
-import { usePlayer } from "@empirica/core/player/classic/react";
-import * as Sentry from "@sentry/react";
+import React from "react";
 import { Button } from "../components/Button";
 import { ESTIMATED_TIME, BASE_PAY, MAX_BONUS } from "../constants";
 
-export function ConsentPage({ next }) {
-  const player = usePlayer();
-
-  useEffect(() => {
-    if (player?.id) {
-      Sentry.setUser({
-        id: player.id,
-        username: player.get("name"),
-      });
-    }
-  }, [player?.id]);
-
+export function ConsentPage({ onConsent }) {
   return (
     <div className="consent">
       <h1>Consent Form</h1>
@@ -33,7 +20,7 @@ export function ConsentPage({ next }) {
       </p>
       <p>
         <b>Payment:</b> This study will take approximately {ESTIMATED_TIME}{" "}
-        minutes. Given this estimated duration, you will receive
+        minutes. Given this estimated duration, you will receive{" "}
         <b>${BASE_PAY}</b> for successfully completing the survey, with an
         additional performance bonus of up to <b>${MAX_BONUS}</b>.
       </p>
@@ -70,7 +57,7 @@ export function ConsentPage({ next }) {
         or Rebecca Saxe (PI): saxe@mit.edu
       </p>
       <div className="flex w-sw justify-center">
-        <Button handleClick={next} autoFocus>
+        <Button handleClick={onConsent} autoFocus>
           <p>I consent</p>
         </Button>
       </div>

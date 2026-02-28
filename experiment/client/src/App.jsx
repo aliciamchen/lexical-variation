@@ -8,17 +8,18 @@ import { Introduction } from "./intro-exit/Introduction";
 import { ConsentPage } from "./intro-exit/Consent.jsx";
 import { Sorry } from "./intro-exit/Sorry.jsx";
 import { Failed } from "./intro-exit/Failed.jsx";
+import { MyPlayerForm } from "./intro-exit/PlayerCreate.jsx";
 
 export default function App() {
   const urlParams = new URLSearchParams(window.location.search);
-  const playerKey = urlParams.get("participantKey") || "";
+  const playerKey = urlParams.get("PROLIFIC_PID") || "";
 
   const { protocol, host } = window.location;
   const url = `${protocol}//${host}/query`;
 
   function introSteps({ game, player }) {
     // return []; // for testing
-    return [ConsentPage, Introduction];
+    return [Introduction];
   }
 
   function exitSteps({ game, player }) {
@@ -56,7 +57,12 @@ export default function App() {
       <div className="h-screen relative">
         <EmpiricaMenu position="bottom-left" />
         <div className="h-full overflow-auto">
-          <EmpiricaContext introSteps={introSteps} exitSteps={exitSteps}>
+          <EmpiricaContext
+            consent={ConsentPage}
+            playerCreate={MyPlayerForm}
+            introSteps={introSteps}
+            exitSteps={exitSteps}
+          >
             <Game />
           </EmpiricaContext>
         </div>
