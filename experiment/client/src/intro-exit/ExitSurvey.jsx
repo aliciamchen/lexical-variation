@@ -195,18 +195,24 @@ export function ExitSurvey({ next }) {
                   </div>
                 </div>
                 <div className="ml-5">
-                  <label htmlFor="email" className={labelClassName}>
+                  <label htmlFor="gender" className={labelClassName}>
                     Gender
                   </label>
                   <div className="mt-1">
-                    <input
+                    <select
                       id="gender"
                       name="gender"
-                      autoComplete="off"
                       className={inputClassName}
                       value={gender}
                       onChange={(e) => setGender(e.target.value)}
-                    />
+                    >
+                      <option value="">-- Select --</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="non-binary">Non-binary</option>
+                      <option value="other">Other</option>
+                      <option value="prefer-not-to-say">Prefer not to say</option>
+                    </select>
                   </div>
                 </div>
               </div>

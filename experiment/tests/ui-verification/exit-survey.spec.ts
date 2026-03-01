@@ -112,10 +112,10 @@ test.describe.serial('UI Verification: Exit Survey (5.6)', () => {
     expect(await ageInput.getAttribute('type')).toBe('number');
   });
 
-  test('exit survey has gender input field', async () => {
+  test('exit survey has gender dropdown', async () => {
     const page = pm.getPage(0);
-    const genderInput = page.locator('input[name="gender"]');
-    await expect(genderInput).toBeVisible({ timeout: 5_000 });
+    const genderSelect = page.locator('select[name="gender"]');
+    await expect(genderSelect).toBeVisible({ timeout: 5_000 });
   });
 
   test('exit survey has education radio buttons', async () => {

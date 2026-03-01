@@ -408,8 +408,8 @@ export async function completeExitSurvey(page: Page): Promise<void> {
     const ageInput = page.locator('input[name="age"]');
     if (await ageInput.count() > 0) await ageInput.fill('25');
 
-    const genderInput = page.locator('input[name="gender"]');
-    if (await genderInput.count() > 0) await genderInput.fill('prefer not to say');
+    const genderSelect = page.locator('select[name="gender"]');
+    if (await genderSelect.count() > 0) await genderSelect.selectOption('prefer-not-to-say');
 
     // Education radio
     const educationRadio = page.getByRole('radio', { name: /bachelor/i });
