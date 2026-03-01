@@ -281,7 +281,8 @@ export function Introduction4({ next }) {
       <p>
         You and your group have {SELECTION_DURATION} seconds for the listeners
         to select a picture each round. If you do not select a picture in this
-        time frame, you will automatically progress to the next stage when the
+        time frame (as a listener) or do not write a description in the chat (as
+        a speaker), you will automatically progress to the next stage when the
         time is up and will not not get a bonus, so please stay focused.
       </p>
       <p>
