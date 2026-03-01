@@ -37,10 +37,10 @@ export function Quiz({ next }) {
       question: "What are you allowed to discuss in the chat?",
       choices: [
         "Anything related to the game.",
-        "Only descriptions of the current target picture.",
+        "Only topics related to picking out the correct target picture.",
         "Personal topics to get to know your group members.",
       ],
-      correctAnswer: "Only descriptions of the current target picture.",
+      correctAnswer: "Only topics related to picking out the correct target picture.",
     },
     {
       question: "Select the true statement about the chat:",

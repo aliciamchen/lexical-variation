@@ -33,7 +33,7 @@ export function Transition(props) {
             <strong>same group members</strong> you played with in Phase 1. Your
             goal (and the scoring) remains the same: describe the pictures to
             help your listeners identify them correctly. Remember to limit your
-            messages to describing the current target picture only, and to not
+            messages to be about the current target picture only, and to not
             chat about any other topics.
           </p>
         </div>
@@ -49,7 +49,7 @@ export function Transition(props) {
             Everyone will appear as "Player" with anonymous avatars.
           </p>
           <p style={{ marginTop: 8 }}>
-            Remember to limit your messages to describing the current target
+            Remember to limit your messages to be about the current target
             picture only, and to not chat about any other topics.
           </p>
         </div>
@@ -66,7 +66,7 @@ export function Transition(props) {
           </p>
           <p style={{ marginTop: 8 }}>
             <strong>
-              New goal: After clicking on a picture, listeners will also guess
+              New task: After clicking on a picture, listeners will also guess
               whether the speaker was in their <em>original group</em> from
               Phase 1.
             </strong>{" "}
@@ -78,12 +78,10 @@ export function Transition(props) {
           </p>
           <p style={{ marginTop: 8 }}>
             <strong>
-              Most of your bonus in this phase comes from the social guessing
-              task.
+              In this phase, your score is primarily based on social guessing.
             </strong>{" "}
-            The majority of your bonus comes from correctly guessing group
-            membership (as a listener) and being recognized by your original
-            group members (as a speaker).
+            To earn the highest possible bonus, speakers should aim to be
+            recognized by their original group members.
           </p>
           <p style={{ marginTop: 8 }}>
             Remember to limit your messages to be about the current target

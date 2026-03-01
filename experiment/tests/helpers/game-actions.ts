@@ -137,7 +137,7 @@ export async function completeIntro(page: Page, playerName?: string): Promise<vo
   await page.getByRole('radio', { name: /describe the target picture/i }).waitFor({ state: 'visible', timeout: 10_000 });
   await page.getByRole('radio', { name: /describe the target picture/i }).click();
   await page.getByRole('radio', { name: /removed from the game/i }).click();
-  await page.getByRole('radio', { name: /only descriptions of the current/i }).click();
+  await page.getByRole('radio', { name: /only topics related to picking out/i }).click();
   await page.getByRole('radio', { name: /listeners must wait/i }).click();
   await page.getByRole('radio', { name: /mixed up/i }).click();
   await page.getByRole('radio', { name: /different positions for each player/i }).click();

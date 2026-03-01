@@ -60,7 +60,7 @@ export const BUTTON = {
 export const QUIZ_RADIOS = {
   speakerJob: { role: 'radio' as const, name: /describe the target picture/i },
   inactivePenalty: { role: 'radio' as const, name: /removed from the game/i },
-  chatRestrictions: { role: 'radio' as const, name: /only descriptions of the current/i },
+  chatRestrictions: { role: 'radio' as const, name: /only topics related to picking out/i },
   listenerWaiting: { role: 'radio' as const, name: /listeners must wait/i },
   picturePositions: { role: 'radio' as const, name: /mixed up/i },
   positionReason: { role: 'radio' as const, name: /different positions for each player/i },
