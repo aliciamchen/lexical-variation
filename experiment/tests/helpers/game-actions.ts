@@ -367,7 +367,7 @@ export async function handleTransition(pages: Page[], timeout = 120_000): Promis
   await monitorPage.waitForTimeout(1000);
 
   // Step 2: Wait for the transition stage to appear
-  const transitionStages = ['phase_2_transition', 'bonus_info'];
+  const transitionStages = ['Phase 2 transition', 'Bonus info'];
   const start = Date.now();
   let foundTransition = false;
   while (Date.now() - start < timeout) {

@@ -55,7 +55,7 @@ test.describe.serial('UI Verification: Transition Screens (5.5)', () => {
     }
 
     // Wait for transition stage to appear
-    const reachedTransition = await waitForStage(pages[0], 'phase_2_transition', 60_000);
+    const reachedTransition = await waitForStage(pages[0], 'Phase 2 transition', 60_000);
     expect(reachedTransition).toBe(true);
   });
 

@@ -168,7 +168,7 @@ Empirica.onGameStart(({ game }) => {
   });
 
   transition.addStage({
-    name: "phase_2_transition",
+    name: "Phase 2 transition",
     duration: TRANSITION_DURATION,
   });
 
@@ -208,11 +208,11 @@ Empirica.onGameStart(({ game }) => {
   // ============ FINAL TRANSITION (BONUS INFO) ============
   const finalTransition = game.addRound({
     phase: "transition",
-    transition_type: "bonus_info",
+    transition_type: "Bonus info",
   });
 
   finalTransition.addStage({
-    name: "bonus_info",
+    name: "Bonus info",
     duration: BONUS_INFO_DURATION,
   });
 });

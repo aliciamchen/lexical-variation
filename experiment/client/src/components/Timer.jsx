@@ -11,7 +11,7 @@ export function Timer() {
 
   return (
     <div className="flex flex-col items-center">
-      <h1 className="tabular-nums text-3xl text-gray-500 font-semibold">
+      <h1 className={`tabular-nums text-3xl font-semibold ${remaining !== undefined && remaining <= 7 ? "text-red-500" : "text-gray-500"}`}>
         {humanTimer(remaining)}
       </h1>
     </div>

@@ -75,11 +75,11 @@ test.describe.serial('UI Verification: Exit Survey (5.6)', () => {
     }
 
     // Wait for bonus_info stage
-    await waitForStage(pages[0], 'bonus_info', 120_000);
+    await waitForStage(pages[0], 'Bonus info', 120_000);
 
     // Click Continue on bonus_info for all players
     for (const page of pages) {
-      await waitForStage(page, 'bonus_info', 30_000);
+      await waitForStage(page, 'Bonus info', 30_000);
       await clickContinue(page, 5000);
     }
 

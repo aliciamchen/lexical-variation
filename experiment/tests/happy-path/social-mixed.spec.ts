@@ -85,7 +85,7 @@ test.describe.serial('Happy Path: social_mixed', () => {
     }
 
     // Wait for transition stage to appear
-    const transitionReached = await waitForStage(pages[0], 'phase_2_transition', 30_000);
+    const transitionReached = await waitForStage(pages[0], 'Phase 2 transition', 30_000);
     if (transitionReached) {
       const content = await pages[0].textContent('body');
       // Transition should mention the social guessing task or Phase 2
@@ -200,7 +200,7 @@ test.describe.serial('Happy Path: social_mixed', () => {
     }
 
     // Wait for bonus_info stage
-    await waitForStage(active[0], 'bonus_info', 120_000);
+    await waitForStage(active[0], 'Bonus info', 120_000);
 
     const content = await active[0].textContent('body');
     // Bonus info for social_mixed should include social guessing info
@@ -212,7 +212,7 @@ test.describe.serial('Happy Path: social_mixed', () => {
 
     // Click Continue for each player after they reach bonus_info
     for (const page of active) {
-      await waitForStage(page, 'bonus_info', 30_000);
+      await waitForStage(page, 'Bonus info', 30_000);
       await clickContinue(page, 5000);
     }
     await active[0].waitForTimeout(3000);

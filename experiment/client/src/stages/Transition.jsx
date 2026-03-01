@@ -21,7 +21,7 @@ export function Transition(props) {
     );
   }
 
-  if (stage.get("name") === "phase_2_transition") {
+  if (stage.get("name") === "Phase 2 transition") {
     // Get condition-specific instructions
     let conditionInstructions = "";
 
@@ -157,7 +157,7 @@ export function Transition(props) {
     );
   }
 
-  if (stage.get("name") === "bonus_info") {
+  if (stage.get("name") === "Bonus info") {
     const score = player.get("score") || 0;
     const bonus = player.get("bonus") || 0;
 

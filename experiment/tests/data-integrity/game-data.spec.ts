@@ -141,7 +141,7 @@ test.describe.serial('Data Integrity: Game Data (TEST_PLAN 7.5)', () => {
 
   test('stage-name attribute is a valid stage name, not "unknown"', async () => {
     const pages = pm.getPages();
-    const validStageNames = ['Selection', 'Feedback', 'phase_2_transition', 'bonus_info'];
+    const validStageNames = ['Selection', 'Feedback', 'Phase 2 transition', 'Bonus info'];
 
     for (const page of pages) {
       const stageName = await page.locator('[data-testid="game-container"]')

@@ -659,7 +659,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
       // Check if we've reached the end (bonus_info or game over)
       const monitorInfo = await getPlayerInfo(active[0]);
       if (!monitorInfo) break; // Player left game
-      if (monitorInfo.stageName === 'bonus_info') break;
+      if (monitorInfo.stageName === 'Bonus info') break;
       if (monitorInfo.stageName !== 'Selection' && monitorInfo.stageName !== 'Feedback') {
         // Could be in transition or other end-of-game stage
         break;
@@ -690,11 +690,11 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     }
 
     // Wait for bonus_info stage
-    await waitForStage(active[0], 'bonus_info', 120_000);
+    await waitForStage(active[0], 'Bonus info', 120_000);
 
     // Click Continue for each player after they reach bonus_info
     for (const page of active) {
-      await waitForStage(page, 'bonus_info', 30_000);
+      await waitForStage(page, 'Bonus info', 30_000);
       await clickContinue(page, 5000);
     }
     await active[0].waitForTimeout(3000);

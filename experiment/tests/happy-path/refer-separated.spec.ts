@@ -155,9 +155,9 @@ test.describe.serial('Happy Path: refer_separated', () => {
 
     // Check current state - might be at bonus_info, past it, or still in Feedback
     const info = await getPlayerInfo(active[0]);
-    if (info && info.stageName !== 'bonus_info') {
+    if (info && info.stageName !== 'Bonus info') {
       // Wait for bonus_info to appear (may take up to FEEDBACK_DURATION if still in Feedback)
-      const found = await waitForStage(active[0], 'bonus_info', 30_000);
+      const found = await waitForStage(active[0], 'Bonus info', 30_000);
       if (found) {
         const content = await active[0].textContent('body');
         expect(

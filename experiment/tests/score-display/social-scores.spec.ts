@@ -137,7 +137,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
     }
 
     // Wait for bonus_info stage
-    await waitForStage(active[0], 'bonus_info', 120_000);
+    await waitForStage(active[0], 'Bonus info', 120_000);
 
     // Verify the bonus info stage displays the social guessing summary.
     // The Transition component renders "Social Guessing Summary:" text
@@ -174,7 +174,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
 
     // Click Continue for each player after they reach bonus_info
     for (const page of active) {
-      await waitForStage(page, 'bonus_info', 30_000);
+      await waitForStage(page, 'Bonus info', 30_000);
       await clickContinue(page, 5000);
     }
     await active[0].waitForTimeout(3000);

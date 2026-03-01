@@ -68,13 +68,13 @@ test.describe.serial('Timing: Transition Stage Timing (TEST_PLAN 6.3)', () => {
     }
 
     // Wait for the phase_2_transition stage to appear
-    const transitionReached = await waitForStage(pages[0], 'phase_2_transition', 60_000);
+    const transitionReached = await waitForStage(pages[0], 'Phase 2 transition', 60_000);
     expect(transitionReached).toBe(true);
 
     // Confirm we are on the Transition stage
     const info = await getPlayerInfo(pages[0]);
     expect(info).not.toBeNull();
-    expect(info!.stageName).toBe('phase_2_transition');
+    expect(info!.stageName).toBe('Phase 2 transition');
   });
 
   test('Transition auto-advances after TRANSITION_DURATION seconds', async () => {
@@ -90,7 +90,7 @@ test.describe.serial('Timing: Transition Stage Timing (TEST_PLAN 6.3)', () => {
     // It should now be on Selection (first round of Phase 2).
     const infoAfter = await getPlayerInfo(pages[0]);
     expect(infoAfter).not.toBeNull();
-    expect(infoAfter!.stageName).not.toBe('phase_2_transition');
+    expect(infoAfter!.stageName).not.toBe('Phase 2 transition');
     // Should be in Phase 2 Selection
     expect(infoAfter!.stageName).toBe('Selection');
     expect(infoAfter!.phase).toBe(2);
