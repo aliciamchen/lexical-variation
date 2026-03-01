@@ -280,6 +280,68 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     expect(active.length).toBe(9);
   });
 
+  // ─── Test 6b: Verify feedback uses server-computed scoring (race condition fix) ───
+  test('feedback text matches server scoring and no false idle warnings', async () => {
+    // Play a round where all listeners click correctly
+    await playRound(gamePages);
+
+    // Wait for Feedback stage on all players
+    for (const page of gamePages) {
+      await waitForStage(page, 'Feedback', 15_000);
+    }
+
+    // Verify each player's feedback is consistent with server state
+    for (const page of gamePages) {
+      const info = await getPlayerInfo(page);
+      if (!info || info.stageName !== 'Feedback') continue;
+
+      const bodyText = await page.textContent('body');
+
+      if (info.role === 'listener') {
+        // Correct listener should see "Correct!" with server-computed score
+        expect(bodyText).toContain('Correct!');
+        expect(bodyText).toContain('points');
+
+        // Critical assertion: a listener who clicked should NEVER see an idle
+        // warning. Before the fix, a race condition between client-side auto-submit
+        // and server state sync could cause the server to miss the click, marking
+        // the player idle while the client showed "Correct!".
+        expect(bodyText).not.toContain('You have been inactive');
+      }
+
+      if (info.role === 'speaker') {
+        // Speaker should see points feedback
+        expect(bodyText).toContain('You earned');
+        expect(bodyText).toContain('points');
+
+        // Speaker who sent a message should not be marked idle
+        expect(bodyText).not.toContain('You have been inactive');
+      }
+    }
+
+    // Also play a round where all listeners click WRONG
+    const allGroups = Object.keys(groupPageIndices);
+    await playRound(gamePages, { wrongGroups: allGroups });
+
+    for (const page of gamePages) {
+      await waitForStage(page, 'Feedback', 15_000);
+    }
+
+    // Wrong clicks are still active — listeners should see "Ooops" but NO idle warning
+    for (const page of gamePages) {
+      const info = await getPlayerInfo(page);
+      if (!info || info.stageName !== 'Feedback') continue;
+
+      const bodyText = await page.textContent('body');
+
+      if (info.role === 'listener') {
+        expect(bodyText).toContain('Ooops');
+        // Wrong click is NOT inactivity — player was active, just incorrect
+        expect(bodyText).not.toContain('You have been inactive');
+      }
+    }
+  });
+
   // ─── Test 7: Phase 1 — speaker from group A idles 2 rounds → kicked ───
   test('Phase 1: speaker from group A idles and is kicked', async () => {
     test.slow();
@@ -391,10 +453,10 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     test.slow();
     const active = await getActivePlayers(gamePages);
 
-    // We've played: 2 normal + MAX_IDLE_ROUNDS speaker idle + 2 normal + MAX_IDLE_ROUNDS listener idle rounds
+    // We've played: 2 normal + 2 (race condition test) + MAX_IDLE_ROUNDS speaker idle + 2 normal + MAX_IDLE_ROUNDS listener idle rounds
     // Phase 1 total: PHASE_1_BLOCKS * ROUNDS_PER_BLOCK rounds
     // Remaining = total - roundsPlayed
-    const roundsPlayed = 2 + MAX_IDLE_ROUNDS + 2 + MAX_IDLE_ROUNDS;
+    const roundsPlayed = 2 + 2 + MAX_IDLE_ROUNDS + 2 + MAX_IDLE_ROUNDS;
     const totalPhase1Rounds = PHASE_1_BLOCKS * ROUNDS_PER_BLOCK;
     const remaining = totalPhase1Rounds - roundsPlayed;
 
