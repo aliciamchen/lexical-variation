@@ -91,7 +91,7 @@ Empirica.onGameStart(({ game }) => {
     player.set("original_avatar", avatarUrl);
     player.set("name_color", name_colors[i]);
 
-    // Tangram shuffling - shuffle all 12 tangrams (6 targets + 6 distractors)
+    // Tangram shuffling - shuffle all 16 tangrams (6 targets + 4 permanent distractors + 6 from other set)
     const shuffled_tangrams = _.shuffle(all_tangrams);
     player.set("shuffled_tangrams", shuffled_tangrams);
     player.set(

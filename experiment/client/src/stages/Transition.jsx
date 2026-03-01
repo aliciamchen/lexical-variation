@@ -64,25 +64,28 @@ export function Transition(props) {
             be from your original group. Player identities will be hidden:
             Everyone will appear as "Player" with anonymous avatars.
           </p>
-          <p style={{ marginTop: 8 }}>
-            <strong>
-              New task: After clicking on a picture, listeners will also guess
-              whether the speaker was in their <em>original group</em> from
-              Phase 1.
-            </strong>{" "}
-            As a speaker, you will be rewarded if members from your original
-            group correctly recognize you as a member of their group. As a
-            listener, you will be rewarded if you correctly guess whether or not
-            the speaker was in your original group. After each round, you'll see
-            feedback on whether your guess was correct.
-          </p>
-          <p style={{ marginTop: 8 }}>
-            <strong>
-              In this phase, your score is primarily based on social guessing.
-            </strong>{" "}
-            To earn the highest possible bonus, speakers should aim to be
-            recognized by their original group members.
-          </p>
+          <div
+            style={{
+              marginTop: 8,
+              padding: 12,
+              backgroundColor: "#fffbeb",
+              border: "2px solid #f59e0b",
+              borderRadius: 8,
+            }}
+          >
+            <p>
+              <strong>New task:</strong> After clicking on a picture, listeners
+              will also guess whether the speaker was in their{" "}
+              <em>original group</em> from Phase 1.
+            </p>
+            <p style={{ marginTop: 8 }}>
+              <strong>
+                In this phase, your score is primarily based on social guessing.
+              </strong>{" "}
+              To earn the highest possible bonus, speakers should aim to be
+              recognized by their original group members.
+            </p>
+          </div>
           <p style={{ marginTop: 8 }}>
             Remember to limit your messages to be about the current target
             picture only, and to not chat about any other topics.

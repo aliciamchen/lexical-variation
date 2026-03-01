@@ -29,20 +29,22 @@ export const TRANSITION_DURATION = 60; // Phase transition (same for both)
 export const BONUS_INFO_DURATION = 30; // End game bonus info (same for both)
 
 // ============ TANGRAM SETS ============
-// All 12 tangrams displayed in the grid (from pick_tangrams.Qmd)
+// All 16 tangrams displayed in the grid (from tangram_sets.json)
 export const all_tangrams = [
-  "page3-182", "page4-157", "page1-129", "page7-81",
-  "page6-149", "page9-46", "page9-27", "page7-26",
-  "page7-107", "page3-121", "page5-64", "page5-28",
+  "page7-255", "page9-46", "page5-28", "page7-107",
+  "page3-35", "page-B", "page3-121", "page4-157",
+  "page7-26", "page5-64", "page6-149", "page3-193",
+  "page5-63", "page9-7", "page5-142", "page4-15",
 ];
 
-// Two sets of 6 target tangrams (the other 6 are distractors)
-// Set 0 targets: page3-182, page7-107, page9-27, page5-28, page7-81, page9-46
-// Set 1 targets: page4-157, page1-129, page6-149, page7-26, page3-121, page5-64
+// Two sets of 6 target tangrams (the other 4 are permanent distractors)
 export const tangram_sets = {
-  0: ["page3-182", "page7-107", "page9-27", "page5-28", "page7-81", "page9-46"],
-  1: ["page4-157", "page1-129", "page6-149", "page7-26", "page3-121", "page5-64"],
+  0: ["page7-255", "page9-46", "page5-28", "page7-107", "page3-35", "page-B"],
+  1: ["page3-121", "page4-157", "page7-26", "page5-64", "page6-149", "page3-193"],
 };
+
+// 4 permanent distractors (never the referent)
+export const distractors = ["page5-63", "page9-7", "page5-142", "page4-15"];
 
 // ============ PLAYER CONFIGURATION ============
 // Player count is set in treatments.yaml (playerCount field)
@@ -58,7 +60,7 @@ export const PHASE_2_BLOCKS = TEST_MODE ? 2 : 6;
 
 // ============ GAME STRUCTURE ============
 export const NUM_TANGRAMS = 6;
-export const NUM_DISPLAY_TANGRAMS = 12;
+export const NUM_DISPLAY_TANGRAMS = 16;
 
 // ============ PLAYER NAMES ============
 export const names = [

@@ -132,18 +132,22 @@ def make_tangram_black(key, save_dir="client/public/"):
     return svg_str
 
 selected_tangrams = [
-    "page3-182",
-    "page4-157",
-    "page1-129",
-    "page7-81",
-    "page6-149",
+    "page7-255",
     "page9-46",
-    "page9-27",
-    "page7-26",
+    "page5-28",
     "page7-107",
+    "page3-35",
+    "page-B",
     "page3-121",
+    "page4-157",
+    "page7-26",
     "page5-64",
-    "page5-28"
+    "page6-149",
+    "page3-193",
+    "page5-63",
+    "page9-7",
+    "page5-142",
+    "page4-15"
 ]
 
 for tangram in selected_tangrams:

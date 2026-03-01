@@ -78,7 +78,7 @@ test.describe.serial('UI Verification: Game Screen Elements (5.2)', () => {
     expect(['A', 'B', 'C']).toContain(playerGroup);
   });
 
-  test('(b) tangram grid shows 12 tangrams', async () => {
+  test('(b) tangram grid shows 16 tangrams', async () => {
     const pages = pm.getPages();
     const page = pages[0];
 

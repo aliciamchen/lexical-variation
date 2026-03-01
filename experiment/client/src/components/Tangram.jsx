@@ -18,7 +18,7 @@ export function Tangram(props) {
     ...rest
   } = props;
 
-  // Make tangram grid (3 rows × 4 columns for 12 tangrams)
+  // Make tangram grid (4 rows × 4 columns for 16 tangrams)
   const row = 1 + Math.floor(tangram_num / 4);
   const column = 1 + (tangram_num % 4);
   let mystyle = {
