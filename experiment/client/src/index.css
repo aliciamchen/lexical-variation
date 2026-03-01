@@ -113,7 +113,7 @@ h1, h2, h3, h4 {
 
 .prompt-container {
   max-width: 40vw;
-  margin: 0 auto 3rem auto; /* Bottom margin of 3rem adds space between prompt and tangrams */
+  margin: 0 auto 1rem auto;
   text-align: center;
   max-height: 80vh;
   overflow-y: auto;
@@ -183,7 +183,7 @@ h1, h2, h3, h4 {
   border-radius: 3px;
   /* box-shadow: 0 0 0 1px rgba(16, 22, 26, 0.1), 0 1px 1px rgba(16, 22, 26, 0.2); */
   width: 80%;
-  margin: 0 auto 4rem auto;
+  margin: 0 auto 1.5rem auto;
 }
 
 .player {
