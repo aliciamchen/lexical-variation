@@ -92,7 +92,7 @@ export function Tangram(props) {
         // Double-check we're still in Selection before auto-submitting
         if (allResponded && stage.get("name") === "Selection") {
           playersInGroup.forEach((p) => {
-            p.stage.set("submit", true);
+            if (p.stage) p.stage.set("submit", true);
           });
         }
       }

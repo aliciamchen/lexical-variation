@@ -41,7 +41,7 @@ export const BONUS_PER_POINT = 0.05;
 export const BONUS_PER_POINT_SOCIAL = 0.023;
 
 // Compensation
-export const BASE_PAY = 9;
+export const BASE_PAY = 12;
 export const LOBBY_TIMEOUT_PAY = 2;
 export const MAX_BONUS = 8;
 

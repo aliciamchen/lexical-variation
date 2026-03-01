@@ -129,7 +129,7 @@ export const SOCIAL_SPEAKER_POINTS_PER_CORRECT = 6;
 export const BONUS_PER_POINT_SOCIAL = 0.023;
 
 // ============ COMPENSATION ============
-export const BASE_PAY = 9; // dollars
+export const BASE_PAY = 12; // dollars
 export const LOBBY_TIMEOUT_PAY = 2; // dollars for players who couldn't find a match in lobby
 
 // Expected game duration in minutes (used for proportional compensation)
@@ -164,7 +164,7 @@ export const SPEAKER_TIMES_PHASE_1 = PHASE_1_BLOCKS / GROUP_SIZE;
 export const MAX_BONUS = 8;
 
 // Estimated time in minutes
-export const ESTIMATED_TIME = 45;
+export const ESTIMATED_TIME = "45-60";
 
 // Log warning if in test mode (only runs on server)
 if (typeof window === "undefined" && TEST_MODE) {
