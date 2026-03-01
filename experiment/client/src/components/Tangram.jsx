@@ -78,23 +78,9 @@ export function Tangram(props) {
         }
 
         player.round.set("clicked", tangram);
-
-        // Check if all listeners have now responded (only after registering a click)
-        const listeners = playersInGroup.filter(
-          (p) => p.round.get("role") === "listener"
-        );
-        const allResponded = _.every(listeners, (p) => {
-          const clicked = p.round.get("clicked");
-          const socialGuess = p.round.get("social_guess");
-          return clicked && (!isSocialMixed || socialGuess);
-        });
-
-        // Double-check we're still in Selection before auto-submitting
-        if (allResponded && stage.get("name") === "Selection") {
-          playersInGroup.forEach((p) => {
-            if (p.stage) p.stage.set("submit", true);
-          });
-        }
+        // Auto-submit is handled by Refgame.jsx on a per-player basis
+        // to avoid race conditions where submit reaches the server
+        // before the clicked state has synced.
       }
     };
 

@@ -21,7 +21,9 @@ export function Refgame(props) {
 
   const target = round.get("target");
   const shuffled_tangrams = player.get("shuffled_tangrams");
-  const correct = player.round.get("clicked") == target;
+  // Use server-computed correctness to avoid race conditions where the
+  // client has an optimistic "clicked" value that hasn't synced to the server.
+  const correct = player.round.get("clicked_correct");
 
   // Compute target index for testing purposes
   const targetIndex = shuffled_tangrams
@@ -242,7 +244,7 @@ export function Refgame(props) {
           </>
         );
       } else if (correct) {
-        feedback = "Correct! You earned 2 points.";
+        feedback = `Correct! You earned ${pictureRoundScore} ${pictureRoundScore == 1 ? "point" : "points"}.`;
       } else {
         feedback =
           "Ooops, that wasn't the target! You earned no points this round.";
