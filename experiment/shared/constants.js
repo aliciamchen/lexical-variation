@@ -15,7 +15,7 @@ export const TEST_MODE =
 // |----------------------|---------|------------|--------------------------------------|
 // | TEST_MODE            | true    | false      | Master toggle                        |
 // | SELECTION_DURATION   | 120     | 45         | Seconds for Phase 1 selection stage  |
-// | PHASE2_SEL_DURATION  | 120     | 20         | Seconds for Phase 2 selection stage  |
+// | PHASE2_SEL_DURATION  | 120     | 25         | Seconds for Phase 2 selection stage  |
 // | MAX_IDLE_ROUNDS      | 5       | 3          | Rounds before idle kick              |
 // | PHASE_1_BLOCKS       | 2       | 6          | Blocks in Phase 1                    |
 // | PHASE_2_BLOCKS       | 2       | 6          | Blocks in Phase 2                    |
@@ -23,7 +23,7 @@ export const TEST_MODE =
 // ============ TIMING CONFIGURATION ============
 // Stage durations in seconds
 export const SELECTION_DURATION = TEST_MODE ? 120 : 45; // Phase 1 selection stage (TEST: 120s)
-export const PHASE2_SELECTION_DURATION = TEST_MODE ? 120 : 20; // Phase 2 selection stage (TEST: 120s)
+export const PHASE2_SELECTION_DURATION = TEST_MODE ? 120 : 25; // Phase 2 selection stage (TEST: 120s)
 export const FEEDBACK_DURATION = 15; // Feedback stage (same for both)
 export const TRANSITION_DURATION = 60; // Phase transition (same for both)
 export const BONUS_INFO_DURATION = 30; // End game bonus info (same for both)
@@ -117,7 +117,7 @@ export const name_colors = [
 ];
 
 // ============ SCORING ============
-export const BONUS_PER_POINT = 0.05;
+export const BONUS_PER_POINT = 0.0556;
 export const bonus_per_point = BONUS_PER_POINT; // Alias for server compatibility
 export const LISTENER_CORRECT_POINTS = 2;
 // Speaker scoring: 2 * (proportion of correct listeners) - max 2 points per round
