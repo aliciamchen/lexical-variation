@@ -159,6 +159,9 @@ def build_trials(
         "roundId",
     ]
 
+    # Listener timeout: role is listener but no tangram was clicked
+    trials["timeout"] = (trials["role"] == "listener") & trials["clicked"].isna()
+
     # Merge trialNum from round and tangramSet from game
     round_info = rd[["id", "trial_num"]].rename(
         columns={"id": "roundId", "trial_num": "trialNum"}

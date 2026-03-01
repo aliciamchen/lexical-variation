@@ -238,48 +238,65 @@ def compute_block_pairwise(
     games: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    For each Phase 2 block, compute pairwise cosine similarity between all
-    speaker pairs on the same tangram. Tracks convergence trajectory over time.
+    For each block and tangram (both phases), compute pairwise cosine
+    similarity between all speakers using their most recent description
+    (from that block or any earlier block within the same phase). This
+    produces both within-group and between-group pairs, enabling
+    group-specificity trajectory analysis.
     """
-    df = utterances[utterances["phaseNum"] == 2].copy()
+    df = utterances.copy()
     if df.empty:
         return pd.DataFrame()
 
-    # Embed all Phase 2 utterances
+    # Embed all utterances
     embeddings = model.encode(df["utterance"].fillna("").tolist(), show_progress_bar=False)
     df["embedding_idx"] = range(len(df))
 
     rows = []
-    for (game, block, target), group_data in df.groupby(["gameId", "blockNum", "target"]):
-        speakers = group_data["playerId"].unique()
-        if len(speakers) < 2:
-            continue
-        for s1, s2 in combinations(speakers, 2):
-            s1_rows = group_data[group_data["playerId"] == s1]
-            s2_rows = group_data[group_data["playerId"] == s2]
-            if s1_rows.empty or s2_rows.empty:
-                continue
-            s1_data = s1_rows.iloc[-1]
-            s2_data = s2_rows.iloc[-1]
-            emb1 = embeddings[int(s1_data["embedding_idx"])]
-            emb2 = embeddings[int(s2_data["embedding_idx"])]
-            sim = model.similarity(emb1, emb2).item()
+    for game, game_data in df.groupby("gameId"):
+        targets = game_data["target"].unique()
 
-            group1 = s1_data.get("originalGroup", "")
-            group2 = s2_data.get("originalGroup", "")
+        for phase_num in sorted(game_data["phaseNum"].unique()):
+            phase_data = game_data[game_data["phaseNum"] == phase_num]
+            blocks = sorted(phase_data["blockNum"].unique())
 
-            rows.append({
-                "gameId": game,
-                "target": target,
-                "speaker1": s1,
-                "speaker2": s2,
-                "group1": group1,
-                "group2": group2,
-                "sameGroup": 1 if group1 == group2 else 0,
-                "similarity": sim,
-                "blockNum": block,
-                "phaseNum": 2,
-            })
+            for target in targets:
+                target_data = phase_data[phase_data["target"] == target]
+                if target_data.empty:
+                    continue
+
+                for block in blocks:
+                    # For each player, find their most recent description of
+                    # this tangram up to and including the current block
+                    up_to_block = target_data[target_data["blockNum"] <= block]
+                    latest = up_to_block.sort_values("blockNum").groupby("playerId").last()
+
+                    if len(latest) < 2:
+                        continue
+
+                    players = latest.index.tolist()
+                    for s1, s2 in combinations(players, 2):
+                        s1_data = latest.loc[s1]
+                        s2_data = latest.loc[s2]
+                        emb1 = embeddings[int(s1_data["embedding_idx"])]
+                        emb2 = embeddings[int(s2_data["embedding_idx"])]
+                        sim = model.similarity(emb1, emb2).item()
+
+                        group1 = s1_data.get("originalGroup", "")
+                        group2 = s2_data.get("originalGroup", "")
+
+                        rows.append({
+                            "gameId": game,
+                            "target": target,
+                            "speaker1": s1,
+                            "speaker2": s2,
+                            "group1": group1,
+                            "group2": group2,
+                            "sameGroup": 1 if group1 == group2 else 0,
+                            "similarity": sim,
+                            "blockNum": block,
+                            "phaseNum": phase_num,
+                        })
 
     return pd.DataFrame(rows)
 

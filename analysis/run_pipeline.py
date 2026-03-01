@@ -12,6 +12,8 @@ Subcommands:
     uv run python analysis/run_pipeline.py list                               # list all runs
     uv run python analysis/run_pipeline.py bonuses                            # print latest bonuses
     uv run python analysis/run_pipeline.py bonuses --run 20260225_210047      # specific run
+    uv run python analysis/run_pipeline.py early-ended                       # print early-ended players
+    uv run python analysis/run_pipeline.py early-ended --run 20260225_210047  # specific run
     uv run python analysis/run_pipeline.py status                             # show symlink target
 """
 
@@ -33,7 +35,7 @@ EXPERIMENT_DATA_DIR = PROJECT_ROOT / "experiment" / "data"
 ZIP_PATTERN = re.compile(r"empirica-export-(\d{8}_\d{6})\.zip")
 TIMESTAMP_DIR_PATTERN = re.compile(r"^\d{8}_\d{6}$")
 
-SUBCOMMANDS = {"list", "bonuses", "status", "run"}
+SUBCOMMANDS = {"list", "bonuses", "early-ended", "status", "run"}
 
 # Columns to strip from player.csv for anonymization
 SENSITIVE_COLUMNS = [
@@ -95,7 +97,11 @@ def step_extract_bonuses(unzipped_dir: Path, output_dir: Path) -> None:
     real_games = game_df[game_df["condition"].notna()]["id"].tolist()
     game_players = player_df[player_df["gameID"].isin(real_games)].copy()
 
-    bonus_df = game_players[["participantIdentifier", "bonus"]].copy()
+    # Split into completed vs early-ended players
+    completed = game_players[game_players["is_active"] == True].copy()
+    early = game_players[game_players["is_active"] == False].copy()
+
+    bonus_df = completed[["participantIdentifier", "bonus"]].copy()
     bonus_df.columns = ["prolific_id", "bonus"]
     bonus_df["bonus"] = bonus_df["bonus"].fillna(0).round(2)
 
@@ -104,6 +110,17 @@ def step_extract_bonuses(unzipped_dir: Path, output_dir: Path) -> None:
     bonus_df.to_csv(bonus_path, index=False)
     print(f"  Wrote {bonus_path} ({len(bonus_df)} players)")
     print(bonus_df.to_string(index=False))
+    if len(early) > 0:
+        early_df = early[["participantIdentifier", "partialPay"]].copy()
+        early_df.columns = ["prolific_id", "partial_pay"]
+        early_df["partial_pay"] = early_df["partial_pay"].fillna(0).round(2)
+
+        early_path = output_dir / "early_ended.csv"
+        early_df.to_csv(early_path, index=False)
+        print(f"\n  Wrote {early_path} ({len(early_df)} early-ended players)")
+        print(early_df.to_string(index=False))
+    else:
+        print("\n  No early-ended players found.")
 
 
 def step_anonymize_raw(unzipped_dir: Path, raw_dir: Path) -> None:
@@ -324,6 +341,31 @@ def cmd_bonuses(run_name: str | None = None):
     print()
 
 
+def cmd_early_ended(run_name: str | None = None):
+    """Print early-ended players CSV for a specific or latest run."""
+    if run_name:
+        run_dir = ANALYSIS_DIR / run_name
+    else:
+        dirs = find_timestamped_dirs()
+        if not dirs:
+            print("No analysis runs found.", file=sys.stderr)
+            sys.exit(1)
+        run_dir = dirs[0]
+
+    early_path = run_dir / "early_ended.csv"
+    if not early_path.exists():
+        print(f"No early_ended.csv in {run_dir.name}", file=sys.stderr)
+        sys.exit(1)
+
+    df = pd.read_csv(early_path)
+    print(f"\nEarly-ended players for run {run_dir.name}:")
+    print(f"{'─' * 80}")
+    print(df.to_string(index=False))
+    print(f"{'─' * 80}")
+    print(f"  {len(df)} players, total partial pay: ${df['partial_pay'].sum():.2f}")
+    print()
+
+
 def cmd_status():
     """Show what the processed_data symlink points to."""
     symlink = ANALYSIS_DIR / "processed_data"
@@ -369,6 +411,17 @@ def main():
                     print("--run requires a value", file=sys.stderr)
                     sys.exit(1)
             cmd_bonuses(run_name)
+            return
+        elif subcmd == "early-ended":
+            run_name = None
+            if "--run" in sys.argv:
+                idx = sys.argv.index("--run")
+                if idx + 1 < len(sys.argv):
+                    run_name = sys.argv[idx + 1]
+                else:
+                    print("--run requires a value", file=sys.stderr)
+                    sys.exit(1)
+            cmd_early_ended(run_name)
             return
         elif subcmd == "run":
             # Strip "run" from argv so argparse sees the rest
@@ -465,7 +518,10 @@ def main():
     print(f"\n{'=' * 60}")
     print("Pipeline complete!")
     print(f"{'=' * 60}")
-    print(f"  Bonuses:  {output_dir / 'bonuses.csv'}")
+    print(f"  Bonuses:       {output_dir / 'bonuses.csv'}")
+    early_path = output_dir / "early_ended.csv"
+    if early_path.exists():
+        print(f"  Early-ended:   {early_path}")
     print(f"  Raw data: {raw_dir}")
     print(f"  Processed: {data_dir}")
     if not args.skip_visualize:

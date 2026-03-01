@@ -287,6 +287,42 @@ def panel_ingroup_outgroup(ax, trials, condition=""):
     ax.legend(handles, new_labels, fontsize=8, title_fontsize=9)
 
 
+def panel_listener_accommodation(ax, trials, condition=""):
+    """Listener accommodation: accuracy gap (same-group − cross-group) by Phase 2 block."""
+    p2 = continuous_block(
+        trials[(trials["phaseNum"] == 2) & (trials["role"] == "listener")]
+    )
+    p2["correct"] = p2["clickedCorrect"].astype(float)
+    p2["matchType"] = (p2["originalGroup"] == p2["currentGroup"]).map(
+        {True: "same", False: "cross"}
+    )
+    # Compute per-block mean accuracy for each match type
+    block_acc = p2.groupby(["block", "matchType"])["correct"].mean().unstack("matchType")
+    if "same" not in block_acc.columns or "cross" not in block_acc.columns:
+        ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+    gap = block_acc["same"] - block_acc["cross"]
+
+    # Per-target accuracy gap as individual points
+    tgt_acc = p2.groupby(["block", "target", "matchType"])["correct"].mean().unstack("matchType")
+    if "same" in tgt_acc.columns and "cross" in tgt_acc.columns:
+        tgt_gap = (tgt_acc["same"] - tgt_acc["cross"]).reset_index()
+        tgt_gap.columns = ["block", "target", "gap"]
+        tgt_gap = tgt_gap.dropna()
+        jitter = np.random.default_rng(42).uniform(-0.15, 0.15, len(tgt_gap))
+        ax.scatter(tgt_gap["block"] + jitter, tgt_gap["gap"],
+                   color=GROUP_COLORS["A"], alpha=0.2, s=12, zorder=1)
+
+    ax.plot(gap.index, gap.values, marker="o", color=GROUP_COLORS["A"], zorder=3)
+    ax.axhline(0, color="gray", linestyle=":", alpha=0.5)
+    ax.set_xlabel("Phase 2 block")
+    ax.set_ylabel("Accuracy gap (same − cross)")
+    ax.set_title(f"Listener accommodation ({format_condition(condition)})")
+    ax.set_ylim(-0.6, 0.8)
+    sns.despine(ax=ax)
+
+
 def panel_umap(ax, umap_df, condition=""):
     """UMAP projection colored by original group."""
     if umap_df.empty or "umap_x" not in umap_df.columns:
@@ -418,6 +454,136 @@ def panel_convergence_trajectory(ax, block_pw, condition=""):
     ax.set_title(f"Convergence trajectory ({format_condition(condition)})")
     ax.legend(fontsize=10)
     sns.despine(ax=ax)
+
+
+def panel_specificity_trajectory(ax, block_pw, condition=""):
+    """Group-specificity (within − between similarity) across both phases."""
+    if block_pw.empty:
+        ax.text(0.5, 0.5, "No block pairwise data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
+
+    within_data = block_pw[block_pw["sameGroup"] == 1]
+    between_data = block_pw[block_pw["sameGroup"] == 0]
+    if within_data.empty or between_data.empty:
+        ax.text(0.5, 0.5, "Need both within- and\nbetween-group pairs",
+                ha="center", va="center", transform=ax.transAxes)
+        ax.set_title(f"Specificity trajectory ({format_condition(condition)})")
+        sns.despine(ax=ax)
+        return
+
+    # Use continuous block numbering (Phase 1: 0-5, Phase 2: 6-11)
+    block_pw_cb = continuous_block(block_pw)
+    within_cb = block_pw_cb[block_pw_cb["sameGroup"] == 1]
+    between_cb = block_pw_cb[block_pw_cb["sameGroup"] == 0]
+
+    within_means = within_cb.groupby("block")["similarity"].mean()
+    between_means = between_cb.groupby("block")["similarity"].mean()
+    common_blocks = sorted(set(within_means.index) & set(between_means.index))
+    specificity = within_means[common_blocks] - between_means[common_blocks]
+
+    # Per-tangram specificity for individual points
+    within_by_tgt = within_cb.groupby(["block", "target"])["similarity"].mean()
+    between_by_tgt = between_cb.groupby(["block", "target"])["similarity"].mean()
+    common_idx = within_by_tgt.index.intersection(between_by_tgt.index)
+    if not common_idx.empty:
+        tgt_spec = within_by_tgt[common_idx] - between_by_tgt[common_idx]
+        tgt_spec = tgt_spec.reset_index()
+        tgt_spec.columns = ["block", "target", "specificity"]
+        jitter = np.random.default_rng(42).uniform(-0.15, 0.15, len(tgt_spec))
+        ax.scatter(tgt_spec["block"] + jitter, tgt_spec["specificity"],
+                   color=GROUP_COLORS["A"], alpha=0.2, s=12, zorder=1)
+
+    # SEM for the difference (propagated from within/between SEMs)
+    sems = []
+    for b in common_blocks:
+        w = within_cb[within_cb["block"] == b]["similarity"]
+        bw = between_cb[between_cb["block"] == b]["similarity"]
+        se = (w.sem()**2 + bw.sem()**2)**0.5 if len(w) > 1 and len(bw) > 1 else 0
+        sems.append(se)
+    sems = pd.Series(sems, index=common_blocks)
+
+    ax.fill_between(common_blocks, specificity.values - sems.values,
+                    specificity.values + sems.values,
+                    color=GROUP_COLORS["A"], alpha=0.15)
+    ax.plot(common_blocks, specificity.values, marker="o", color=GROUP_COLORS["A"],
+            zorder=3)
+    ax.axhline(0, color="gray", linestyle=":", alpha=0.5)
+    ax.set_ylabel("Group specificity\n(within − between sim)")
+    ax.set_title(f"Specificity trajectory ({format_condition(condition)})")
+    add_phase_boundary(ax)
+
+
+def plot_specificity_overlay(all_data, conditions, output_dir):
+    """Group-specificity trajectory with all conditions overlaid, dodged, condition-colored."""
+    block_pw = all_data["block_pw"]
+    if block_pw.empty:
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    dodge_width = 0.25  # offset per condition
+    n_cond = len(conditions)
+
+    for i, cond in enumerate(conditions):
+        cond_data = block_pw[block_pw["condition"] == cond]
+        if cond_data.empty:
+            continue
+
+        within_data = cond_data[cond_data["sameGroup"] == 1]
+        between_data = cond_data[cond_data["sameGroup"] == 0]
+        if within_data.empty or between_data.empty:
+            continue
+
+        cond_cb = continuous_block(cond_data)
+        within_cb = cond_cb[cond_cb["sameGroup"] == 1]
+        between_cb = cond_cb[cond_cb["sameGroup"] == 0]
+
+        within_means = within_cb.groupby("block")["similarity"].mean()
+        between_means = between_cb.groupby("block")["similarity"].mean()
+        common_blocks = sorted(set(within_means.index) & set(between_means.index))
+        if not common_blocks:
+            continue
+        specificity = within_means[common_blocks] - between_means[common_blocks]
+
+        # SEM for the difference
+        sems = []
+        for b in common_blocks:
+            w = within_cb[within_cb["block"] == b]["similarity"]
+            bw = between_cb[between_cb["block"] == b]["similarity"]
+            se = (w.sem()**2 + bw.sem()**2)**0.5 if len(w) > 1 and len(bw) > 1 else 0
+            sems.append(se)
+        sems = np.array(sems)
+
+        # Dodge x positions
+        offset = (i - (n_cond - 1) / 2) * dodge_width
+        x = np.array(common_blocks) + offset
+        color = CONDITION_COLORS.get(cond, "gray")
+
+        # Per-tangram individual points
+        within_by_tgt = within_cb.groupby(["block", "target"])["similarity"].mean()
+        between_by_tgt = between_cb.groupby(["block", "target"])["similarity"].mean()
+        common_idx = within_by_tgt.index.intersection(between_by_tgt.index)
+        if not common_idx.empty:
+            tgt_spec = within_by_tgt[common_idx] - between_by_tgt[common_idx]
+            tgt_spec = tgt_spec.reset_index()
+            tgt_spec.columns = ["block", "target", "specificity"]
+            jitter = np.random.default_rng(42 + i).uniform(-0.08, 0.08, len(tgt_spec))
+            ax.scatter(tgt_spec["block"] + offset + jitter, tgt_spec["specificity"],
+                       color=color, alpha=0.15, s=10, zorder=1)
+
+        ax.fill_between(x, specificity.values - sems, specificity.values + sems,
+                        color=color, alpha=0.12)
+        ax.plot(x, specificity.values, marker="o", color=color, zorder=3,
+                label=format_condition(cond), markersize=5)
+
+    ax.axhline(0, color="gray", linestyle=":", alpha=0.5)
+    ax.set_ylabel("Group specificity\n(within − between sim)")
+    ax.set_title("Group-specificity trajectory")
+    ax.legend(frameon=False)
+    add_phase_boundary(ax)
+
+    save_fig(fig, output_dir / "specificity_overlay.png")
+    print(f"  Saved specificity_overlay.png")
 
 
 def panel_term_retention(ax, term_retention, condition=""):
@@ -825,6 +991,40 @@ def print_summary(data, conditions):
             vals = " ".join(f"b{int(b)}={v:.3f}" for b, v in block_means.items())
             print(f"  {cond}: {vals}")
 
+    # Group-specificity trajectory
+    if not block_pw.empty:
+        bp = block_pw.copy()
+        if "condition" not in bp.columns:
+            bp = bp.merge(games[["gameId", "condition"]], on="gameId", how="left")
+        has_within = not bp[bp["sameGroup"] == 1].empty
+        if has_within:
+            print("\n--- Group-specificity trajectory (within − between sim by block) ---")
+            for cond in conditions:
+                cond_bp = continuous_block(bp[bp["condition"] == cond])
+                within_means = cond_bp[cond_bp["sameGroup"] == 1].groupby("block")["similarity"].mean()
+                between_means = cond_bp[cond_bp["sameGroup"] == 0].groupby("block")["similarity"].mean()
+                common = sorted(set(within_means.index) & set(between_means.index))
+                if common:
+                    gs = within_means[common] - between_means[common]
+                    vals = " ".join(f"b{int(b)}={v:.3f}" for b, v in gs.items())
+                    print(f"  {cond}: {vals}")
+        else:
+            print("\n--- Group-specificity trajectory: skipped (no within-group pairs in block data) ---")
+
+    # Listener accommodation gap
+    print("\n--- Listener accommodation (same − cross accuracy by Phase 2 block) ---")
+    for cond in conditions:
+        cond_trials = trials[trials["condition"] == cond]
+        p2 = cond_trials[(cond_trials["phaseNum"] == 2) & (cond_trials["role"] == "listener")]
+        p2 = continuous_block(p2)
+        p2["correct"] = p2["clickedCorrect"].astype(float)
+        p2["match"] = (p2["originalGroup"] == p2["currentGroup"])
+        block_acc = p2.groupby(["block", "match"])["correct"].mean().unstack("match")
+        if True in block_acc.columns and False in block_acc.columns:
+            gap = block_acc[True] - block_acc[False]
+            vals = " ".join(f"b{int(b)}={v:.3f}" for b, v in gap.items())
+            print(f"  {cond}: {vals}")
+
     # Term retention
     term_retention = data.get("term_retention", pd.DataFrame())
     if not term_retention.empty:
@@ -1044,6 +1244,7 @@ def main():
         (panel_group_specificity, "pairwise", "group_specificity.png"),
         (panel_first_phrase_specificity, "first_phrase_pw", "first_phrase.png"),
         (panel_convergence_trajectory, "block_pw", "convergence.png"),
+        (panel_specificity_trajectory, "block_pw", "specificity_trajectory.png"),
         (panel_term_retention, "term_retention", "term_retention.png"),
         (panel_alternative_rate, "alt_structures", "alternative_rate.png"),
         (panel_length_retention, "length_retention", "length_retention.png"),
@@ -1053,12 +1254,17 @@ def main():
         (panel_resolution_rate, "term_dominance", "resolution_rate.png"),
         (panel_hedging_trajectory, "hedging_trajectory", "hedging_trajectory.png"),
         (panel_ingroup_outgroup, "trials", "ingroup_outgroup.png"),
+        (panel_listener_accommodation, "trials", "listener_accommodation.png"),
         (panel_umap, "umap_df", "umap.png"),
     ]
 
     print("\n3-panel plots:")
     for panel_fn, data_key, filename in panels:
         plot_three_panel(panel_fn, all_data, data_key, conditions_list, output_dir, filename)
+
+    # Overlay plots (all conditions on one axis)
+    print("\nOverlay plots:")
+    plot_specificity_overlay(all_data, conditions_list, output_dir)
 
     # Social guessing (social_mixed only, single panel)
     social = all_data["social"]
