@@ -67,7 +67,7 @@ test.describe.serial('Timing: Transition Stage Timing (TEST_PLAN 6.3)', () => {
       await playBlock(pages, ROUNDS_PER_BLOCK);
     }
 
-    // Wait for the phase_2_transition stage to appear
+    // Wait for the Phase 2 transition stage to appear
     const transitionReached = await waitForStage(pages[0], 'Phase 2 transition', 60_000);
     expect(transitionReached).toBe(true);
 

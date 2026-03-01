@@ -341,7 +341,7 @@ export async function playBlock(
  * Handle transition screen (click Continue for all).
  *
  * After the last round of a phase, the flow is:
- *   Feedback → (all submit or timer) → phase_2_transition/bonus_info → (all submit or timer) → next stage
+ *   Feedback → (all submit or timer) → Phase 2 transition/Bonus info → (all submit or timer) → next stage
  *
  * This function handles BOTH clicks:
  * 1. Submit any pending Feedback stage

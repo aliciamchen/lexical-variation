@@ -652,11 +652,11 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
 
     // Play remaining Phase 2 rounds. Instead of a fixed count (which can be
     // off due to round advancement during kicks/reshuffles), play until the
-    // game reaches bonus_info or exits Phase 2.
+    // game reaches Bonus info or exits Phase 2.
     const maxRounds = PHASE_2_BLOCKS * ROUNDS_PER_BLOCK;
     const allGroups = Object.keys(groupPageIndices);
     for (let r = 0; r < maxRounds; r++) {
-      // Check if we've reached the end (bonus_info or game over)
+      // Check if we've reached the end (Bonus info or game over)
       const monitorInfo = await getPlayerInfo(active[0]);
       if (!monitorInfo) break; // Player left game
       if (monitorInfo.stageName === 'Bonus info') break;
@@ -689,10 +689,10 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
       await clickContinue(page, 5000);
     }
 
-    // Wait for bonus_info stage
+    // Wait for Bonus info stage
     await waitForStage(active[0], 'Bonus info', 120_000);
 
-    // Click Continue for each player after they reach bonus_info
+    // Click Continue for each player after they reach Bonus info
     for (const page of active) {
       await waitForStage(page, 'Bonus info', 30_000);
       await clickContinue(page, 5000);

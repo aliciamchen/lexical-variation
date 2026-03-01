@@ -4,7 +4,7 @@
  * In social_mixed, social guessing feedback is shown per-trial during Phase 2.
  * Set up a social_mixed game, play into Phase 2 with social guessing. Verify
  * that listeners see "identity guess" feedback and speakers see "recognized you"
- * feedback during gameplay. After the game ends (bonus_info stage), verify the
+ * feedback during gameplay. After the game ends (Bonus info stage), verify the
  * social guessing summary IS shown (text like "Social Guessing Summary").
  */
 import { test, expect } from '@playwright/test';
@@ -127,7 +127,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
     }
   });
 
-  test('bonus_info stage shows Social Guessing Summary', async () => {
+  test('Bonus info stage shows Social Guessing Summary', async () => {
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
@@ -136,7 +136,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
       await clickContinue(page, 5000);
     }
 
-    // Wait for bonus_info stage
+    // Wait for Bonus info stage
     await waitForStage(active[0], 'Bonus info', 120_000);
 
     // Verify the bonus info stage displays the social guessing summary.
@@ -159,7 +159,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
 
     expect(
       foundSocialSummary,
-      'Social Guessing Summary should be shown on the bonus_info stage',
+      'Social Guessing Summary should be shown on the Bonus info stage',
     ).toBe(true);
 
     // Also verify that specific summary elements are present:
@@ -172,7 +172,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
       'Bonus info should contain social guessing statistics',
     ).toBe(true);
 
-    // Click Continue for each player after they reach bonus_info
+    // Click Continue for each player after they reach Bonus info
     for (const page of active) {
       await waitForStage(page, 'Bonus info', 30_000);
       await clickContinue(page, 5000);

@@ -200,7 +200,7 @@ test.describe.serial('Condition-Specific: refer_separated (TEST_PLAN 8.1)', () =
       await clickContinue(page, 5000);
     }
 
-    // Wait for each player to reach bonus_info, then click Continue
+    // Wait for each player to reach Bonus info, then click Continue
     await waitForStage(active[0], 'Bonus info', 120_000);
     for (const page of active) {
       await waitForStage(page, 'Bonus info', 30_000);

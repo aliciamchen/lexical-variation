@@ -144,19 +144,19 @@ test.describe.serial('Happy Path: refer_separated', () => {
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
-    // The game flow after Phase 2: Feedback → bonus_info → exit survey.
+    // The game flow after Phase 2: Feedback → Bonus info → exit survey.
     // There may be a timing gap from the previous test, so the game might already
-    // be past Feedback or even past bonus_info.
+    // be past Feedback or even past Bonus info.
 
-    // Click Continue to submit any pending stage (Feedback or bonus_info)
+    // Click Continue to submit any pending stage (Feedback or Bonus info)
     for (const page of active) {
       await clickContinue(page, 5000);
     }
 
-    // Check current state - might be at bonus_info, past it, or still in Feedback
+    // Check current state - might be at Bonus info, past it, or still in Feedback
     const info = await getPlayerInfo(active[0]);
     if (info && info.stageName !== 'Bonus info') {
-      // Wait for bonus_info to appear (may take up to FEEDBACK_DURATION if still in Feedback)
+      // Wait for Bonus info to appear (may take up to FEEDBACK_DURATION if still in Feedback)
       const found = await waitForStage(active[0], 'Bonus info', 30_000);
       if (found) {
         const content = await active[0].textContent('body');
@@ -167,7 +167,7 @@ test.describe.serial('Happy Path: refer_separated', () => {
       // If not found, the game may have already ended (which is OK)
     }
 
-    // Click Continue on bonus_info for all players (if they're still there)
+    // Click Continue on Bonus info for all players (if they're still there)
     for (const page of active) {
       await clickContinue(page, 5000);
     }

@@ -199,7 +199,7 @@ test.describe.serial('Happy Path: social_mixed', () => {
       await clickContinue(page, 5000);
     }
 
-    // Wait for bonus_info stage
+    // Wait for Bonus info stage
     await waitForStage(active[0], 'Bonus info', 120_000);
 
     const content = await active[0].textContent('body');
@@ -210,7 +210,7 @@ test.describe.serial('Happy Path: social_mixed', () => {
       content?.includes('End of Game'),
     ).toBe(true);
 
-    // Click Continue for each player after they reach bonus_info
+    // Click Continue for each player after they reach Bonus info
     for (const page of active) {
       await waitForStage(page, 'Bonus info', 30_000);
       await clickContinue(page, 5000);

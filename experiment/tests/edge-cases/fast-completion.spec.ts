@@ -98,7 +98,7 @@ test.describe.serial('Edge Case: Fast Completion (TEST_PLAN 9.1)', () => {
     const active = await getActivePlayers(pages);
     expect(active.length).toBe(9);
 
-    // Handle the bonus_info transition (submits last Feedback, waits for bonus_info, clicks Continue)
+    // Handle the Bonus info transition (submits last Feedback, waits for Bonus info, clicks Continue)
     await handleTransition(pages);
 
     // Wait for Phase 2 to fully end and exit survey to load
