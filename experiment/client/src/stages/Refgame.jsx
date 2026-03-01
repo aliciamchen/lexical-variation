@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useStageTimer } from "@empirica/core/player/classic/react";
 import { Tangram } from "../components/Tangram.jsx";
 import { Button } from "../components/Button.jsx";
 import { PHASE_1_BLOCKS, PHASE_2_BLOCKS, MAX_IDLE_ROUNDS } from "../constants";
@@ -35,6 +36,27 @@ export function Refgame(props) {
   const isListener = player.round.get("role") === "listener";
   const simultaneousMode =
     isSocialMixed && isListener && stage.get("name") === "Selection";
+
+  // Auto-commit local selections when timer expires (safety net for simultaneous mode)
+  const timer = useStageTimer();
+  const remainingSeconds = timer?.remaining ? Math.round(timer.remaining / 1000) : null;
+
+  useEffect(() => {
+    if (
+      simultaneousMode &&
+      remainingSeconds !== null &&
+      remainingSeconds <= 1 &&
+      !player.round.get("clicked") &&
+      (localTangramSelection || localSocialGuess)
+    ) {
+      if (localTangramSelection) {
+        player.round.set("clicked", localTangramSelection);
+      }
+      if (localSocialGuess) {
+        player.round.set("social_guess", localSocialGuess);
+      }
+    }
+  }, [remainingSeconds]);
 
   let tangramsToRender;
   if (shuffled_tangrams) {
