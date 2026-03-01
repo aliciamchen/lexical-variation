@@ -67,7 +67,11 @@ export function ExitSurvey({ next }) {
 
   if (submitted) {
     return (
-      <div className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8" data-testid="exit-survey" data-ended-reason={endedReason || "game ended"}>
+      <div
+        className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
+        data-testid="exit-survey"
+        data-ended-reason={endedReason || "game ended"}
+      >
         <Alert title="Thank you!">
           <p>
             You earned <strong>{score} points</strong> for a bonus of{" "}
@@ -79,8 +83,8 @@ export function ExitSurvey({ next }) {
             <strong>${(BASE_PAY + bonus).toFixed(2)}</strong>.
           </p>
           <p className="mt-2">
-            Please submit the following code on Prolific to receive your payment:{" "}
-            <strong>C2I8XDMC</strong>.
+            Please submit the following code on Prolific to receive your
+            payment: <strong>C2I8XDMC</strong>.
           </p>
         </Alert>
         <div className="mt-8">
@@ -94,30 +98,33 @@ export function ExitSurvey({ next }) {
   let headerAlert;
   if (isDisbanded) {
     const payAmount = partialPay != null ? partialPay.toFixed(2) : "0.00";
-    const basePayAmount = partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
+    const basePayAmount =
+      partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
     const bonusAmount = partialBonus != null ? partialBonus.toFixed(2) : "0.00";
-    const timeMsg = minutesSpent != null ? `${minutesSpent} minutes` : "your time";
+    const timeMsg =
+      minutesSpent != null ? `${minutesSpent} minutes` : "your time";
 
     let explanation;
     if (endedReason === "group disbanded") {
       explanation = (
         <p>
-          Unfortunately, too many members of your original group left the game, and we were
-          unable to continue the experiment with the remaining players.
+          Unfortunately, too many members of your original group left the game,
+          and we were unable to continue the experiment with the remaining
+          players.
         </p>
       );
     } else if (endedReason === "low accuracy") {
       explanation = (
         <p>
-          Unfortunately, your group's accuracy during Phase 1 was below the threshold required
-          to continue to Phase 2.
+          Unfortunately, your group's accuracy during Phase 1 was below the
+          threshold required to continue to Phase 2.
         </p>
       );
     } else {
       explanation = (
         <p>
-          Unfortunately, too many groups did not meet the accuracy threshold during Phase 1,
-          and we were unable to continue the experiment.
+          Unfortunately, too many groups did not meet the accuracy threshold
+          during Phase 1, and we were unable to continue the experiment.
         </p>
       );
     }
@@ -126,12 +133,15 @@ export function ExitSurvey({ next }) {
       <Alert title="Game Ended Early">
         {explanation}
         <p className="mt-2">
-          This is not your fault - we apologize for the inconvenience. You will receive
-          compensation of <strong>${payAmount}</strong> (${basePayAmount} base + ${bonusAmount} bonus)
-          for {timeMsg} spent.
+          This is not your fault - we apologize for the inconvenience. You will
+          receive compensation of <strong>${payAmount}</strong> ($
+          {basePayAmount} base + ${bonusAmount} bonus) for {timeMsg} spent.
         </p>
         <p className="mt-2">
           Please complete this survey to receive your Prolific completion code.
+          When you submit the code, Prolific will ask you to return your study.
+          This is so that you don't get penalized; we will still send you your
+          pay.
         </p>
       </Alert>
     );
@@ -155,7 +165,11 @@ export function ExitSurvey({ next }) {
   }
 
   return (
-    <div className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8" data-testid="exit-survey" data-ended-reason={endedReason || "game ended"}>
+    <div
+      className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
+      data-testid="exit-survey"
+      data-ended-reason={endedReason || "game ended"}
+    >
       {headerAlert}
 
       <form
@@ -211,7 +225,9 @@ export function ExitSurvey({ next }) {
                       <option value="female">Female</option>
                       <option value="non-binary">Non-binary</option>
                       <option value="other">Other</option>
-                      <option value="prefer-not-to-say">Prefer not to say</option>
+                      <option value="prefer-not-to-say">
+                        Prefer not to say
+                      </option>
                     </select>
                   </div>
                 </div>
