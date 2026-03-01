@@ -1,6 +1,6 @@
 import { Page } from '@playwright/test';
 import { GAME_CONTAINER, TASK, SORRY_SCREEN, QUIZ_FAILED_SCREEN, EXIT_SURVEY, TANGRAM_ITEMS, SIMULTANEOUS_SUBMIT } from './selectors';
-import { SELECTION_DURATION, FEEDBACK_DURATION } from './constants';
+import { SELECTION_DURATION, PHASE2_SELECTION_DURATION, FEEDBACK_DURATION } from './constants';
 
 // ============ TYPES ============
 
@@ -30,6 +30,8 @@ export interface CompleteRoundOptions {
   wrongGroups?: string[];
   doSocialGuess?: boolean;
   message?: string;
+  /** Listener indices that make selections but do NOT click Submit — tests auto-commit on timer expiry */
+  autocommitIndices?: number[];
 }
 
 // ============ PLAYER INFO ============
@@ -206,7 +208,7 @@ export async function clickContinue(page: Page, timeout = 1000): Promise<boolean
  * Handles: Continue clicks → speakers send → listeners click → social guess
  */
 export async function playRound(pages: Page[], options: CompleteRoundOptions = {}): Promise<void> {
-  const { skipIndices = [], wrongGroups = [], doSocialGuess = false, message = 'round message' } = options;
+  const { skipIndices = [], wrongGroups = [], doSocialGuess = false, message = 'round message', autocommitIndices = [] } = options;
 
   // Find a non-skipped active page for monitoring (skip sorry-screen pages)
   let monitorPage = pages[0];
@@ -266,6 +268,8 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
       if (doSocialGuess) {
         await pages[i].waitForTimeout(500);
         await makeSocialGuess(pages[i], i % 2 === 0 ? 'same' : 'different');
+        // Autocommit indices: skip the Submit click so the timer expiry triggers auto-commit
+        if (autocommitIndices.includes(i)) continue;
         // Click the simultaneous Submit button to commit both selections
         try {
           await pages[i].locator(SIMULTANEOUS_SUBMIT).click({ timeout: 2000 });
@@ -277,9 +281,10 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
   }
   await pages[0]?.waitForTimeout(500);
 
-  // When players are skipped, the round won't advance until SELECTION_DURATION
-  // timer expires (skipped players never submit). Wait for the full round cycle.
-  if (skipIndices.length > 0) {
+  // When players are skipped or autocommitting, the round won't advance until
+  // the stage timer expires. Wait for the full round cycle.
+  const needsTimerExpiry = skipIndices.length > 0 || autocommitIndices.length > 0;
+  if (needsTimerExpiry) {
     let monitorPage: Page | null = null;
     for (let i = 0; i < pages.length; i++) {
       if (skipIndices.includes(i)) continue;
@@ -291,11 +296,17 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
     }
 
     if (monitorPage) {
-      // Wait for Feedback stage (SELECTION_DURATION timer must expire first)
+      // Determine which timer applies (Phase 2 uses shorter duration)
+      const monitorInfo = await getPlayerInfo(monitorPage);
+      const selectionTimeout = monitorInfo?.phase === 2
+        ? PHASE2_SELECTION_DURATION
+        : SELECTION_DURATION;
+
+      // Wait for Feedback stage (selection timer must expire first)
       const reachedFeedback = await waitForStage(
         monitorPage,
         'Feedback',
-        (SELECTION_DURATION + 15) * 1000,
+        (selectionTimeout + 15) * 1000,
       );
 
       if (reachedFeedback) {

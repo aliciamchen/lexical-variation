@@ -550,7 +550,39 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     await expectOneSpeakerPerGroup(active);
   });
 
-  // ─── Test 16: Complete remaining Phase 2 rounds with social guessing ───
+  // ─── Test 16: Auto-commit on timer expiry ───
+  test('Phase 2: auto-commit saves selections when timer expires without Submit', async () => {
+    test.slow();
+    const active = await getActivePlayers(gamePages);
+    expect(active.length).toBe(5);
+
+    // Find listener indices (within the active pages array) for autocommit
+    const autocommitIndices: number[] = [];
+    for (let i = 0; i < active.length; i++) {
+      const info = await getPlayerInfo(active[i]);
+      if (info?.role === 'listener') {
+        autocommitIndices.push(i);
+        break; // Just one listener is enough to test
+      }
+    }
+    expect(autocommitIndices.length).toBe(1);
+
+    // Play a round where the autocommit listener makes selections but does NOT
+    // click Submit. The timer will expire and auto-commit should save the selections.
+    await playRound(active, { doSocialGuess: true, autocommitIndices });
+
+    // Verify: the autocommit listener should see feedback about their selection
+    // (not "You did not respond in time"), proving auto-commit saved their click.
+    const autocommitPage = active[autocommitIndices[0]];
+    await waitForStage(autocommitPage, 'Feedback', 10_000);
+    const feedbackText = await autocommitPage.locator('.feedbackIndicator').textContent();
+    expect(feedbackText).not.toBeNull();
+    // Auto-committed selection means they get real feedback (correct/incorrect + social guess),
+    // NOT the "did not respond in time" message
+    expect(feedbackText).not.toContain('did not respond in time');
+  });
+
+  // ─── Test 17: Complete remaining Phase 2 rounds with social guessing ───
   test('complete remaining Phase 2 rounds with social guessing (5 players)', async () => {
     test.slow();
     let active = await getActivePlayers(gamePages);
@@ -584,7 +616,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     }
   });
 
-  // ─── Test 17: Bonus info + exit survey for 5 survivors ───
+  // ─── Test 18: Bonus info + exit survey for 5 survivors ───
   test('bonus info and exit survey for 5 survivors', async () => {
     test.slow();
     const active = await getActivePlayers(gamePages);
@@ -620,7 +652,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     }
   });
 
-  // ─── Test 18: Verify lobby overflow players are not in the game ───
+  // ─── Test 19: Verify lobby overflow players are not in the game ───
   test('3 overflow players are not in the game', async () => {
     // Overflow players may land on different screens depending on when they tried
     // to join:
@@ -647,15 +679,16 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     }
   });
 
-  // ─── Test 19: Final accounting — verify player counts ───
+  // ─── Test 20: Final accounting — verify player counts ───
   test('final accounting: all 15 players accounted for', async () => {
     // Individual outcomes were verified in their respective tests:
     //   - Test 3: 3 quiz failures (no code, asked to return study)
     //   - Test 8: speaker kicked with "player timeout"
     //   - Test 10: listener kicked with "player timeout"
     //   - Test 15: Phase 2 idle kicked + 1 disbanded with CFTYDMIY
-    //   - Test 17: 5 survivors completed exit survey with C2I8XDMC code
-    //   - Test 18: 3 lobby overflow not in game
+    //   - Test 16: auto-commit verified on timer expiry
+    //   - Test 18: 5 survivors completed exit survey with C2I8XDMC code
+    //   - Test 19: 3 lobby overflow not in game
     //
     // After 12+ minutes, sorry-screen DOM elements may have lost state
     // (Empirica client-side state can change). Verify counts only.
