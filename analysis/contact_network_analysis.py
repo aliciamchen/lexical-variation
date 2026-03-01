@@ -98,12 +98,12 @@ m["realSenderName"] = m["senderId"].map(NAME_MAP)
 # ── Tangram names for readability ─────────────────────────────────────────
 
 TANGRAM_NAMES = {
-    "page1-129": "T1",
-    "page3-121": "T2",
-    "page4-157": "T3",
+    "page3-121": "T1",
+    "page4-157": "T2",
+    "page7-26":  "T3",
     "page5-64":  "T4",
     "page6-149": "T5",
-    "page7-26": "T6",
+    "page3-193": "T6",
 }
 
 # ══════════════════════════════════════════════════════════════════════════

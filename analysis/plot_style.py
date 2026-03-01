@@ -21,6 +21,8 @@ CONDITION_COLORS = {
     "social_mixed": "#619CFF",
 }
 
+CONDITION_ORDER = ["refer_separated", "refer_mixed", "social_mixed"]
+
 GROUP_COLORS = {"A": "#F8766D", "B": "#00BA38", "C": "#619CFF"}
 GROUP_ORDER = ["A", "B", "C"]
 

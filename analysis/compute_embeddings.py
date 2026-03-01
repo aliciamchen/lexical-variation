@@ -128,7 +128,8 @@ def compute_phase_change_similarities(
 ) -> pd.DataFrame:
     """
     For each participant x tangram, compute cosine similarity between their
-    final Phase 1 description and final Phase 2 description.
+    final Phase 1 description and (a) final Phase 2 description, and
+    (b) first Phase 2 description.
     """
     df = utterances.copy()
     df["embedding_idx"] = range(len(df))
@@ -148,13 +149,16 @@ def compute_phase_change_similarities(
         if phase1_data.empty or phase2_data.empty:
             continue
 
-        # Final description in each phase (highest blockNum)
+        # Final description in Phase 1, first and final in Phase 2
         final_p1 = phase1_data.loc[phase1_data["blockNum"].idxmax()]
+        first_p2 = phase2_data.loc[phase2_data["blockNum"].idxmin()]
         final_p2 = phase2_data.loc[phase2_data["blockNum"].idxmax()]
 
-        emb1 = embeddings[int(final_p1["embedding_idx"])]
-        emb2 = embeddings[int(final_p2["embedding_idx"])]
-        sim = model.similarity(emb1, emb2).item()
+        emb_p1 = embeddings[int(final_p1["embedding_idx"])]
+        emb_p2_first = embeddings[int(first_p2["embedding_idx"])]
+        emb_p2_final = embeddings[int(final_p2["embedding_idx"])]
+        sim_final = model.similarity(emb_p1, emb_p2_final).item()
+        sim_early = model.similarity(emb_p1, emb_p2_first).item()
 
         # Get condition from games df
         condition = games.loc[games["gameId"] == game, "condition"].values
@@ -165,7 +169,8 @@ def compute_phase_change_similarities(
             "playerId": player,
             "originalGroup": final_p1.get("originalGroup", ""),
             "target": target,
-            "simPhase1Phase2": sim,
+            "simPhase1Phase2": sim_final,
+            "simP1FinalP2Early": sim_early,
             "condition": condition,
         })
 
@@ -559,90 +564,6 @@ def compute_cross_group_borrowing(
     return pd.DataFrame(rows)
 
 
-def compute_audience_design(
-    utterances: pd.DataFrame,
-    trials: pd.DataFrame,
-    term_retention: pd.DataFrame,
-    games: pd.DataFrame,
-) -> pd.DataFrame:
-    """
-    For each Phase 2 speaker utterance, classify the audience composition
-    (all_same / mixed / all_different) and measure description length and
-    term retention by audience type.
-    """
-    if trials.empty:
-        return pd.DataFrame()
-
-    game_conditions = games.set_index("gameId")["condition"].to_dict()
-
-    p2_utt = utterances[utterances["phaseNum"] == 2].copy()
-    p2_utt["blockNum"] = p2_utt["blockNum"].astype(int)
-
-    # Speaker trials: link (gameId, playerId, blockNum, target) → roundId
-    # currentGroup already exists in utterances, so only pull roundId from trials
-    speaker_trials = trials[trials["role"] == "speaker"][
-        ["gameId", "playerId", "blockNum", "target", "roundId"]
-    ].copy()
-    speaker_trials["blockNum"] = speaker_trials["blockNum"].astype(int)
-
-    merged = p2_utt.merge(
-        speaker_trials,
-        on=["gameId", "playerId", "blockNum", "target"],
-        how="inner",
-    )
-
-    # Listener trials: for each (gameId, roundId, currentGroup) find listeners
-    listener_trials = trials[trials["role"] == "listener"][
-        ["gameId", "roundId", "currentGroup", "playerId", "originalGroup"]
-    ].rename(columns={"playerId": "listenerId", "originalGroup": "listenerOriginalGroup"})
-
-    rows = []
-    for _, row in merged.iterrows():
-        listeners = listener_trials[
-            (listener_trials["gameId"] == row["gameId"]) &
-            (listener_trials["roundId"] == row["roundId"]) &
-            (listener_trials["currentGroup"] == row["currentGroup"])
-        ]
-        speaker_orig = row["originalGroup"]
-        n_same = (listeners["listenerOriginalGroup"] == speaker_orig).sum()
-        n_diff = (listeners["listenerOriginalGroup"] != speaker_orig).sum()
-
-        if n_diff == 0:
-            audience_type = "all_same"
-        elif n_same == 0:
-            audience_type = "all_different"
-        else:
-            audience_type = "mixed"
-
-        rows.append({
-            "gameId": row["gameId"],
-            "playerId": row["playerId"],
-            "originalGroup": speaker_orig,
-            "currentGroup": row["currentGroup"],
-            "target": row["target"],
-            "blockNum": row["blockNum"],
-            "uttLength": row["uttLength"],
-            "nSameGroupListeners": int(n_same),
-            "nDiffGroupListeners": int(n_diff),
-            "audienceType": audience_type,
-            "condition": game_conditions.get(row["gameId"], ""),
-        })
-
-    result = pd.DataFrame(rows)
-
-    # Left-join term retention
-    if not result.empty and not term_retention.empty:
-        tr = term_retention.copy()
-        tr["blockNum"] = tr["blockNum"].astype(int)
-        result = result.merge(
-            tr[["gameId", "playerId", "target", "blockNum", "retention"]],
-            on=["gameId", "playerId", "target", "blockNum"],
-            how="left",
-        )
-
-    return result
-
-
 def compute_term_dominance(
     utterances: pd.DataFrame,
     games: pd.DataFrame,
@@ -769,6 +690,12 @@ def get_window_utterances(
                 (game_data["phaseNum"] == 1) &
                 (game_data["blockNum"] >= min_block)
             ]
+        elif window == "phase2_early":
+            # First 3 blocks of Phase 2
+            filtered = game_data[
+                (game_data["phaseNum"] == 2) &
+                (game_data["blockNum"] < 3)
+            ]
         elif window == "phase2_final":
             # Last 3 blocks of Phase 2
             # blockNum is 0-indexed within phase: 0 to p2_blocks-1
@@ -837,6 +764,18 @@ def main():
         pairwise_p1 = pd.DataFrame()
         print("  Phase 1 final: no data")
 
+    print("Computing pairwise similarities for Phase 2 early window...")
+    p2e_utts = get_window_utterances(utterances, games, "phase2_early")
+    if not p2e_utts.empty:
+        p2e_embeddings = model.encode(p2e_utts["utterance"].fillna("").tolist())
+        pairwise_p2e = compute_pairwise_similarities(
+            p2e_utts, p2e_embeddings, model, "phase2_early"
+        )
+        print(f"  Phase 2 early: {len(pairwise_p2e)} pairs")
+    else:
+        pairwise_p2e = pd.DataFrame()
+        print("  Phase 2 early: no data")
+
     print("Computing pairwise similarities for Phase 2 final window...")
     p2_utts = get_window_utterances(utterances, games, "phase2_final")
     if not p2_utts.empty:
@@ -849,7 +788,7 @@ def main():
         pairwise_p2 = pd.DataFrame()
         print("  Phase 2 final: no data")
 
-    pairwise = pd.concat([pairwise_p1, pairwise_p2], ignore_index=True)
+    pairwise = pd.concat([pairwise_p1, pairwise_p2e, pairwise_p2], ignore_index=True)
     pairwise.to_csv(output_dir / "pairwise_similarities.csv", index=False)
     print(f"  Total pairwise: {len(pairwise)} rows")
 
@@ -860,6 +799,10 @@ def main():
         fp_p1 = compute_first_phrase_pairwise(p1_utts, model, "phase1_final")
         fp_frames.append(fp_p1)
         print(f"  Phase 1 final: {len(fp_p1)} pairs")
+    if not p2e_utts.empty:
+        fp_p2e = compute_first_phrase_pairwise(p2e_utts, model, "phase2_early")
+        fp_frames.append(fp_p2e)
+        print(f"  Phase 2 early: {len(fp_p2e)} pairs")
     if not p2_utts.empty:
         fp_p2 = compute_first_phrase_pairwise(p2_utts, model, "phase2_final")
         fp_frames.append(fp_p2)
@@ -915,13 +858,7 @@ def main():
     borrowing.to_csv(output_dir / "cross_group_borrowing.csv", index=False)
     print(f"  Cross-group borrowing: {len(borrowing)} rows")
 
-    # --- Follow-up analysis 5: Audience design ---
-    print("Computing audience design...")
-    audience = compute_audience_design(utterances, trials, term_retention, games)
-    audience.to_csv(output_dir / "audience_design.csv", index=False)
-    print(f"  Audience design: {len(audience)} rows")
-
-    # --- Follow-up analysis 6: Term dominance ---
+    # --- Follow-up analysis 5: Term dominance ---
     print("Computing term dominance...")
     term_dominance = compute_term_dominance(utterances, games)
     term_dominance.to_csv(output_dir / "term_dominance.csv", index=False)

@@ -1,8 +1,8 @@
 """
 Pilot data analysis and visualization.
 
-Auto-discovers conditions from games.csv, generates per-condition panel plots,
-cross-condition comparisons, and prints descriptive statistics.
+Auto-discovers conditions from games.csv, generates 3-panel comparison plots
+(one panel per condition, shared y-axis) and prints descriptive statistics.
 
 Usage:
     uv run python analysis/pilot_analysis.py
@@ -18,7 +18,6 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -26,6 +25,7 @@ import seaborn as sns
 from plot_style import (
     apply_style,
     CONDITION_COLORS,
+    CONDITION_ORDER,
     GROUP_COLORS,
     GROUP_ORDER,
     PHASE_BOUNDARY,
@@ -56,7 +56,8 @@ def load_data(data_dir: Path, game_ids: list[str]):
     trials = pd.read_csv(data_dir / "trials.csv")
     messages = pd.read_csv(data_dir / "messages.csv")
     utterances = pd.read_csv(data_dir / "speaker_utterances.csv")
-    adjacent = pd.read_csv(data_dir / "adjacent_similarities.csv")
+    adjacent_path = data_dir / "adjacent_similarities.csv"
+    adjacent = pd.read_csv(adjacent_path) if adjacent_path.exists() else pd.DataFrame()
 
     pairwise_path = data_dir / "pairwise_similarities.csv"
     pairwise = pd.read_csv(pairwise_path) if pairwise_path.exists() else pd.DataFrame()
@@ -91,9 +92,6 @@ def load_data(data_dir: Path, game_ids: list[str]):
     borrowing_path = data_dir / "cross_group_borrowing.csv"
     cross_group_borrowing = pd.read_csv(borrowing_path) if borrowing_path.exists() else pd.DataFrame()
 
-    audience_design_path = data_dir / "audience_design.csv"
-    audience_design = pd.read_csv(audience_design_path) if audience_design_path.exists() else pd.DataFrame()
-
     term_dominance_path = data_dir / "term_dominance.csv"
     term_dominance = pd.read_csv(term_dominance_path) if term_dominance_path.exists() else pd.DataFrame()
 
@@ -124,7 +122,6 @@ def load_data(data_dir: Path, game_ids: list[str]):
         "length_retention": _filter(length_retention),
         "social_guess_retention": _filter(social_guess_retention),
         "cross_group_borrowing": _filter(cross_group_borrowing),
-        "audience_design": _filter(audience_design),
         "term_dominance": _filter(term_dominance),
         "hedging_trajectory": _filter(hedging_trajectory),
     }
@@ -226,6 +223,29 @@ def panel_phase_change(ax, phase_change, condition=""):
     sns.despine(ax=ax)
 
 
+def panel_phase_change_early(ax, phase_change, condition=""):
+    """End-of-Phase-1 vs start-of-Phase-2 similarity (boxplot + strip)."""
+    col = "simP1FinalP2Early"
+    if col not in phase_change.columns:
+        ax.text(0.5, 0.5, "No early phase-change data\n(re-run embeddings)",
+                ha="center", va="center", transform=ax.transAxes)
+        return
+    sns.boxplot(
+        data=phase_change, x="originalGroup", y=col,
+        order=GROUP_ORDER, palette=GROUP_COLORS, width=0.5, ax=ax,
+    )
+    sns.stripplot(
+        data=phase_change, x="originalGroup", y=col,
+        order=GROUP_ORDER, color="black", alpha=0.4, size=3,
+        jitter=True, ax=ax,
+    )
+    ax.set_xlabel("Original group")
+    ax.set_ylabel("Cosine similarity")
+    ax.set_title(f"Phase 1 end → 2 start stability ({format_condition(condition)})")
+    ax.set_ylim(0, 1.05)
+    sns.despine(ax=ax)
+
+
 def panel_ingroup_outgroup(ax, trials, condition=""):
     """Phase 2 listener accuracy by same/different original group."""
     p2_listeners = continuous_block(
@@ -293,19 +313,27 @@ def panel_group_specificity(ax, pairwise, condition=""):
                 transform=ax.transAxes)
         return
 
+    windows = [
+        ("phase1_final", "Phase 1\n(final 3)"),
+        ("phase2_early", "Phase 2\n(first 3)"),
+        ("phase2_final", "Phase 2\n(final 3)"),
+    ]
+    # Only include windows that have data
+    windows = [(w, l) for w, l in windows if not pairwise[pairwise["window"] == w].empty]
+
     rows = []
-    for window in ["phase1_final", "phase2_final"]:
+    for window, label in windows:
         w_data = pairwise[pairwise["window"] == window]
         within = w_data[w_data["sameGroup"] == 1]["similarity"]
         between = w_data[w_data["sameGroup"] == 0]["similarity"]
-        phase_label = "Phase 1" if "phase1" in window else "Phase 2"
-        rows.append({"phase": phase_label, "type": "Within-group",
+        rows.append({"phase": label, "type": "Within-group",
                      "mean": within.mean(), "sem": within.sem()})
-        rows.append({"phase": phase_label, "type": "Between-group",
+        rows.append({"phase": label, "type": "Between-group",
                      "mean": between.mean(), "sem": between.sem()})
     bar_df = pd.DataFrame(rows)
 
-    x = np.arange(2)
+    n_windows = len(windows)
+    x = np.arange(n_windows)
     width = 0.35
     within_data = bar_df[bar_df["type"] == "Within-group"]
     between_data = bar_df[bar_df["type"] == "Between-group"]
@@ -314,7 +342,7 @@ def panel_group_specificity(ax, pairwise, condition=""):
     ax.bar(x + width / 2, between_data["mean"], width, yerr=between_data["sem"],
            color=GROUP_COLORS["A"], alpha=0.8, capsize=5, label="Between-group")
     ax.set_xticks(x)
-    ax.set_xticklabels(["Phase 1\n(final 3 blocks)", "Phase 2\n(final 3 blocks)"])
+    ax.set_xticklabels([l for _, l in windows])
     ax.set_ylabel("Mean pairwise cosine similarity")
     ax.set_title(f"Group specificity ({format_condition(condition)})")
     ax.legend(fontsize=10)
@@ -328,19 +356,26 @@ def panel_first_phrase_specificity(ax, first_phrase_pw, condition=""):
                 transform=ax.transAxes)
         return
 
+    windows = [
+        ("phase1_final", "Phase 1\n(final 3)"),
+        ("phase2_early", "Phase 2\n(first 3)"),
+        ("phase2_final", "Phase 2\n(final 3)"),
+    ]
+    windows = [(w, l) for w, l in windows if not first_phrase_pw[first_phrase_pw["window"] == w].empty]
+
     rows = []
-    for window in ["phase1_final", "phase2_final"]:
+    for window, label in windows:
         w_data = first_phrase_pw[first_phrase_pw["window"] == window]
         within = w_data[w_data["sameGroup"] == 1]["similarity"]
         between = w_data[w_data["sameGroup"] == 0]["similarity"]
-        phase_label = "Phase 1" if "phase1" in window else "Phase 2"
-        rows.append({"phase": phase_label, "type": "Within-group",
+        rows.append({"phase": label, "type": "Within-group",
                      "mean": within.mean(), "sem": within.sem()})
-        rows.append({"phase": phase_label, "type": "Between-group",
+        rows.append({"phase": label, "type": "Between-group",
                      "mean": between.mean(), "sem": between.sem()})
     bar_df = pd.DataFrame(rows)
 
-    x = np.arange(2)
+    n_windows = len(windows)
+    x = np.arange(n_windows)
     width = 0.35
     within_data = bar_df[bar_df["type"] == "Within-group"]
     between_data = bar_df[bar_df["type"] == "Between-group"]
@@ -349,7 +384,7 @@ def panel_first_phrase_specificity(ax, first_phrase_pw, condition=""):
     ax.bar(x + width / 2, between_data["mean"], width, yerr=between_data["sem"],
            color=GROUP_COLORS["A"], alpha=0.8, capsize=5, label="Between-group")
     ax.set_xticks(x)
-    ax.set_xticklabels(["Phase 1\n(final 3 blocks)", "Phase 2\n(final 3 blocks)"])
+    ax.set_xticklabels([l for _, l in windows])
     ax.set_ylabel("Mean pairwise cosine similarity")
     ax.set_title(f"First-phrase group specificity ({format_condition(condition)})")
     ax.legend(fontsize=10)
@@ -481,13 +516,15 @@ def panel_social_retention(ax, social_guess_retention, condition=""):
                                            labels=["Low", "Medium", "High"],
                                            duplicates="drop")
         except ValueError:
-            # Use fixed percentile boundaries as cut points
-            cuts = [df["speakerRetention"].min() - 0.001,
-                    df["speakerRetention"].quantile(0.33),
-                    df["speakerRetention"].quantile(0.67),
-                    df["speakerRetention"].max() + 0.001]
-            df["retentionBin"] = pd.cut(df["speakerRetention"], bins=cuts,
-                                          labels=["Low", "Medium", "High"])
+            # Quantile boundaries may have duplicates; fall back to 2 bins
+            median = df["speakerRetention"].median()
+            df["retentionBin"] = df["speakerRetention"].apply(
+                lambda x: "Low" if x <= median else "High"
+            )
+            if df["retentionBin"].nunique() < 2:
+                ax.text(0.5, 0.5, "Not enough retention variance", ha="center",
+                        va="center", transform=ax.transAxes)
+                return
     elif n_unique == 2:
         median = df["speakerRetention"].median()
         df["retentionBin"] = df["speakerRetention"].apply(
@@ -535,33 +572,6 @@ def panel_borrowing_rate(ax, cross_group_borrowing, condition=""):
     ax.set_title(f"Cross-group term borrowing ({format_condition(condition)})")
     ax.set_ylim(-0.05, 1.05)
     ax.legend(title="Original group", fontsize=9, title_fontsize=9)
-    sns.despine(ax=ax)
-
-
-def panel_audience_design(ax, audience_design, condition=""):
-    """Grouped bar chart of description length by audience type, with SEM."""
-    if audience_design.empty:
-        ax.text(0.5, 0.5, "No audience design data", ha="center",
-                va="center", transform=ax.transAxes)
-        return
-
-    order = ["all_same", "mixed", "all_different"]
-    present = [t for t in order if t in audience_design["audienceType"].values]
-    if not present:
-        ax.text(0.5, 0.5, "No audience type data", ha="center",
-                va="center", transform=ax.transAxes)
-        return
-
-    stats = (
-        audience_design.groupby("audienceType")["uttLength"]
-        .agg(["mean", "sem", "count"])
-        .reindex(present)
-    )
-    ax.bar(stats.index, stats["mean"], yerr=stats["sem"],
-           color=GROUP_COLORS["B"], alpha=0.8, capsize=5)
-    ax.set_xlabel("Audience composition")
-    ax.set_ylabel("Mean description length")
-    ax.set_title(f"Audience design ({format_condition(condition)})")
     sns.despine(ax=ax)
 
 
@@ -648,644 +658,61 @@ def panel_hedging_trajectory(ax, hedging_trajectory, condition=""):
     sns.despine(ax=ax)
 
 
-# ── Cross-condition comparison plots ──────────────────────────
+# ── 3-panel plotting ─────────────────────────────────────────
 
-def plot_cross_condition(data, output_dir, conditions):
-    """Generate cross-condition overlay plots for key metrics."""
-    utterances = data["utterances"]
-    trials = data["trials"]
-    adjacent = data["adjacent"]
-
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-
-    # Description length
-    ax = axes[0]
-    for cond in conditions:
-        cond_utt = continuous_block(utterances[utterances["condition"] == cond])
-        means = cond_utt.groupby("block")["uttLength"].mean()
-        sems = cond_utt.groupby("block")["uttLength"].sem()
-        ax.fill_between(means.index, means - sems, means + sems,
-                        color=CONDITION_COLORS[cond], alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4,
-                color=CONDITION_COLORS[cond], linewidth=1.2,
-                label=format_condition(cond))
-    add_phase_boundary(ax)
-    ax.set_xlabel("Block")
-    ax.set_ylabel("Words")
-    ax.set_title("Description length")
-    ax.legend()
-
-    # Listener accuracy
-    ax = axes[1]
-    listener_trials = trials[trials["role"] == "listener"].copy()
-    listener_trials["clickedCorrect"] = listener_trials["clickedCorrect"].astype(float)
-    for cond in conditions:
-        cond_t = continuous_block(listener_trials[listener_trials["condition"] == cond])
-        means = cond_t.groupby("block")["clickedCorrect"].mean()
-        sems = cond_t.groupby("block")["clickedCorrect"].sem()
-        ax.fill_between(means.index, means - sems, means + sems,
-                        color=CONDITION_COLORS[cond], alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4,
-                color=CONDITION_COLORS[cond], linewidth=1.2,
-                label=format_condition(cond))
-    add_phase_boundary(ax)
-    add_chance_line(ax, 1 / 6)
-    ax.set_xlabel("Block")
-    ax.set_ylabel("Accuracy")
-    ax.set_ylim(0, 1.05)
-    ax.set_title("Listener accuracy")
-    ax.legend()
-
-    # Convention stability
-    ax = axes[2]
-    adj_valid = adjacent[adjacent["simAdjacent"].notna()].copy()
-    for cond in conditions:
-        cond_adj = continuous_block(adj_valid[adj_valid["condition"] == cond])
-        means = cond_adj.groupby("block")["simAdjacent"].mean()
-        sems = cond_adj.groupby("block")["simAdjacent"].sem()
-        ax.fill_between(means.index, means - sems, means + sems,
-                        color=CONDITION_COLORS[cond], alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4,
-                color=CONDITION_COLORS[cond], linewidth=1.2,
-                label=format_condition(cond))
-    add_phase_boundary(ax)
-    ax.set_xlabel("Block")
-    ax.set_ylabel("Cosine similarity")
-    ax.set_title("Convention stability")
-    ax.legend()
-
-    save_fig(fig, output_dir / "cross_condition.png")
-    print(f"  Saved cross_condition.png")
-
-
-def plot_phase_change_comparison(data, output_dir, conditions):
-    """Phase change similarity distribution by condition."""
-    phase_change = data["phase_change"]
-    if phase_change.empty:
+def panel_resolution_rate(ax, term_dominance, condition=''):
+    """Resolution rate (one group's terms dominate) by Phase 2 block."""
+    if term_dominance.empty:
+        ax.text(0.5, 0.5, "No term dominance data", ha="center",
+                va="center", transform=ax.transAxes)
         return
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    pc_data = phase_change[phase_change["condition"].isin(conditions)]
-
-    if pc_data.empty:
-        plt.close(fig)
-        return
-
-    sns.violinplot(
-        data=pc_data, x="condition", y="simPhase1Phase2",
-        order=[c for c in conditions if c in pc_data["condition"].unique()],
-        palette=CONDITION_COLORS, alpha=0.3, inner=None, ax=ax,
-    )
-    sns.stripplot(
-        data=pc_data, x="condition", y="simPhase1Phase2",
-        order=[c for c in conditions if c in pc_data["condition"].unique()],
-        palette=CONDITION_COLORS, alpha=0.5, size=3, jitter=True, ax=ax,
-    )
-    ax.set_xlabel("Condition")
-    ax.set_ylabel("Cosine similarity (Phase 1 final → Phase 2 final)")
-    ax.set_title("Semantic change across phases")
-    ax.set_xticklabels([format_condition(c) for c in conditions
-                         if c in pc_data["condition"].unique()])
-    sns.despine(ax=ax)
-    save_fig(fig, output_dir / "phase_change_comparison.png")
-    print(f"  Saved phase_change_comparison.png")
-
-
-def plot_convergence_comparison(data, output_dir, conditions):
-    """Overlay between-group similarity trajectories across conditions."""
-    block_pw = data["block_pw"]
-    if block_pw.empty:
-        return
-
-    # Merge condition
-    if "condition" not in block_pw.columns:
-        block_pw = block_pw.merge(
-            data["games"][["gameId", "condition"]], on="gameId", how="left"
-        )
-
-    between = block_pw[block_pw["sameGroup"] == 0].copy()
-    if between.empty:
-        return
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-    for cond in conditions:
-        cond_data = between[between["condition"] == cond]
-        if cond_data.empty:
-            continue
-        means = cond_data.groupby("blockNum")["similarity"].mean()
-        sems = cond_data.groupby("blockNum")["similarity"].sem()
-        ax.fill_between(means.index, means - sems, means + sems,
-                        color=CONDITION_COLORS[cond], alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4,
-                color=CONDITION_COLORS[cond], linewidth=1.2,
-                label=format_condition(cond))
+    df = term_dominance.copy()
+    df["resolved"] = (~df["dominantTermSource"].isin(["tied", "none"])).astype(float)
+    means = df.groupby("blockNum")["resolved"].mean()
+    sems = df.groupby("blockNum")["resolved"].sem()
+    ax.fill_between(means.index, means - sems, means + sems,
+                    color="#555555", alpha=0.15)
+    ax.plot(means.index, means.values, marker="o", markersize=5,
+            color="#555555", linewidth=1.5)
     ax.set_xlabel("Phase 2 block")
-    ax.set_ylabel("Mean between-group cosine similarity")
-    ax.set_title("Between-group convergence trajectory")
-    ax.legend()
-    sns.despine(ax=ax)
-    save_fig(fig, output_dir / "convergence_comparison.png")
-    print(f"  Saved convergence_comparison.png")
-
-
-def plot_first_phrase_comparison(data, output_dir, conditions):
-    """Side-by-side first-phrase GS vs whole-utterance GS."""
-    pairwise = data["pairwise"]
-    first_phrase_pw = data["first_phrase_pw"]
-    if pairwise.empty or first_phrase_pw.empty:
-        return
-
-    # Merge condition into both
-    game_cond = data["games"][["gameId", "condition"]]
-    for df_ref in [pairwise, first_phrase_pw]:
-        if "condition" not in df_ref.columns:
-            df_ref = df_ref.merge(game_cond, on="gameId", how="left")
-
-    pw = pairwise.merge(game_cond, on="gameId", how="left") if "condition" not in pairwise.columns else pairwise
-    fp = first_phrase_pw.merge(game_cond, on="gameId", how="left") if "condition" not in first_phrase_pw.columns else first_phrase_pw
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
-
-    for ax, (label, df) in zip(axes, [("Whole utterance", pw), ("First phrase", fp)]):
-        rows = []
-        for cond in conditions:
-            p2 = df[(df["window"] == "phase2_final") & (df["condition"] == cond)] if "window" in df.columns else pd.DataFrame()
-            if p2.empty:
-                continue
-            within = p2[p2["sameGroup"] == 1]["similarity"]
-            between = p2[p2["sameGroup"] == 0]["similarity"]
-            gs = within.mean() - between.mean() if len(within) > 0 and len(between) > 0 else float("nan")
-            rows.append({"condition": format_condition(cond), "GS": gs, "cond_raw": cond})
-        if not rows:
-            continue
-        bar_df = pd.DataFrame(rows)
-        colors = [CONDITION_COLORS[r["cond_raw"]] for _, r in bar_df.iterrows()]
-        ax.bar(bar_df["condition"], bar_df["GS"], color=colors, alpha=0.8)
-        ax.set_ylabel("Group specificity (within − between)" if ax == axes[0] else "")
-        ax.set_title(label)
-        sns.despine(ax=ax)
-
-    fig.suptitle("Phase 2 group specificity: whole utterance vs first phrase")
-    save_fig(fig, output_dir / "first_phrase_comparison.png")
-    print(f"  Saved first_phrase_comparison.png")
-
-
-def plot_term_retention_comparison(data, output_dir, conditions):
-    """Overlay Phase 1 term retention curves across conditions."""
-    term_retention = data["term_retention"]
-    if term_retention.empty:
-        return
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-    for cond in conditions:
-        cond_data = term_retention[term_retention["condition"] == cond]
-        if cond_data.empty:
-            continue
-        means = cond_data.groupby("blockNum")["retention"].mean()
-        sems = cond_data.groupby("blockNum")["retention"].sem()
-        ax.fill_between(means.index, means - sems, means + sems,
-                        color=CONDITION_COLORS[cond], alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4,
-                color=CONDITION_COLORS[cond], linewidth=1.2,
-                label=format_condition(cond))
-    ax.set_xlabel("Phase 2 block")
-    ax.set_ylabel("Mean proportion of Phase 1 terms retained")
-    ax.set_title("Phase 1 term retention across Phase 2")
-    ax.set_ylim(0, 1.05)
-    ax.legend()
-    sns.despine(ax=ax)
-    save_fig(fig, output_dir / "term_retention_comparison.png")
-    print(f"  Saved term_retention_comparison.png")
-
-
-def plot_alternative_comparison(data, output_dir, conditions):
-    """Overlay alternative structure rate across conditions."""
-    alt = data["alt_structures"]
-    if alt.empty:
-        return
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-    for cond in conditions:
-        cond_data = alt[alt["condition"] == cond]
-        if cond_data.empty:
-            continue
-        means = cond_data.groupby("blockNum")["hasAlternatives"].mean()
-        sems = cond_data.groupby("blockNum")["hasAlternatives"].sem()
-        ax.fill_between(means.index, means - sems, means + sems,
-                        color=CONDITION_COLORS[cond], alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4,
-                color=CONDITION_COLORS[cond], linewidth=1.2,
-                label=format_condition(cond))
-    ax.set_xlabel("Phase 2 block")
-    ax.set_ylabel("Proportion with alternatives")
-    ax.set_title("Alternative structure rate across Phase 2")
+    ax.set_ylabel("Resolution rate")
+    ax.set_title(f"Term dominance resolution ({format_condition(condition)})")
     ax.set_ylim(-0.05, 1.05)
-    ax.legend()
     sns.despine(ax=ax)
-    save_fig(fig, output_dir / "alternative_comparison.png")
-    print(f"  Saved alternative_comparison.png")
 
 
-def plot_length_retention_comparison(data, output_dir, conditions):
-    """Side-by-side scatter of length vs retention per condition."""
-    lr = data["length_retention"]
-    if lr.empty:
-        return
-
-    from scipy.stats import pearsonr
-
-    present = [c for c in conditions if c in lr["condition"].values]
-    if not present:
-        return
-
-    fig, axes = plt.subplots(1, len(present), figsize=(5 * len(present), 4.5), sharey=True)
-    if len(present) == 1:
-        axes = [axes]
-
-    for ax, cond in zip(axes, present):
-        cond_data = lr[lr["condition"] == cond]
-        for grp in GROUP_ORDER:
-            grp_data = cond_data[cond_data["originalGroup"] == grp]
-            if grp_data.empty:
-                continue
-            ax.scatter(grp_data["retention"], grp_data["uttLength"],
-                       color=GROUP_COLORS[grp], alpha=0.4, s=20, label=grp)
-        valid = cond_data.dropna(subset=["retention", "uttLength"])
-        if len(valid) > 2:
-            r, p = pearsonr(valid["retention"], valid["uttLength"])
-            z = np.polyfit(valid["retention"], valid["uttLength"], 1)
-            xs = np.linspace(valid["retention"].min(), valid["retention"].max(), 50)
-            ax.plot(xs, np.polyval(z, xs), "k--", linewidth=1, alpha=0.7)
-            ax.annotate(f"r={r:.2f}, p={p:.3f}", xy=(0.05, 0.95),
-                        xycoords="axes fraction", fontsize=9, va="top")
-        ax.set_xlabel("Term retention")
-        ax.set_ylabel("Description length" if ax == axes[0] else "")
-        ax.set_title(format_condition(cond))
-        sns.despine(ax=ax)
-
-    axes[-1].legend(title="Group", fontsize=8, title_fontsize=8)
-    fig.suptitle("Description length vs term retention")
-    save_fig(fig, output_dir / "length_retention_comparison.png")
-    print(f"  Saved length_retention_comparison.png")
-
-
-def plot_social_retention_standalone(data, output_dir):
-    """Standalone figure: social guessing accuracy by speaker retention bins (social_mixed only)."""
-    sgr = data["social_guess_retention"]
-    if sgr.empty:
-        return
-
-    fig, ax = plt.subplots(figsize=(6, 4))
-    panel_social_retention(ax, sgr, "social_mixed")
-    save_fig(fig, output_dir / "social_retention_standalone.png")
-    print(f"  Saved social_retention_standalone.png")
-
-
-def plot_borrowing_comparison(data, output_dir, conditions):
-    """Overlay cross-group borrowing rate across conditions."""
-    borrowing = data["cross_group_borrowing"]
-    if borrowing.empty:
-        return
-
-    df = borrowing[borrowing["nSourceTerms"] > 0]
+def plot_three_panel(panel_fn, all_data, data_key, conditions, output_dir, filename):
+    """Generic 3-panel figure: one panel per condition, shared y-axis."""
+    df = all_data[data_key]
     if df.empty:
         return
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    for cond in conditions:
-        cond_data = df[df["condition"] == cond]
-        if cond_data.empty:
-            continue
-        means = cond_data.groupby("blockNum")["borrowingRate"].mean()
-        sems = cond_data.groupby("blockNum")["borrowingRate"].sem()
-        ax.fill_between(means.index, means - sems, means + sems,
-                        color=CONDITION_COLORS[cond], alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4,
-                color=CONDITION_COLORS[cond], linewidth=1.2,
-                label=format_condition(cond))
-    ax.set_xlabel("Phase 2 block")
-    ax.set_ylabel("Mean borrowing rate")
-    ax.set_title("Cross-group term borrowing")
-    ax.set_ylim(-0.05, 1.05)
-    ax.legend()
-    sns.despine(ax=ax)
-    save_fig(fig, output_dir / "borrowing_comparison.png")
-    print(f"  Saved borrowing_comparison.png")
-
-
-def plot_audience_design_comparison(data, output_dir, conditions):
-    """Side-by-side audience design bar charts per condition."""
-    ad = data["audience_design"]
-    if ad.empty:
-        return
-
-    present = [c for c in conditions if c in ad["condition"].values]
-    if not present:
-        return
-
-    fig, axes = plt.subplots(1, len(present), figsize=(5 * len(present), 4.5), sharey=True)
-    if len(present) == 1:
+    n = len(conditions)
+    fig, axes = plt.subplots(1, n, figsize=(5 * n, 4.5), sharey=True)
+    if n == 1:
         axes = [axes]
 
-    order = ["all_same", "mixed", "all_different"]
-    for ax, cond in zip(axes, present):
-        cond_data = ad[ad["condition"] == cond]
-        types_present = [t for t in order if t in cond_data["audienceType"].values]
-        if not types_present:
+    for ax, cond in zip(axes, conditions):
+        if "condition" in df.columns:
+            subset = df[df["condition"] == cond]
+        else:
+            subset = df
+        if subset.empty:
             ax.text(0.5, 0.5, "No data", ha="center", va="center",
                     transform=ax.transAxes)
+            ax.set_title(format_condition(cond))
             continue
-        stats = (
-            cond_data.groupby("audienceType")["uttLength"]
-            .agg(["mean", "sem", "count"])
-            .reindex(types_present)
-        )
-        ax.bar(stats.index, stats["mean"], yerr=stats["sem"],
-               color=CONDITION_COLORS[cond], alpha=0.8, capsize=5)
-        ax.set_xlabel("Audience composition")
-        ax.set_ylabel("Mean description length" if ax == axes[0] else "")
-        ax.set_title(format_condition(cond))
-        sns.despine(ax=ax)
-
-    fig.suptitle("Audience design: description length by audience type")
-    save_fig(fig, output_dir / "audience_design_comparison.png")
-    print(f"  Saved audience_design_comparison.png")
-
-
-def plot_term_dominance_comparison(data, output_dir, conditions):
-    """Side-by-side stacked bars of term dominance per condition."""
-    td = data["term_dominance"]
-    if td.empty:
-        return
-
-    present = [c for c in conditions if c in td["condition"].values]
-    if not present:
-        return
-
-    fig, axes = plt.subplots(1, len(present), figsize=(5 * len(present), 4.5), sharey=True)
-    if len(present) == 1:
-        axes = [axes]
-
-    for ax, cond in zip(axes, present):
-        panel_term_dominance(ax, td[td["condition"] == cond], cond)
+        panel_fn(ax, subset, cond)
         if ax != axes[0]:
             ax.set_ylabel("")
+            legend = ax.get_legend()
+            if legend:
+                legend.remove()
 
-    fig.suptitle("Term dominance across Phase 2")
-    save_fig(fig, output_dir / "term_dominance_comparison.png")
-    print(f"  Saved term_dominance_comparison.png")
-
-
-def plot_resolution_rate_comparison(data, output_dir, conditions):
-    """Overlay line plot of resolution rate per condition with SEM bands."""
-    td = data["term_dominance"]
-    if td.empty:
-        return
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-    for cond in conditions:
-        cond_data = td[td["condition"] == cond]
-        if cond_data.empty:
-            continue
-        # Resolution: exactly one group dominates (not tied/none)
-        cond_data = cond_data.copy()
-        cond_data["resolved"] = (
-            ~cond_data["dominantTermSource"].isin(["tied", "none"])
-        ).astype(float)
-        means = cond_data.groupby("blockNum")["resolved"].mean()
-        sems = cond_data.groupby("blockNum")["resolved"].sem()
-        ax.fill_between(means.index, means - sems, means + sems,
-                        color=CONDITION_COLORS[cond], alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4,
-                color=CONDITION_COLORS[cond], linewidth=1.2,
-                label=format_condition(cond))
-    ax.set_xlabel("Phase 2 block")
-    ax.set_ylabel("Resolution rate")
-    ax.set_title("Term dominance resolution rate")
-    ax.set_ylim(-0.05, 1.05)
-    ax.legend()
-    sns.despine(ax=ax)
-    save_fig(fig, output_dir / "resolution_rate_comparison.png")
-    print(f"  Saved resolution_rate_comparison.png")
-
-
-def plot_hedging_comparison(data, output_dir, conditions):
-    """Overlay condition-mean hedging rate with SEM bands."""
-    ht = data["hedging_trajectory"]
-    if ht.empty:
-        return
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-    for cond in conditions:
-        cond_data = ht[ht["condition"] == cond]
-        if cond_data.empty:
-            continue
-        means = cond_data.groupby("blockNum")["hedgingRate"].mean()
-        sems = cond_data.groupby("blockNum")["hedgingRate"].sem()
-        ax.fill_between(means.index, means - sems, means + sems,
-                        color=CONDITION_COLORS[cond], alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4,
-                color=CONDITION_COLORS[cond], linewidth=1.2,
-                label=format_condition(cond))
-    ax.set_xlabel("Phase 2 block")
-    ax.set_ylabel("Mean hedging rate")
-    ax.set_title("Hedging rate across Phase 2")
-    ax.set_ylim(-0.05, 1.05)
-    ax.legend()
-    sns.despine(ax=ax)
-    save_fig(fig, output_dir / "hedging_comparison.png")
-    print(f"  Saved hedging_comparison.png")
-
-
-# ── Faceted by-condition plots (shared y-axis) ────────────────
-
-def _facet_legend_right(g, title="Original group"):
-    """Place a compact legend to the right of a FacetGrid without a huge gap."""
-    # Remove any auto-generated legend
-    if g._legend is not None:
-        g._legend.remove()
-    # Place legend just outside the last axis
-    last_ax = g.axes.flat[-1]
-    last_ax.legend(title=title, bbox_to_anchor=(1.04, 0.5), loc="center left",
-                   fontsize=11, title_fontsize=11, frameon=False)
-
-
-def plot_faceted_metrics(data, output_dir, conditions):
-    """FacetGrid plots: columns = conditions, hue = original group, shared y-axis."""
-    utterances = data["utterances"]
-    trials = data["trials"]
-    adjacent = data["adjacent"]
-
-    condition_order = sorted(conditions)
-    condition_labels = {c: format_condition(c) for c in condition_order}
-
-    # --- Description length ---
-    utt = continuous_block(utterances[utterances["condition"].isin(conditions)])
-    utt["condition_label"] = utt["condition"].map(condition_labels)
-    label_order = [condition_labels[c] for c in condition_order]
-
-    g = sns.FacetGrid(
-        utt, col="condition_label", col_order=label_order,
-        hue="originalGroup", hue_order=GROUP_ORDER, palette=GROUP_COLORS,
-        sharey=True, height=4, aspect=1.0,
-    )
-    g.map_dataframe(sns.lineplot, x="block", y="uttLength", marker="o", markersize=5, errorbar=None)
-    for ax in g.axes.flat:
-        add_phase_boundary(ax)
-    g.set_axis_labels("Block", "Word count")
-    g.set_titles("{col_name}")
-    _facet_legend_right(g)
-    g.figure.suptitle("Description length", y=1.02)
-    g.figure.savefig(output_dir / "facet_description_length.png", dpi=150, bbox_inches="tight")
-    plt.close(g.figure)
-    print(f"  Saved facet_description_length.png")
-
-    # --- Listener accuracy ---
-    listener = continuous_block(
-        trials[(trials["role"] == "listener") & trials["condition"].isin(conditions)]
-    ).copy()
-    listener["correct"] = listener["clickedCorrect"].astype(float)
-    listener["condition_label"] = listener["condition"].map(condition_labels)
-
-    g = sns.FacetGrid(
-        listener, col="condition_label", col_order=label_order,
-        hue="originalGroup", hue_order=GROUP_ORDER, palette=GROUP_COLORS,
-        sharey=True, height=4, aspect=1.0,
-    )
-    g.map_dataframe(sns.lineplot, x="block", y="correct", marker="o", markersize=5, errorbar=None)
-    for ax in g.axes.flat:
-        add_phase_boundary(ax)
-        add_chance_line(ax, 1 / 6, "Chance (1/6)")
-        ax.set_ylim(0, 1.05)
-    g.set_axis_labels("Block", "Accuracy")
-    g.set_titles("{col_name}")
-    _facet_legend_right(g)
-    g.figure.suptitle("Listener accuracy", y=1.02)
-    g.figure.savefig(output_dir / "facet_listener_accuracy.png", dpi=150, bbox_inches="tight")
-    plt.close(g.figure)
-    print(f"  Saved facet_listener_accuracy.png")
-
-    # --- Convention stability ---
-    adj = continuous_block(
-        adjacent[adjacent["simAdjacent"].notna() & adjacent["condition"].isin(conditions)]
-    ).copy()
-    adj["condition_label"] = adj["condition"].map(condition_labels)
-
-    g = sns.FacetGrid(
-        adj, col="condition_label", col_order=label_order,
-        hue="originalGroup", hue_order=GROUP_ORDER, palette=GROUP_COLORS,
-        sharey=True, height=4, aspect=1.0,
-    )
-    g.map_dataframe(sns.lineplot, x="block", y="simAdjacent", marker="o", markersize=5, errorbar=None)
-    for ax in g.axes.flat:
-        add_phase_boundary(ax)
-        ax.set_ylim(0, 1.05)
-    g.set_axis_labels("Block", "Cosine similarity")
-    g.set_titles("{col_name}")
-    _facet_legend_right(g)
-    g.figure.suptitle("Convention stability", y=1.02)
-    g.figure.savefig(output_dir / "facet_convention_stability.png", dpi=150, bbox_inches="tight")
-    plt.close(g.figure)
-    print(f"  Saved facet_convention_stability.png")
-
-    # --- Phase change similarity ---
-    phase_change = data["phase_change"]
-    if not phase_change.empty:
-        pc = phase_change[phase_change["condition"].isin(conditions)].copy()
-        pc["condition_label"] = pc["condition"].map(condition_labels)
-        pc_label_order = [condition_labels[c] for c in condition_order if c in pc["condition"].unique()]
-
-        if not pc.empty:
-            g = sns.FacetGrid(
-                pc, col="condition_label", col_order=pc_label_order,
-                sharey=True, height=4, aspect=1.0,
-            )
-            g.map_dataframe(sns.boxplot, x="originalGroup", y="simPhase1Phase2",
-                            order=GROUP_ORDER, palette=GROUP_COLORS, width=0.5)
-            g.map_dataframe(sns.stripplot, x="originalGroup", y="simPhase1Phase2",
-                            order=GROUP_ORDER, color="black", alpha=0.4, size=3, jitter=True)
-            for ax in g.axes.flat:
-                ax.set_ylim(0, 1.05)
-                sns.despine(ax=ax)
-            g.set_axis_labels("Original group", "Cosine similarity")
-            g.set_titles("{col_name}")
-            g.figure.suptitle("Phase 1 → 2 description stability", y=1.02)
-            g.figure.savefig(output_dir / "facet_phase_change.png", dpi=150, bbox_inches="tight")
-            plt.close(g.figure)
-            print(f"  Saved facet_phase_change.png")
-
-
-# ── Composite overview figure ─────────────────────────────────
-
-def plot_composite(data, output_dir, conditions):
-    """4-row composite: length, accuracy, stability, group specificity by condition."""
-    utterances = data["utterances"]
-    trials = data["trials"]
-    adjacent = data["adjacent"]
-    pairwise = data["pairwise"]
-
-    n_cond = len(conditions)
-    fig = plt.figure(figsize=(6 * n_cond, 20))
-    gs = gridspec.GridSpec(4, n_cond, hspace=0.35, wspace=0.3)
-
-    listener_trials = trials[trials["role"] == "listener"].copy()
-    listener_trials["clickedCorrect"] = listener_trials["clickedCorrect"].astype(float)
-    adj_valid = adjacent[adjacent["simAdjacent"].notna()].copy()
-
-    for idx, cond in enumerate(conditions):
-        color = CONDITION_COLORS[cond]
-
-        # Row 1: Description length
-        ax = fig.add_subplot(gs[0, idx])
-        cond_utt = continuous_block(utterances[utterances["condition"] == cond])
-        means = cond_utt.groupby("block")["uttLength"].mean()
-        sems = cond_utt.groupby("block")["uttLength"].sem()
-        ax.fill_between(means.index, means - sems, means + sems, color=color, alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4, color=color, linewidth=1.2)
-        add_phase_boundary(ax)
-        ax.set_xlabel("Block")
-        ax.set_ylabel("Words" if idx == 0 else "")
-        ax.set_title(f"Description length ({format_condition(cond)})")
-
-        # Row 2: Listener accuracy
-        ax = fig.add_subplot(gs[1, idx])
-        cond_t = continuous_block(listener_trials[listener_trials["condition"] == cond])
-        means = cond_t.groupby("block")["clickedCorrect"].mean()
-        sems = cond_t.groupby("block")["clickedCorrect"].sem()
-        ax.fill_between(means.index, means - sems, means + sems, color=color, alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4, color=color, linewidth=1.2)
-        add_phase_boundary(ax)
-        add_chance_line(ax, 1 / 6)
-        ax.set_xlabel("Block")
-        ax.set_ylabel("Accuracy" if idx == 0 else "")
-        ax.set_ylim(0, 1.05)
-        ax.set_title(f"Listener accuracy ({format_condition(cond)})")
-
-        # Row 3: Adjacent similarity
-        ax = fig.add_subplot(gs[2, idx])
-        cond_adj = continuous_block(adj_valid[adj_valid["condition"] == cond])
-        means = cond_adj.groupby("block")["simAdjacent"].mean()
-        sems = cond_adj.groupby("block")["simAdjacent"].sem()
-        ax.fill_between(means.index, means - sems, means + sems, color=color, alpha=0.15)
-        ax.plot(means.index, means.values, marker="o", markersize=4, color=color, linewidth=1.2)
-        add_phase_boundary(ax)
-        ax.set_xlabel("Block")
-        ax.set_ylabel("Cosine similarity" if idx == 0 else "")
-        ax.set_title(f"Convention stability ({format_condition(cond)})")
-
-        # Row 4: Group specificity bars
-        ax = fig.add_subplot(gs[3, idx])
-        cond_pw = pairwise[pairwise["condition"] == cond] if not pairwise.empty and "condition" in pairwise.columns else pd.DataFrame()
-        if cond_pw.empty and not pairwise.empty:
-            # Try merging condition from games
-            game_cond = data["games"][["gameId", "condition"]]
-            pw_merged = pairwise.merge(game_cond, on="gameId", how="left")
-            cond_pw = pw_merged[pw_merged["condition"] == cond]
-        panel_group_specificity(ax, cond_pw, cond)
-
-    fig.suptitle(f"Pilot data overview (N={len(data['games'])} games)", y=0.98)
-    save_fig(fig, output_dir / "composite_overview.png")
-    print(f"  Saved composite_overview.png")
+    fig.tight_layout()
+    save_fig(fig, output_dir / filename)
+    print(f"  Saved {filename}")
 
 
 # ── Statistical summaries ─────────────────────────────────────
@@ -1355,8 +782,10 @@ def print_summary(data, conditions):
             pw = pw.merge(games[["gameId", "condition"]], on="gameId", how="left")
         for cond in conditions:
             cpw = pw[pw["condition"] == cond]
-            for window in ["phase1_final", "phase2_final"]:
+            for window in ["phase1_final", "phase2_early", "phase2_final"]:
                 wd = cpw[cpw["window"] == window]
+                if wd.empty:
+                    continue
                 within = wd[wd["sameGroup"] == 1]["similarity"]
                 between = wd[wd["sameGroup"] == 0]["similarity"]
                 gs = within.mean() - between.mean() if len(within) > 0 and len(between) > 0 else float("nan")
@@ -1371,8 +800,10 @@ def print_summary(data, conditions):
             fp = fp.merge(games[["gameId", "condition"]], on="gameId", how="left")
         for cond in conditions:
             cfp = fp[fp["condition"] == cond]
-            for window in ["phase1_final", "phase2_final"]:
+            for window in ["phase1_final", "phase2_early", "phase2_final"]:
                 wd = cfp[cfp["window"] == window]
+                if wd.empty:
+                    continue
                 within = wd[wd["sameGroup"] == 1]["similarity"]
                 between = wd[wd["sameGroup"] == 0]["similarity"]
                 gs = within.mean() - between.mean() if len(within) > 0 and len(between) > 0 else float("nan")
@@ -1460,19 +891,6 @@ def print_summary(data, conditions):
             overall = cond_b["borrowingRate"].mean()
             print(f"  {cond}: overall={overall:.3f} | {vals}")
 
-    # Audience design
-    audience_design = data.get("audience_design", pd.DataFrame())
-    if not audience_design.empty:
-        print("\n--- Audience design ---")
-        for cond in conditions:
-            cond_ad = audience_design[audience_design["condition"] == cond]
-            if cond_ad.empty:
-                continue
-            type_stats = cond_ad.groupby("audienceType")["uttLength"].agg(["mean", "count"])
-            parts = [f"{t}: len={row['mean']:.1f} (n={row['count']:.0f})"
-                     for t, row in type_stats.iterrows()]
-            print(f"  {cond}: {' | '.join(parts)}")
-
     # Term dominance
     term_dominance = data.get("term_dominance", pd.DataFrame())
     if not term_dominance.empty:
@@ -1557,63 +975,6 @@ def print_summary(data, conditions):
                 print(f"  {field}: {dict(vals.value_counts())}")
 
 
-# ── Per-condition visualization ───────────────────────────────
-
-def visualize_condition(condition, game_ids, data_dir, output_dir):
-    """Generate all panel plots for a single condition."""
-    print(f"\nCondition: {condition} ({len(game_ids)} games)")
-
-    d = load_data(data_dir, game_ids)
-
-    panels = [
-        ("listener_accuracy", panel_accuracy, [d["trials"], condition]),
-        ("description_length", panel_description_length, [d["utterances"], condition]),
-        ("convention_stability", panel_convention_stability, [d["adjacent"], condition]),
-    ]
-    if not d["social"].empty:
-        panels.append(("social_guessing", panel_social_guessing, [d["social"], condition]))
-    if not d["phase_change"].empty:
-        panels.append(("phase_change", panel_phase_change, [d["phase_change"], condition]))
-    if not d["pairwise"].empty:
-        pairwise_with_cond = d["pairwise"].copy()
-        if "condition" not in pairwise_with_cond.columns:
-            pairwise_with_cond = pairwise_with_cond.merge(
-                d["games"][["gameId", "condition"]], on="gameId", how="left"
-            )
-        panels.append(("group_specificity", panel_group_specificity, [pairwise_with_cond, condition]))
-    if not d["first_phrase_pw"].empty:
-        panels.append(("first_phrase_specificity", panel_first_phrase_specificity, [d["first_phrase_pw"], condition]))
-    if not d["block_pw"].empty:
-        panels.append(("convergence_trajectory", panel_convergence_trajectory, [d["block_pw"], condition]))
-    if not d["term_retention"].empty:
-        panels.append(("term_retention", panel_term_retention, [d["term_retention"], condition]))
-    if not d["alt_structures"].empty:
-        panels.append(("alternative_rate", panel_alternative_rate, [d["alt_structures"], condition]))
-    if not d["length_retention"].empty:
-        panels.append(("length_retention", panel_length_retention, [d["length_retention"], condition]))
-    if not d["social_guess_retention"].empty:
-        panels.append(("social_retention", panel_social_retention, [d["social_guess_retention"], condition]))
-    if not d["cross_group_borrowing"].empty:
-        panels.append(("borrowing_rate", panel_borrowing_rate, [d["cross_group_borrowing"], condition]))
-    if not d["audience_design"].empty:
-        panels.append(("audience_design", panel_audience_design, [d["audience_design"], condition]))
-    if not d["term_dominance"].empty:
-        panels.append(("term_dominance", panel_term_dominance, [d["term_dominance"], condition]))
-    if not d["hedging_trajectory"].empty:
-        panels.append(("hedging_trajectory", panel_hedging_trajectory, [d["hedging_trajectory"], condition]))
-    panels += [
-        ("ingroup_outgroup", panel_ingroup_outgroup, [d["trials"], condition]),
-        ("umap", panel_umap, [d["umap_df"], condition]),
-    ]
-
-    for name, func, panel_args in panels:
-        fig, ax = plt.subplots(figsize=(6, 4))
-        func(ax, *panel_args)
-        path = output_dir / f"pilot_{condition}_{name}.png"
-        save_fig(fig, path)
-        print(f"  Saved {name}")
-
-
 # ── Main ──────────────────────────────────────────────────────
 
 def main():
@@ -1636,7 +997,6 @@ def main():
     if args.output_dir:
         output_dir = Path(args.output_dir)
     else:
-        # Default: sibling outputs/pilot_summary/ next to data/
         output_dir = data_dir.parent / "outputs"
 
     if not (data_dir / "games.csv").exists():
@@ -1660,49 +1020,54 @@ def main():
     all_game_ids = []
     for ids in all_conditions.values():
         all_game_ids.extend(ids)
-    conditions_list = list(all_conditions.keys())
+    conditions_list = sorted(
+        all_conditions.keys(),
+        key=lambda c: CONDITION_ORDER.index(c) if c in CONDITION_ORDER else len(CONDITION_ORDER),
+    )
 
-    # Load all data for cross-condition plots and summaries
+    # Load all data
     all_data = load_data(data_dir, all_game_ids)
 
-    # Merge condition info into dataframes that need it
+    # Ensure condition column exists in all dataframes
     game_condition = all_data["games"][["gameId", "condition"]].copy()
-    for key in ["utterances", "trials", "adjacent"]:
-        if "condition" not in all_data[key].columns:
-            all_data[key] = all_data[key].merge(game_condition, on="gameId", how="left")
+    for key, df in all_data.items():
+        if key != "games" and not df.empty and "gameId" in df.columns and "condition" not in df.columns:
+            all_data[key] = df.merge(game_condition, on="gameId", how="left")
 
-    # Per-condition panel plots
-    for condition, game_ids in all_conditions.items():
-        visualize_condition(condition, game_ids, data_dir, output_dir)
+    # Generate 3-panel plots (one panel per condition, shared y-axis)
+    panels = [
+        (panel_accuracy, "trials", "listener_accuracy.png"),
+        (panel_description_length, "utterances", "description_length.png"),
+        (panel_convention_stability, "adjacent", "convention_stability.png"),
+        (panel_phase_change, "phase_change", "phase_change.png"),
+        (panel_phase_change_early, "phase_change", "phase_change_early.png"),
+        (panel_group_specificity, "pairwise", "group_specificity.png"),
+        (panel_first_phrase_specificity, "first_phrase_pw", "first_phrase.png"),
+        (panel_convergence_trajectory, "block_pw", "convergence.png"),
+        (panel_term_retention, "term_retention", "term_retention.png"),
+        (panel_alternative_rate, "alt_structures", "alternative_rate.png"),
+        (panel_length_retention, "length_retention", "length_retention.png"),
+        (panel_social_retention, "social_guess_retention", "social_retention.png"),
+        (panel_borrowing_rate, "cross_group_borrowing", "borrowing_rate.png"),
+        (panel_term_dominance, "term_dominance", "term_dominance.png"),
+        (panel_resolution_rate, "term_dominance", "resolution_rate.png"),
+        (panel_hedging_trajectory, "hedging_trajectory", "hedging_trajectory.png"),
+        (panel_ingroup_outgroup, "trials", "ingroup_outgroup.png"),
+        (panel_umap, "umap_df", "umap.png"),
+    ]
 
-    # Cross-condition comparison plots (only if 2+ conditions)
-    if len(conditions_list) >= 2:
-        print("\nCross-condition comparison plots:")
-        plot_cross_condition(all_data, output_dir, conditions_list)
-        plot_phase_change_comparison(all_data, output_dir, conditions_list)
-        plot_convergence_comparison(all_data, output_dir, conditions_list)
-        plot_first_phrase_comparison(all_data, output_dir, conditions_list)
-        plot_term_retention_comparison(all_data, output_dir, conditions_list)
-        plot_alternative_comparison(all_data, output_dir, conditions_list)
-        plot_length_retention_comparison(all_data, output_dir, conditions_list)
-        plot_borrowing_comparison(all_data, output_dir, conditions_list)
-        plot_audience_design_comparison(all_data, output_dir, conditions_list)
-        plot_term_dominance_comparison(all_data, output_dir, conditions_list)
-        plot_resolution_rate_comparison(all_data, output_dir, conditions_list)
-        plot_hedging_comparison(all_data, output_dir, conditions_list)
+    print("\n3-panel plots:")
+    for panel_fn, data_key, filename in panels:
+        plot_three_panel(panel_fn, all_data, data_key, conditions_list, output_dir, filename)
 
-    # Social retention standalone (social_mixed only, doesn't need 2+ conditions)
-    print("\nStandalone plots:")
-    plot_social_retention_standalone(all_data, output_dir)
-
-    # Faceted by-condition plots (shared y-axis)
-    if len(conditions_list) >= 2:
-        print("\nFaceted by-condition plots:")
-        plot_faceted_metrics(all_data, output_dir, conditions_list)
-
-    # Composite overview
-    print("\nComposite overview:")
-    plot_composite(all_data, output_dir, conditions_list)
+    # Social guessing (social_mixed only, single panel)
+    social = all_data["social"]
+    if not social.empty:
+        fig, ax = plt.subplots(figsize=(6, 4.5))
+        panel_social_guessing(ax, social, "social_mixed")
+        fig.tight_layout()
+        save_fig(fig, output_dir / "social_guessing.png")
+        print(f"  Saved social_guessing.png")
 
     # Print statistical summaries
     print_summary(all_data, conditions_list)
