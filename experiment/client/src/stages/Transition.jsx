@@ -30,11 +30,9 @@ export function Transition(props) {
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>
             You will continue playing the reference game with the{" "}
-            <strong>same group members</strong> you played with in Phase 1. Your
-            goal (and the scoring) remains the same: describe the pictures to
-            help your listeners identify them correctly. Remember to limit your
-            messages to be about the current target picture only, and to not
-            chat about any other topics.
+            <strong>same group members</strong> you played with in Phase 1.
+            Remember to limit your messages to be about the current target
+            picture only, and to not chat about any other topics.
           </p>
         </div>
       );
