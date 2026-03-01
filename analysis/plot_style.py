@@ -16,9 +16,9 @@ import seaborn as sns
 # ── Color palettes ────────────────────────────────────────────
 
 CONDITION_COLORS = {
-    "refer_separated": "#F8766D",
-    "refer_mixed": "#00BA38",
-    "social_mixed": "#619CFF",
+    "refer_separated": "#0173B2",
+    "refer_mixed": "#029E73",
+    "social_mixed": "#DE8F05",
 }
 
 CONDITION_ORDER = ["refer_separated", "refer_mixed", "social_mixed"]

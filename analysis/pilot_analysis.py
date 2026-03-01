@@ -577,6 +577,7 @@ def plot_specificity_overlay(all_data, conditions, output_dir):
                 label=format_condition(cond), markersize=5)
 
     ax.axhline(0, color="gray", linestyle=":", alpha=0.5)
+    ax.set_xlabel("Block")
     ax.set_ylabel("Group specificity\n(within − between sim)")
     ax.set_title("Group-specificity trajectory")
     ax.legend(frameon=False)
