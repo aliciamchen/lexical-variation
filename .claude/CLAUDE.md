@@ -204,7 +204,7 @@ Note: `rpy2` requires R to be installed. Cairo-based packages (`cairosvg`) may r
 
 1. Speaker's job → "Describe the target picture"
 2. Inactive penalty → "Removed from the game"
-3. Chat restrictions → "Only descriptions of the current target"
+3. Chat restrictions → "Only topics related to picking out the correct target picture"
 4. Listener waiting → "Listeners must wait for speaker"
 5. Phase 2 groups → "Mixed up"
 6. Tangram positions → "Different positions for each player"
