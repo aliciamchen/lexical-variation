@@ -256,7 +256,7 @@ def panel_ingroup_outgroup(ax, trials, condition=""):
         p2_listeners["originalGroup"] == p2_listeners["currentGroup"]
     ).map({True: "Same", False: "Different"})
 
-    dodge_map = {"A": -0.15, "B": 0.0, "C": 0.15}
+    dodge_map = {"A": -0.08, "B": 0.0, "C": 0.08}
     p2_listeners["block_dodge"] = p2_listeners["block"] + p2_listeners[
         "originalGroup"
     ].map(dodge_map)
@@ -521,7 +521,7 @@ def plot_specificity_overlay(all_data, conditions, output_dir):
         return
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    dodge_width = 0.25  # offset per condition
+    dodge_width = 0.15  # offset per condition
     n_cond = len(conditions)
 
     for i, cond in enumerate(conditions):
