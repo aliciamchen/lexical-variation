@@ -131,8 +131,8 @@ export async function completeIntro(page: Page, options?: string | { playerName?
   await page.getByRole('button', { name: /enter/i }).click();
   await page.waitForTimeout(500);
 
-  // Step 3: 5 intro/instruction pages
-  for (let j = 0; j < 5; j++) {
+  // Step 3: 6 intro/instruction pages
+  for (let j = 0; j < 6; j++) {
     await page.getByRole('button', { name: /next/i }).click({ timeout: 10_000 });
     await page.waitForTimeout(200);
   }

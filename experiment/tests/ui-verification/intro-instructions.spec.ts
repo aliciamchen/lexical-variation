@@ -5,7 +5,7 @@ import { createBatch } from '../helpers/admin';
  * TEST_PLAN 5.1: Verify intro pages display correctly.
  *
  * Creates a single player context and walks through the consent page,
- * 5 instruction pages, and the comprehension quiz page, checking that
+ * 6 instruction pages, and the comprehension quiz page, checking that
  * all expected elements are present at each step.
  */
 test.describe.serial('UI Verification: Intro & Instructions (5.1)', () => {
@@ -116,7 +116,7 @@ test.describe.serial('UI Verification: Intro & Instructions (5.1)', () => {
     await expect(playerGroup).toBeVisible();
   });
 
-  test('(b) instruction page 5 has Next button and scoring info', async () => {
+  test('(b) instruction page 5 has Next button and Phase 2 info', async () => {
     await page.getByRole('button', { name: /next/i }).click();
     await page.waitForTimeout(300);
 
@@ -125,12 +125,22 @@ test.describe.serial('UI Verification: Intro & Instructions (5.1)', () => {
 
     const bodyText = await page.textContent('body');
     expect(bodyText).toContain('Phase 2');
+  });
+
+  test('(b) instruction page 6 has Next button and scoring info', async () => {
+    await page.getByRole('button', { name: /next/i }).click();
+    await page.waitForTimeout(300);
+
+    const nextButton = page.getByRole('button', { name: /next/i });
+    await expect(nextButton).toBeVisible({ timeout: 5_000 });
+
+    const bodyText = await page.textContent('body');
     expect(bodyText).toContain('Scoring');
     expect(bodyText).toContain('points');
   });
 
   test('(d)(e) quiz page has 6 questions with radio buttons and title "Comprehension Quiz"', async () => {
-    // Navigate to quiz page (the 6th instruction component)
+    // Navigate to quiz page (the 7th instruction component)
     await page.getByRole('button', { name: /next/i }).click();
     await page.waitForTimeout(500);
 

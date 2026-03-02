@@ -147,8 +147,8 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
       await page.getByRole('button', { name: /enter/i }).click();
       await page.waitForTimeout(500);
 
-      // 5 instruction pages
-      for (let j = 0; j < 5; j++) {
+      // 6 instruction pages
+      for (let j = 0; j < 6; j++) {
         await page.getByRole('button', { name: /next/i }).click({ timeout: 10_000 });
         await page.waitForTimeout(200);
       }

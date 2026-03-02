@@ -60,6 +60,7 @@ export function Introduction({ next }) {
     <Introduction3 />,
     <Introduction4 />,
     <Introduction5 />,
+    <Introduction6 />,
     <Quiz next={next} />,
   ];
 
@@ -332,7 +333,7 @@ export function Introduction5({ next }) {
         <div
           style={{
             marginTop: 8,
-            padding: 12,
+            padding: "12px 16px",
             backgroundColor: "#fffbeb",
             border: "2px solid #f59e0b",
             borderRadius: 8,
@@ -376,12 +377,23 @@ export function Introduction5({ next }) {
   return (
     <div className="mt-3 sm:mt-5 p-20">
       <h1>How to play</h1>
-      <h2>Phase 2 and Scoring</h2>
+      <h2>Phase 2</h2>
       {phase2Preview}
+    </div>
+  );
+}
+
+export function Introduction6({ next }) {
+  const game = useGame();
+  const condition = game?.get("treatment")?.condition;
+
+  return (
+    <div className="mt-3 sm:mt-5 p-20">
+      <h1>How to play</h1>
       <h2>Scoring</h2>
       <p>Your performance earns you points which determine your bonus:</p>
       <h3>Reference game scoring{condition === "exp2_social_goal" ? " (all phases)" : ""}</h3>
-      <ul style={{ marginLeft: 20 }}>
+      <ul style={{ marginLeft: 40, listStyleType: "disc" }}>
         <li>
           Each time a <strong>Listener</strong> correctly identifies the target,
           they earn <strong>{LISTENER_CORRECT_POINTS} points</strong>.
@@ -395,8 +407,8 @@ export function Introduction5({ next }) {
       </ul>
       {condition === "exp2_social_goal" && (
         <>
-          <h3>Social identification scoring (Phase 2 only)</h3>
-          <ul style={{ marginLeft: 20 }}>
+          <h3 style={{ marginTop: 20 }}>Social identification scoring (Phase 2 only)</h3>
+          <ul style={{ marginLeft: 40, listStyleType: "disc" }}>
             <li>
               Each time a <strong>Listener</strong> correctly guesses whether
               the Speaker was in their Phase 1 group, they earn{" "}

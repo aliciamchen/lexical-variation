@@ -34,8 +34,8 @@ test.describe.serial('Lobby: quiz failure after 3 attempts', () => {
     await page.getByRole('button', { name: /consent/i }).click();
     await page.waitForTimeout(200);
 
-    // Go through 5 intro/instruction pages
-    for (let j = 0; j < 5; j++) {
+    // Go through 6 intro/instruction pages
+    for (let j = 0; j < 6; j++) {
       await page.getByRole('button', { name: /next/i }).click();
       await page.waitForTimeout(100);
     }

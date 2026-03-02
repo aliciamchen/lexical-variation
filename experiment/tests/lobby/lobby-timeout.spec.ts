@@ -50,8 +50,8 @@ test.describe.serial('Lobby: timeout with insufficient players', () => {
       await page.getByRole('button', { name: /consent/i }).click();
       await page.waitForTimeout(300);
 
-      // 5 intro pages
-      for (let j = 0; j < 5; j++) {
+      // 6 intro pages
+      for (let j = 0; j < 6; j++) {
         await page.getByRole('button', { name: /next/i }).click();
         await page.waitForTimeout(200);
       }

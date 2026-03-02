@@ -40,7 +40,6 @@ import {
   expectSocialGuessUI,
 } from '../helpers/assertions';
 import {
-  PLAYER_NAMES,
   PHASE_1_BLOCKS,
   PHASE_2_BLOCKS,
   ROUNDS_PER_BLOCK,
@@ -49,6 +48,8 @@ import {
 
 const CONDITION = 'exp2_social_goal';
 const PLAYER_COUNT = 9;
+// Use unique names to avoid collisions with the other holistic test on the same server
+const EXP2_NAMES = ['Dako', 'Veni', 'Subo', 'Pira', 'Golu', 'Weta', 'Ruma', 'Keji', 'Tobi'];
 
 test.describe.serial('Holistic: exp2_social_goal with 9 players', () => {
   let contexts: BrowserContext[] = [];
@@ -106,7 +107,7 @@ test.describe.serial('Holistic: exp2_social_goal with 9 players', () => {
     test.slow();
 
     for (let i = 0; i < PLAYER_COUNT; i++) {
-      await completeIntro(pages[i], { playerName: PLAYER_NAMES[i], condition: CONDITION });
+      await completeIntro(pages[i], { playerName: EXP2_NAMES[i], condition: CONDITION });
     }
 
     const started = await waitForGameStart(pages, 180_000);
