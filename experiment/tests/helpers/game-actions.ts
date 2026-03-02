@@ -115,8 +115,10 @@ export async function isOnExitScreen(page: Page): Promise<boolean> {
 
 // ============ INTRO FLOW ============
 
-export async function completeIntro(page: Page, playerName?: string): Promise<void> {
-  const identifier = playerName || `player_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+export async function completeIntro(page: Page, options?: string | { playerName?: string; condition?: string }): Promise<void> {
+  // Support both old string signature and new options object
+  const opts = typeof options === 'string' ? { playerName: options } : (options ?? {});
+  const identifier = opts.playerName || `player_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
   // Step 1: Custom consent page (now shown before identifier entry)
   await page.getByRole('button', { name: /consent/i }).waitFor({ state: 'visible', timeout: 15_000 });
@@ -143,6 +145,13 @@ export async function completeIntro(page: Page, playerName?: string): Promise<vo
   await page.getByRole('radio', { name: /listeners must wait/i }).click();
   await page.getByRole('radio', { name: /mixed up/i }).click();
   await page.getByRole('radio', { name: /different positions for each player/i }).click();
+
+  // Step 5: Condition-specific 7th question (exp2 conditions only)
+  if (opts.condition === 'exp2_refer_goal') {
+    await page.getByRole('radio', { name: /^Players from all groups will be mixed together\.$/ }).click();
+  } else if (opts.condition === 'exp2_social_goal') {
+    await page.getByRole('radio', { name: /mixed together.*figure out whether they were in the same Phase 1 group/i }).click();
+  }
 
   // Handle quiz success dialog
   page.once('dialog', async dialog => await dialog.accept());

@@ -26,7 +26,7 @@ test.describe.serial('Edge Case: Previous Batch Present (TEST_PLAN 9.4)', () => 
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
 
-    await createBatch(adminPage, 'refer_separated');
+    await createBatch(adminPage, 'exp1_refer_separated');
 
     // Verify the batch appears in the admin interface
     await adminPage.goto('/admin');
@@ -37,7 +37,7 @@ test.describe.serial('Edge Case: Previous Batch Present (TEST_PLAN 9.4)', () => 
     // The admin page should show the batch we created
     // Look for signs that a batch exists (batch status, treatment name, etc.)
     const hasBatchIndicator =
-      bodyText?.includes('refer_separated') ||
+      bodyText?.includes('exp1_refer_separated') ||
       bodyText?.includes('Refer Separated') ||
       bodyText?.includes('running') ||
       bodyText?.includes('created') ||
@@ -52,7 +52,7 @@ test.describe.serial('Edge Case: Previous Batch Present (TEST_PLAN 9.4)', () => 
     const adminPage = await adminContext.newPage();
 
     // Create a second batch while the first one still exists
-    await createBatch(adminPage, 'refer_mixed');
+    await createBatch(adminPage, 'exp1_refer_mixed');
 
     // Verify the admin page shows both batches
     await adminPage.goto('/admin');
@@ -86,7 +86,7 @@ test.describe.serial('Edge Case: Previous Batch Present (TEST_PLAN 9.4)', () => 
     expect(bodyText!.length).toBeGreaterThan(0);
 
     // Could create a third batch to prove no interference
-    await createBatch(adminPage, 'social_mixed');
+    await createBatch(adminPage, 'exp1_social_mixed');
     await adminPage.waitForTimeout(1000);
 
     // All three batches should coexist without issues

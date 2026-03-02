@@ -42,7 +42,7 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'refer_mixed');
+    await createBatch(adminPage, 'exp1_refer_mixed');
     await adminContext.close();
 
     pm = new PlayerManager(browser);
@@ -66,7 +66,7 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
   });
 
   test('condition is refer_mixed', async () => {
-    await expectCondition(pm.getPage(0), 'refer_mixed');
+    await expectCondition(pm.getPage(0), 'exp1_refer_mixed');
   });
 
   test('(a) Phase 1: groups are same (original_group === current_group)', async () => {

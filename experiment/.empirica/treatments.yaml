@@ -6,22 +6,34 @@ factors:
     - name: condition
       desc: experimental condition (between-subjects)
       values:
-        - value: refer_separated
-        - value: refer_mixed
-        - value: social_mixed
+        - value: exp1_refer_separated
+        - value: exp1_refer_mixed
+        - value: exp1_social_mixed
+        - value: exp2_refer_goal
+        - value: exp2_social_goal
 treatments:
-    - name: Refer Separated (9 players)
+    - name: Exp1 Refer Separated (9 players)
       desc: Players stay in original groups throughout Phase 2
       factors:
         playerCount: 9
-        condition: refer_separated
-    - name: Refer Mixed (9 players)
+        condition: exp1_refer_separated
+    - name: Exp1 Refer Mixed (9 players)
       desc: Groups reshuffled with masked identities in Phase 2
       factors:
         playerCount: 9
-        condition: refer_mixed
-    - name: Social Mixed (9 players)
+        condition: exp1_refer_mixed
+    - name: Exp1 Social Mixed (9 players)
       desc: Groups reshuffled with social guessing in Phase 2
       factors:
         playerCount: 9
-        condition: social_mixed
+        condition: exp1_social_mixed
+    - name: Exp2 Refer Goal (9 players)
+      desc: Exp 2 - told about mixed groups only before Phase 1, social guessing in Phase 2
+      factors:
+        playerCount: 9
+        condition: exp2_refer_goal
+    - name: Exp2 Social Goal (9 players)
+      desc: Exp 2 - told about social identification before Phase 1, social guessing in Phase 2
+      factors:
+        playerCount: 9
+        condition: exp2_social_goal

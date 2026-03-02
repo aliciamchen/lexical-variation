@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { usePlayer } from "@empirica/core/player/classic/react";
+import { usePlayer, useGame } from "@empirica/core/player/classic/react";
 import { Button } from "../components/Button";
 
 export function Quiz({ next }) {
   const player = usePlayer();
+  const game = useGame();
+  const condition = game?.get("treatment")?.condition;
   const [answers, setAnswers] = useState({});
   const [attempts, setAttempts] = useState(0);
   const [failed, setFailed] = useState(
@@ -12,7 +14,7 @@ export function Quiz({ next }) {
 
   const MAX_ATTEMPTS = 3;
 
-  const questions = [
+  const baseQuestions = [
     {
       question: "What is the Speaker's job in each round?",
       choices: [
@@ -71,6 +73,31 @@ export function Quiz({ next }) {
         "Because the pictures are in different positions for each player.",
     },
   ];
+
+  const questions = [...baseQuestions];
+
+  if (condition === "exp2_refer_goal") {
+    questions.push({
+      question: "What will happen in Phase 2?",
+      choices: [
+        "You will stay in the same group as Phase 1.",
+        "Players from all groups will be mixed together.",
+        "Each player will play individually without a group.",
+      ],
+      correctAnswer: "Players from all groups will be mixed together.",
+    });
+  } else if (condition === "exp2_social_goal") {
+    questions.push({
+      question: "What will happen in Phase 2?",
+      choices: [
+        "You will stay in the same group as Phase 1.",
+        "Players from all groups will be mixed together, and listeners will need to use speakers' descriptions to figure out whether they were in the same Phase 1 group.",
+        "Each player will play individually without a group.",
+      ],
+      correctAnswer:
+        "Players from all groups will be mixed together, and listeners will need to use speakers' descriptions to figure out whether they were in the same Phase 1 group.",
+    });
+  }
 
   const handleChoiceChange = (questionIndex, event) => {
     setAnswers({

@@ -34,7 +34,7 @@ test.describe.serial('Happy Path: refer_separated', () => {
     // Create admin page to set up batch
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'refer_separated');
+    await createBatch(adminPage, 'exp1_refer_separated');
     await adminContext.close();
 
     // Initialize players
@@ -63,7 +63,7 @@ test.describe.serial('Happy Path: refer_separated', () => {
     const pages = pm.getPages();
 
     // Verify condition
-    await expectCondition(pages[0], 'refer_separated');
+    await expectCondition(pages[0], 'exp1_refer_separated');
 
     // Verify groups - should have 3 groups of 3
     const groups = await pm.getPagesByGroup();

@@ -17,7 +17,7 @@ test.describe.serial('UI Verification: Intro & Instructions (5.1)', () => {
     // if no batch exists, blocking the intro flow entirely.
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'refer_separated');
+    await createBatch(adminPage, 'exp1_refer_separated');
     await adminContext.close();
 
     context = await browser.newContext();

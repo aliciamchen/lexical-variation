@@ -33,6 +33,8 @@ import {
   waitForExitScreen,
   waitForGameStart,
   isInGame,
+  speakerSendMessage,
+  listenerClickTangram,
 } from '../helpers/game-actions';
 import {
   expectCondition,
@@ -46,6 +48,7 @@ import {
   ROUNDS_PER_BLOCK,
   MAX_IDLE_ROUNDS,
   MIN_GROUP_SIZE,
+  SELECTION_DURATION,
 } from '../helpers/constants';
 import { QUIZ_FAILED_SCREEN, SORRY_SCREEN, TANGRAM_ITEMS } from '../helpers/selectors';
 
@@ -90,7 +93,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
   test('create social_mixed batch via admin', async ({ browser }) => {
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
-    await createBatch(adminPage, 'social_mixed');
+    await createBatch(adminPage, 'exp1_social_mixed');
     await adminCtx.close();
   });
 
@@ -232,7 +235,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     }
 
     // Verify condition
-    await expectCondition(gamePages[0], 'social_mixed');
+    await expectCondition(gamePages[0], 'exp1_social_mixed');
   });
 
   // ─── Test 6: Phase 1 — play 2 rounds (one with all wrong clicks) ───
@@ -339,6 +342,83 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
         // Wrong click is NOT inactivity — player was active, just incorrect
         expect(bodyText).not.toContain('You have been inactive');
       }
+    }
+  });
+
+  // ─── Test 6c: Late click near timer expiry — feedback must be consistent ───
+  test('late click near timer expiry has consistent feedback and idle state', async () => {
+    test.slow();
+
+    // Advance past previous Feedback stage
+    for (const page of gamePages) {
+      await clickContinue(page, 3000);
+    }
+    await waitForStage(gamePages[0], 'Selection', 15_000);
+
+    // Identify speakers and listeners across all groups
+    const speakers: { page: Page; info: NonNullable<Awaited<ReturnType<typeof getPlayerInfo>>> }[] = [];
+    const listeners: { page: Page; info: NonNullable<Awaited<ReturnType<typeof getPlayerInfo>>> }[] = [];
+
+    for (const page of gamePages) {
+      const info = await getPlayerInfo(page);
+      if (!info) continue;
+      if (info.role === 'speaker') speakers.push({ page, info });
+      else if (info.role === 'listener') listeners.push({ page, info });
+    }
+
+    // Speakers send messages so listeners can click
+    for (const { page } of speakers) {
+      await speakerSendMessage(page, 'late click test');
+    }
+    await gamePages[0].waitForTimeout(500);
+
+    // Pick one listener to click late; all others click immediately
+    const lateListener = listeners[0];
+    const earlyListeners = listeners.slice(1);
+
+    for (const { page, info } of earlyListeners) {
+      await listenerClickTangram(page, info.targetIndex);
+    }
+
+    // Wait until ~3 seconds before the selection timer expires
+    const waitSeconds = SELECTION_DURATION - 3;
+    const timerLocator = lateListener.page.locator('h1.tabular-nums');
+    const startTime = Date.now();
+    while (Date.now() - startTime < (waitSeconds + 5) * 1000) {
+      const timerText = await timerLocator.textContent();
+      if (timerText) {
+        const parts = timerText.split(':');
+        const secs = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        if (secs <= 3) break;
+      }
+      await lateListener.page.waitForTimeout(500);
+    }
+
+    // Click the correct tangram right before time runs out
+    await listenerClickTangram(lateListener.page, lateListener.info.targetIndex);
+
+    // Wait for Feedback stage
+    await waitForStage(lateListener.page, 'Feedback', 15_000);
+
+    const bodyText = await lateListener.page.textContent('body');
+
+    // The feedback must be internally consistent:
+    // - If the server registered the click: "Correct!" and NO idle warning
+    // - If the server missed the click: "did not respond" and possibly an idle warning
+    // But NEVER "Correct!" + idle warning (the bug this fix prevents)
+    const sawCorrect = bodyText?.includes('Correct!');
+    const sawIdle = bodyText?.includes('You have been inactive');
+
+    expect(
+      !(sawCorrect && sawIdle),
+      'Bug: player sees "Correct!" and idle warning simultaneously — race condition between click and timer',
+    ).toBe(true);
+
+    // In practice, 3 seconds should be enough for the click to sync,
+    // so we expect the click was registered
+    if (sawCorrect) {
+      expect(bodyText).toContain('points');
+      expect(bodyText).not.toContain('You have been inactive');
     }
   });
 
@@ -453,10 +533,10 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     test.slow();
     const active = await getActivePlayers(gamePages);
 
-    // We've played: 2 normal + 2 (race condition test) + MAX_IDLE_ROUNDS speaker idle + 2 normal + MAX_IDLE_ROUNDS listener idle rounds
+    // We've played: 2 normal + 2 (race condition test) + 1 (late click test) + MAX_IDLE_ROUNDS speaker idle + 2 normal + MAX_IDLE_ROUNDS listener idle rounds
     // Phase 1 total: PHASE_1_BLOCKS * ROUNDS_PER_BLOCK rounds
     // Remaining = total - roundsPlayed
-    const roundsPlayed = 2 + 2 + MAX_IDLE_ROUNDS + 2 + MAX_IDLE_ROUNDS;
+    const roundsPlayed = 2 + 2 + 1 + MAX_IDLE_ROUNDS + 2 + MAX_IDLE_ROUNDS;
     const totalPhase1Rounds = PHASE_1_BLOCKS * ROUNDS_PER_BLOCK;
     const remaining = totalPhase1Rounds - roundsPlayed;
 

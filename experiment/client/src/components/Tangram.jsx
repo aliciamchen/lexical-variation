@@ -2,6 +2,7 @@ import { useStageTimer } from "@empirica/core/player/classic/react";
 import React from "react";
 import _ from "lodash";
 import { useGame } from "@empirica/core/player/classic/react";
+import { hasSocialGuessing } from "../constants";
 
 export function Tangram(props) {
   const {
@@ -45,7 +46,7 @@ export function Tangram(props) {
     // Get condition info for social_mixed handling
     const condition = game.get("condition");
     const phase_num = round.get("phase_num");
-    const isSocialMixed = condition === "social_mixed" && phase_num === 2;
+    const isSocialMixed = hasSocialGuessing(condition) && phase_num === 2;
 
     // Check if tangram is clickable (listener in Selection stage, speaker has sent message)
     const playerGroupChat = stage.get(`${playerGroup}_chat`) || [];

@@ -56,7 +56,10 @@ export const PLAYER_NAMES = [
 ];
 
 // Conditions
-export const CONDITIONS = ['refer_separated', 'refer_mixed', 'social_mixed'] as const;
+export const CONDITIONS = [
+  'exp1_refer_separated', 'exp1_refer_mixed', 'exp1_social_mixed',
+  'exp2_refer_goal', 'exp2_social_goal',
+] as const;
 export type Condition = typeof CONDITIONS[number];
 
 // Quiz answers (correct values matching Quiz.jsx)
@@ -67,6 +70,8 @@ export const QUIZ_ANSWERS = {
   listenerWaiting: 'Listeners must wait for the Speaker to send a message before they can click.',
   picturePositions: 'Everyone will see the same pictures, but the pictures will be mixed up and in different places for different people.',
   positionReason: 'Because the pictures are in different positions for each player.',
+  phase2ReferGoal: 'Players from all groups will be mixed together.',
+  phase2SocialGoal: "Players from all groups will be mixed together, and listeners will need to use speakers' descriptions to figure out whether they were in the same Phase 1 group.",
 };
 
 // Prolific codes
@@ -79,9 +84,11 @@ export const PROLIFIC_CODES = {
 
 // Treatments as shown in admin dropdown
 export const TREATMENTS = {
-  refer_separated: 'Refer Separated (9 players)',
-  refer_mixed: 'Refer Mixed (9 players)',
-  social_mixed: 'Social Mixed (9 players)',
+  exp1_refer_separated: 'Exp1 Refer Separated (9 players)',
+  exp1_refer_mixed: 'Exp1 Refer Mixed (9 players)',
+  exp1_social_mixed: 'Exp1 Social Mixed (9 players)',
+  exp2_refer_goal: 'Exp2 Refer Goal (9 players)',
+  exp2_social_goal: 'Exp2 Social Goal (9 players)',
 };
 
 // Group names

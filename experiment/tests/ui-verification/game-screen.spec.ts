@@ -30,7 +30,7 @@ test.describe.serial('UI Verification: Game Screen Elements (5.2)', () => {
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'refer_separated');
+    await createBatch(adminPage, 'exp1_refer_separated');
     await adminContext.close();
 
     pm = new PlayerManager(browser);
@@ -71,7 +71,7 @@ test.describe.serial('UI Verification: Game Screen Elements (5.2)', () => {
     expect(stageName).toBe('Selection');
 
     const condition = await container.getAttribute('data-condition');
-    expect(condition).toBe('refer_separated');
+    expect(condition).toBe('exp1_refer_separated');
 
     const playerGroup = await container.getAttribute('data-player-group');
     expect(playerGroup).not.toBeNull();

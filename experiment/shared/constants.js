@@ -77,7 +77,22 @@ export const names = [
 
 // ============ EXPERIMENTAL CONDITIONS ============
 // Between-subjects conditions (set at game creation)
-export const conditions = ["refer_separated", "refer_mixed", "social_mixed"];
+// Exp 1: Tests whether social goals resist convergence of established conventions
+// Exp 2: Tests whether social goals shape the formation of conventions
+export const conditions = [
+  "exp1_refer_separated", "exp1_refer_mixed", "exp1_social_mixed",
+  "exp2_refer_goal", "exp2_social_goal",
+];
+
+// Helper: conditions where groups are reshuffled in Phase 2
+export function isMixedCondition(condition) {
+  return ["exp1_refer_mixed", "exp1_social_mixed", "exp2_refer_goal", "exp2_social_goal"].includes(condition);
+}
+
+// Helper: conditions where social guessing is enabled in Phase 2
+export function hasSocialGuessing(condition) {
+  return ["exp1_social_mixed", "exp2_refer_goal", "exp2_social_goal"].includes(condition);
+}
 
 // ============ AVATAR CONFIGURATION ============
 // Using DiceBear API for avatars (https://www.dicebear.com)

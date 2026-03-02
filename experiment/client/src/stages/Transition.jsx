@@ -7,6 +7,7 @@ import {
   LISTENER_CORRECT_POINTS,
   SOCIAL_GUESS_CORRECT_POINTS,
   SOCIAL_SPEAKER_POINTS_PER_CORRECT,
+  hasSocialGuessing,
 } from "../constants";
 
 export function Transition(props) {
@@ -25,7 +26,7 @@ export function Transition(props) {
     // Get condition-specific instructions
     let conditionInstructions = "";
 
-    if (condition === "refer_separated") {
+    if (condition === "exp1_refer_separated") {
       conditionInstructions = (
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>
@@ -36,7 +37,7 @@ export function Transition(props) {
           </p>
         </div>
       );
-    } else if (condition === "refer_mixed") {
+    } else if (condition === "exp1_refer_mixed") {
       conditionInstructions = (
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>
@@ -52,7 +53,7 @@ export function Transition(props) {
           </p>
         </div>
       );
-    } else if (condition === "social_mixed") {
+    } else if (hasSocialGuessing(condition)) {
       conditionInstructions = (
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>
@@ -115,7 +116,7 @@ export function Transition(props) {
         </p>
         <p className="instruction-prompt" style={{ marginTop: 8 }}>
           <strong>
-            {condition === "social_mixed" ? "Scoring" : "Scoring Reminder:"}
+            {hasSocialGuessing(condition) ? "Scoring" : "Scoring Reminder:"}
           </strong>
           <ul style={{ marginTop: 4, marginLeft: 20 }}>
             <li>
@@ -126,7 +127,7 @@ export function Transition(props) {
               Speakers earn up to <strong>2 points</strong> based on the
               proportion of listeners who correctly identify the target.
             </li>
-            {condition === "social_mixed" && (
+            {hasSocialGuessing(condition) && (
               <>
                 <li>
                   Listeners earn{" "}
@@ -169,7 +170,7 @@ export function Transition(props) {
     const socialGuessedAboutCorrect =
       player.get("social_guessed_about_correct") || 0;
     const showSocialSummary =
-      condition === "social_mixed" &&
+      hasSocialGuessing(condition) &&
       (socialGuessTotal > 0 || socialGuessedAboutTotal > 0);
 
     return (

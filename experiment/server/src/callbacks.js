@@ -32,6 +32,8 @@ import {
   ACCURACY_CHECK_BLOCKS,
   ACCURACY_THRESHOLD,
   PLAYER_ACCURACY_THRESHOLD,
+  isMixedCondition,
+  hasSocialGuessing,
 } from "./constants";
 
 // Group names (no color distinction)
@@ -123,7 +125,7 @@ Empirica.onGameStart(({ game }) => {
   // Use lower multiplier for social condition to keep max bonus equal across conditions
   game.set(
     "bonusPerPoint",
-    condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point,
+    hasSocialGuessing(condition) ? BONUS_PER_POINT_SOCIAL : bonus_per_point,
   );
   game.set("listenerCorrectPoints", LISTENER_CORRECT_POINTS);
   game.set("speakerMaxPointsPerRound", SPEAKER_MAX_POINTS_PER_ROUND);
@@ -260,7 +262,7 @@ Empirica.onRoundStart(({ round }) => {
     const targetNum = round.get("target_num");
     if (
       phase_num === 2 &&
-      (condition === "refer_mixed" || condition === "social_mixed")
+      isMixedCondition(condition)
     ) {
       reshuffleGroups(game, players, blockNum);
     }
@@ -317,8 +319,7 @@ Empirica.onRoundStart(({ round }) => {
       }
 
       const isMixedPhase2 =
-        phase_num === 2 &&
-        (condition === "refer_mixed" || condition === "social_mixed");
+        phase_num === 2 && isMixedCondition(condition);
 
       groupPlayers.forEach((player, i) => {
         // In mixed conditions, use anonymous avatars for both display and chat
@@ -838,8 +839,8 @@ Empirica.onStageEnded(({ stage }) => {
       speaker.set("score", speaker.get("score") + speakerPoints);
       speaker.round.set("round_score", speakerPoints);
 
-      // ============ SOCIAL GUESSING (for social_mixed condition in Phase 2) ============
-      if (condition === "social_mixed" && phase_num === 2) {
+      // ============ SOCIAL GUESSING (for conditions with social guessing in Phase 2) ============
+      if (hasSocialGuessing(condition) && phase_num === 2) {
         const speakerOriginalGroup = speaker.get("original_group");
         let correctGuessesFromOriginalGroup = 0;
 
@@ -944,8 +945,7 @@ function checkGroupViability(game) {
   const currentRound = game.rounds.find((r) => !r.get("ended"));
   const phase_num = currentRound?.get("phase_num") || 1;
   const isMixedPhase2 =
-    phase_num === 2 &&
-    (condition === "refer_mixed" || condition === "social_mixed");
+    phase_num === 2 && isMixedCondition(condition);
 
   const viableGroups = activeGroups.filter((groupName) => {
     const groupPlayers = players.filter(
@@ -1262,7 +1262,7 @@ Empirica.onRoundEnded(({ round }) => {
   const condition = game.get("treatment")?.condition;
   // Use lower multiplier for social condition to keep max bonus equal across conditions
   const multiplier =
-    condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
+    hasSocialGuessing(condition) ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
 
   players.forEach((player) => {
     const totalScore = player.get("score") || 0;
@@ -1278,7 +1278,7 @@ Empirica.onGameEnded(({ game }) => {
   const condition = game.get("treatment")?.condition;
   // Use lower multiplier for social condition to keep max bonus equal across conditions
   const multiplier =
-    condition === "social_mixed" ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
+    hasSocialGuessing(condition) ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
 
   players.forEach((player) => {
     const totalScore = player.get("score") || 0;

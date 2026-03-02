@@ -47,7 +47,7 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'social_mixed');
+    await createBatch(adminPage, 'exp1_social_mixed');
     await adminContext.close();
 
     pm = new PlayerManager(browser);
@@ -71,7 +71,7 @@ test.describe.serial('Condition-Specific: social_mixed (TEST_PLAN 8.3)', () => {
   });
 
   test('condition is social_mixed', async () => {
-    await expectCondition(pm.getPage(0), 'social_mixed');
+    await expectCondition(pm.getPage(0), 'exp1_social_mixed');
   });
 
   test('(a) Phase 1: groups unchanged (same as refer_separated)', async () => {

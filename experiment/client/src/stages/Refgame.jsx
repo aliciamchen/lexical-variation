@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useStageTimer } from "@empirica/core/player/classic/react";
 import { Tangram } from "../components/Tangram.jsx";
 import { Button } from "../components/Button.jsx";
-import { PHASE_1_BLOCKS, PHASE_2_BLOCKS, MAX_IDLE_ROUNDS } from "../constants";
+import { PHASE_1_BLOCKS, PHASE_2_BLOCKS, MAX_IDLE_ROUNDS, hasSocialGuessing, isMixedCondition } from "../constants";
 
 export function Refgame(props) {
   const { round, stage, game, player, players } = props;
@@ -34,7 +34,7 @@ export function Refgame(props) {
   const block_num = round.get("block_num");
 
   // Determine if social guessing is enabled
-  const isSocialMixed = condition === "social_mixed" && phase_num === 2;
+  const isSocialMixed = hasSocialGuessing(condition) && phase_num === 2;
   const isListener = player.round.get("role") === "listener";
   const simultaneousMode =
     isSocialMixed && isListener && stage.get("name") === "Selection";
@@ -86,9 +86,7 @@ export function Refgame(props) {
   // Render player status indicator
   const renderPlayer = (p, self = false) => {
     // In mixed conditions during Phase 2, use display_name and display_avatar
-    const isMixed =
-      (condition === "refer_mixed" || condition === "social_mixed") &&
-      phase_num === 2;
+    const isMixed = isMixedCondition(condition) && phase_num === 2;
     const displayName = isMixed ? p.round.get("display_name") : p.get("name");
     const displayAvatar = isMixed
       ? p.round.get("display_avatar")
@@ -576,7 +574,7 @@ export function Refgame(props) {
         )}
 
         {stage.get("name") == "Feedback" &&
-          (condition === "refer_mixed" || condition === "social_mixed") &&
+          isMixedCondition(condition) &&
           phase_num === 2 &&
           !(
             round.get("target_num") === 5 &&

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { usePlayer } from "@empirica/core/player/classic/react";
+import { usePlayer, useGame } from "@empirica/core/player/classic/react";
 import * as Sentry from "@sentry/react";
 import { Button } from "../components/Button";
 import { Quiz } from "./Quiz";
@@ -14,6 +14,8 @@ import {
   PHASE_2_BLOCKS,
   SELECTION_DURATION,
   LISTENER_CORRECT_POINTS,
+  SOCIAL_GUESS_CORRECT_POINTS,
+  SOCIAL_SPEAKER_POINTS_PER_CORRECT,
   GROUP_SIZE,
   getAvatarUrl,
   avatar_seeds,
@@ -308,17 +310,77 @@ export function Introduction4({ next }) {
 }
 
 export function Introduction5({ next }) {
-  return (
-    <div className="mt-3 sm:mt-5 p-20">
-      <h1>How to play</h1>
-      <h2>Phase 2 and Scoring</h2>
+  const game = useGame();
+  const condition = game?.get("treatment")?.condition;
+
+  // Condition-specific Phase 2 preview text
+  let phase2Preview;
+  if (condition === "exp2_social_goal") {
+    phase2Preview = (
+      <>
+        <p>
+          After completing Phase 1 with your group, you will continue to Phase
+          2. Phase 2 also consists of {PHASE_2_BLOCKS} blocks.
+        </p>
+        <p>
+          In Phase 2, players from all groups will be{" "}
+          <strong>mixed together</strong>. Every round, you will be randomly
+          assigned to play with different players. These people may or may not
+          be from your original group. Player identities will be hidden:
+          everyone will appear as "Player" with anonymous avatars.
+        </p>
+        <div
+          style={{
+            marginTop: 8,
+            padding: 12,
+            backgroundColor: "#fffbeb",
+            border: "2px solid #f59e0b",
+            borderRadius: 8,
+          }}
+        >
+          <p>
+            In Phase 2, you will be primarily rewarded based on whether the
+            other members from your Phase 1 group can use your descriptions to
+            correctly <strong>identify you as a member of their group.</strong>
+          </p>
+        </div>
+      </>
+    );
+  } else if (condition === "exp2_refer_goal") {
+    phase2Preview = (
+      <>
+        <p>
+          After completing Phase 1 with your group, you will continue to Phase
+          2. Phase 2 also consists of {PHASE_2_BLOCKS} blocks.
+        </p>
+        <p>
+          In Phase 2, players from all groups will be{" "}
+          <strong>mixed together</strong>. Every round, you will be randomly
+          assigned to play with different players. These people may or may not
+          be from your original group. Player identities will be hidden:
+          everyone will appear as "Player" with anonymous avatars.
+        </p>
+      </>
+    );
+  } else {
+    // All Exp 1 conditions: generic text
+    phase2Preview = (
       <p>
         After completing Phase 1 with your group, you will continue to Phase 2.
         Phase 2 also consists of {PHASE_2_BLOCKS} blocks. You will receive
         specific instructions about Phase 2 when you get there.
       </p>
+    );
+  }
+
+  return (
+    <div className="mt-3 sm:mt-5 p-20">
+      <h1>How to play</h1>
+      <h2>Phase 2 and Scoring</h2>
+      {phase2Preview}
       <h2>Scoring</h2>
       <p>Your performance earns you points which determine your bonus:</p>
+      <h3>Reference game scoring{condition === "exp2_social_goal" ? " (all phases)" : ""}</h3>
       <ul style={{ marginLeft: 20 }}>
         <li>
           Each time a <strong>Listener</strong> correctly identifies the target,
@@ -331,6 +393,24 @@ export function Introduction5({ next }) {
         </li>
         <li>No points are awarded for incorrect selections or timeouts.</li>
       </ul>
+      {condition === "exp2_social_goal" && (
+        <>
+          <h3>Social identification scoring (Phase 2 only)</h3>
+          <ul style={{ marginLeft: 20 }}>
+            <li>
+              Each time a <strong>Listener</strong> correctly guesses whether
+              the Speaker was in their Phase 1 group, they earn{" "}
+              <strong>{SOCIAL_GUESS_CORRECT_POINTS} points</strong>.
+            </li>
+            <li>
+              The <strong>Speaker</strong> earns up to{" "}
+              <strong>{SOCIAL_SPEAKER_POINTS_PER_CORRECT} points</strong> based
+              on the proportion of their original group members who correctly
+              identify them.
+            </li>
+          </ul>
+        </>
+      )}
       <p>
         At the end of the game, your total points are converted to a bonus
         payment.

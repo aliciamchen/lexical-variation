@@ -33,7 +33,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'social_mixed');
+    await createBatch(adminPage, 'exp1_social_mixed');
     await adminContext.close();
 
     pm = new PlayerManager(browser);
@@ -57,7 +57,7 @@ test.describe.serial('Score Display: Social Mixed Scores (TEST_PLAN 11.2)', () =
       await expectPlayerInGame(page);
     }
 
-    await expectCondition(pages[0], 'social_mixed');
+    await expectCondition(pages[0], 'exp1_social_mixed');
   });
 
   test('complete Phase 1', async () => {

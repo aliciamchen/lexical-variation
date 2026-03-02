@@ -63,12 +63,13 @@ export class PlayerManager {
   /**
    * Complete intro (consent + instructions + quiz) for all players.
    * Runs sequentially to avoid race conditions with the Empirica backend.
+   * Pass condition for exp2 treatments that have an extra quiz question.
    */
-  async completeAllIntros(): Promise<void> {
+  async completeAllIntros(condition?: string): Promise<void> {
     // Run intros sequentially to reduce server load and avoid race conditions.
     // Parallel execution can overwhelm the Empirica websocket backend.
     for (const page of this.pages) {
-      await completeIntro(page);
+      await completeIntro(page, condition ? { condition } : undefined);
     }
   }
 

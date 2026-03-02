@@ -6,6 +6,7 @@ import {
   useStage,
 } from "@empirica/core/player/classic/react";
 import { Chat } from "./components/Chat";
+import { hasSocialGuessing, isMixedCondition } from "./constants";
 
 import { React, useEffect } from "react";
 import { Profile } from "./Profile";
@@ -44,7 +45,7 @@ export function Game() {
   const playerGroup = player.get("current_group");
   const condition = game.get("condition");
   const phase_num = round?.get("phase_num");
-  const isSocialMixed = condition === "social_mixed" && phase_num === 2;
+  const isSocialMixed = hasSocialGuessing(condition) && phase_num === 2;
 
   // Check if all players in group have responded
   const playersInGroup = players.filter(
@@ -62,7 +63,7 @@ export function Game() {
     stage?.get("name") === "Selection" && !allGroupResponded && playerGroup;
 
   // In mixed conditions during Phase 2, use display_name and display_avatar
-  const isMixed = (condition === "refer_mixed" || condition === "social_mixed") && phase_num === 2;
+  const isMixed = isMixedCondition(condition) && phase_num === 2;
 
   // Custom player name function to show role (Speaker/Listener)
   const customPlayerName = (p) => {
