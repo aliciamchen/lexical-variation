@@ -26,6 +26,7 @@ lexical-variation*/
 review*.md
 analysis/outputs
 raw
+paper
 
 # Analysis pipeline outputs (timestamped dirs)
 analysis/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_*/
