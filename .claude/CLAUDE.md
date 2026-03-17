@@ -6,13 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a multiplayer reference game experiment built with Empirica studying lexical variation and social signaling. Players communicate about tangram images in groups, with different experimental conditions affecting group dynamics in Phase 2.
 
-A writeup of the framing and goals of the experiments (for submission as a registered report) is in `writing/Social_and_referential_goals_in_language_variation-12.pdf`. Note that in the introduction of that document there is an Experiment 2 planned; that is not written out yet, all of the methods in there are for Experiment 1, which should correspond to the code in this repository. 
+The registered report manuscript is in `paper/main.tex` (compiled with `cd paper && latexmk -pdf main.tex`). The paper describes the framing, design, and analysis plan for both Experiment 1 and Experiment 2.
+
+We plan to submit the registered report to Nature Human Behavior. The submission guidelines are at https://www.nature.com/nathumbehav/submission-guidelines/registeredreports
 
 **Experimental Design:**
 - 9 players in 3 groups of 3
 - Phase 1: Within-group reference game (6 blocks)
 - Phase 2: Continued reference game with condition-dependent behavior (6 blocks)
-- Conditions: `refer_separated` (same groups), `refer_mixed` (groups reshuffled every trial, masked identities), `social_mixed` (reshuffled every trial + social guessing task)
+- Experiment 1 conditions: `refer_separated` (same groups), `refer_mixed` (groups reshuffled every trial, masked identities), `social_mixed` (reshuffled every trial + social guessing task)
+- Experiment 2 conditions: `refer_goal` (told groups will mix, no social task info), `social_goal` (told about social identification reward before Phase 1). Both use mixed + social guessing in Phase 2.
 
 The TODOS.md file contains a list of things that need to be done to complete the experiment.
 
@@ -194,7 +197,7 @@ Note: `rpy2` requires R to be installed. Cairo-based packages (`cairosvg`) may r
 
 ### Configuration (`experiment/.empirica/`)
 
-- **treatments.yaml**: Experimental factors and 3 treatment combinations
+- **treatments.yaml**: Experimental factors and 5 treatment combinations (3 for Experiment 1, 2 for Experiment 2)
 - **lobbies.yaml**: Participant grouping strategies
 - **empirica.toml**: Auth and project metadata
 
@@ -254,9 +257,24 @@ The client app reports errors to Sentry via `@sentry/react`. A Sentry MCP server
 
 ### Analysis Pipeline
 
-`analysis/run_pipeline.py` is the single entry point that processes a raw Empirica export zip into analysis-ready data, figures, and rendered notebooks.
+`analysis/run_pipeline.py` is the single entry point for all data processing. It has subcommands for different workflows.
 
-**Running the pipeline:**
+**Scripts:**
+
+| Script | Purpose |
+|--------|---------|
+| `run_pipeline.py` | Entry point — process zips, combine runs, browse metadata |
+| `preprocessing.py` | Raw Empirica CSVs → analysis-ready CSVs (called by run_pipeline) |
+| `compute_embeddings.py` | Speaker utterances → SBERT embeddings, similarity metrics, UMAP |
+| `pilot_analysis.py` | Preprocessed data → static comparison plots across conditions |
+| `animate_umap.py` | UMAP projections → animated videos of embedding trajectories |
+| `plot_style.py` | Shared plotting constants and helpers (imported, not run directly) |
+| `test_data_integrity.py` | Pytest validation of preprocessed CSV structure and content |
+| `exploratory/` | Ad-hoc analysis scripts (contact networks, label dynamics) — not part of the pipeline |
+
+**Quarto notebooks** (`00_preprocess.qmd` through `05_exit_survey.qmd`) read from `analysis/processed_data/` (a symlink updated by `run_pipeline.py`).
+
+#### Processing a single run
 
 ```bash
 # Process the most recent zip under experiment/data/
@@ -266,58 +284,44 @@ uv run python analysis/run_pipeline.py
 uv run python analysis/run_pipeline.py experiment/data/20260222_125327/empirica-export-20260222_132407.zip
 
 # Skip slow steps
-uv run python analysis/run_pipeline.py --skip-embeddings   # skip SBERT (~minutes)
-uv run python analysis/run_pipeline.py --skip-visualize    # skip plots/animations
-uv run python analysis/run_pipeline.py --skip-render       # skip Quarto notebooks
+uv run python analysis/run_pipeline.py --skip-embeddings --skip-visualize --skip-render
 ```
 
-**Browsing runs:**
+Steps: unzip → extract bonuses → anonymize → preprocess → embeddings → visualize → render notebooks.
+
+Output goes to `analysis/{datetime}/` with `raw/`, `data/`, and `figures/` subdirectories.
+
+#### Combining multiple runs
+
+When data spans multiple Empirica server runs, use the `combine` subcommand:
 
 ```bash
-uv run python analysis/run_pipeline.py list                               # list all runs with metadata
-uv run python analysis/run_pipeline.py status                             # show processed_data symlink target
+# Combine and preprocess only
+uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147
+
+# Full pipeline (embeddings + plots)
+uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147
+
+# Skip slow steps
+uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147 --skip-embeddings --skip-visualize
+```
+
+Stacks raw CSVs, filters failed games (lobby timeouts), runs preprocessing, writes `manifest.json`. Output defaults to `analysis/pilots/` (configurable with `--output`). Each run must already be processed (i.e. `analysis/{timestamp}/raw/` must exist).
+
+#### Browsing runs and metadata
+
+```bash
+uv run python analysis/run_pipeline.py list                               # list all runs
+uv run python analysis/run_pipeline.py status                             # show processed_data symlink
 uv run python analysis/run_pipeline.py bonuses                            # print latest bonuses
-uv run python analysis/run_pipeline.py bonuses --run 20260225_210047      # specific run's bonuses
+uv run python analysis/run_pipeline.py bonuses --run 20260225_210047      # specific run
 ```
 
-**Pipeline steps:**
-
-1. **Unzip** — extracts the Empirica export to a temp directory
-2. **Extract bonuses** — writes `bonuses.csv` with Prolific IDs + bonus amounts (before anonymizing)
-3. **Anonymize** — copies raw CSVs to `raw/`, stripping `participantIdentifier` and related columns from `player.csv`
-4. **Preprocess** — runs `preprocessing.py` to produce analysis-ready CSVs (`games.csv`, `trials.csv`, `messages.csv`, etc.)
-5. **Embeddings** — runs `compute_embeddings.py` for SBERT embeddings, similarity metrics, and UMAP projections
-6. **Visualize** — runs `pilot_analysis.py` and `animate_umap.py` for all auto-discovered conditions
-7. **Render** — renders Quarto notebooks (`00_preprocess.qmd` through `05_exit_survey.qmd`)
-
-**Output structure** (datetime extracted from zip filename):
-
-```
-analysis/20260222_132407/
-├── bonuses.csv              # Prolific IDs + bonus amounts (sensitive)
-├── raw/                     # Anonymized raw Empirica export CSVs
-│   ├── game.csv
-│   ├── player.csv           # participantIdentifier REMOVED
-│   ├── playerRound.csv
-│   └── ...
-├── data/                    # Preprocessed analysis-ready CSVs
-│   ├── games.csv
-│   ├── trials.csv
-│   ├── messages.csv
-│   ├── speaker_utterances.csv
-│   ├── embeddings.npy
-│   ├── umap_projections.csv
-│   └── ...
-└── figures/                 # Plots and animations
-    ├── pilot_social_mixed_listener_accuracy.png
-    └── ...
-```
-
-**Symlink:** The pipeline creates/updates `analysis/processed_data -> analysis/{datetime}/data/` so that Quarto notebooks (which read from `analysis/processed_data/`) always point to the most recently processed dataset.
-
-**Individual scripts** can also be run standalone with `--data-dir` and `--output-dir`:
+#### Running individual scripts standalone
 
 ```bash
-uv run python analysis/pilot_analysis.py --data-dir analysis/20260222_132407/data/ --output-dir analysis/20260222_132407/figures/
-uv run python analysis/animate_umap.py --data-dir analysis/20260222_132407/data/ --output-dir analysis/20260222_132407/figures/
+uv run python analysis/pilot_analysis.py --data-dir analysis/pilots/data/ --output-dir analysis/pilots/figures/
+uv run python analysis/animate_umap.py --data-dir analysis/pilots/data/ --output-dir analysis/pilots/figures/
+uv run python analysis/compute_embeddings.py analysis/pilots/data/
+uv run pytest analysis/test_data_integrity.py -v
 ```

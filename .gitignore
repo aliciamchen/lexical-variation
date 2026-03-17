@@ -32,3 +32,4 @@ paper
 analysis/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_*/
 analysis/processed_data
 analysis/*_files/
+analysis/old_pilots/

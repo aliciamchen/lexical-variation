@@ -7,11 +7,8 @@ format:
 ---
 
 ```{r setup, message=FALSE, warning=FALSE}
-library(tidyverse)
-library(here)
 library(jsonlite)
-
-data_dir <- here("analysis", "processed_data")
+source(here::here("analysis", "config.R"))
 ```
 
 # Load Data

@@ -7,12 +7,11 @@ format:
 ---
 
 ```{r setup, message=FALSE, warning=FALSE}
-library(tidyverse)
 library(lme4)
 library(lmerTest)
 library(tidyboot)
-library(here)
-data_dir <- here("analysis", "processed_data")
+library(patchwork)
+source(here::here("analysis", "config.R"))
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
@@ -103,7 +102,8 @@ p_length <- ggplot(length_all, aes(x = globalBlock, y = empirical_stat, color = 
   annotate("text", x = phase_boundary, y = Inf,
            label = "Phase 1 | Phase 2", vjust = 1.5, size = 3, alpha = 0.5) +
   labs(x = "Block", y = "Mean word count", title = "(a) Description length") +
-  theme_minimal() +
+  scale_color_condition() +
+  scale_fill_condition() +
   theme(legend.position = "bottom")
 
 # Plot 16a: Referential accuracy over all blocks
@@ -121,7 +121,8 @@ p_acc <- ggplot(acc_all, aes(x = globalBlock, y = empirical_stat, color = condit
   geom_vline(xintercept = phase_boundary, linetype = "dashed", alpha = 0.5) +
   labs(x = "Block", y = "Proportion correct", title = "(b) Referential accuracy") +
   scale_y_continuous(limits = c(0, 1)) +
-  theme_minimal() +
+  scale_color_condition() +
+  scale_fill_condition() +
   theme(legend.position = "bottom")
 
 # Plot 16b: Adjacent similarity over all blocks
@@ -138,12 +139,12 @@ if (exists("adj_with_condition")) {
     geom_point(size = 2) +
     geom_vline(xintercept = phase_boundary, linetype = "dashed", alpha = 0.5) +
     labs(x = "Block", y = "Cosine similarity (adjacent)", title = "(c) Convention stability") +
-    theme_minimal() +
+    scale_color_condition() +
+    scale_fill_condition() +
     theme(legend.position = "bottom")
 }
 
 # Plot 16: Combined temporal dynamics panel
-library(patchwork)
 if (exists("p_sim")) {
   p_length / p_acc / p_sim +
     plot_layout(guides = "collect") &
@@ -187,7 +188,7 @@ if (has_umap) {
       color = "Original group",
       title = "UMAP projections of speaker descriptions"
     ) +
-    theme_minimal() +
+    scale_color_group() +
     theme(legend.position = "bottom")
 } else {
   cat("No UMAP projections file found. Run compute_embeddings.py first.\n")
@@ -218,7 +219,7 @@ if (has_umap && exists("umap_data")) {
         color = "Original group",
         title = paste("Example game trajectory:", example_game)
       ) +
-      theme_minimal() +
+      scale_color_group() +
       theme(legend.position = "bottom")
   }
 }
@@ -292,6 +293,7 @@ ggplot(props_by_block, aes(x = blockNum, y = mean_prop, color = condition)) +
     color = "Condition",
     title = "Word type proportions over blocks by condition"
   ) +
-  theme_minimal() +
+  scale_color_condition() +
+  scale_fill_condition() +
   theme(legend.position = "bottom")
 ```

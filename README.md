@@ -54,36 +54,26 @@ See [`experiment/README.md`](experiment/README.md) for details on test architect
 
 ## Analysis pipeline
 
-Back up production data, then run the pipeline to go from raw export to figures:
+`analysis/run_pipeline.py` is the single entry point for all data processing:
 
 ```bash
-# 1. Back up data from the production server
-cd experiment
-bash copy_tajriba.sh --once
+# Back up production data
+cd experiment && bash copy_tajriba.sh --once
 
-# 2. Run the full pipeline (most recent zip)
+# Process a single export zip (most recent)
 uv run python analysis/run_pipeline.py
 
-# Or from a specific zip
-uv run python analysis/run_pipeline.py experiment/data/20260222_125327/empirica-export-20260222_132407.zip
+# Combine multiple runs into one dataset
+uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147
+
+# Skip slow steps
+uv run python analysis/run_pipeline.py --skip-embeddings --skip-visualize --skip-render
+
+# Browse past runs
+uv run python analysis/run_pipeline.py list
+uv run python analysis/run_pipeline.py bonuses
 ```
 
-Skip slow steps with flags:
+Output goes to `analysis/{datetime}/` (single run) or `analysis/pilots/` (combined), each containing `raw/`, `data/`, and `figures/`.
 
-```bash
-uv run python analysis/run_pipeline.py --skip-embeddings   # skip SBERT computation
-uv run python analysis/run_pipeline.py --skip-visualize    # skip plots and animations
-uv run python analysis/run_pipeline.py --skip-render       # skip Quarto notebook rendering
-```
-
-The pipeline extracts bonuses (with Prolific IDs), anonymizes raw data, runs preprocessing, computes embeddings and similarity metrics, generates figures, and renders Quarto notebooks. Outputs go to a datetime-stamped directory:
-
-```
-analysis/20260222_132407/
-├── bonuses.csv       # Prolific IDs + bonus amounts (sensitive, not committed)
-├── raw/              # Anonymized raw Empirica CSVs
-├── data/             # Preprocessed analysis-ready CSVs + embeddings
-└── figures/          # Plots and animations
-```
-
-The pipeline maintains a symlink `analysis/processed -> analysis/{datetime}/data/` that always points to the most recently processed dataset. Each pipeline run deletes the old symlink and creates a new one. The Quarto notebooks (`analysis/00_preprocess.qmd` through `05_exit_survey.qmd`) all read from `analysis/processed/` via `here("analysis", "processed")`, so they automatically pick up the latest data without any edits.
+Quarto notebooks (`00_preprocess.qmd` through `05_exit_survey.qmd`) read from `analysis/processed_data/`, a symlink updated by `run_pipeline.py`.

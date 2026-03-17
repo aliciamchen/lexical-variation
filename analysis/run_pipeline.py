@@ -15,15 +15,19 @@ Subcommands:
     uv run python analysis/run_pipeline.py early-ended                       # print early-ended players
     uv run python analysis/run_pipeline.py early-ended --run 20260225_210047  # specific run
     uv run python analysis/run_pipeline.py status                             # show symlink target
+    uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147
+    uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147 --skip-embeddings
 """
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import zipfile
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -35,7 +39,19 @@ EXPERIMENT_DATA_DIR = PROJECT_ROOT / "experiment" / "data"
 ZIP_PATTERN = re.compile(r"empirica-export-(\d{8}_\d{6})\.zip")
 TIMESTAMP_DIR_PATTERN = re.compile(r"^\d{8}_\d{6}$")
 
-SUBCOMMANDS = {"list", "bonuses", "early-ended", "status", "run"}
+SUBCOMMANDS = {"list", "bonuses", "early-ended", "status", "run", "combine"}
+
+RAW_CSV_FILES = [
+    "batch.csv",
+    "game.csv",
+    "global.csv",
+    "player.csv",
+    "playerGame.csv",
+    "playerRound.csv",
+    "playerStage.csv",
+    "round.csv",
+    "stage.csv",
+]
 
 # Columns to strip from player.csv for anonymization
 SENSITIVE_COLUMNS = [
@@ -217,10 +233,19 @@ def step_render_quarto() -> None:
         subprocess.run(["quarto", "render", str(qmd)], check=True)
 
 
-def update_data_symlink(datetime_str: str) -> None:
-    """Create/update symlink: analysis/processed_data -> analysis/{datetime}/data/."""
+def update_data_symlink(data_dir: Path) -> None:
+    """Create/update symlink: analysis/processed_data -> data_dir.
+
+    Args:
+        data_dir: Absolute or relative path to the data directory.
+                  Will be stored as a relative symlink from analysis/.
+    """
     symlink_path = ANALYSIS_DIR / "processed_data"
-    target = Path(datetime_str) / "data"  # relative to analysis/
+    # Make target relative to analysis/ for a clean symlink
+    try:
+        target = data_dir.resolve().relative_to(ANALYSIS_DIR.resolve())
+    except ValueError:
+        target = data_dir.resolve()
 
     # If it's an existing symlink, remove it
     if symlink_path.is_symlink():
@@ -391,6 +416,150 @@ def cmd_status():
     print()
 
 
+def validate_runs(run_ids: list[str]) -> list[Path]:
+    """Check that each run's raw/ directory exists, return paths."""
+    raw_dirs = []
+    for run_id in run_ids:
+        raw_dir = ANALYSIS_DIR / run_id / "raw"
+        if not raw_dir.is_dir():
+            print(f"Error: {raw_dir} does not exist", file=sys.stderr)
+            sys.exit(1)
+        raw_dirs.append(raw_dir)
+    return raw_dirs
+
+
+def stack_raw_csvs(raw_dirs: list[Path], run_ids: list[str]) -> dict[str, pd.DataFrame]:
+    """Concatenate each raw CSV across runs, adding _sourceRun column."""
+    combined = {}
+    for csv_name in RAW_CSV_FILES:
+        frames = []
+        for raw_dir, run_id in zip(raw_dirs, run_ids):
+            csv_path = raw_dir / csv_name
+            if csv_path.exists():
+                df = pd.read_csv(csv_path)
+                df["_sourceRun"] = run_id
+                frames.append(df)
+        if frames:
+            combined[csv_name] = pd.concat(frames, ignore_index=True, join="outer")
+        else:
+            print(f"  Warning: {csv_name} not found in any run")
+    return combined
+
+
+def filter_failed_games(combined: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """Remove games with no condition (lobby timeouts) and cascade to related tables."""
+    game_df = combined["game.csv"]
+    failed_mask = game_df["condition"].isna() | (game_df["condition"] == "")
+    failed_ids = set(game_df.loc[failed_mask, "id"])
+
+    if failed_ids:
+        print(f"  Filtering out {len(failed_ids)} failed game(s): {failed_ids}")
+
+    game_df = game_df[~game_df["id"].isin(failed_ids)].copy()
+    combined["game.csv"] = game_df
+
+    valid_game_ids = set(game_df["id"])
+
+    for csv_name in ["player.csv", "playerGame.csv", "playerRound.csv",
+                     "playerStage.csv", "round.csv", "stage.csv"]:
+        if csv_name not in combined:
+            continue
+        df = combined[csv_name]
+        if "gameID" in df.columns:
+            combined[csv_name] = df[df["gameID"].isin(valid_game_ids)].copy()
+
+    return combined
+
+
+def write_combined_raw(combined: dict[str, pd.DataFrame], output_raw: Path):
+    """Write combined raw CSVs to output directory."""
+    output_raw.mkdir(parents=True, exist_ok=True)
+    for csv_name, df in combined.items():
+        df.to_csv(output_raw / csv_name, index=False)
+        print(f"  {csv_name}: {len(df)} rows")
+
+
+def write_manifest(output_dir: Path, run_ids: list[str], combined: dict[str, pd.DataFrame]):
+    """Write manifest.json with provenance info."""
+    game_df = combined["game.csv"]
+    manifest = {
+        "source_runs": run_ids,
+        "created": datetime.now().isoformat(),
+        "games": len(game_df),
+        "conditions": game_df["condition"].value_counts().to_dict(),
+        "row_counts": {name: len(df) for name, df in combined.items()},
+    }
+    manifest_path = output_dir / "manifest.json"
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f, indent=2)
+    print(f"\nManifest written to {manifest_path}")
+
+
+def cmd_combine(argv: list[str]):
+    """Combine raw CSVs from multiple pipeline runs into a single dataset."""
+    parser = argparse.ArgumentParser(
+        description="Combine raw CSVs from multiple pipeline runs"
+    )
+    parser.add_argument(
+        "runs", nargs="+",
+        help="Run timestamps (e.g. 20260301_132907 20260301_214147)"
+    )
+    parser.add_argument(
+        "--output", "-o", default=str(ANALYSIS_DIR / "pilots"),
+        help="Output directory (default: analysis/pilots)"
+    )
+    parser.add_argument(
+        "--skip-embeddings", action="store_true",
+        help="Skip the SBERT embedding computation step"
+    )
+    parser.add_argument(
+        "--skip-visualize", action="store_true",
+        help="Skip visualization and animation generation"
+    )
+    args = parser.parse_args(argv)
+
+    output_dir = Path(args.output)
+    output_raw = output_dir / "raw"
+    output_data = output_dir / "data"
+    output_figures = output_dir / "figures"
+
+    print("Validating runs...")
+    raw_dirs = validate_runs(args.runs)
+
+    print("\nStacking raw CSVs...")
+    combined = stack_raw_csvs(raw_dirs, args.runs)
+
+    print("\nFiltering failed games...")
+    combined = filter_failed_games(combined)
+
+    print("\nWriting combined raw CSVs...")
+    write_combined_raw(combined, output_raw)
+
+    step_preprocess(output_raw, output_data)
+
+    if not args.skip_embeddings:
+        step_embeddings(output_data)
+
+    if not args.skip_visualize:
+        step_visualize(output_data, output_figures)
+
+    write_manifest(output_dir, args.runs, combined)
+
+    # Update symlink
+    update_data_symlink(output_data)
+
+    # Summary
+    game_df = combined["game.csv"]
+    player_df = combined.get("player.csv", pd.DataFrame())
+    print(f"\n{'=' * 60}")
+    print("Combine complete!")
+    print(f"{'=' * 60}")
+    print(f"  Games: {len(game_df)}, Players: {len(player_df)}")
+    print(f"  Conditions: {dict(game_df['condition'].value_counts())}")
+    print(f"  Source runs: {game_df['_sourceRun'].unique().tolist()}")
+    print(f"  Output: {output_dir}")
+
+
 def main():
     # Check if first arg is a subcommand
     if len(sys.argv) > 1 and sys.argv[1] in SUBCOMMANDS:
@@ -422,6 +591,9 @@ def main():
                     print("--run requires a value", file=sys.stderr)
                     sys.exit(1)
             cmd_early_ended(run_name)
+            return
+        elif subcmd == "combine":
+            cmd_combine(sys.argv[2:])
             return
         elif subcmd == "run":
             # Strip "run" from argv so argparse sees the rest
@@ -501,7 +673,7 @@ def main():
             step_visualize(data_dir, figures_dir)
 
         # Update symlink
-        update_data_symlink(datetime_str)
+        update_data_symlink(data_dir)
 
         # Step 7: Quarto
         if args.skip_render:

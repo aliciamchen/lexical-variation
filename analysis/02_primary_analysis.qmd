@@ -7,13 +7,10 @@ format:
 ---
 
 ```{r setup, message=FALSE, warning=FALSE}
-library(tidyverse)
 library(lme4)
 library(lmerTest)
 library(emmeans)
-library(here)
-
-data_dir <- here("analysis", "processed_data")
+source(here::here("analysis", "config.R"))
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 
@@ -182,7 +179,6 @@ ggplot(gs_long, aes(x = phase, y = group_specificity, group = gameId)) +
     y = "Group-specificity coefficient",
     title = "Group-specificity across phases by condition"
   ) +
-  theme_minimal() +
   theme(legend.position = "none")
 }
 ```
@@ -202,7 +198,6 @@ ggplot(gs_combined, aes(x = condition, y = gs_phase2, fill = condition)) +
     y = "Phase 2 group-specificity",
     title = "Group-specificity in Phase 2 by condition"
   ) +
-  theme_minimal() +
   theme(legend.position = "none")
 }
 ```
@@ -221,8 +216,7 @@ if (!is.null(wls_model)) {
       x = "Coefficient estimate",
       y = "",
       title = "WLS model coefficients"
-    ) +
-    theme_minimal()
+    )
 } else {
   cat("WLS model not fitted (insufficient conditions).\n")
 }
@@ -261,7 +255,6 @@ ggplot(pw_means, aes(x = condition, y = mean_sim, fill = groupType)) +
     fill = "Group type",
     title = "Within- vs between-group similarity by condition and phase"
   ) +
-  theme_minimal() +
   theme(axis.text.x = element_text(angle = 20, hjust = 1))
 }
 ```

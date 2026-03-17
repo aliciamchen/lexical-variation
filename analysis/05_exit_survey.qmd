@@ -7,10 +7,7 @@ format:
 ---
 
 ```{r setup, message=FALSE, warning=FALSE}
-library(tidyverse)
-library(here)
-
-data_dir <- here("analysis", "processed_data")
+source(here::here("analysis", "config.R"))
 ```
 
 # Load & Clean
@@ -63,10 +60,9 @@ survey %>%
 
 ggplot(survey, aes(x = gender, fill = originalGroup)) +
   geom_bar() +
-  scale_fill_manual(values = c(A = "steelblue", B = "coral", C = "forestgreen")) +
+  scale_fill_group() +
   facet_wrap(~condition) +
-  labs(title = "Gender by group", x = "Gender", y = "Count", fill = "Group") +
-  theme_minimal()
+  labs(title = "Gender by group", x = "Gender", y = "Count", fill = "Group")
 ```
 
 ```{r education}
@@ -76,10 +72,9 @@ survey %>%
 
 ggplot(survey, aes(x = education, fill = originalGroup)) +
   geom_bar() +
-  scale_fill_manual(values = c(A = "steelblue", B = "coral", C = "forestgreen")) +
+  scale_fill_group() +
   facet_wrap(~condition) +
-  labs(title = "Education by group", x = "Education", y = "Count", fill = "Group") +
-  theme_minimal()
+  labs(title = "Education by group", x = "Education", y = "Count", fill = "Group")
 ```
 
 # Comprehension & Pay Fairness
