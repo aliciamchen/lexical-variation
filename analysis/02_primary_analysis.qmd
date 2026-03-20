@@ -10,6 +10,7 @@ format:
 library(lme4)
 library(lmerTest)
 library(emmeans)
+library(tidyboot)
 source(here::here("analysis", "config.R"))
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
@@ -350,6 +351,23 @@ if (!exists("gs_combined")) {
 }
 ```
 
+```{r plot-h3a, fig.width=6, fig.height=5}
+if (exists("gs_social") && nrow(gs_social) > 0) {
+  ggplot(gs_social, aes(x = condition, y = gs_phase1, fill = condition)) +
+    geom_violin(alpha = 0.3) +
+    geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
+    stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+    scale_fill_condition() +
+    labs(
+      x = "Condition",
+      y = "Phase 1 group-specificity",
+      title = "H3a: Phase 1 group-specificity by social condition"
+    ) +
+    theme(legend.position = "none")
+}
+```
+
 ## H3b: Within-Group Convergence Rate
 
 `within_group_similarity ~ condition * block + (1 | game) + (1 | tangram)`,
@@ -386,6 +404,29 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
   } else {
     cat("Insufficient data for H3b convergence analysis.\n")
   }
+}
+```
+
+```{r plot-h3b, fig.width=8, fig.height=5}
+if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
+  conv_by_block <- p1_within_social %>%
+    filter(!is.na(similarity)) %>%
+    group_by(condition, blockNum) %>%
+    tidyboot_mean(similarity, nboot = 1000)
+
+  ggplot(conv_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
+                alpha = 0.15, color = NA) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2) +
+    scale_color_condition() +
+    scale_fill_condition() +
+    labs(
+      x = "Block number (Phase 1)",
+      y = "Within-group cosine similarity",
+      color = "Condition",
+      title = "H3b: Within-group convergence rate by social condition"
+    )
 }
 ```
 
@@ -515,6 +556,32 @@ if (nrow(p1_final_social) > 0 && n_distinct(p1_final_social$condition) >= 2) {
 }
 ```
 
+```{r plot-h3c, fig.width=10, fig.height=5}
+if (exists("p1_final_social") && "abstractness" %in% names(p1_final_social)) {
+  p1_plot <- p1_final_social %>%
+    filter(!is.na(abstractness), !is.na(uniqueness)) %>%
+    pivot_longer(cols = c(abstractness, uniqueness),
+                 names_to = "measure", values_to = "value") %>%
+    mutate(measure = factor(measure,
+      levels = c("abstractness", "uniqueness"),
+      labels = c("Abstractness", "Lexical uniqueness")
+    ))
+
+  ggplot(p1_plot, aes(x = condition, y = value, fill = condition)) +
+    geom_violin(alpha = 0.3) +
+    geom_jitter(width = 0.15, size = 1.2, alpha = 0.3) +
+    stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
+    facet_wrap(~measure, scales = "free_y") +
+    scale_fill_condition() +
+    labs(
+      x = "Condition",
+      y = "Proportion",
+      title = "H3c: Description properties in final Phase 1 utterances"
+    ) +
+    theme(legend.position = "none")
+}
+```
+
 # H4: Downstream Trade-Off (Social-First vs Social-Mixed)
 
 Restricted to `social_mixed` vs `social_first` in Phase 2. Tests whether
@@ -567,6 +634,28 @@ if (nrow(social_guesses) > 0) {
 }
 ```
 
+```{r plot-h4a, fig.width=6, fig.height=5}
+if (exists("social_h4") && nrow(social_h4) > 0) {
+  h4a_summary <- social_h4 %>%
+    filter(!is.na(correct)) %>%
+    group_by(condition) %>%
+    tidyboot_mean(correct, nboot = 1000)
+
+  ggplot(h4a_summary, aes(x = condition, y = empirical_stat, fill = condition)) +
+    geom_col(alpha = 0.7, width = 0.6) +
+    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
+    geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
+    scale_fill_condition() +
+    labs(
+      x = "Condition",
+      y = "Proportion correct social guesses",
+      title = "H4a: Social-identification accuracy by condition"
+    ) +
+    scale_y_continuous(limits = c(0, 1)) +
+    theme(legend.position = "none")
+}
+```
+
 ## H4b: Referential Accuracy
 
 `glmer(ref_correct ~ condition + (1 | game) + (1 | participant) + (1 | tangram), family = binomial)`
@@ -607,5 +696,27 @@ if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 
   }
 } else {
   cat("Insufficient data for H4b (need both social conditions with Phase 2 listener trials).\n")
+}
+```
+
+```{r plot-h4b, fig.width=6, fig.height=5}
+if (exists("p2_listener_social") && nrow(p2_listener_social) > 0) {
+  h4b_summary <- p2_listener_social %>%
+    filter(!is.na(correct)) %>%
+    group_by(condition) %>%
+    tidyboot_mean(correct, nboot = 1000)
+
+  ggplot(h4b_summary, aes(x = condition, y = empirical_stat, fill = condition)) +
+    geom_col(alpha = 0.7, width = 0.6) +
+    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
+    geom_hline(yintercept = 1/6, linetype = "dashed", color = "gray50") +
+    scale_fill_condition() +
+    labs(
+      x = "Condition",
+      y = "Proportion correct",
+      title = "H4b: Referential accuracy by social condition (Phase 2)"
+    ) +
+    scale_y_continuous(limits = c(0, 1)) +
+    theme(legend.position = "none")
 }
 ```

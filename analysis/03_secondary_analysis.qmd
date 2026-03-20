@@ -230,6 +230,31 @@ if (exists("social_listener") && nrow(social_listener) > 0 &&
 }
 ```
 
+```{r plot-ingroup-by-condition, fig.width=8, fig.height=5}
+if (exists("social_listener") && nrow(social_listener) > 0 &&
+    "inGroupSpeaker" %in% names(social_listener) &&
+    n_distinct(social_listener$condition) >= 2) {
+  ingroup_by_cond <- social_listener %>%
+    filter(!is.na(correct), !is.na(inGroupSpeaker)) %>%
+    mutate(speaker_type = ifelse(inGroupSpeaker == 1, "In-group", "Out-group")) %>%
+    group_by(condition, speaker_type) %>%
+    tidyboot_mean(correct, nboot = 1000)
+
+  ggplot(ingroup_by_cond, aes(x = speaker_type, y = empirical_stat, fill = speaker_type)) +
+    geom_col(alpha = 0.7, width = 0.6) +
+    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
+    facet_wrap(~condition) +
+    geom_hline(yintercept = 1/6, linetype = "dashed", color = "gray50") +
+    labs(
+      x = "Speaker type",
+      y = "Mean listener accuracy",
+      title = "In-group vs out-group accuracy by condition"
+    ) +
+    scale_y_continuous(limits = c(0, 1)) +
+    theme(legend.position = "none")
+}
+```
+
 # 4. Group-Specificity vs Social Accuracy Correlation
 
 Does maintaining group-specific language correlate with social identification accuracy?
@@ -356,7 +381,7 @@ if (nrow(social_guesses) > 0) {
 ```
 
 ```{r plot-social-accuracy, fig.width=7, fig.height=4}
-# Plot 14: Social-signaling accuracy over blocks
+# Plot 14: Social-signaling accuracy over blocks (pooled)
 if (nrow(social_guesses) > 0) {
   social_by_block <- social_guesses %>%
     mutate(correct = as.numeric(
@@ -380,5 +405,73 @@ if (nrow(social_guesses) > 0) {
       title = "Social-signaling accuracy over Phase 2 blocks"
     ) +
     scale_y_continuous(limits = c(0, 1))
+}
+```
+
+```{r plot-social-accuracy-by-condition, fig.width=8, fig.height=5}
+# Social accuracy trajectories by condition (paper: compare across social conditions)
+if (nrow(social_guesses) > 0) {
+  social_with_cond <- social_guesses %>%
+    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+    filter(condition %in% c("social_mixed", "social_first")) %>%
+    mutate(correct = as.numeric(
+      socialGuessCorrect == TRUE | socialGuessCorrect == "true"
+    ))
+
+  if (n_distinct(social_with_cond$condition) >= 2) {
+    social_by_block_cond <- social_with_cond %>%
+      filter(!is.na(correct)) %>%
+      group_by(condition, blockNum) %>%
+      tidyboot_mean(correct, nboot = 1000)
+
+    ggplot(social_by_block_cond, aes(x = blockNum, y = empirical_stat,
+                                     color = condition)) +
+      geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
+                  alpha = 0.15, color = NA) +
+      geom_line(linewidth = 1) +
+      geom_point(size = 2) +
+      geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
+      scale_color_condition() +
+      scale_fill_condition() +
+      labs(
+        x = "Block number",
+        y = "Proportion correct social guesses",
+        color = "Condition",
+        title = "Social-signaling accuracy trajectories by condition"
+      ) +
+      scale_y_continuous(limits = c(0, 1))
+  }
+}
+```
+
+# 6. Description Length in Phase 2
+
+How does description length evolve across Phase 2 blocks by condition?
+
+```{r plot-utt-length-phase2, fig.width=8, fig.height=5}
+p2_utts <- speaker_utts %>%
+  filter(phaseNum == 2) %>%
+  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  mutate(condition = factor(condition, levels = CONDITION_ORDER))
+
+if (nrow(p2_utts) > 0) {
+  length_by_block_cond <- p2_utts %>%
+    group_by(condition, blockNum) %>%
+    tidyboot_mean(uttLength, nboot = 1000)
+
+  ggplot(length_by_block_cond, aes(x = blockNum, y = empirical_stat,
+                                   color = condition)) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
+                alpha = 0.15, color = NA) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2) +
+    scale_color_condition() +
+    scale_fill_condition() +
+    labs(
+      x = "Block number",
+      y = "Mean word count",
+      color = "Condition",
+      title = "Description length over Phase 2 blocks by condition"
+    )
 }
 ```
