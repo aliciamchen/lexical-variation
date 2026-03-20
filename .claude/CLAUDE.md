@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a multiplayer reference game experiment built with Empirica studying lexical variation and social signaling. Players communicate about tangram images in groups, with different experimental conditions affecting group dynamics in Phase 2.
 
-The registered report manuscript is in `paper/main.tex` (compiled with `cd paper && latexmk -pdf main.tex`). The paper describes the framing, design, and analysis plan for both Experiment 1 and Experiment 2.
+The registered report manuscript is in `paper/main.tex` (compiled with `cd paper && latexmk -pdf main.tex`). The paper describes the framing, design, and analysis plan.
 
 We plan to submit the registered report to Nature Human Behavior. The submission guidelines are at https://www.nature.com/nathumbehav/submission-guidelines/registeredreports
 
@@ -14,8 +14,11 @@ We plan to submit the registered report to Nature Human Behavior. The submission
 - 9 players in 3 groups of 3
 - Phase 1: Within-group reference game (6 blocks)
 - Phase 2: Continued reference game with condition-dependent behavior (6 blocks)
-- Experiment 1 conditions: `refer_separated` (same groups), `refer_mixed` (groups reshuffled every trial, masked identities), `social_mixed` (reshuffled every trial + social guessing task)
-- Experiment 2 conditions: `refer_goal` (told groups will mix, no social task info), `social_goal` (told about social identification reward before Phase 1). Both use mixed + social guessing in Phase 2.
+- 4 between-subjects conditions:
+  - `refer_separated`: same groups throughout Phase 2
+  - `refer_mixed`: groups reshuffled every trial in Phase 2, masked identities
+  - `social_mixed`: reshuffled every trial + social guessing task in Phase 2
+  - `social_first`: told about social identification reward before Phase 1, reshuffled + social guessing in Phase 2
 
 The TODOS.md file contains a list of things that need to be done to complete the experiment.
 
@@ -197,7 +200,7 @@ Note: `rpy2` requires R to be installed. Cairo-based packages (`cairosvg`) may r
 
 ### Configuration (`experiment/.empirica/`)
 
-- **treatments.yaml**: Experimental factors and 5 treatment combinations (3 for Experiment 1, 2 for Experiment 2)
+- **treatments.yaml**: Experimental factors and 4 treatment combinations
 - **lobbies.yaml**: Participant grouping strategies
 - **empirica.toml**: Auth and project metadata
 
@@ -306,7 +309,7 @@ uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147
 uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147 --skip-embeddings --skip-visualize
 ```
 
-Stacks raw CSVs, filters failed games (lobby timeouts), runs preprocessing, writes `manifest.json`. Output defaults to `analysis/pilots/` (configurable with `--output`). Each run must already be processed (i.e. `analysis/{timestamp}/raw/` must exist).
+Stacks raw CSVs, filters failed games (lobby timeouts), runs preprocessing, writes `manifest.json`. Raw and preprocessed data go to `data/pilots/` (`raw/` subdirectory + CSVs); figures and manifest stay in `analysis/pilots/`. Each run must already be processed (i.e. `analysis/{timestamp}/raw/` must exist).
 
 #### Browsing runs and metadata
 
@@ -320,8 +323,8 @@ uv run python analysis/run_pipeline.py bonuses --run 20260225_210047      # spec
 #### Running individual scripts standalone
 
 ```bash
-uv run python analysis/pilot_analysis.py --data-dir analysis/pilots/data/ --output-dir analysis/pilots/figures/
-uv run python analysis/animate_umap.py --data-dir analysis/pilots/data/ --output-dir analysis/pilots/figures/
-uv run python analysis/compute_embeddings.py analysis/pilots/data/
+uv run python analysis/pilot_analysis.py --data-dir data/pilots/ --output-dir analysis/pilots/figures/
+uv run python analysis/animate_umap.py --data-dir data/pilots/ --output-dir analysis/pilots/figures/
+uv run python analysis/compute_embeddings.py data/pilots/
 uv run pytest analysis/test_data_integrity.py -v
 ```

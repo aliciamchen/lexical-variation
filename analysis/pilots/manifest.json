@@ -9,7 +9,7 @@
     "refer_mixed": 1,
     "refer_separated": 1,
     "social_mixed": 1,
-    "exp2_social_goal": 1
+    "social_first": 1
   },
   "row_counts": {
     "batch.csv": 3,

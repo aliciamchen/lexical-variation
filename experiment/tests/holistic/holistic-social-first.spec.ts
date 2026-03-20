@@ -16,7 +16,7 @@
  * - Quiz has a 7th question verifying comprehension of Phase 2 social task
  * - Scoring section in intro mentions social identification scoring
  *
- * Run: npx playwright test --project=setup-5 --project=group-holistic tests/holistic/holistic-exp2-social-goal.spec.ts --reporter=list
+ * Run: npx playwright test --project=setup-5 --project=group-holistic tests/holistic/holistic-social-first.spec.ts --reporter=list
  */
 import '../helpers/set-production-mode';
 import { test, expect, BrowserContext, Page } from '@playwright/test';

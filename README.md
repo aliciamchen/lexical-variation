@@ -74,6 +74,6 @@ uv run python analysis/run_pipeline.py list
 uv run python analysis/run_pipeline.py bonuses
 ```
 
-Output goes to `analysis/{datetime}/` (single run) or `analysis/pilots/` (combined), each containing `raw/`, `data/`, and `figures/`.
+Output goes to `analysis/{datetime}/` (single run) or split across `data/pilots/` (raw + preprocessed CSVs) and `analysis/pilots/` (figures, manifest). The `analysis/processed_data` symlink points to the active dataset.
 
 Quarto notebooks (`00_preprocess.qmd` through `05_exit_survey.qmd`) read from `analysis/processed_data/`, a symlink updated by `run_pipeline.py`.

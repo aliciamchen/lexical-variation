@@ -20,10 +20,11 @@ dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
 CONDITION_COLORS <- c(
   refer_separated = "#0173B2",
   refer_mixed     = "#029E73",
-  social_mixed    = "#DE8F05"
+  social_mixed    = "#DE8F05",
+  social_first    = "#CC78BC"
 )
 
-CONDITION_ORDER <- c("refer_separated", "refer_mixed", "social_mixed")
+CONDITION_ORDER <- c("refer_separated", "refer_mixed", "social_mixed", "social_first")
 
 GROUP_COLORS <- c(A = "#F8766D", B = "#00BA38", C = "#619CFF")
 GROUP_ORDER  <- c("A", "B", "C")

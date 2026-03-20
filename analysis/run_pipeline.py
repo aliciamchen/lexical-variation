@@ -21,6 +21,7 @@ Subcommands:
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -34,6 +35,7 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ANALYSIS_DIR = PROJECT_ROOT / "analysis"
+DATA_DIR = PROJECT_ROOT / "data"
 EXPERIMENT_DATA_DIR = PROJECT_ROOT / "experiment" / "data"
 
 ZIP_PATTERN = re.compile(r"empirica-export-(\d{8}_\d{6})\.zip")
@@ -242,10 +244,7 @@ def update_data_symlink(data_dir: Path) -> None:
     """
     symlink_path = ANALYSIS_DIR / "processed_data"
     # Make target relative to analysis/ for a clean symlink
-    try:
-        target = data_dir.resolve().relative_to(ANALYSIS_DIR.resolve())
-    except ValueError:
-        target = data_dir.resolve()
+    target = Path(os.path.relpath(data_dir.resolve(), ANALYSIS_DIR.resolve()))
 
     # If it's an existing symlink, remove it
     if symlink_path.is_symlink():
@@ -519,8 +518,9 @@ def cmd_combine(argv: list[str]):
     args = parser.parse_args(argv)
 
     output_dir = Path(args.output)
-    output_raw = output_dir / "raw"
-    output_data = output_dir / "data"
+    data_base = DATA_DIR / "pilots"
+    output_raw = data_base / "raw"
+    output_data = data_base
     output_figures = output_dir / "figures"
 
     print("Validating runs...")
