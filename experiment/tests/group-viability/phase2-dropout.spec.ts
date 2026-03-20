@@ -38,7 +38,7 @@ test.describe.serial('Group Viability: Phase 2 Dropout in Mixed Condition (3.6)'
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'exp1_refer_mixed');
+    await createBatch(adminPage, 'refer_mixed');
     await adminContext.close();
 
     pm = new PlayerManager(browser);

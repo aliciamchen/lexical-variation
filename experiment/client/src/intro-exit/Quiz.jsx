@@ -76,17 +76,7 @@ export function Quiz({ next }) {
 
   const questions = [...baseQuestions];
 
-  if (condition === "exp2_refer_goal") {
-    questions.push({
-      question: "What will happen in Phase 2?",
-      choices: [
-        "You will stay in the same group as Phase 1.",
-        "Players from all groups will be mixed together.",
-        "Each player will play individually without a group.",
-      ],
-      correctAnswer: "Players from all groups will be mixed together.",
-    });
-  } else if (condition === "exp2_social_goal") {
+  if (condition === "social_first") {
     questions.push({
       question: "What will happen in Phase 2?",
       choices: [

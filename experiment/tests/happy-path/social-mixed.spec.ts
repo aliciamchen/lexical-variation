@@ -33,7 +33,7 @@ test.describe.serial('Happy Path: social_mixed', () => {
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'exp1_social_mixed');
+    await createBatch(adminPage, 'social_mixed');
     await adminContext.close();
 
     pm = new PlayerManager(browser);
@@ -58,7 +58,7 @@ test.describe.serial('Happy Path: social_mixed', () => {
 
   test('game starts with social_mixed condition', async () => {
     test.slow(); // May need extra time if server is degraded from accumulated state
-    await expectCondition(pm.getPage(0), 'exp1_social_mixed');
+    await expectCondition(pm.getPage(0), 'social_mixed');
   });
 
   test('complete Phase 1 (no social guessing yet)', async () => {

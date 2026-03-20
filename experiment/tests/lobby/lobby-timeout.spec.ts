@@ -17,7 +17,7 @@ test.describe.serial('Lobby: timeout with insufficient players', () => {
     // Create batch requiring 9 players
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'exp1_refer_separated');
+    await createBatch(adminPage, 'refer_separated');
     await adminContext.close();
 
     // Register only 3 players (not enough to start the 9-player game)

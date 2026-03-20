@@ -42,7 +42,7 @@ test.describe.serial('Data Integrity: Social Guess Data (TEST_PLAN 7.4)', () => 
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'exp1_social_mixed');
+    await createBatch(adminPage, 'social_mixed');
     await adminContext.close();
 
     pm = new PlayerManager(browser);

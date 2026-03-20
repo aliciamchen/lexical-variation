@@ -44,7 +44,7 @@ test.describe.serial('Group Viability: Mid-Block Reshuffle in Phase 2 Mixed (ref
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'exp1_refer_mixed');
+    await createBatch(adminPage, 'refer_mixed');
     await adminContext.close();
 
     pm = new PlayerManager(browser);

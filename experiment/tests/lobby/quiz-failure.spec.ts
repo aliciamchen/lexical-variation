@@ -8,7 +8,7 @@ test.describe.serial('Lobby: quiz failure after 3 attempts', () => {
     // Create a batch so the experiment is active
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'exp1_refer_separated');
+    await createBatch(adminPage, 'refer_separated');
     await adminContext.close();
 
     // Create a single player context

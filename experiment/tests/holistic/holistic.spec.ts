@@ -93,7 +93,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
   test('create social_mixed batch via admin', async ({ browser }) => {
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
-    await createBatch(adminPage, 'exp1_social_mixed');
+    await createBatch(adminPage, 'social_mixed');
     await adminCtx.close();
   });
 
@@ -235,7 +235,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     }
 
     // Verify condition
-    await expectCondition(gamePages[0], 'exp1_social_mixed');
+    await expectCondition(gamePages[0], 'social_mixed');
   });
 
   // ─── Test 6: Phase 1 — play 2 rounds (one with all wrong clicks) ───

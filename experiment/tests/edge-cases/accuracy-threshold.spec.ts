@@ -49,7 +49,7 @@ test.describe.serial('Edge Case: Phase 1 Accuracy Threshold', () => {
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'exp1_refer_separated');
+    await createBatch(adminPage, 'refer_separated');
     await adminContext.close();
 
     pm = new PlayerManager(browser);

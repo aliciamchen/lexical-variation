@@ -1,5 +1,5 @@
 /**
- * Holistic End-to-End Test: exp2_social_goal with 9 players
+ * Holistic End-to-End Test: social_first with 9 players
  *
  * Runs with production timing (TEST_MODE=false): 6+6 blocks, 45s selection, 3 idle rounds.
  * The side-effect import below forces production mode before constants are loaded.
@@ -11,7 +11,7 @@
  * - Phase 2: 6 blocks with reshuffling, identity masking, and social guessing
  * - Exit surveys for 9 players
  *
- * Key exp2_social_goal differences from exp1_social_mixed:
+ * Key social_first differences from social_mixed:
  * - Intro tells players about Phase 2 upfront (mixed groups + social identification)
  * - Quiz has a 7th question verifying comprehension of Phase 2 social task
  * - Scoring section in intro mentions social identification scoring
@@ -46,12 +46,12 @@ import {
   MIN_GROUP_SIZE,
 } from '../helpers/constants';
 
-const CONDITION = 'exp2_social_goal';
+const CONDITION = 'social_first';
 const PLAYER_COUNT = 9;
 // Use unique names to avoid collisions with the other holistic test on the same server
 const EXP2_NAMES = ['Dako', 'Veni', 'Subo', 'Pira', 'Golu', 'Weta', 'Ruma', 'Keji', 'Tobi'];
 
-test.describe.serial('Holistic: exp2_social_goal with 9 players', () => {
+test.describe.serial('Holistic: social_first with 9 players', () => {
   let contexts: BrowserContext[] = [];
   let pages: Page[] = [];
 
@@ -64,7 +64,7 @@ test.describe.serial('Holistic: exp2_social_goal with 9 players', () => {
   });
 
   // ─── Test 1: Create batch ───
-  test('create exp2_social_goal batch via admin', async ({ browser }) => {
+  test('create social_first batch via admin', async ({ browser }) => {
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
     await createBatch(adminPage, CONDITION);
@@ -115,7 +115,7 @@ test.describe.serial('Holistic: exp2_social_goal with 9 players', () => {
   });
 
   // ─── Test 4: Verify condition and initial state ───
-  test('verify exp2_social_goal condition and 3 groups of 3', async () => {
+  test('verify social_first condition and 3 groups of 3', async () => {
     await expectCondition(pages[0], CONDITION);
 
     const groups: Record<string, number> = {};

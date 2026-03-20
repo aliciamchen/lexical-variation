@@ -26,7 +26,7 @@ export function Transition(props) {
     // Get condition-specific instructions
     let conditionInstructions = "";
 
-    if (condition === "exp1_refer_separated") {
+    if (condition === "refer_separated") {
       conditionInstructions = (
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>
@@ -37,7 +37,7 @@ export function Transition(props) {
           </p>
         </div>
       );
-    } else if (condition === "exp1_refer_mixed") {
+    } else if (condition === "refer_mixed") {
       conditionInstructions = (
         <div className="instruction-prompt" style={{ marginTop: 8 }}>
           <p>

@@ -28,7 +28,7 @@ test.describe.serial('Communication: chat with masked identities in refer_mixed'
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'exp1_refer_mixed');
+    await createBatch(adminPage, 'refer_mixed');
     await adminContext.close();
 
     pm = new PlayerManager(browser);
@@ -50,7 +50,7 @@ test.describe.serial('Communication: chat with masked identities in refer_mixed'
       await expectPlayerInGame(page);
     }
 
-    await expectCondition(pm.getPage(0), 'exp1_refer_mixed');
+    await expectCondition(pm.getPage(0), 'refer_mixed');
   });
 
   test('complete Phase 1', async () => {

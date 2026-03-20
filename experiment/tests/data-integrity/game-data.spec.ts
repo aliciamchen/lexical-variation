@@ -32,7 +32,7 @@ test.describe.serial('Data Integrity: Game Data (TEST_PLAN 7.5)', () => {
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'exp1_refer_separated');
+    await createBatch(adminPage, 'refer_separated');
     await adminContext.close();
 
     pm = new PlayerManager(browser);
@@ -99,7 +99,7 @@ test.describe.serial('Data Integrity: Game Data (TEST_PLAN 7.5)', () => {
       expect(condition).not.toBe('unknown');
       expect(CONDITIONS).toContain(condition);
       // For this test we specifically used refer_separated
-      expect(condition).toBe('exp1_refer_separated');
+      expect(condition).toBe('refer_separated');
     }
   });
 

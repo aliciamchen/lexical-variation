@@ -316,7 +316,7 @@ export function Introduction5({ next }) {
 
   // Condition-specific Phase 2 preview text
   let phase2Preview;
-  if (condition === "exp2_social_goal") {
+  if (condition === "social_first") {
     phase2Preview = (
       <>
         <p>
@@ -347,24 +347,8 @@ export function Introduction5({ next }) {
         </div>
       </>
     );
-  } else if (condition === "exp2_refer_goal") {
-    phase2Preview = (
-      <>
-        <p>
-          After completing Phase 1 with your group, you will continue to Phase
-          2. Phase 2 also consists of {PHASE_2_BLOCKS} blocks.
-        </p>
-        <p>
-          In Phase 2, players from all groups will be{" "}
-          <strong>mixed together</strong>. Every round, you will be randomly
-          assigned to play with different players. These people may or may not
-          be from your original group. Player identities will be hidden:
-          everyone will appear as "Player" with anonymous avatars.
-        </p>
-      </>
-    );
   } else {
-    // All Exp 1 conditions: generic text
+    // Non-social-first conditions: generic text
     phase2Preview = (
       <p>
         After completing Phase 1 with your group, you will continue to Phase 2.
@@ -392,7 +376,7 @@ export function Introduction6({ next }) {
       <h1>How to play</h1>
       <h2>Scoring</h2>
       <p>Your performance earns you points which determine your bonus:</p>
-      <h3>Reference game scoring{condition === "exp2_social_goal" ? " (all phases)" : ""}</h3>
+      <h3>Reference game scoring{condition === "social_first" ? " (all phases)" : ""}</h3>
       <ul style={{ marginLeft: 40, listStyleType: "disc" }}>
         <li>
           Each time a <strong>Listener</strong> correctly identifies the target,
@@ -405,7 +389,7 @@ export function Introduction6({ next }) {
         </li>
         <li>No points are awarded for incorrect selections or timeouts.</li>
       </ul>
-      {condition === "exp2_social_goal" && (
+      {condition === "social_first" && (
         <>
           <h3 style={{ marginTop: 20 }}>Social identification scoring (Phase 2 only)</h3>
           <ul style={{ marginLeft: 40, listStyleType: "disc" }}>

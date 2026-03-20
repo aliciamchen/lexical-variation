@@ -27,7 +27,7 @@ test.describe.serial('UI Verification: Feedback Screens (5.4)', () => {
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'exp1_refer_separated');
+    await createBatch(adminPage, 'refer_separated');
     await adminContext.close();
 
     pm = new PlayerManager(browser);

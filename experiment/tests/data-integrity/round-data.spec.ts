@@ -39,7 +39,7 @@ test.describe.serial('Data Integrity: Round Data (TEST_PLAN 7.2)', () => {
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'exp1_refer_separated');
+    await createBatch(adminPage, 'refer_separated');
     await adminContext.close();
 
     pm = new PlayerManager(browser);

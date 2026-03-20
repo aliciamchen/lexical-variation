@@ -147,9 +147,7 @@ export async function completeIntro(page: Page, options?: string | { playerName?
   await page.getByRole('radio', { name: /different positions for each player/i }).click();
 
   // Step 5: Condition-specific 7th question (exp2 conditions only)
-  if (opts.condition === 'exp2_refer_goal') {
-    await page.getByRole('radio', { name: /^Players from all groups will be mixed together\.$/ }).click();
-  } else if (opts.condition === 'exp2_social_goal') {
+  if (opts.condition === 'social_first') {
     await page.getByRole('radio', { name: /mixed together.*figure out whether they were in the same Phase 1 group/i }).click();
   }
 
