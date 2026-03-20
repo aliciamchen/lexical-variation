@@ -1,5 +1,13 @@
 # Interactive experiment
 
+## Recruiting participants and running experiment
+
+Around 75% of people who take the initial survey end up showing up 
+
+### Templates
+
+
+
 ## Local development
 
 ```bash
