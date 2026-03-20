@@ -28,6 +28,7 @@ from plot_style import (
     CONDITION_ORDER,
     GROUP_COLORS,
     GROUP_ORDER,
+    QUALITATIVE_COLORS,
     PHASE_BOUNDARY,
     PHASE2_OFFSET,
     add_chance_line,
@@ -374,9 +375,9 @@ def panel_group_specificity(ax, pairwise, condition=""):
     within_data = bar_df[bar_df["type"] == "Within-group"]
     between_data = bar_df[bar_df["type"] == "Between-group"]
     ax.bar(x - width / 2, within_data["mean"], width, yerr=within_data["sem"],
-           color=GROUP_COLORS["B"], alpha=0.8, capsize=5, label="Within-group")
+           color=QUALITATIVE_COLORS[0], alpha=0.8, capsize=5, label="Within-group")
     ax.bar(x + width / 2, between_data["mean"], width, yerr=between_data["sem"],
-           color=GROUP_COLORS["A"], alpha=0.8, capsize=5, label="Between-group")
+           color=QUALITATIVE_COLORS[1], alpha=0.8, capsize=5, label="Between-group")
     ax.set_xticks(x)
     ax.set_xticklabels([l for _, l in windows])
     ax.set_ylabel("Mean pairwise cosine similarity")
@@ -416,9 +417,9 @@ def panel_first_phrase_specificity(ax, first_phrase_pw, condition=""):
     within_data = bar_df[bar_df["type"] == "Within-group"]
     between_data = bar_df[bar_df["type"] == "Between-group"]
     ax.bar(x - width / 2, within_data["mean"], width, yerr=within_data["sem"],
-           color=GROUP_COLORS["B"], alpha=0.8, capsize=5, label="Within-group")
+           color=QUALITATIVE_COLORS[0], alpha=0.8, capsize=5, label="Within-group")
     ax.bar(x + width / 2, between_data["mean"], width, yerr=between_data["sem"],
-           color=GROUP_COLORS["A"], alpha=0.8, capsize=5, label="Between-group")
+           color=QUALITATIVE_COLORS[1], alpha=0.8, capsize=5, label="Between-group")
     ax.set_xticks(x)
     ax.set_xticklabels([l for _, l in windows])
     ax.set_ylabel("Mean pairwise cosine similarity")
@@ -438,8 +439,8 @@ def panel_convergence_trajectory(ax, block_pw, condition=""):
     within = block_pw[block_pw["sameGroup"] == 1].copy()
 
     for label, subset, color, ls in [
-        ("Between-group", between, GROUP_COLORS["A"], "-"),
-        ("Within-group", within, GROUP_COLORS["B"], "--"),
+        ("Between-group", between, QUALITATIVE_COLORS[1], "-"),
+        ("Within-group", within, QUALITATIVE_COLORS[0], "--"),
     ]:
         if subset.empty:
             continue
@@ -706,7 +707,7 @@ def panel_social_retention(ax, social_guess_retention, condition=""):
     bin_stats = df.groupby("retentionBin", observed=True)["correct"].agg(["mean", "sem"]).reset_index()
 
     ax.bar(bin_stats["retentionBin"].astype(str), bin_stats["mean"],
-           yerr=bin_stats["sem"], color=GROUP_COLORS["B"], alpha=0.8, capsize=5)
+           yerr=bin_stats["sem"], color=QUALITATIVE_COLORS[0], alpha=0.8, capsize=5)
     ax.set_xlabel("Speaker term retention")
     ax.set_ylabel("Social guess accuracy")
     ax.set_title(f"Social guessing by retention ({format_condition(condition)})")

@@ -38,8 +38,7 @@ if (!has_phase_change || nrow(phase_change) == 0) {
   cat("Skipping: phase_change_similarities.csv not found. Run compute_embeddings.py first.\n")
 } else {
 phase_change <- phase_change %>%
-  mutate(condition = factor(condition,
-    levels = c("refer_mixed", "refer_separated", "social_mixed")))
+  mutate(condition = factor(condition, levels = CONDITION_ORDER))
 
 if (n_conditions >= 2) {
   m_semantic <- lmer(
@@ -68,6 +67,7 @@ ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) 
   geom_violin(alpha = 0.3) +
   geom_jitter(width = 0.15, size = 1.5, alpha = 0.4) +
   stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
+  scale_fill_condition() +
   labs(
     x = "Condition",
     y = "Cosine similarity (Phase 1 final → Phase 2 final)",
@@ -99,8 +99,7 @@ p2_round_acc <- p2_listener %>%
   mutate(
     repNum = blockNum + 1,
     repNum_c = repNum - mean(repNum, na.rm = TRUE),
-    condition = factor(condition,
-      levels = c("refer_mixed", "refer_separated", "social_mixed"))
+    condition = factor(condition, levels = CONDITION_ORDER)
   )
 
 # Phase 1 accuracy as covariate

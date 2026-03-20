@@ -18,43 +18,53 @@ dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
 # ── Color palettes (match analysis/plot_style.py) ────────────
 
 CONDITION_COLORS <- c(
-  refer_separated = "#0173B2",
-  refer_mixed     = "#029E73",
-  social_mixed    = "#DE8F05",
-  social_first    = "#CC78BC"
+  refer_separated = "#027A5E",
+  refer_mixed     = "#5EC2A0",
+  social_mixed    = "#F5B74A",
+  social_first    = "#C47A00"
 )
 
 CONDITION_ORDER <- c("refer_separated", "refer_mixed", "social_mixed", "social_first")
 
-GROUP_COLORS <- c(A = "#F8766D", B = "#00BA38", C = "#619CFF")
+GROUP_COLORS <- c(A = "#ce3045", B = "#27689e", C = "#edc35d")
 GROUP_ORDER  <- c("A", "B", "C")
 
 # Single-metric accent colors (for outcome-neutral plots without condition facets)
 ACCENT <- list(
-  length     = "#0173B2",
-  accuracy   = "#029E73",
-  similarity = "#DE8F05",
-  social     = "#9467BD"
+  length     = "black",
+  accuracy   = "black",
+  similarity = "black",
+  social     = "black"
 )
+
+# Qualitative palette (Pastel1) for categorical comparisons (e.g. within vs between)
+scale_fill_qualitative <- function(...) {
+  scale_fill_brewer(palette = "Pastel1", ...)
+}
+
+scale_color_qualitative <- function(...) {
+  scale_color_brewer(palette = "Pastel1", ...)
+}
 
 # ── Phase boundary ──────────────────────────────────────────
 
 PHASE_BOUNDARY <- 5.5
 PHASE2_OFFSET  <- 6
 
-# ── Global ggplot theme (seaborn-ticks style) ───────────────
+# ── Global ggplot theme ───────────────────────────────────
 
 theme_set(
-
-  theme_minimal(base_size = 13) +
+  theme_classic(base_size = 18) +
     theme(
-      panel.grid.minor = element_blank(),
-      axis.ticks = element_line(linewidth = 0.3),
-      strip.text = element_text(face = "plain"),
-      plot.title = element_text(face = "plain"),
-      legend.title = element_text(face = "plain")
+      strip.background = element_blank(),
+      text = element_text(family = "Arial Nova"),
+      panel.spacing = unit(1, "lines"),
+      strip.text = element_text(size = 18),
+      legend.key = element_blank()
     )
 )
+
+set.seed(67)
 
 # ── Helper scales ───────────────────────────────────────────
 

@@ -26,8 +26,7 @@ adjacent_sim <- if (has_adjacent) read_csv(file.path(data_dir, "adjacent_similar
 utts_with_condition <- speaker_utts %>%
   left_join(games %>% select(gameId, condition, phase1Blocks), by = "gameId") %>%
   mutate(
-    condition = factor(condition,
-      levels = c("refer_separated", "refer_mixed", "social_mixed")),
+    condition = factor(condition, levels = CONDITION_ORDER),
     globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
   )
 
@@ -37,8 +36,7 @@ listener_trials <- trials %>%
   filter(!is.na(correct)) %>%
   left_join(games %>% select(gameId, condition, phase1Blocks), by = "gameId") %>%
   mutate(
-    condition = factor(condition,
-      levels = c("refer_separated", "refer_mixed", "social_mixed")),
+    condition = factor(condition, levels = CONDITION_ORDER),
     globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
   )
 
@@ -46,8 +44,7 @@ if (has_adjacent && nrow(adjacent_sim) > 0) {
   adj_with_condition <- adjacent_sim %>%
     left_join(games %>% select(gameId, condition, phase1Blocks), by = "gameId") %>%
     mutate(
-      condition = factor(condition,
-        levels = c("refer_separated", "refer_mixed", "social_mixed")),
+      condition = factor(condition, levels = CONDITION_ORDER),
       globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
     )
 }
@@ -174,8 +171,7 @@ if (has_umap) {
 
   umap_data <- umap_data %>%
     mutate(
-      condition = factor(condition,
-        levels = c("refer_separated", "refer_mixed", "social_mixed")),
+      condition = factor(condition, levels = CONDITION_ORDER),
       phase_label = ifelse(phaseNum == 1, "Phase 1", "Phase 2")
     )
 

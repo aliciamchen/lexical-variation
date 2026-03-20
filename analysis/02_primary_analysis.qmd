@@ -100,7 +100,7 @@ if (!exists("gs_combined")) {
 gs_combined <- gs_combined %>%
   mutate(
     weight = 1 / se_phase2^2,
-    condition = factor(condition, levels = c("refer_mixed", "refer_separated", "social_mixed"))
+    condition = factor(condition, levels = CONDITION_ORDER)
   )
 
 n_conditions <- n_distinct(gs_combined$condition)
@@ -174,6 +174,7 @@ ggplot(gs_long, aes(x = phase, y = group_specificity, group = gameId)) +
   geom_line(alpha = 0.5, color = "gray50") +
   geom_point(aes(color = condition), size = 3) +
   facet_wrap(~condition) +
+  scale_color_condition() +
   labs(
     x = "Phase",
     y = "Group-specificity coefficient",
@@ -193,6 +194,7 @@ ggplot(gs_combined, aes(x = condition, y = gs_phase2, fill = condition)) +
   geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
   stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  scale_fill_condition() +
   labs(
     x = "Condition",
     y = "Phase 2 group-specificity",
@@ -249,6 +251,7 @@ ggplot(pw_means, aes(x = condition, y = mean_sim, fill = groupType)) +
     position = position_dodge(0.8), width = 0.2
   ) +
   facet_wrap(~phase) +
+  scale_fill_qualitative() +
   labs(
     x = "Condition",
     y = "Mean cosine similarity",

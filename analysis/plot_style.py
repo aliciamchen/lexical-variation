@@ -16,16 +16,20 @@ import seaborn as sns
 # ── Color palettes ────────────────────────────────────────────
 
 CONDITION_COLORS = {
-    "refer_separated": "#0173B2",
-    "refer_mixed": "#029E73",
-    "social_mixed": "#DE8F05",
-    "social_first": "#CC78BC",
+    "refer_separated": "#027A5E",
+    "refer_mixed": "#5EC2A0",
+    "social_mixed": "#F5B74A",
+    "social_first": "#C47A00",
 }
 
 CONDITION_ORDER = ["refer_separated", "refer_mixed", "social_mixed", "social_first"]
 
 GROUP_COLORS = {"A": "#F8766D", "B": "#00BA38", "C": "#619CFF"}
 GROUP_ORDER = ["A", "B", "C"]
+
+# Qualitative palette (Pastel1) for categorical comparisons (e.g. within vs between)
+QUALITATIVE_COLORS = ["#fbb4ae", "#b3cde3", "#ccebc5", "#decbe4", "#fed9a6",
+                      "#ffffcc", "#e5d8bd", "#fddaec", "#f2f2f2"]
 
 PHASE_BOUNDARY = 5.5  # x position between Phase 1 (blocks 0-5) and Phase 2 (blocks 6-11)
 PHASE2_OFFSET = 6
