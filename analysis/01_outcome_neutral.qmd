@@ -185,8 +185,9 @@ if (has_adjacent && exists("p1_adjacent_valid")) {
 
 ```{r group-specificity-functions}
 fit_group_specificity <- function(pairwise_df) {
-  # Fit: similarity ~ same_group + (1 | target) + (1 | participant_pair)
-  # for each game separately
+  # Fit: similarity ~ same_group + (1 | target) + (1 | speaker1) + (1 | speaker2)
+  # Crossed participant REs account for non-independence from participants
+  # appearing in multiple pairs.
   game_ids <- unique(pairwise_df$gameId)
 
   results <- map_dfr(game_ids, function(gid) {
@@ -197,7 +198,7 @@ fit_group_specificity <- function(pairwise_df) {
 
     tryCatch({
       model <- lmer(
-        similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+        similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
         data = game_data,
         control = lmerControl(optimizer = "bobyqa")
       )
@@ -226,7 +227,7 @@ permutation_test <- function(pairwise_df, n_perm = 1000) {
 
     # Observed coefficient
     obs_model <- tryCatch(
-      lmer(similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+      lmer(similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
            data = game_data, control = lmerControl(optimizer = "bobyqa")),
       error = function(e) NULL
     )
@@ -260,7 +261,7 @@ permutation_test <- function(pairwise_df, n_perm = 1000) {
 
       tryCatch({
         perm_model <- lmer(
-          similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+          similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
           data = perm_data,
           control = lmerControl(optimizer = "bobyqa")
         )
@@ -284,7 +285,7 @@ permutation_test <- function(pairwise_df, n_perm = 1000) {
 }
 ```
 
-```{r compute-group-specificity}
+```{r compute-group-specificity, warning=FALSE}
 if (!has_pairwise) {
   cat("Skipping: pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
 } else {

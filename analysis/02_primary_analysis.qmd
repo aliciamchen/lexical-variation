@@ -13,6 +13,9 @@ library(emmeans)
 source(here::here("analysis", "config.R"))
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
+trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
+speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
+social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
 
 has_pairwise <- file.exists(file.path(data_dir, "pairwise_similarities.csv"))
 if (!has_pairwise) {
@@ -22,12 +25,19 @@ if (!has_pairwise) {
 } else {
   pairwise_sim <- read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE)
 }
+
+has_block_pairwise <- file.exists(file.path(data_dir, "block_pairwise_similarities.csv"))
+block_pairwise_sim <- if (has_block_pairwise) {
+  read_csv(file.path(data_dir, "block_pairwise_similarities.csv"), show_col_types = FALSE)
+} else {
+  tibble()
+}
 ```
 
 # Compute Group-Specificity per Game per Phase
 
 For each game, fit:
-`similarity ~ sameGroup + (1 | target) + (1 | participantPair)`
+`similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2)`
 
 Extract the `sameGroup` coefficient as the group-specificity score.
 
@@ -46,7 +56,7 @@ fit_gs_by_game_window <- function(pw_df) {
 
     tryCatch({
       model <- lmer(
-        similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+        similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
         data = game_data,
         control = lmerControl(optimizer = "bobyqa")
       )
@@ -130,9 +140,10 @@ Two-tailed tests at α = 0.05.
 ```{r planned-contrasts}
 if (!is.null(wls_model) && n_conditions >= 3) {
   em <- emmeans(wls_model, "condition")
+  # Order: refer_separated, refer_mixed, social_mixed, social_first
   contrasts <- contrast(em, list(
-    H1_sep_vs_mixed = c(-1, 1, 0),   # refer_separated - refer_mixed
-    H2_social_vs_mixed = c(-1, 0, 1)  # social_mixed - refer_mixed
+    H1_sep_vs_mixed = c(1, -1, 0, 0),    # refer_separated - refer_mixed
+    H2_social_vs_mixed = c(0, -1, 1, 0)  # social_mixed - refer_mixed
   ))
   summary(contrasts, infer = c(TRUE, TRUE))
 } else {
@@ -297,4 +308,304 @@ Uncomment and run if contrasts are non-significant.
 #
 # bf <- bayes_factor(brm_model, brm_null)
 # cat("Bayes factor (full vs null):", bf$bf, "\n")
+```
+
+# H3: Effect of Anticipated Social Goal on Phase 1 Conventions
+
+Restricted to `social_mixed` vs `social_first`. Tests whether anticipating
+a social-signaling task shapes convention formation *before* Phase 2.
+
+## H3a: Phase 1 Group-Specificity
+
+WLS regression: `group_specificity_phase1 ~ condition`, weighted by inverse
+variance of Phase 1 GS estimates. Contrast: `social_first > social_mixed`.
+
+```{r h3a-gs}
+if (!exists("gs_combined")) {
+  cat("Skipping H3a: no group-specificity data.\n")
+} else {
+  gs_social <- gs_combined %>%
+    filter(condition %in% c("social_mixed", "social_first")) %>%
+    mutate(
+      weight_p1 = 1 / se_phase1^2,
+      condition = factor(condition, levels = c("social_mixed", "social_first"))
+    )
+
+  if (n_distinct(gs_social$condition) >= 2 && nrow(gs_social) >= 4) {
+    wls_h3a <- lm(
+      gs_phase1 ~ condition,
+      data = gs_social,
+      weights = weight_p1
+    )
+    summary(wls_h3a)
+
+    em_h3a <- emmeans(wls_h3a, "condition")
+    contrast_h3a <- contrast(em_h3a, list(
+      H3a_socialfirst_gt_socialmixed = c(-1, 1)  # social_first - social_mixed
+    ))
+    summary(contrast_h3a, infer = c(TRUE, TRUE))
+  } else {
+    cat("Insufficient data for H3a (need both social conditions).\n")
+  }
+}
+```
+
+## H3b: Within-Group Convergence Rate
+
+`within_group_similarity ~ condition * block + (1 | game) + (1 | tangram)`,
+restricted to Phase 1, within-group pairs, social conditions only.
+
+```{r h3b-convergence}
+if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
+  cat("Skipping H3b: block_pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
+} else {
+  # Filter to Phase 1, within-group pairs, social conditions
+  p1_within_social <- block_pairwise_sim %>%
+    filter(phaseNum == 1, sameGroup == 1) %>%
+    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+    filter(condition %in% c("social_mixed", "social_first")) %>%
+    mutate(
+      blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
+      condition = factor(condition, levels = c("social_mixed", "social_first"))
+    )
+
+  if (nrow(p1_within_social) > 0 && n_distinct(p1_within_social$condition) >= 2) {
+    m_h3b <- tryCatch(
+      lmer(
+        similarity ~ condition * blockNum_c + (1 | gameId) + (1 | target),
+        data = p1_within_social,
+        control = lmerControl(optimizer = "bobyqa")
+      ),
+      error = function(e) {
+        cat("lmer failed:", e$message, "\n")
+        NULL
+      }
+    )
+
+    if (!is.null(m_h3b)) summary(m_h3b)
+  } else {
+    cat("Insufficient data for H3b convergence analysis.\n")
+  }
+}
+```
+
+## H3c: Description Properties
+
+Compare abstractness and lexical uniqueness of final Phase 1 descriptions
+between `social_mixed` and `social_first`.
+
+```{r h3c-description-properties}
+# Final Phase 1 speaker utterances for social conditions
+p1_final_social <- speaker_utts %>%
+  filter(phaseNum == 1) %>%
+  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  filter(condition %in% c("social_mixed", "social_first")) %>%
+  group_by(gameId, playerId, target) %>%
+  filter(blockNum == max(blockNum)) %>%
+  ungroup() %>%
+  mutate(condition = factor(condition, levels = c("social_mixed", "social_first")))
+
+if (nrow(p1_final_social) > 0 && n_distinct(p1_final_social$condition) >= 2) {
+  # --- Abstractness ---
+  # Proportion of content words that are NOT concrete geometric/body-part terms
+  concrete_terms <- c(
+    "triangle", "triangles", "square", "squares", "rectangle", "rectangles",
+    "diamond", "diamonds", "shape", "shapes", "line", "lines", "angle", "angles",
+    "arm", "arms", "leg", "legs", "head", "body", "foot", "feet", "hand", "hands",
+    "top", "bottom", "left", "right", "side", "sides", "point", "points",
+    "corner", "corners", "edge", "edges", "block", "blocks", "piece", "pieces"
+  )
+  stopwords <- c(
+    "the", "a", "an", "is", "it", "of", "and", "to", "in", "on", "at",
+    "for", "with", "that", "this", "are", "was", "be", "has", "have",
+    "had", "do", "does", "did", "but", "or", "not", "no", "so", "if",
+    "its", "like", "one", "two", "looks", "look", "looking"
+  )
+
+  compute_abstractness <- function(utterance) {
+    words <- tolower(strsplit(utterance, "\\s+")[[1]])
+    words <- gsub("[^a-z]", "", words)
+    content_words <- words[nchar(words) > 1 & !(words %in% stopwords)]
+    if (length(content_words) == 0) return(NA_real_)
+    mean(!(content_words %in% concrete_terms))
+  }
+
+  # --- Lexical uniqueness ---
+  # Proportion of content words not used by any other group for the same tangram
+  compute_lexical_uniqueness <- function(df) {
+    df %>%
+      group_by(gameId, target) %>%
+      group_modify(~ {
+        .x %>% mutate(uniqueness = {
+          map_dbl(seq_len(n()), function(i) {
+            words_i <- tolower(strsplit(.x$utterance[i], "\\s+")[[1]])
+            words_i <- gsub("[^a-z]", "", words_i)
+            words_i <- words_i[nchar(words_i) > 1 & !(words_i %in% stopwords)]
+            if (length(words_i) == 0) return(NA_real_)
+
+            group_i <- .x$originalGroup[i]
+            other_words <- .x %>%
+              filter(originalGroup != group_i) %>%
+              pull(utterance) %>%
+              paste(collapse = " ") %>%
+              tolower() %>%
+              strsplit("\\s+") %>%
+              `[[`(1) %>%
+              gsub("[^a-z]", "", .) %>%
+              unique()
+
+            mean(!(words_i %in% other_words))
+          })
+        })
+      }) %>%
+      ungroup()
+  }
+
+  p1_final_social <- p1_final_social %>%
+    mutate(abstractness = map_dbl(utterance, compute_abstractness))
+
+  p1_final_social <- compute_lexical_uniqueness(p1_final_social)
+
+  # Model: abstractness ~ condition + (1 | participant) + (1 | tangram)
+  p1_abstract <- p1_final_social %>% filter(!is.na(abstractness))
+  if (nrow(p1_abstract) > 0) {
+    m_abstract <- tryCatch(
+      lmer(
+        abstractness ~ condition + (1 | playerId) + (1 | target),
+        data = p1_abstract,
+        control = lmerControl(optimizer = "bobyqa")
+      ),
+      error = function(e) {
+        cat("Abstractness lmer failed:", e$message, "\n")
+        NULL
+      }
+    )
+    if (!is.null(m_abstract)) {
+      cat("=== Abstractness ===\n")
+      print(summary(m_abstract))
+    }
+  }
+
+  # Model: lexical uniqueness ~ condition + (1 | participant) + (1 | tangram)
+  p1_unique <- p1_final_social %>% filter(!is.na(uniqueness))
+  if (nrow(p1_unique) > 0) {
+    m_uniqueness <- tryCatch(
+      lmer(
+        uniqueness ~ condition + (1 | playerId) + (1 | target),
+        data = p1_unique,
+        control = lmerControl(optimizer = "bobyqa")
+      ),
+      error = function(e) {
+        cat("Lexical uniqueness lmer failed:", e$message, "\n")
+        NULL
+      }
+    )
+    if (!is.null(m_uniqueness)) {
+      cat("\n=== Lexical Uniqueness ===\n")
+      print(summary(m_uniqueness))
+    }
+  }
+
+  # TODO: Word frequency analysis requires SUBTLEX-US norms.
+  # Download from https://www.ugent.be/pp/experimentele-psychologie/en/research/documents/subtlexus
+  # Then compute mean log word frequency per utterance and fit:
+  # lmer(log_freq ~ condition + (1 | playerId) + (1 | target))
+} else {
+  cat("Insufficient data for H3c (need both social conditions with Phase 1 utterances).\n")
+}
+```
+
+# H4: Downstream Trade-Off (Social-First vs Social-Mixed)
+
+Restricted to `social_mixed` vs `social_first` in Phase 2. Tests whether
+anticipated social goals produce a trade-off: higher social accuracy but
+lower referential accuracy. Contingent on H3a.
+
+## H4a: Social-Identification Accuracy
+
+`glmer(social_correct ~ condition + (1 | game) + (1 | participant) + (1 | tangram), family = binomial)`
+
+Contrast: `social_first > social_mixed`.
+
+```{r h4a-social-accuracy}
+if (nrow(social_guesses) > 0) {
+  social_h4 <- social_guesses %>%
+    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+    filter(condition %in% c("social_mixed", "social_first")) %>%
+    mutate(
+      correct = as.numeric(socialGuessCorrect == TRUE | socialGuessCorrect == "true"),
+      condition = factor(condition, levels = c("social_mixed", "social_first"))
+    )
+
+  if (n_distinct(social_h4$condition) >= 2 && nrow(social_h4) > 0) {
+    m_h4a <- tryCatch(
+      glmer(
+        correct ~ condition + (1 | gameId) + (1 | playerId) + (1 | target),
+        data = social_h4,
+        family = binomial,
+        control = glmerControl(optimizer = "bobyqa")
+      ),
+      error = function(e) {
+        cat("glmer failed:", e$message, "\nFalling back to glm.\n")
+        glm(correct ~ condition, data = social_h4, family = binomial)
+      }
+    )
+    summary(m_h4a)
+
+    if (inherits(m_h4a, "glmerMod")) {
+      em_h4a <- emmeans(m_h4a, "condition", type = "response")
+      contrast_h4a <- contrast(em_h4a, list(
+        H4a_socialfirst_gt_socialmixed = c(-1, 1)
+      ))
+      summary(contrast_h4a, infer = c(TRUE, TRUE))
+    }
+  } else {
+    cat("Insufficient data for H4a (need both social conditions).\n")
+  }
+} else {
+  cat("No social guess data for H4a.\n")
+}
+```
+
+## H4b: Referential Accuracy
+
+`glmer(ref_correct ~ condition + (1 | game) + (1 | participant) + (1 | tangram), family = binomial)`
+
+Contrast: `social_mixed > social_first` (lower ref accuracy expected in social_first).
+
+```{r h4b-ref-accuracy}
+p2_listener_social <- trials %>%
+  filter(phaseNum == 2, role == "listener") %>%
+  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  filter(condition %in% c("social_mixed", "social_first")) %>%
+  mutate(
+    correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
+    condition = factor(condition, levels = c("social_mixed", "social_first"))
+  )
+
+if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 0) {
+  m_h4b <- tryCatch(
+    glmer(
+      correct ~ condition + (1 | gameId) + (1 | playerId) + (1 | target),
+      data = p2_listener_social,
+      family = binomial,
+      control = glmerControl(optimizer = "bobyqa")
+    ),
+    error = function(e) {
+      cat("glmer failed:", e$message, "\nFalling back to glm.\n")
+      glm(correct ~ condition, data = p2_listener_social, family = binomial)
+    }
+  )
+  summary(m_h4b)
+
+  if (inherits(m_h4b, "glmerMod")) {
+    em_h4b <- emmeans(m_h4b, "condition", type = "response")
+    contrast_h4b <- contrast(em_h4b, list(
+      H4b_socialmixed_gt_socialfirst = c(1, -1)
+    ))
+    summary(contrast_h4b, infer = c(TRUE, TRUE))
+  }
+} else {
+  cat("Insufficient data for H4b (need both social conditions with Phase 2 listener trials).\n")
+}
 ```

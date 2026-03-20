@@ -83,55 +83,55 @@ ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) 
 **Predictions:** Above chance (1/6), main effect of `repNum`, ordered: separated > mixed > social_mixed.
 
 ```{r prep-accuracy}
-# Phase 2 listener accuracy
+# Phase 2 listener accuracy — trial-level binary outcome
 p2_listener <- trials %>%
   filter(phaseNum == 2, role == "listener") %>%
-  mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true")) %>%
-  left_join(games %>% select(gameId, condition), by = "gameId")
-
-# Compute per-round accuracy with repNum = blockNum + 1
-p2_round_acc <- p2_listener %>%
-  group_by(gameId, roundId, blockNum, target, condition) %>%
-  summarise(
-    ref_accuracy = mean(correct, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
   mutate(
-    repNum = blockNum + 1,
+    correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
+    repNum = blockNum + 1
+  ) %>%
+  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  mutate(
     repNum_c = repNum - mean(repNum, na.rm = TRUE),
     condition = factor(condition, levels = CONDITION_ORDER)
   )
-
-# Phase 1 accuracy as covariate
-p1_game_acc <- trials %>%
-  filter(phaseNum == 1, role == "listener") %>%
-  mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true")) %>%
-  group_by(gameId) %>%
-  summarise(ref_accuracy_phase1 = mean(correct, na.rm = TRUE), .groups = "drop")
-
-p2_round_acc <- p2_round_acc %>%
-  left_join(p1_game_acc, by = "gameId")
 ```
 
 ```{r model-accuracy}
-n_games <- n_distinct(p2_round_acc$gameId)
+n_games <- n_distinct(p2_listener$gameId)
 
 if (n_conditions >= 2 && n_games >= 2) {
-  m_ref_accuracy <- lmer(
-    ref_accuracy ~ condition * repNum_c + ref_accuracy_phase1 + (1 | gameId),
-    data = p2_round_acc,
-    control = lmerControl(optimizer = "bobyqa")
+  m_ref_accuracy <- tryCatch(
+    glmer(
+      correct ~ condition * repNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
+      data = p2_listener,
+      family = binomial,
+      control = glmerControl(optimizer = "bobyqa")
+    ),
+    error = function(e) {
+      cat("glmer failed:", e$message, "\nFalling back to lmer on proportions.\n")
+      lmer(correct ~ condition * repNum_c + (1 | gameId),
+           data = p2_listener, control = lmerControl(optimizer = "bobyqa"))
+    }
   )
 } else if (n_games >= 2) {
-  m_ref_accuracy <- lmer(
-    ref_accuracy ~ repNum_c + (1 | gameId),
-    data = p2_round_acc,
-    control = lmerControl(optimizer = "bobyqa")
+  m_ref_accuracy <- tryCatch(
+    glmer(
+      correct ~ repNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
+      data = p2_listener,
+      family = binomial,
+      control = glmerControl(optimizer = "bobyqa")
+    ),
+    error = function(e) {
+      cat("glmer failed:", e$message, "\nFalling back to lmer.\n")
+      lmer(correct ~ repNum_c + (1 | gameId),
+           data = p2_listener, control = lmerControl(optimizer = "bobyqa"))
+    }
   )
   cat("Only 1 condition; fitting without condition predictor.\n")
 } else {
-  m_ref_accuracy <- lm(ref_accuracy ~ repNum_c, data = p2_round_acc)
-  cat("Only 1 game; using fixed-effects model.\n")
+  m_ref_accuracy <- glm(correct ~ repNum_c, data = p2_listener, family = binomial)
+  cat("Only 1 game; using fixed-effects logistic model.\n")
 }
 
 summary(m_ref_accuracy)
@@ -163,15 +163,15 @@ ggplot(acc_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
   scale_fill_condition()
 ```
 
-# 3. In-Group vs Out-Group Listener Accuracy (social_mixed)
+# 3. In-Group vs Out-Group Listener Accuracy (Social Conditions)
 
-Within `social_mixed`: do listeners understand in-group speakers better?
+Within `social_mixed` and `social_first`: do listeners understand in-group speakers better?
 
 ```{r model-ingroup}
 social_listener <- trials %>%
   filter(phaseNum == 2, role == "listener") %>%
   left_join(games %>% select(gameId, condition), by = "gameId") %>%
-  filter(condition == "social_mixed") %>%
+  filter(condition %in% c("social_mixed", "social_first")) %>%
   mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"))
 
 if (nrow(social_listener) > 0) {
@@ -186,27 +186,30 @@ if (nrow(social_listener) > 0) {
     left_join(speaker_groups, by = c("gameId", "roundId")) %>%
     mutate(inGroupSpeaker = as.numeric(originalGroup == speakerGroup))
 
+  # Paper formula: ref_correct ~ in_group_speaker + (1 | speaker) + (1 | listener) + (1 | tangram)
+  # Note: paper omits (1 | game) here; participant IDs are unique across games.
   m_ingroup <- tryCatch(
-    lmer(
+    glmer(
       correct ~ inGroupSpeaker + (1 | playerId) + (1 | speakerId) + (1 | target),
       data = social_listener,
-      control = lmerControl(optimizer = "bobyqa")
+      family = binomial,
+      control = glmerControl(optimizer = "bobyqa")
     ),
     error = function(e) {
-      cat("Mixed model failed (likely sparse data):", e$message, "\n")
-      cat("Falling back to fixed-effects model.\n")
+      cat("glmer failed (likely sparse data):", e$message, "\n")
+      cat("Falling back to fixed-effects logistic model.\n")
       glm(correct ~ inGroupSpeaker, data = social_listener, family = binomial)
     }
   )
 
   summary(m_ingroup)
 } else {
-  cat("No social_mixed listener data available.\n")
+  cat("No social condition listener data available.\n")
 }
 ```
 
 ```{r plot-ingroup, fig.width=6, fig.height=4}
-# Plot 12: In-group vs out-group accuracy (social_mixed)
+# Plot 12: In-group vs out-group accuracy (social conditions)
 if (exists("social_listener") && nrow(social_listener) > 0 &&
     "inGroupSpeaker" %in% names(social_listener)) {
   ingroup_acc <- social_listener %>%
@@ -221,7 +224,7 @@ if (exists("social_listener") && nrow(social_listener) > 0 &&
     labs(
       x = "Speaker type",
       y = "Mean listener accuracy",
-      title = "In-group vs out-group accuracy (social_mixed)"
+      title = "In-group vs out-group accuracy (social conditions)"
     ) +
     theme(legend.position = "none")
 }
@@ -251,7 +254,7 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
       if (nrow(.x) < 5 || n_distinct(.x$sameGroup) < 2) return(tibble())
       tryCatch({
         model <- lmer(
-          similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+          similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
           data = .x, control = lmerControl(optimizer = "bobyqa")
         )
         tibble(gs_phase2 = coef(summary(model))["sameGroup", "Estimate"])
@@ -267,7 +270,7 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
       if (nrow(.x) < 5 || n_distinct(.x$sameGroup) < 2) return(tibble())
       tryCatch({
         model <- lmer(
-          similarity ~ sameGroup + (1 | target) + (1 | participantPair),
+          similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
           data = .x, control = lmerControl(optimizer = "bobyqa")
         )
         tibble(gs_phase1 = coef(summary(model))["sameGroup", "Estimate"])
@@ -323,14 +326,23 @@ if (nrow(social_guesses) > 0) {
 
   n_social_games <- n_distinct(social_guesses_model$gameId)
   if (n_social_games >= 2) {
-    m_social_acc <- lmer(
-      correct ~ blockNum_c + (1 | gameId),
-      data = social_guesses_model,
-      control = lmerControl(optimizer = "bobyqa")
+    # Paper: social_correct ~ rep_num + (1 | game) + (1 | participant) + (1 | tangram)
+    m_social_acc <- tryCatch(
+      glmer(
+        correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
+        data = social_guesses_model,
+        family = binomial,
+        control = glmerControl(optimizer = "bobyqa")
+      ),
+      error = function(e) {
+        cat("glmer failed:", e$message, "\nFalling back to lmer.\n")
+        lmer(correct ~ blockNum_c + (1 | gameId),
+             data = social_guesses_model, control = lmerControl(optimizer = "bobyqa"))
+      }
     )
   } else {
-    m_social_acc <- lm(correct ~ blockNum_c, data = social_guesses_model)
-    cat("Only 1 game; using fixed-effects model.\n")
+    m_social_acc <- glm(correct ~ blockNum_c, data = social_guesses_model, family = binomial)
+    cat("Only 1 game; using fixed-effects logistic model.\n")
   }
 
   summary(m_social_acc)

@@ -333,7 +333,7 @@ def build_speaker_utterances(
 def build_social_guesses(
     player_round_df: pd.DataFrame, game_df: pd.DataFrame
 ) -> pd.DataFrame:
-    """Build social_guesses.csv: 1 row per listener social guess (social_mixed only)."""
+    """Build social_guesses.csv: 1 row per listener social guess (social conditions: social_mixed and social_first)."""
     pr = drop_last_changed_cols(player_round_df)
 
     # Filter to refgame rounds with social guess data
