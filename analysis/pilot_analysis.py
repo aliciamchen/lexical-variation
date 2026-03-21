@@ -56,7 +56,10 @@ def load_data(data_dir: Path, game_ids: list[str]):
     players = pd.read_csv(data_dir / "players.csv")
     trials = pd.read_csv(data_dir / "trials.csv")
     messages = pd.read_csv(data_dir / "messages.csv")
-    utterances = pd.read_csv(data_dir / "speaker_utterances.csv")
+    utt_path = data_dir / "speaker_utterances_filtered.csv"
+    if not utt_path.exists():
+        utt_path = data_dir / "speaker_utterances.csv"
+    utterances = pd.read_csv(utt_path)
     adjacent_path = data_dir / "adjacent_similarities.csv"
     adjacent = pd.read_csv(adjacent_path) if adjacent_path.exists() else pd.DataFrame()
 

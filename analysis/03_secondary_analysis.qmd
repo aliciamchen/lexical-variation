@@ -14,7 +14,7 @@ source(here::here("analysis", "config.R"))
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
-speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
+speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
 social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
 
 has_phase_change <- file.exists(file.path(data_dir, "phase_change_similarities.csv"))
@@ -80,19 +80,18 @@ ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) 
 
 # 2. Referential Accuracy in Phase 2
 
-**Predictions:** Above chance (1/6), main effect of `repNum`, ordered: separated > mixed > social_mixed.
+**Predictions:** Above chance (1/6), main effect of `blockNum`, ordered: separated > mixed > social_mixed.
 
 ```{r prep-accuracy}
 # Phase 2 listener accuracy — trial-level binary outcome
 p2_listener <- trials %>%
   filter(phaseNum == 2, role == "listener") %>%
   mutate(
-    correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
-    repNum = blockNum + 1
+    correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true")
   ) %>%
   left_join(games %>% select(gameId, condition), by = "gameId") %>%
   mutate(
-    repNum_c = repNum - mean(repNum, na.rm = TRUE),
+    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
     condition = factor(condition, levels = CONDITION_ORDER)
   )
 ```
@@ -103,34 +102,34 @@ n_games <- n_distinct(p2_listener$gameId)
 if (n_conditions >= 2 && n_games >= 2) {
   m_ref_accuracy <- tryCatch(
     glmer(
-      correct ~ condition * repNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
+      correct ~ condition * blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
       data = p2_listener,
       family = binomial,
       control = glmerControl(optimizer = "bobyqa")
     ),
     error = function(e) {
       cat("glmer failed:", e$message, "\nFalling back to lmer on proportions.\n")
-      lmer(correct ~ condition * repNum_c + (1 | gameId),
+      lmer(correct ~ condition * blockNum_c + (1 | gameId),
            data = p2_listener, control = lmerControl(optimizer = "bobyqa"))
     }
   )
 } else if (n_games >= 2) {
   m_ref_accuracy <- tryCatch(
     glmer(
-      correct ~ repNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
+      correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
       data = p2_listener,
       family = binomial,
       control = glmerControl(optimizer = "bobyqa")
     ),
     error = function(e) {
       cat("glmer failed:", e$message, "\nFalling back to lmer.\n")
-      lmer(correct ~ repNum_c + (1 | gameId),
+      lmer(correct ~ blockNum_c + (1 | gameId),
            data = p2_listener, control = lmerControl(optimizer = "bobyqa"))
     }
   )
   cat("Only 1 condition; fitting without condition predictor.\n")
 } else {
-  m_ref_accuracy <- glm(correct ~ repNum_c, data = p2_listener, family = binomial)
+  m_ref_accuracy <- glm(correct ~ blockNum_c, data = p2_listener, family = binomial)
   cat("Only 1 game; using fixed-effects logistic model.\n")
 }
 

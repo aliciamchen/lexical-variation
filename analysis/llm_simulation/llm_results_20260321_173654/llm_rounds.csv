@@ -1,0 +1,73 @@
+group_id,round_num,block_num,target,speaker_id,description,word_count,accuracy,n_listeners_correct
+G01,0,0,page-B,0,The figure looks like a house with a very steep roof.,11,0.0,0
+G01,1,0,page3-35,0,The figure looks like a house with a flat roof.,10,0.0,0
+G01,2,0,page7-107,0,"The figure looks like a house, but the roof is angled to the left.",14,0.0,0
+G01,3,0,page9-46,0,"The figure looks like a house, but the roof is angled to the right.",14,0.0,0
+G01,4,0,page5-28,0,"House with a roof that is angled to the right, but the roof is shorter.",15,0.0,0
+G01,5,0,page7-255,0,"House with a roof angled to the left, but the roof is shorter.",13,0.0,0
+G01,6,1,page9-46,1,The figure looks like a house with a slanted roof.,10,0.0,0
+G01,7,1,page7-255,1,"The figure looks like a house with a slanted roof, but the roof is longer.",15,0.5,1
+G01,8,1,page-B,1,"The figure looks like a house with a slanted roof, but the roof is longer and the house is taller.",20,0.0,0
+G01,9,1,page3-35,1,"The figure looks like a house with a slanted roof, but the roof is longer and the house is shorter.",20,0.0,0
+G01,10,1,page7-107,1,"The figure looks like a house with a slanted roof, but the roof is shorter.",15,0.0,0
+G01,11,1,page5-28,1,The figure looks like a house with a slanted roof. The roof is shorter and the house is wider.,19,0.0,0
+G01,12,2,page7-255,2,The figure is a triangle pointing upwards.,7,0.5,1
+G01,13,2,page7-107,2,The figure is a triangle pointing upwards.,7,0.0,0
+G01,14,2,page3-35,2,The figure is a triangle pointing upwards. It is oriented to the right.,13,0.0,0
+G01,15,2,page9-46,2,The figure is a triangle pointing upwards. It is oriented to the left.,13,0.0,0
+G01,16,2,page-B,2,The figure is a triangle pointing downwards.,7,0.0,0
+G01,17,2,page5-28,2,The figure is a triangle pointing downwards. It is oriented to the right.,13,0.0,0
+G01,18,3,page9-46,0,"House with a very tall, flat roof.",7,0.0,0
+G01,19,3,page3-35,0,"House with a very short, flat roof.",7,0.0,0
+G01,20,3,page7-255,0,"House with a roof angled to the right, but the roof is very tall.",14,1.0,2
+G01,21,3,page-B,0,"House with a very short, flat roof.",7,0.0,0
+G01,22,3,page5-28,0,House with a very steep roof.,6,0.0,0
+G01,23,3,page7-107,0,"House with a very short, flat roof.",7,0.0,0
+G01,24,4,page9-46,1,"House with a short roof, but the house is narrow.",10,0.5,1
+G01,25,4,page5-28,1,"House with a short roof, narrow, and the roof is on the right.",13,0.0,0
+G01,26,4,page7-107,1,"House with a short roof, narrow, and the roof is on the left.",13,0.0,0
+G01,27,4,page3-35,1,House with a slanted roof. The roof is on the left.,11,0.0,0
+G01,28,4,page-B,1,House with a slanted roof on the right.,8,0.0,0
+G01,29,4,page7-255,1,"House with a slanted roof on the left, short roof.",10,0.5,1
+G01,30,5,page9-46,2,The figure is a triangle pointing downwards. It is oriented to the left.,13,0.0,0
+G01,31,5,page7-255,2,The figure is a triangle pointing upwards. It is oriented to the right.,13,0.0,0
+G01,32,5,page3-35,2,The figure is a triangle pointing upwards. It is oriented to the right. It is a right triangle.,18,0.0,0
+G01,33,5,page-B,2,The figure is a triangle pointing downwards. It is oriented to the left. It is a right triangle.,18,0.0,0
+G01,34,5,page5-28,2,The figure is a triangle pointing upwards. It is not a right triangle.,13,0.0,0
+G01,35,5,page7-107,2,The figure is a triangle pointing downwards. It is not a right triangle. It is isosceles.,16,0.0,0
+G02,0,0,page5-28,0,The figure looks like a diamond with a triangle on top.,11,0.0,0
+G02,1,0,page9-46,0,"The figure looks like a diamond with a triangle on top, but the diamond is pointing down.",17,0.0,0
+G02,2,0,page-B,0,"The figure looks like a diamond with a triangle on top, but the diamond is pointing down and the triangle is on the right.",24,0.0,0
+G02,3,0,page7-255,0,"The figure looks like a diamond with a triangle on top, but the diamond is pointing down and the triangle is on the left.",24,0.0,0
+G02,4,0,page3-35,0,"The figure looks like a diamond with a triangle on top, but the diamond is pointing up.",17,0.0,0
+G02,5,0,page7-107,0,"The figure looks like a diamond with a triangle on top. The diamond is pointing up, and the triangle is on the left.",23,0.0,0
+G02,6,1,page9-46,1,All triangles pointing up.,4,0.0,0
+G02,7,1,page-B,1,"Two triangles pointing up, one pointing down.",7,0.0,0
+G02,8,1,page7-255,1,"Two triangles pointing up, one pointing down, but the down-pointing triangle is smaller.",13,0.0,0
+G02,9,1,page7-107,1,"Two triangles pointing up, one pointing down, but the down-pointing triangle is smaller and on the right.",17,0.0,0
+G02,10,1,page3-35,1,"Two triangles pointing up, one pointing down, but the down-pointing triangle is smaller and on the left.",17,0.0,0
+G02,11,1,page5-28,1,"Two triangles pointing up, one pointing down, small triangle on the left, but the small triangle is touching the bottom of the right triangle.",24,0.0,0
+G02,12,2,page9-46,2,The figure looks like a house with a very steep roof.,11,0.0,0
+G02,13,2,page-B,2,"The figure looks like a house with a very steep roof, but the roof is almost as tall as the house.",21,0.0,0
+G02,14,2,page3-35,2,"The figure looks like a house with a very steep roof, but the roof is almost as tall as the house, and the house is on its side.",28,0.0,0
+G02,15,2,page7-255,2,"The figure looks like a house with a very steep roof, but the roof is almost as tall as the house, and the house is on its side, and the roof is pointing to the right.",36,0.0,0
+G02,16,2,page5-28,2,"The figure looks like a house with a very steep roof, the house is on its side, and the roof is pointing to the right, but the house is very small.",31,0.0,0
+G02,17,2,page7-107,2,"The figure looks like a house with a very steep roof, the house is on its side, and the roof is pointing to the right, but the house is very small, and the roof is very long.",37,0.0,0
+G02,18,3,page3-35,0,"The figure looks like a diamond with a triangle on top. The diamond is pointing up, and the triangle is on the right.",23,0.0,0
+G02,19,3,page9-46,0,The figure looks like a diamond with a triangle on top. The diamond is pointing to the left.,18,0.0,0
+G02,20,3,page5-28,0,The figure looks like a diamond with a triangle on top. The diamond is pointing to the right.,18,0.0,0
+G02,21,3,page-B,0,"The figure looks like a diamond with a triangle on top. The diamond is pointing to the right, and the triangle is on the left.",25,0.0,0
+G02,22,3,page7-107,0,"The figure looks like a diamond with a triangle on top. The diamond is pointing down, and the triangle is on the left.",23,0.0,0
+G02,23,3,page7-255,0,"The figure looks like a diamond with a triangle on top. The diamond is pointing to the left, and the triangle is on the right.",25,0.0,0
+G02,24,4,page9-46,1,"Two triangles pointing up, one pointing down, small triangle on the left, but the small triangle is touching the bottom of the right triangle, and the left triangle is taller.",30,0.0,0
+G02,25,4,page-B,1,"Two triangles pointing up, one pointing down, small triangle on the left, but the small triangle is touching the bottom of the right triangle, and the left triangle is shorter.",30,0.0,0
+G02,26,4,page7-107,1,"Two triangles pointing up, one pointing down, small triangle on the left, but the small triangle is touching the bottom of the right triangle, and the left triangle is shorter, but the right triangle is also shorter.",37,0.5,1
+G02,27,4,page3-35,1,"Two triangles pointing up, one pointing down, small triangle on the left, but the small triangle is touching the bottom of the right triangle, and the left triangle is shorter, but the right triangle is also shorter.",37,0.5,1
+G02,28,4,page5-28,1,"Two triangles pointing up, one pointing down, small triangle on the left, touching the bottom of the right triangle, left triangle shorter, right triangle shorter.",25,0.0,0
+G02,29,4,page7-255,1,"Two triangles pointing up, one pointing down, small triangle on the left, touching the bottom of the right triangle, left triangle shorter, right triangle shorter.",25,0.5,1
+G02,30,5,page9-46,2,"The figure looks like a house with a very steep roof, the house is on its side, and the roof is pointing to the right. The house is very small, and the roof is very long, and the roof is almost touching the ground.",44,0.0,0
+G02,31,5,page7-107,2,"The figure looks like a house with a very steep roof, the house is on its side, and the roof is pointing to the right. The house is very small, and the roof is very long, and the roof is almost touching the ground, and the house is on the bottom.",51,0.5,1
+G02,32,5,page-B,2,"House on its side, roof pointing right, house very small, roof very long, roof almost touching the ground, house on the bottom. The roof is a triangle.",27,0.0,0
+G02,33,5,page3-35,2,"House on its side, roof pointing right, house very small, roof very long, roof almost touching the ground, house on the bottom. The roof is a triangle, and the house is a square.",33,0.0,0
+G02,34,5,page7-255,2,"House on its side, roof pointing right, house very small, roof very long, roof almost touching the ground, house on the bottom. The roof is a triangle, and the house is a square, and the roof is on the right.",40,0.0,0
+G02,35,5,page5-28,2,"House on its side, roof pointing right, house very small, roof very long, roof almost touching the ground, house on the bottom. The roof is a triangle, and the house is a square.",33,0.0,0

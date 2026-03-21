@@ -14,7 +14,7 @@ library(patchwork)
 source(here::here("analysis", "config.R"))
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
-speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
+speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
 trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
 
 has_adjacent <- file.exists(file.path(data_dir, "adjacent_similarities.csv"))
@@ -56,20 +56,20 @@ if (has_adjacent && nrow(adjacent_sim) > 0) {
 p2_utts <- utts_with_condition %>%
   filter(phaseNum == 2) %>%
   mutate(
-    repNum_c = repNum - mean(repNum, na.rm = TRUE),
+    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
     log_uttLength = log(uttLength + 1)
   )
 
 n_cond <- n_distinct(p2_utts$condition)
 if (n_cond >= 2) {
   m_p2_length <- lmer(
-    log_uttLength ~ condition * repNum_c + (1 | playerId) + (1 | target),
+    log_uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
     data = p2_utts,
     control = lmerControl(optimizer = "bobyqa")
   )
 } else {
   m_p2_length <- lmer(
-    log_uttLength ~ repNum_c + (1 | playerId) + (1 | target),
+    log_uttLength ~ blockNum_c + (1 | playerId) + (1 | target),
     data = p2_utts,
     control = lmerControl(optimizer = "bobyqa")
   )

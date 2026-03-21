@@ -1,0 +1,277 @@
+---
+title: "SI: LLM Simulation (Phase 1 Benchmark)"
+format:
+  html:
+    toc: true
+    code-fold: true
+---
+
+This notebook analyzes LLM reference game simulations to evaluate whether
+AI agents can form stable conventions in Phase 1. Used as an AI detection
+benchmark for the registered report.
+
+**Prerequisites:** Run `process_llm_results.py` on a results directory first
+to generate the CSVs this notebook reads.
+
+```{r setup, message=FALSE, warning=FALSE}
+source(here::here("analysis", "config.R"))
+library(jsonlite)
+
+# -- Find results directory (most recent llm_results_*) --
+sim_dir <- here::here("analysis", "llm_simulation")
+results_dirs <- sort(
+  list.dirs(sim_dir, recursive = FALSE, full.names = TRUE)[
+    grepl("llm_results_", basename(list.dirs(sim_dir, recursive = FALSE)))
+  ],
+  decreasing = TRUE
+)
+stopifnot("No llm_results_* directory found. Run the simulation first." = length(results_dirs) > 0)
+results_dir <- results_dirs[1]
+cat("Results directory:", basename(results_dir), "\n")
+
+# Load CSVs produced by process_llm_results.py
+rounds <- read_csv(file.path(results_dir, "llm_rounds.csv"), show_col_types = FALSE)
+listener_trials <- read_csv(file.path(results_dir, "llm_listener_trials.csv"), show_col_types = FALSE)
+exclusion <- read_csv(file.path(results_dir, "llm_exclusion.csv"), show_col_types = FALSE)
+has_similarity <- file.exists(file.path(results_dir, "llm_similarity.csv"))
+if (has_similarity) {
+  similarity <- read_csv(file.path(results_dir, "llm_similarity.csv"), show_col_types = FALSE)
+}
+
+# Load config
+config <- fromJSON(file.path(results_dir, "llm_config.json"))
+cat("Model:", config$model, "\n")
+cat("Temperature:", ifelse(is.null(config$temperature), "API default", config$temperature), "\n")
+cat("Groups:", config$n_groups, "\n")
+cat("Blocks:", config$n_blocks, "\n")
+```
+
+## Exclusion Criterion
+
+The paper's exclusion criterion: groups pass Phase 1 if **at least 2 of 3 players
+achieve at least 2/3 referential accuracy across the last 3 blocks**.
+
+```{r exclusion-criterion}
+group_summary <- exclusion %>%
+  distinct(group_id, n_players_passing, group_passes)
+
+n_groups <- nrow(group_summary)
+n_passing <- sum(group_summary$group_passes)
+pct_passing <- n_passing / n_groups * 100
+
+cat(sprintf("Groups passing: %d/%d (%.0f%%)\n", n_passing, n_groups, pct_passing))
+cat(sprintf("Threshold: >=66.7%% accuracy, >=2/3 players, last 3 blocks\n\n"))
+
+exclusion %>%
+  select(group_id, player_id, listener_accuracy, passes_threshold, group_passes) %>%
+  knitr::kable(digits = 3)
+```
+
+## Accuracy Trajectory
+
+```{r accuracy-trajectory, fig.width=6, fig.height=4}
+# Per-group per-block accuracy
+block_acc <- listener_trials %>%
+  group_by(group_id, block_num) %>%
+  summarise(accuracy = mean(correct), .groups = "drop")
+
+# Aggregate across groups
+acc_summary <- block_acc %>%
+  group_by(block_num) %>%
+  summarise(
+    mean_acc = mean(accuracy),
+    se = sd(accuracy) / sqrt(n()),
+    .groups = "drop"
+  )
+
+p_acc <- ggplot(acc_summary, aes(x = block_num, y = mean_acc)) +
+  geom_line(color = "steelblue") +
+  geom_point(color = "steelblue", size = 2.5) +
+  geom_errorbar(aes(ymin = mean_acc - se, ymax = mean_acc + se),
+                width = 0.2, color = "steelblue") +
+  geom_hline(yintercept = 2/3, linetype = "dashed", color = "red", alpha = 0.7) +
+  geom_hline(yintercept = 1/16, linetype = "dotted", color = "gray50", alpha = 0.5) +
+  annotate("text", x = config$n_blocks - 1, y = 2/3 + 0.03,
+           label = "Threshold (66.7%)", color = "red", size = 3, hjust = 1) +
+  annotate("text", x = config$n_blocks - 1, y = 1/16 + 0.03,
+           label = "Chance (6.25%)", color = "gray50", size = 3, hjust = 1) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, NA)) +
+  labs(x = "Block", y = "Listener Accuracy",
+       title = paste0("Accuracy Trajectory (", config$model, ")")) +
+  theme(plot.title = element_text(size = 14))
+
+p_acc
+save_fig(p_acc, "SI_llm_accuracy_trajectory.pdf", width = 6, height = 4)
+
+cat("Mean accuracy by block:\n")
+for (i in seq_len(nrow(acc_summary))) {
+  cat(sprintf("  Block %d: %.1f%% (SE=%.1f%%)\n",
+              acc_summary$block_num[i],
+              acc_summary$mean_acc[i] * 100,
+              acc_summary$se[i] * 100))
+}
+```
+
+## Word Count Trajectory
+
+```{r wordcount-trajectory, fig.width=6, fig.height=4}
+# Per-group per-block word count
+block_wc <- rounds %>%
+  group_by(group_id, block_num) %>%
+  summarise(word_count = mean(word_count), .groups = "drop")
+
+wc_summary <- block_wc %>%
+  group_by(block_num) %>%
+  summarise(
+    mean_wc = mean(word_count),
+    se = sd(word_count) / sqrt(n()),
+    .groups = "drop"
+  )
+
+p_wc <- ggplot(wc_summary, aes(x = block_num, y = mean_wc)) +
+  geom_line(color = "darkorange") +
+  geom_point(color = "darkorange", size = 2.5) +
+  geom_errorbar(aes(ymin = mean_wc - se, ymax = mean_wc + se),
+                width = 0.2, color = "darkorange") +
+  scale_y_continuous(limits = c(0, NA)) +
+  labs(x = "Block", y = "Mean Word Count",
+       title = paste0("Description Length (", config$model, ")")) +
+  theme(plot.title = element_text(size = 14))
+
+p_wc
+save_fig(p_wc, "SI_llm_wordcount_trajectory.pdf", width = 6, height = 4)
+
+cat("Mean word count by block:\n")
+for (i in seq_len(nrow(wc_summary))) {
+  cat(sprintf("  Block %d: %.1f (SE=%.1f)\n",
+              wc_summary$block_num[i], wc_summary$mean_wc[i], wc_summary$se[i]))
+}
+```
+
+## Description Similarity (SBERT)
+
+For each group, we compute cosine similarity between descriptions of the same
+tangram across blocks. Increasing similarity indicates convergence on stable
+expressions.
+
+```{r sbert-similarity, fig.width=6, fig.height=4}
+if (has_similarity) {
+  # Per-group per-block similarity
+  block_sim <- similarity %>%
+    group_by(group_id, block_num) %>%
+    summarise(similarity = mean(similarity), .groups = "drop")
+
+  sim_summary <- block_sim %>%
+    group_by(block_num) %>%
+    summarise(
+      mean_sim = mean(similarity),
+      se = sd(similarity) / sqrt(n()),
+      .groups = "drop"
+    )
+
+  p_sim <- ggplot(sim_summary, aes(x = block_num, y = mean_sim)) +
+    geom_line(color = "seagreen") +
+    geom_point(color = "seagreen", size = 2.5) +
+    geom_errorbar(aes(ymin = mean_sim - se, ymax = mean_sim + se),
+                  width = 0.2, color = "seagreen") +
+    scale_y_continuous(limits = c(0, 1)) +
+    labs(x = "Block", y = "Cosine Similarity (adjacent descriptions)",
+         title = paste0("Description Convergence (", config$model, ")")) +
+    theme(plot.title = element_text(size = 14))
+
+  p_sim
+  save_fig(p_sim, "SI_llm_similarity_trajectory.pdf", width = 6, height = 4)
+
+  cat("Mean adjacent similarity by block:\n")
+  for (i in seq_len(nrow(sim_summary))) {
+    cat(sprintf("  Block %d: %.3f (SE=%.3f)\n",
+                sim_summary$block_num[i], sim_summary$mean_sim[i], sim_summary$se[i]))
+  }
+
+  overall_sim <- mean(similarity$similarity)
+  overall_sim_sd <- similarity %>%
+    group_by(group_id) %>%
+    summarise(m = mean(similarity), .groups = "drop") %>%
+    pull(m) %>%
+    sd()
+} else {
+  cat("No similarity data. Run process_llm_results.py without --skip-similarity.\n")
+  overall_sim <- NA
+  overall_sim_sd <- NA
+}
+```
+
+## Per-Group Accuracy Heatmap
+
+```{r heatmap, fig.width=5, fig.height=max(3, n_groups * 0.5)}
+heat_data <- exclusion %>%
+  mutate(player_label = paste0("Player ", player_id))
+
+p_heat <- ggplot(heat_data, aes(x = player_label, y = group_id, fill = listener_accuracy)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = sprintf("%.0f%%", listener_accuracy * 100)), size = 3.5) +
+  scale_fill_gradient2(low = "#d73027", mid = "#fee08b", high = "#1a9850",
+                       midpoint = 0.33, limits = c(0, 1),
+                       labels = scales::percent) +
+  labs(x = NULL, y = NULL, fill = "Accuracy",
+       title = paste0("Listener Accuracy (Last 3 Blocks)")) +
+  theme(plot.title = element_text(size = 14))
+
+p_heat
+```
+
+## Draft SI Paragraph
+
+```{r draft-paragraph}
+# Final stats
+mean_last3 <- exclusion %>%
+  summarise(m = mean(listener_accuracy) * 100) %>%
+  pull(m)
+
+sd_last3 <- exclusion %>%
+  group_by(group_id) %>%
+  summarise(m = mean(listener_accuracy) * 100, .groups = "drop") %>%
+  pull(m) %>%
+  sd()
+
+block0_wc <- wc_summary$mean_wc[wc_summary$block_num == 0]
+block_last_wc <- wc_summary$mean_wc[wc_summary$block_num == config$n_blocks - 1]
+wc_direction <- ifelse(block_last_wc >= block0_wc * 0.85, "did not show", "showed")
+
+temp_str <- ifelse(is.null(config$temperature),
+                   "default temperature",
+                   sprintf("temperature $= %s$", config$temperature))
+
+if (!is.na(overall_sim)) {
+  sim_str <- sprintf("%.2f (SD $= %.2f$)", overall_sim, overall_sim_sd)
+  sim_interp <- ifelse(overall_sim < 0.5, "low", "moderate")
+} else {
+  sim_str <- "N/A"
+  sim_interp <- "unknown"
+}
+
+paragraph <- sprintf(
+"We simulated $N = %d$ independent groups of 3 \\texttt{%s} agents
+playing the Phase~1 reference game (6 blocks $\\times$ 6 tangrams $= 36$ rounds
+per group, %s). We evaluated each group against the same exclusion
+criterion applied to human participants: at least 2 of 3 group members achieving
+$\\geq$66.7\\%% referential accuracy across the last 3 blocks.
+%d/%d groups (%.0f\\%%) met this criterion.
+Mean listener accuracy was %.1f\\%% (SD $= %.1f$\\%%) across
+the final 3 blocks, compared to the 66.7\\%% threshold. Description length
+%s the expected reduction over blocks (block~1:
+%.1f words; block~6: %.1f words). Cosine similarity
+between adjacent descriptions of the same tangram was %s, indicating
+%s convergence on stable expressions.",
+  n_groups, config$model, temp_str,
+  n_passing, n_groups, pct_passing,
+  mean_last3, sd_last3,
+  wc_direction, block0_wc, block_last_wc,
+  sim_str, sim_interp
+)
+
+cat("============================================================\n")
+cat("DRAFT SI PARAGRAPH (copy to LaTeX)\n")
+cat("============================================================\n\n")
+cat(paragraph, "\n")
+```

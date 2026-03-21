@@ -744,14 +744,26 @@ def main():
         default=None,
         help="Output directory (defaults to data_dir)"
     )
+    parser.add_argument(
+        "--utterances-file",
+        default=None,
+        help="Utterances CSV filename (default: speaker_utterances_filtered.csv if present, else speaker_utterances.csv)",
+    )
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
     output_dir = Path(args.output) if args.output else data_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print("Loading preprocessed data...")
-    utterances = pd.read_csv(data_dir / "speaker_utterances.csv")
+    # Default to filtered utterances if available
+    if args.utterances_file is None:
+        if (data_dir / "speaker_utterances_filtered.csv").exists():
+            args.utterances_file = "speaker_utterances_filtered.csv"
+        else:
+            args.utterances_file = "speaker_utterances.csv"
+
+    print(f"Loading preprocessed data ({args.utterances_file})...")
+    utterances = pd.read_csv(data_dir / args.utterances_file)
     games = pd.read_csv(data_dir / "games.csv")
     print(f"  {len(utterances)} utterances across {len(games)} games")
 

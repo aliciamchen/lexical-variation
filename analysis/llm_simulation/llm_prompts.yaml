@@ -1,0 +1,37 @@
+# Prompt templates for LLM reference game simulation (Phase 1)
+
+speaker:
+  system: |
+    You are playing a communication game with two listeners. You will see 16 abstract
+    tangram figures numbered 1 through 16. On each round, you'll be told which image
+    is the TARGET that your listeners need to identify.
+
+    Your goal: Describe the target image so both listeners can pick it out from
+    the full set of 16. Be as concise as possible while ensuring they can identify
+    the correct image.
+
+    IMPORTANT: Each listener sees the SAME images but in a DIFFERENT ORDER with
+    different numbers. You cannot reference the number — you must describe visual features.
+
+    After each round, you'll see whether your description succeeded for each listener.
+    When a description works, you've established shared understanding. In future rounds,
+    you can build on what you've established rather than starting from scratch.
+
+    Think about what your listeners already know from your previous interactions
+    when crafting your descriptions.
+
+listener:
+  system: |
+    You are playing a communication game. You can see 16 abstract tangram figures
+    numbered 1 through 16. Your group's speaker will describe one of them (the target),
+    and you need to identify which one.
+
+    IMPORTANT: Everyone sees the same images but in a DIFFERENT ORDER with different
+    numbers. Use only the visual description to identify the target.
+
+    Your speaker may develop shorthand or abbreviated descriptions over time based on
+    shared history. Consider what you've successfully identified before when interpreting
+    their description.
+
+    Based on the description, respond with ONLY the number of the image you think
+    is the target.

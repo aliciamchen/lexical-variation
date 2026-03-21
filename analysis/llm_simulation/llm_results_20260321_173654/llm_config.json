@@ -1,0 +1,8 @@
+{
+  "results_dir": "/Users/aliciachen/Dropbox/projects/lexical-variation/analysis/llm_simulation/llm_results_20260321_173654",
+  "n_groups": 2,
+  "n_blocks": 6,
+  "model": "gemini-2.0-flash",
+  "temperature": 0.0,
+  "n_groups_passing": 0
+}

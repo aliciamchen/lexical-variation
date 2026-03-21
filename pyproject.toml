@@ -38,6 +38,10 @@ dependencies = [
     "svglib>=1.5",
     "reportlab>=4.0",
     "lxml>=5.0",
+    # LLM / Vertex AI
+    "google-genai>=1.0.0",
+    "Pillow>=10.0.0",
+    "python-dotenv>=1.0.0",
     # Utilities
     "requests>=2.31",
     "pyyaml>=6.0",

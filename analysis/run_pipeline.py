@@ -173,14 +173,29 @@ def step_preprocess(raw_dir: Path, data_dir: Path) -> None:
     subprocess.run(cmd, check=True)
 
 
-def step_embeddings(data_dir: Path) -> None:
+def step_filter_messages(data_dir: Path) -> None:
+    """Step 4b: Filter non-referential messages (optional, requires Vertex AI)."""
+    print(f"\n{'=' * 60}")
+    print("Step 4b: Filtering non-referential messages")
+    print(f"{'=' * 60}")
+
+    script = ANALYSIS_DIR / "filter_nonreferential.py"
+    cmd = [sys.executable, str(script), "classify", "--data-dir", str(data_dir)]
+    subprocess.run(cmd, check=True)
+
+    cmd = [sys.executable, str(script), "apply", "--data-dir", str(data_dir)]
+    subprocess.run(cmd, check=True)
+
+
+def step_embeddings(data_dir: Path, utterances_file: str = "speaker_utterances.csv") -> None:
     """Step 5: Run compute_embeddings.py."""
     print(f"\n{'=' * 60}")
     print("Step 5: Computing embeddings")
     print(f"{'=' * 60}")
 
     script = ANALYSIS_DIR / "compute_embeddings.py"
-    cmd = [sys.executable, str(script), str(data_dir), "--output", str(data_dir)]
+    cmd = [sys.executable, str(script), str(data_dir), "--output", str(data_dir),
+           "--utterances-file", utterances_file]
     subprocess.run(cmd, check=True)
 
 
@@ -623,6 +638,11 @@ def main():
         action="store_true",
         help="Skip visualization and animation generation",
     )
+    parser.add_argument(
+        "--filter-messages",
+        action="store_true",
+        help="Filter non-referential messages before embeddings (requires Vertex AI)",
+    )
     args = parser.parse_args()
 
     # Step 1: Locate zip
@@ -656,13 +676,19 @@ def main():
         # Step 4: Preprocess
         step_preprocess(raw_dir, data_dir)
 
+        # Step 4b: Filter messages (optional)
+        utterances_file = "speaker_utterances.csv"
+        if args.filter_messages:
+            step_filter_messages(data_dir)
+            utterances_file = "speaker_utterances_filtered.csv"
+
         # Step 5: Embeddings
         if args.skip_embeddings:
             print(f"\n{'=' * 60}")
             print("Step 5: Skipping embeddings (--skip-embeddings)")
             print(f"{'=' * 60}")
         else:
-            step_embeddings(data_dir)
+            step_embeddings(data_dir, utterances_file)
 
         # Step 6: Visualizations
         if args.skip_visualize:

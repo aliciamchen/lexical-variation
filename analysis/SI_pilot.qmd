@@ -19,7 +19,7 @@ games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 players <- read_csv(file.path(data_dir, "players.csv"), show_col_types = FALSE)
 trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
 messages <- read_csv(file.path(data_dir, "messages.csv"), show_col_types = FALSE)
-speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
+speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
 social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
 
 has_adjacent <- file.exists(file.path(data_dir, "adjacent_similarities.csv"))
@@ -406,12 +406,13 @@ if (has_block_pw) {
 
   fig3a <- ggplot(wb_summary, aes(x = block, y = empirical_stat,
                                    color = pair_type, fill = pair_type)) +
+    annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
+             ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5) +
+    geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted") +
     geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2,
                 color = NA) +
     geom_line(linewidth = 0.8) +
     geom_point(size = 1.8) +
-    geom_vline(xintercept = PHASE_BOUNDARY, color = "gray", linetype = "dotted",
-               alpha = 0.6) +
     facet_wrap(~condition, nrow = 1,
                labeller = labeller(condition = function(x) format_condition(x))) +
     scale_fill_brewer(name = "Pair type", palette = "Accent") +
@@ -452,13 +453,14 @@ if (has_block_pw) {
 
   fig3b <- ggplot(spec_summary, aes(x = block, y = empirical_stat,
                                      color = condition, fill = condition)) +
+    annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
+             ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5) +
+    geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted") +
+    geom_hline(yintercept = 0, color = "gray", linetype = "dotted", alpha = 0.5) +
     geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12,
                 color = NA) +
     geom_line(linewidth = 0.8) +
     geom_point(size = 2) +
-    geom_hline(yintercept = 0, color = "gray", linetype = "dotted", alpha = 0.5) +
-    geom_vline(xintercept = PHASE_BOUNDARY, color = "gray", linetype = "dotted",
-               alpha = 0.6) +
     scale_color_condition(labels = function(x) format_condition(x), name = NULL) +
     scale_fill_condition(labels = function(x) format_condition(x), name = NULL) +
     labs(x = "Block",

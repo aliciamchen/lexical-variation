@@ -77,3 +77,43 @@ uv run python analysis/run_pipeline.py bonuses
 Output goes to `analysis/{datetime}/` (single run) or split across `data/pilots/` (raw + preprocessed CSVs) and `analysis/pilots/` (figures, manifest). The `analysis/processed_data` symlink points to the active dataset.
 
 Quarto notebooks (`00_preprocess.qmd` through `05_exit_survey.qmd`) read from `analysis/processed_data/`, a symlink updated by `run_pipeline.py`.
+
+## LLM tools
+
+Both tools use Gemini via Vertex AI. Requires `gcloud auth application-default login` and a GCP project with Vertex AI enabled.
+
+### LLM simulation (Phase 1 benchmark)
+
+All simulation code lives in `analysis/llm_simulation/`. Simulates groups of 3 LLM agents playing the reference game to benchmark whether AI can form stable conventions (paper, AI detection section).
+
+```bash
+# Run simulation (quick test)
+bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 2 --blocks 2
+
+# Full run for paper
+bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 20 --temperature 0
+
+# Process results → CSVs, then render analysis notebook
+uv run python analysis/llm_simulation/process_llm_results.py
+cd analysis/llm_simulation && quarto render SI_llm_simulation.qmd
+```
+
+### Non-referential message filter
+
+Classifies speaker messages as referential vs non-referential (e.g., "thanks", "good job") for filtering before SBERT analysis. Target: 95% agreement with human labels.
+
+```bash
+# Classify + filter
+uv run python analysis/filter_nonreferential.py classify --data-dir data/pilots/
+uv run python analysis/filter_nonreferential.py apply --data-dir data/pilots/
+
+# Or as part of the full pipeline
+uv run python analysis/run_pipeline.py --filter-messages
+
+# Validation workflow
+uv run python analysis/filter_nonreferential.py sample --data-dir data/pilots/ --n 200
+# ... manually label annotation_sample.csv -> human_labels.csv ...
+uv run python analysis/filter_nonreferential.py validate --data-dir data/pilots/ --labels data/pilots/human_labels.csv
+```
+
+Once `speaker_utterances_filtered.csv` exists in the data directory, all downstream analysis (embeddings, Quarto notebooks, plots) automatically uses it instead of the unfiltered version.

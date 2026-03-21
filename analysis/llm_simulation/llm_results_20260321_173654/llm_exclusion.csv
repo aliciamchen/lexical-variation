@@ -1,0 +1,7 @@
+group_id,player_id,listener_accuracy,passes_threshold,n_players_passing,group_passes
+G01,0,0.0833,False,0,False
+G01,1,0.0833,False,0,False
+G01,2,0.1667,False,0,False
+G02,0,0.25,False,0,False
+G02,1,0.0,False,0,False
+G02,2,0.0833,False,0,False

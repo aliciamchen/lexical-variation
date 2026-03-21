@@ -15,6 +15,13 @@ data_dir <- here("analysis", "processed_data")
 figures_dir <- here("analysis", "figures")
 dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
 
+# Prefer filtered utterances when available
+utterances_file <- if (file.exists(file.path(data_dir, "speaker_utterances_filtered.csv"))) {
+  "speaker_utterances_filtered.csv"
+} else {
+  "speaker_utterances.csv"
+}
+
 # ── Color palettes (match analysis/plot_style.py) ────────────
 
 CONDITION_COLORS <- c(
@@ -87,8 +94,11 @@ scale_fill_group <- function(...) {
 # ── Helper functions ────────────────────────────────────────
 
 add_phase_boundary <- function(p) {
-  p + geom_vline(xintercept = PHASE_BOUNDARY, color = "gray",
-                 linetype = "dotted", alpha = 0.6)
+  p + annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
+               ymin = -Inf, ymax = Inf,
+               fill = "gray90", alpha = 0.5) +
+    geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70",
+               linetype = "dotted")
 }
 
 continuous_block <- function(df) {
