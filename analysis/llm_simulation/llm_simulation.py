@@ -117,25 +117,36 @@ class GroupSimulation:
 
 def build_speaker_prompt(
     target_label: str,
-    history: list[dict],
+    game_history: list[dict],
+    player_id: int,
+    player_labels: dict[str, str],
     prompts: dict,
 ) -> str:
-    """Build the speaker's text prompt (appended after images)."""
+    """Build the speaker's text prompt with full shared game history.
+
+    All players see all rounds (matching the shared chat in the real game).
+    History is shown from this player's perspective (using their image labels).
+    """
     system = prompts.get("speaker", {}).get("system", DEFAULT_PROMPTS["speaker"]["system"])
     parts = [system.strip()]
 
-    if history:
+    if game_history:
         lines = []
-        for h in history:
-            if h["role"] == "speaker":
-                l1, l2 = h["listener_results"]
-                r1 = "correct" if l1["correct"] else "wrong"
-                r2 = "correct" if l2["correct"] else "wrong"
-                lines.append(
-                    f'- Target: "{h["description"]}" → Listener 1 {r1}, Listener 2 {r2}'
-                )
-        if lines:
-            parts.append("\n\nYour previous descriptions:\n" + "\n".join(lines))
+        for h in game_history:
+            # Show every round from this player's perspective
+            target_in_my_view = player_labels[h["target"]]
+            if h["speaker_id"] == player_id:
+                role_prefix = "You described"
+            else:
+                role_prefix = f"Player {h['speaker_id']} described"
+            l_results = ", ".join(
+                "correct" if lr["correct"] else "wrong" for lr in h["listener_results"]
+            )
+            lines.append(
+                f'- {role_prefix} image {target_in_my_view}: '
+                f'"{h["description"]}" → listeners: {l_results}'
+            )
+        parts.append("\n\nGame history:\n" + "\n".join(lines))
 
     parts.append(f"\n\n---\nTARGET for this round: Image {target_label}")
     parts.append("\nProvide your description (be concise):")
@@ -144,21 +155,37 @@ def build_speaker_prompt(
 
 def build_listener_prompt(
     description: str,
-    history: list[dict],
+    game_history: list[dict],
+    player_id: int,
+    player_labels: dict[str, str],
     prompts: dict,
 ) -> str:
-    """Build a listener's text prompt (appended after images)."""
+    """Build a listener's text prompt with full shared game history.
+
+    All players see all rounds (matching the shared chat in the real game).
+    History is shown from this player's perspective (using their image labels).
+    """
     system = prompts.get("listener", {}).get("system", DEFAULT_PROMPTS["listener"]["system"])
     parts = [system.strip()]
 
-    if history:
-        recent = [h for h in history if h["role"] == "listener"][-6:]
-        if recent:
-            lines = []
-            for h in recent:
-                result = "correct" if h["correct"] else f"wrong (was {h['actual_label']})"
-                lines.append(f'- "{h["description"]}" → you picked {h["your_label"]}, {result}')
-            parts.append("\n\nYour recent rounds:\n" + "\n".join(lines))
+    if game_history:
+        # Show recent history (last 12 rounds to keep context manageable)
+        recent = game_history[-12:]
+        lines = []
+        for h in recent:
+            target_in_my_view = player_labels[h["target"]]
+            if h["speaker_id"] == player_id:
+                role_prefix = "You described"
+            else:
+                role_prefix = f"Player {h['speaker_id']} described"
+            l_results = ", ".join(
+                "correct" if lr["correct"] else "wrong" for lr in h["listener_results"]
+            )
+            lines.append(
+                f'- {role_prefix} image {target_in_my_view}: '
+                f'"{h["description"]}" → listeners: {l_results}'
+            )
+        parts.append("\n\nRecent game history:\n" + "\n".join(lines))
 
     parts.append(f'\n\n---\nSpeaker\'s description: "{description}"')
     parts.append("\nWhich image is it? Reply with ONLY the number (1-16):")
@@ -206,10 +233,10 @@ def run_round(
     model_name: str,
     images: dict[str, bytes],
     target: str,
-    all_tangram_ids: list[str],
     speaker_id: int,
     listener_ids: list[int],
-    player_histories: list[list[dict]],
+    player_orders: dict[int, list[str]],
+    game_history: list[dict],
     block_num: int,
     round_num: int,
     prompts: dict,
@@ -217,18 +244,26 @@ def run_round(
     top_p: float | None = None,
     verbose: bool = True,
 ) -> RoundRecord:
-    """Run a single round: speaker describes, 2 listeners select."""
-    num_images = len(all_tangram_ids)
+    """Run a single round: speaker describes, 2 listeners select.
 
-    # --- Speaker turn ---
-    speaker_order = all_tangram_ids.copy()
-    random.shuffle(speaker_order)
-    speaker_labels = {tid: str(i + 1) for i, tid in enumerate(speaker_order)}
+    player_orders: fixed grid order per player (generated once per game).
+    game_history: shared history visible to all players (like the shared chat).
+    """
+    # --- Build per-player label mappings from their fixed grid orders ---
+    def get_labels(pid: int) -> tuple[dict[str, str], dict[str, str]]:
+        """Return (tangram_id -> label, label -> tangram_id) for a player."""
+        order = player_orders[pid]
+        tid_to_label = {tid: str(i + 1) for i, tid in enumerate(order)}
+        label_to_tid = {str(i + 1): tid for i, tid in enumerate(order)}
+        return tid_to_label, label_to_tid
+
+    def get_images_for_player(pid: int) -> list[tuple[str, bytes]]:
+        """Return labeled image list in this player's fixed grid order."""
+        order = player_orders[pid]
+        return [(str(i + 1), images[tid]) for i, tid in enumerate(order)]
+
+    speaker_labels, _ = get_labels(speaker_id)
     target_label = speaker_labels[target]
-
-    speaker_images = [
-        (str(i + 1), images[tid]) for i, tid in enumerate(speaker_order)
-    ]
 
     if verbose:
         print(f"  Round {round_num} (block {block_num}): "
@@ -236,8 +271,9 @@ def run_round(
               end=" ", flush=True)
 
     speaker_prompt = build_speaker_prompt(
-        target_label, player_histories[speaker_id], prompts
+        target_label, game_history, speaker_id, speaker_labels, prompts
     )
+    speaker_images = get_images_for_player(speaker_id)
     description = call_gemini(client, model_name, speaker_images, speaker_prompt, temperature, top_p)
 
     if verbose:
@@ -246,25 +282,19 @@ def run_round(
     # --- Listener turns ---
     listener_results = []
     for lid in listener_ids:
-        listener_order = all_tangram_ids.copy()
-        random.shuffle(listener_order)
-        listener_labels = {tid: str(i + 1) for i, tid in enumerate(listener_order)}
-        reverse_labels = {str(i + 1): tid for i, tid in enumerate(listener_order)}
-
-        listener_images = [
-            (str(i + 1), images[tid]) for i, tid in enumerate(listener_order)
-        ]
+        listener_labels, listener_reverse = get_labels(lid)
 
         listener_prompt = build_listener_prompt(
-            description, player_histories[lid], prompts
+            description, game_history, lid, listener_labels, prompts
         )
+        listener_images = get_images_for_player(lid)
         raw = call_gemini(client, model_name, listener_images, listener_prompt, temperature, top_p)
 
         # Parse selection (1-16)
         match = re.search(r"\b(\d{1,2})\b", raw)
         if match:
             sel_label = match.group(1)
-            selection = reverse_labels.get(sel_label, "?")
+            selection = listener_reverse.get(sel_label, "?")
         else:
             sel_label = "?"
             selection = "?"
@@ -282,21 +312,12 @@ def run_round(
             "correct": correct,
         })
 
-        # Update listener history
-        player_histories[lid].append({
-            "role": "listener",
-            "round_num": round_num,
-            "description": description,
-            "your_label": sel_label,
-            "actual_label": listener_labels[target],
-            "correct": correct,
-        })
-
-    # Update speaker history
-    player_histories[speaker_id].append({
-        "role": "speaker",
+    # Append to shared game history (all players will see this)
+    game_history.append({
         "round_num": round_num,
+        "block_num": block_num,
         "target": target,
+        "speaker_id": speaker_id,
         "description": description,
         "listener_results": listener_results,
     })
@@ -363,8 +384,16 @@ def run_group_simulation(
     target_tangrams = TANGRAM_SETS[tangram_set]
     all_tangram_ids = list(ALL_TANGRAMS)
 
-    # Per-player history
-    player_histories: list[list[dict]] = [[] for _ in range(GROUP_SIZE)]
+    # Fixed grid order per player (randomized once, fixed for the whole game)
+    # Paper: "the grid order is randomized across participants but fixed within each game"
+    player_orders: dict[int, list[str]] = {}
+    for pid in range(GROUP_SIZE):
+        order = all_tangram_ids.copy()
+        random.shuffle(order)
+        player_orders[pid] = order
+
+    # Shared game history (all players see all rounds, like the shared chat)
+    game_history: list[dict] = []
 
     all_rounds: list[RoundRecord] = []
     global_round = 0
@@ -386,10 +415,10 @@ def run_group_simulation(
                 model_name=model_name,
                 images=images,
                 target=target,
-                all_tangram_ids=all_tangram_ids,
                 speaker_id=speaker_id,
                 listener_ids=listener_ids,
-                player_histories=player_histories,
+                player_orders=player_orders,
+                game_history=game_history,
                 block_num=block_num,
                 round_num=global_round,
                 prompts=prompts,
