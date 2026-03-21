@@ -1,0 +1,698 @@
+---
+title: "SI: Pilot Data"
+format:
+  html:
+    toc: true
+    code-fold: true
+---
+
+This notebook generates the numbers and figures for the Supplementary Information
+pilot data section. Run it to extract statistics for the LaTeX writeup.
+
+```{r setup, message=FALSE, warning=FALSE}
+library(lme4)
+library(lmerTest)
+library(tidyboot)
+source(here::here("analysis", "config.R"))
+
+games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
+players <- read_csv(file.path(data_dir, "players.csv"), show_col_types = FALSE)
+trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
+messages <- read_csv(file.path(data_dir, "messages.csv"), show_col_types = FALSE)
+speaker_utts <- read_csv(file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE)
+social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
+
+has_adjacent <- file.exists(file.path(data_dir, "adjacent_similarities.csv"))
+has_pairwise <- file.exists(file.path(data_dir, "pairwise_similarities.csv"))
+
+adjacent_sim <- if (has_adjacent) read_csv(file.path(data_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
+pairwise_sim <- if (has_pairwise) read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
+```
+
+# 1. Sample Description
+
+```{r sample-description}
+n_games <- nrow(games)
+n_players <- nrow(players)
+n_per_game <- n_players / n_games
+
+cat(sprintf("Pilot games: %d (1 per condition)\n", n_games))
+cat(sprintf("Total players: %d (%d per game)\n", n_players, n_per_game))
+cat("\nConditions:\n")
+games %>%
+  select(gameId, condition, activeGroups, phase1Blocks, phase2Blocks) %>%
+  knitr::kable()
+```
+
+```{r completion-rates}
+# Active groups (3 = all groups survived, <3 = dropout)
+games_complete <- games %>%
+  mutate(all_groups_active = activeGroups == 3)
+
+cat(sprintf("\nGames with all 3 groups active through completion: %d / %d\n",
+            sum(games_complete$all_groups_active), n_games))
+
+# Per-game active groups
+games %>%
+  select(condition, activeGroups) %>%
+  knitr::kable(col.names = c("Condition", "Active groups at end"))
+```
+
+```{r session-duration}
+# Compute session duration from message timestamps
+duration_by_game <- messages %>%
+  group_by(gameId) %>%
+  summarise(
+    first_msg = min(timestamp, na.rm = TRUE),
+    last_msg = max(timestamp, na.rm = TRUE),
+    duration_min = (last_msg - first_msg) / 60000,
+    .groups = "drop"
+  ) %>%
+  left_join(games %>% select(gameId, condition), by = "gameId")
+
+cat("Session duration (minutes, from first to last message):\n")
+duration_by_game %>%
+  select(condition, duration_min) %>%
+  mutate(duration_min = round(duration_min, 1)) %>%
+  knitr::kable(col.names = c("Condition", "Duration (min)"))
+
+cat(sprintf("\nMedian session duration: %.1f minutes\n", median(duration_by_game$duration_min)))
+cat(sprintf("Range: %.1f - %.1f minutes\n",
+            min(duration_by_game$duration_min), max(duration_by_game$duration_min)))
+```
+
+```{r idle-players}
+# Check for idle players
+idle_players <- players %>%
+  filter(idleRounds > 0) %>%
+  select(gameId, playerId, originalGroup, idleRounds, isActive) %>%
+  left_join(games %>% select(gameId, condition), by = "gameId")
+
+if (nrow(idle_players) > 0) {
+  cat(sprintf("Players with idle rounds: %d\n", nrow(idle_players)))
+  idle_players %>%
+    select(condition, originalGroup, idleRounds, isActive) %>%
+    knitr::kable()
+} else {
+  cat("No idle players detected.\n")
+}
+```
+
+# 2. Outcome-Neutral Criteria
+
+## Prep data
+
+```{r prep-data}
+# Phase 1 speaker utterances
+p1_utts <- speaker_utts %>%
+  filter(phaseNum == 1) %>%
+  mutate(
+    repNum_c = repNum - mean(repNum, na.rm = TRUE),
+    log_uttLength = log(uttLength + 1),
+    participant = playerId,
+    group = originalGroup,
+    tangram = target
+  )
+
+# Phase 1 listener accuracy
+p1_listener <- trials %>%
+  filter(phaseNum == 1, role == "listener") %>%
+  mutate(
+    correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
+    group = originalGroup,
+    tangram = target
+  )
+
+p1_ref_accuracy <- p1_listener %>%
+  group_by(gameId, roundId, blockNum, tangram, group) %>%
+  summarise(
+    ref_accuracy = mean(correct, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    repNum = blockNum + 1,
+    repNum_c = repNum - mean(repNum, na.rm = TRUE)
+  )
+
+# Phase 1 adjacent similarities
+if (has_adjacent) {
+  p1_adjacent <- adjacent_sim %>%
+    filter(phaseNum == 1) %>%
+    mutate(
+      repNum_c = repNum - mean(repNum, na.rm = TRUE),
+      participant = playerId,
+      group = originalGroup,
+      tangram = target
+    )
+}
+```
+
+## 2a. Description Length Decreases
+
+```{r model-length}
+m_length <- lmer(
+  log_uttLength ~ repNum_c + (repNum_c | participant) + (repNum_c | group) + (repNum_c | tangram),
+  data = p1_utts,
+  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+)
+
+s <- summary(m_length)
+coefs <- coef(s)
+cat("=== Description Length Model ===\n")
+print(s)
+cat(sprintf("\nFor LaTeX: β = %.3f, SE = %.3f, t = %.2f\n",
+            coefs["repNum_c", "Estimate"],
+            coefs["repNum_c", "Std. Error"],
+            coefs["repNum_c", "t value"]))
+```
+
+```{r descriptive-length}
+# Descriptive stats for text
+length_first <- p1_utts %>% filter(repNum == min(repNum)) %>% pull(uttLength)
+length_last <- p1_utts %>% filter(repNum == max(repNum)) %>% pull(uttLength)
+
+cat(sprintf("First block: M = %.1f words (SD = %.1f)\n",
+            mean(length_first), sd(length_first)))
+cat(sprintf("Last block: M = %.1f words (SD = %.1f)\n",
+            mean(length_last), sd(length_last)))
+```
+
+## 2b. Listener Accuracy Increases
+
+```{r model-accuracy}
+m_accuracy <- lmer(
+  ref_accuracy ~ repNum_c + (repNum_c | group) + (repNum_c | tangram),
+  data = p1_ref_accuracy,
+  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+)
+
+s <- summary(m_accuracy)
+coefs <- coef(s)
+cat("=== Listener Accuracy Model ===\n")
+print(s)
+cat(sprintf("\nFor LaTeX: β = %.3f, SE = %.3f, t = %.2f\n",
+            coefs["repNum_c", "Estimate"],
+            coefs["repNum_c", "Std. Error"],
+            coefs["repNum_c", "t value"]))
+```
+
+```{r descriptive-accuracy}
+acc_first <- p1_ref_accuracy %>% filter(repNum == min(repNum)) %>% pull(ref_accuracy)
+acc_last <- p1_ref_accuracy %>% filter(repNum == max(repNum)) %>% pull(ref_accuracy)
+
+cat(sprintf("First block accuracy: M = %.2f (SD = %.2f)\n",
+            mean(acc_first, na.rm = TRUE), sd(acc_first, na.rm = TRUE)))
+cat(sprintf("Last block accuracy: M = %.2f (SD = %.2f)\n",
+            mean(acc_last, na.rm = TRUE), sd(acc_last, na.rm = TRUE)))
+cat(sprintf("Chance level: %.3f (1/6)\n", 1/6))
+```
+
+## 2c. Convention Stability Increases
+
+```{r model-adjacent}
+if (has_adjacent) {
+  p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent))
+
+  m_adjacent <- lmer(
+    simAdjacent ~ repNum_c + (repNum_c | participant) + (repNum_c | group) + (repNum_c | tangram),
+    data = p1_adjacent_valid,
+    control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+  )
+
+  s <- summary(m_adjacent)
+  coefs <- coef(s)
+  cat("=== Adjacent Similarity Model ===\n")
+  print(s)
+  cat(sprintf("\nFor LaTeX: β = %.3f, SE = %.3f, t = %.2f\n",
+              coefs["repNum_c", "Estimate"],
+              coefs["repNum_c", "Std. Error"],
+              coefs["repNum_c", "t value"]))
+} else {
+  cat("Skipping: adjacent_similarities.csv not found.\n")
+}
+```
+
+## 2d. Group-Specificity Exceeds Chance
+
+```{r group-specificity-functions}
+fit_group_specificity <- function(pairwise_df) {
+  game_ids <- unique(pairwise_df$gameId)
+
+  results <- map_dfr(game_ids, function(gid) {
+    game_data <- pairwise_df %>% filter(gameId == gid)
+    if (nrow(game_data) < 5) return(NULL)
+    if (n_distinct(game_data$sameGroup) < 2) return(NULL)
+
+    tryCatch({
+      model <- lmer(
+        similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
+        data = game_data,
+        control = lmerControl(optimizer = "bobyqa")
+      )
+      coefs <- coef(summary(model))
+      tibble(
+        gameId = gid,
+        coefficient = coefs["sameGroup", "Estimate"],
+        std_error = coefs["sameGroup", "Std. Error"],
+        t_value = coefs["sameGroup", "t value"]
+      )
+    }, error = function(e) NULL)
+  })
+
+  results
+}
+
+permutation_test <- function(pairwise_df, n_perm = 1000) {
+  game_ids <- unique(pairwise_df$gameId)
+
+  results <- map_dfr(game_ids, function(gid) {
+    game_data <- pairwise_df %>% filter(gameId == gid)
+    if (nrow(game_data) < 5) return(NULL)
+    if (n_distinct(game_data$sameGroup) < 2) return(NULL)
+
+    obs_model <- tryCatch(
+      lmer(similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
+           data = game_data, control = lmerControl(optimizer = "bobyqa")),
+      error = function(e) NULL
+    )
+    if (is.null(obs_model)) return(NULL)
+    obs_coef <- coef(summary(obs_model))["sameGroup", "Estimate"]
+
+    speakers <- game_data %>%
+      select(speaker1, group1) %>%
+      rename(speaker = speaker1, group = group1) %>%
+      bind_rows(
+        game_data %>% select(speaker2, group2) %>% rename(speaker = speaker2, group = group2)
+      ) %>%
+      distinct()
+
+    perm_coefs <- map_dbl(seq_len(n_perm), function(i) {
+      perm_groups <- speakers %>% mutate(perm_group = sample(group))
+      perm_data <- game_data %>%
+        left_join(perm_groups %>% select(speaker, perm_group),
+                  by = c("speaker1" = "speaker")) %>%
+        rename(perm_group1 = perm_group) %>%
+        left_join(perm_groups %>% select(speaker, perm_group),
+                  by = c("speaker2" = "speaker")) %>%
+        rename(perm_group2 = perm_group) %>%
+        mutate(sameGroup = as.numeric(perm_group1 == perm_group2))
+
+      tryCatch({
+        perm_model <- lmer(
+          similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
+          data = perm_data, control = lmerControl(optimizer = "bobyqa")
+        )
+        coef(summary(perm_model))["sameGroup", "Estimate"]
+      }, error = function(e) NA_real_)
+    })
+
+    p_value <- mean(perm_coefs >= obs_coef, na.rm = TRUE)
+
+    tibble(
+      gameId = gid,
+      obs_coefficient = obs_coef,
+      perm_mean = mean(perm_coefs, na.rm = TRUE),
+      perm_sd = sd(perm_coefs, na.rm = TRUE),
+      p_value = p_value,
+      perm_coefs = list(perm_coefs)
+    )
+  })
+
+  results
+}
+```
+
+```{r compute-group-specificity, warning=FALSE}
+if (!has_pairwise) {
+  cat("Skipping: pairwise_similarities.csv not found.\n")
+} else {
+  p1_pairwise <- pairwise_sim %>% filter(window == "phase1_final")
+
+  if (nrow(p1_pairwise) > 0) {
+    gs_results <- fit_group_specificity(p1_pairwise)
+
+    cat("Group-specificity coefficients (Phase 1 final):\n")
+    gs_results %>%
+      left_join(games %>% select(gameId, condition), by = "gameId") %>%
+      select(condition, coefficient, std_error, t_value) %>%
+      mutate(across(where(is.numeric), ~round(., 3))) %>%
+      knitr::kable()
+
+    perm_results <- permutation_test(p1_pairwise, n_perm = 1000)
+
+    cat("\nPermutation test results:\n")
+    perm_results %>%
+      left_join(games %>% select(gameId, condition), by = "gameId") %>%
+      select(condition, obs_coefficient, perm_mean, p_value) %>%
+      mutate(across(where(is.numeric), ~round(., 4))) %>%
+      knitr::kable()
+
+    prop_significant <- mean(perm_results$p_value < 0.05)
+    cat(sprintf("\nGames with significant group-specificity: %d / %d (%.0f%%)\n",
+                sum(perm_results$p_value < 0.05), nrow(perm_results),
+                prop_significant * 100))
+    cat(sprintf("Criterion (≥80%%): %s\n",
+                ifelse(prop_significant >= 0.8, "PASS", "FAIL")))
+  }
+}
+```
+
+# 3. Combined Figure: Convention Formation (SI Figure 1)
+
+Three-panel figure showing description length, listener accuracy, and convention
+stability over Phase 1 blocks.
+
+```{r si-fig-convention, fig.width=14, fig.height=4.5}
+library(patchwork)
+
+# Panel A: Description length
+length_by_block <- p1_utts %>%
+  group_by(repNum) %>%
+  tidyboot_mean(uttLength, nboot = 1000)
+
+p_length <- ggplot(length_by_block, aes(x = repNum, y = empirical_stat)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.15) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  labs(x = "Block", y = "Words per description", title = "Description length") +
+  scale_x_continuous(breaks = unique(length_by_block$repNum))
+
+# Panel B: Listener accuracy
+acc_by_block <- p1_ref_accuracy %>%
+  filter(!is.na(ref_accuracy), !is.na(repNum)) %>%
+  group_by(repNum) %>%
+  tidyboot_mean(ref_accuracy, nboot = 1000)
+
+p_accuracy <- ggplot(acc_by_block, aes(x = repNum, y = empirical_stat)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.15) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  geom_hline(yintercept = 1/6, linetype = "dashed", color = "gray50") +
+  annotate("text", x = max(acc_by_block$repNum), y = 1/6 + 0.03,
+           label = "Chance (1/6)", hjust = 1, color = "gray50", size = 3.5) +
+  labs(x = "Block", y = "Proportion correct", title = "Listener accuracy") +
+  scale_x_continuous(breaks = unique(acc_by_block$repNum)) +
+  scale_y_continuous(limits = c(0, 1))
+
+# Panel C: Adjacent similarity
+if (has_adjacent && exists("p1_adjacent")) {
+  p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent))
+  sim_by_block <- p1_adjacent_valid %>%
+    group_by(repNum) %>%
+    tidyboot_mean(simAdjacent, nboot = 1000)
+
+  p_sim <- ggplot(sim_by_block, aes(x = repNum, y = empirical_stat)) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.15) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2.5) +
+    labs(x = "Block", y = "Cosine similarity", title = "Convention stability") +
+    scale_x_continuous(breaks = unique(sim_by_block$repNum))
+
+  fig1 <- p_length + p_accuracy + p_sim +
+    plot_annotation(tag_levels = "a") &
+    theme(plot.tag = element_text(face = "bold", size = 16))
+} else {
+  fig1 <- p_length + p_accuracy +
+    plot_annotation(tag_levels = "a") &
+    theme(plot.tag = element_text(face = "bold", size = 16))
+}
+
+fig1
+
+save_fig(fig1, "SI_convention_formation.pdf", width = 14, height = 4.5)
+```
+
+# 4. Permutation Test Figure (SI Figure 2)
+
+```{r si-fig-permutation, fig.width=10, fig.height=6}
+if (exists("perm_results") && nrow(perm_results) > 0) {
+  perm_plot_data <- perm_results %>%
+    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+    unnest(perm_coefs) %>%
+    rename(perm_coef = perm_coefs) %>%
+    mutate(condition_label = format_condition(condition))
+
+  obs_labels <- perm_results %>%
+    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+    mutate(
+      condition_label = format_condition(condition),
+      sig_label = ifelse(p_value < 0.05,
+                         sprintf("p = %.3f *", p_value),
+                         sprintf("p = %.3f", p_value))
+    )
+
+  fig2 <- ggplot(perm_plot_data, aes(x = perm_coef)) +
+    geom_histogram(bins = 40, fill = "gray75", color = "white") +
+    geom_vline(data = obs_labels,
+               aes(xintercept = obs_coefficient),
+               color = "#ce3045", linewidth = 1) +
+    geom_text(data = obs_labels,
+              aes(x = obs_coefficient, y = Inf, label = sig_label),
+              vjust = 1.5, hjust = -0.1, color = "#ce3045", size = 4) +
+    facet_wrap(~condition_label, scales = "free_y") +
+    labs(
+      x = "Group-specificity coefficient (permuted)",
+      y = "Count",
+      title = "Permutation test for group-specificity"
+    )
+
+  print(fig2)
+  save_fig(fig2, "SI_permutation_test.pdf", width = 10, height = 6)
+}
+```
+
+# 5. Group-Specificity Trajectory (SI Figure 3)
+
+Within- vs between-group similarity over all blocks, showing how group-specificity
+emerges in Phase 1 and evolves in Phase 2.
+
+```{r load-block-pairwise}
+has_block_pw <- file.exists(file.path(data_dir, "block_pairwise_similarities.csv"))
+if (has_block_pw) {
+  block_pw <- read_csv(file.path(data_dir, "block_pairwise_similarities.csv"),
+                       show_col_types = FALSE) %>%
+    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+    continuous_block() %>%
+    mutate(
+      pair_type = ifelse(sameGroup == 1, "Within group", "Between group"),
+      condition = factor(condition, levels = CONDITION_ORDER)
+    )
+} else {
+  cat("Skipping: block_pairwise_similarities.csv not found.\n")
+}
+```
+
+```{r si-fig-within-between, fig.width=9, fig.height=4}
+if (has_block_pw) {
+  # Bootstrapped means by block, pair type, and condition
+  wb_summary <- block_pw %>%
+    group_by(condition, block, pair_type) %>%
+    tidyboot_mean(similarity, nboot = 1000) %>%
+    ungroup()
+
+  fig3a <- ggplot(wb_summary, aes(x = block, y = empirical_stat,
+                                   color = pair_type, fill = pair_type)) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2,
+                color = NA) +
+    geom_line(linewidth = 0.8) +
+    geom_point(size = 1.8) +
+    geom_vline(xintercept = PHASE_BOUNDARY, color = "gray", linetype = "dotted",
+               alpha = 0.6) +
+    facet_wrap(~condition, nrow = 1,
+               labeller = labeller(condition = function(x) format_condition(x))) +
+    scale_fill_brewer(name = "Pair type", palette = "Accent") +
+    scale_color_brewer(name = "Pair type", palette = "Accent") +
+    labs(x = "Block", y = "Pairwise cosine similarity",
+         title = "Within- vs between-group similarity") +
+    coord_cartesian(ylim = c(0, 1)) +
+    theme(legend.position = "bottom")
+
+  print(fig3a)
+  save_fig(fig3a, "SI_within_between_similarity.pdf", width = 12, height = 4)
+}
+```
+
+```{r si-fig-specificity-trajectory, fig.width=8, fig.height=5}
+if (has_block_pw) {
+  # Compute group-specificity = within - between per block, condition, tangram
+  within_means <- block_pw %>%
+    filter(sameGroup == 1) %>%
+    group_by(condition, block, target) %>%
+    summarise(sim_within = mean(similarity, na.rm = TRUE), .groups = "drop")
+
+  between_means <- block_pw %>%
+    filter(sameGroup == 0) %>%
+    group_by(condition, block, target) %>%
+    summarise(sim_between = mean(similarity, na.rm = TRUE), .groups = "drop")
+
+  specificity_by_tangram <- inner_join(within_means, between_means,
+                                       by = c("condition", "block", "target")) %>%
+    mutate(specificity = sim_within - sim_between)
+
+  # Bootstrapped means of the tangram-level specificity
+  spec_summary <- specificity_by_tangram %>%
+    group_by(condition, block) %>%
+    tidyboot_mean(specificity, nboot = 1000) %>%
+    ungroup() %>%
+    mutate(condition = factor(condition, levels = CONDITION_ORDER))
+
+  fig3b <- ggplot(spec_summary, aes(x = block, y = empirical_stat,
+                                     color = condition, fill = condition)) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12,
+                color = NA) +
+    geom_line(linewidth = 0.8) +
+    geom_point(size = 2) +
+    geom_hline(yintercept = 0, color = "gray", linetype = "dotted", alpha = 0.5) +
+    geom_vline(xintercept = PHASE_BOUNDARY, color = "gray", linetype = "dotted",
+               alpha = 0.6) +
+    scale_color_condition(labels = function(x) format_condition(x), name = NULL) +
+    scale_fill_condition(labels = function(x) format_condition(x), name = NULL) +
+    labs(x = "Block",
+         y = "Group specificity\n(within \u2212 between similarity)",
+         title = "Group-specificity trajectory across phases") +
+    theme(legend.position = "bottom")
+
+  print(fig3b)
+  save_fig(fig3b, "SI_specificity_trajectory.pdf", width = 8, height = 5)
+}
+```
+
+```{r si-fig-specificity-combined, fig.width=14, fig.height=5}
+if (has_block_pw && exists("fig3a") && exists("fig3b")) {
+  fig3 <- fig3a + fig3b +
+    plot_layout(widths = c(3, 2)) +
+    plot_annotation(tag_levels = "a") &
+    theme(plot.tag = element_text(face = "bold", size = 16))
+
+  print(fig3)
+  save_fig(fig3, "SI_group_specificity_trajectory.pdf", width = 14, height = 5)
+}
+```
+
+# 6. Summary Table
+
+```{r summary-table}
+summary_rows <- list()
+
+# Length
+s_len <- coef(summary(m_length))
+summary_rows[[1]] <- tibble(
+  Criterion = "Description length decreases",
+  `β` = round(s_len["repNum_c", "Estimate"], 3),
+  SE = round(s_len["repNum_c", "Std. Error"], 3),
+  `t` = round(s_len["repNum_c", "t value"], 2),
+  Result = ifelse(s_len["repNum_c", "Estimate"] < 0, "PASS", "FAIL")
+)
+
+# Accuracy
+s_acc <- coef(summary(m_accuracy))
+summary_rows[[2]] <- tibble(
+  Criterion = "Listener accuracy increases",
+  `β` = round(s_acc["repNum_c", "Estimate"], 3),
+  SE = round(s_acc["repNum_c", "Std. Error"], 3),
+  `t` = round(s_acc["repNum_c", "t value"], 2),
+  Result = ifelse(s_acc["repNum_c", "Estimate"] > 0, "PASS", "FAIL")
+)
+
+# Adjacent similarity
+if (has_adjacent && exists("m_adjacent")) {
+  s_adj <- coef(summary(m_adjacent))
+  summary_rows[[3]] <- tibble(
+    Criterion = "Convention stability increases",
+    `β` = round(s_adj["repNum_c", "Estimate"], 3),
+    SE = round(s_adj["repNum_c", "Std. Error"], 3),
+    `t` = round(s_adj["repNum_c", "t value"], 2),
+    Result = ifelse(s_adj["repNum_c", "Estimate"] > 0, "PASS", "FAIL")
+  )
+}
+
+# Group-specificity
+if (exists("perm_results")) {
+  prop_sig <- mean(perm_results$p_value < 0.05)
+  summary_rows[[length(summary_rows) + 1]] <- tibble(
+    Criterion = "Group-specificity (≥80% significant)",
+    `β` = NA,
+    SE = NA,
+    `t` = NA,
+    Result = sprintf("%d/%d games sig. — %s",
+                     sum(perm_results$p_value < 0.05),
+                     nrow(perm_results),
+                     ifelse(prop_sig >= 0.8, "PASS", "FAIL"))
+  )
+}
+
+bind_rows(summary_rows) %>%
+  knitr::kable(caption = "Outcome-neutral criteria summary")
+```
+
+# 7. Descriptive Statistics for LaTeX
+
+Collect all numbers needed for the SI text in one place.
+
+```{r latex-numbers}
+cat("====== Numbers for LaTeX SI section ======\n\n")
+
+# Sample
+cat(sprintf("Games: %d, Players: %d\n", n_games, n_players))
+cat(sprintf("Conditions: %s\n", paste(games$condition, collapse = ", ")))
+
+# Duration
+cat(sprintf("\nMedian session duration: %.1f min (range: %.1f–%.1f)\n",
+            median(duration_by_game$duration_min),
+            min(duration_by_game$duration_min),
+            max(duration_by_game$duration_min)))
+
+# Completion
+n_complete <- sum(games$activeGroups == 3)
+cat(sprintf("Games with all groups active: %d/%d\n", n_complete, n_games))
+
+# Description length
+s_len <- coef(summary(m_length))
+cat(sprintf("\nDescription length: β = %.3f, SE = %.3f, t = %.2f\n",
+            s_len["repNum_c", "Estimate"],
+            s_len["repNum_c", "Std. Error"],
+            s_len["repNum_c", "t value"]))
+cat(sprintf("  Block 1: M = %.1f words; Block %d: M = %.1f words\n",
+            mean(length_first), max(p1_utts$repNum), mean(length_last)))
+
+# Accuracy
+s_acc <- coef(summary(m_accuracy))
+cat(sprintf("\nAccuracy: β = %.3f, SE = %.3f, t = %.2f\n",
+            s_acc["repNum_c", "Estimate"],
+            s_acc["repNum_c", "Std. Error"],
+            s_acc["repNum_c", "t value"]))
+cat(sprintf("  Block 1: M = %.2f; Block %d: M = %.2f\n",
+            mean(acc_first, na.rm = TRUE), max(p1_ref_accuracy$repNum),
+            mean(acc_last, na.rm = TRUE)))
+
+# Adjacent similarity
+if (has_adjacent && exists("m_adjacent")) {
+  s_adj <- coef(summary(m_adjacent))
+  cat(sprintf("\nAdjacent similarity: β = %.3f, SE = %.3f, t = %.2f\n",
+              s_adj["repNum_c", "Estimate"],
+              s_adj["repNum_c", "Std. Error"],
+              s_adj["repNum_c", "t value"]))
+}
+
+# Group-specificity
+if (exists("perm_results")) {
+  cat(sprintf("\nGroup-specificity: %d/%d games significant (p < .05)\n",
+              sum(perm_results$p_value < 0.05), nrow(perm_results)))
+  perm_results %>%
+    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+    select(condition, obs_coefficient, p_value) %>%
+    mutate(across(where(is.numeric), ~round(., 4))) %>%
+    print()
+}
+
+# Idle / dropout
+n_idle <- nrow(players %>% filter(idleRounds > 0))
+n_inactive <- nrow(players %>% filter(isActive == FALSE | isActive == "false"))
+cat(sprintf("\nPlayers with idle rounds: %d/%d\n", n_idle, n_players))
+cat(sprintf("Players marked inactive: %d/%d\n", n_inactive, n_players))
+
+# Total trials and messages
+cat(sprintf("\nTotal trials: %d\n", nrow(trials)))
+cat(sprintf("Total messages: %d\n", nrow(messages)))
+cat(sprintf("Speaker utterances: %d\n", nrow(speaker_utts)))
+```
