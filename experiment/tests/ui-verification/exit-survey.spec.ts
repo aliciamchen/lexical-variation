@@ -21,8 +21,8 @@ import {
  *
  * Completes the full game to reach the exit survey, then verifies
  * the survey contains: age input, gender input, education radios,
- * understanding radios, strategy textarea, fair textarea, feedback
- * textarea, and submit button.
+ * understanding radios, group identification Likert scale, group language
+ * textarea, fair textarea, feedback textarea, and submit button.
  */
 test.describe.serial('UI Verification: Exit Survey (5.6)', () => {
   let pm: PlayerManager;
@@ -144,10 +144,23 @@ test.describe.serial('UI Verification: Exit Survey (5.6)', () => {
     await expect(noRadio).toBeVisible();
   });
 
+  test('exit survey has group identification Likert scale', async () => {
+    const page = pm.getPage(0);
+    // Should have 7 radio buttons for the Likert scale
+    const radios = page.locator('input[name="groupIdentification"]');
+    await expect(radios).toHaveCount(7);
+  });
+
+  test('exit survey has group language yes/no radios', async () => {
+    const page = pm.getPage(0);
+    const radios = page.locator('input[name="groupLanguage"]');
+    await expect(radios).toHaveCount(2);
+  });
+
   test('exit survey has strategy textarea', async () => {
     const page = pm.getPage(0);
-    const strengthTextarea = page.locator('textarea[name="strength"]');
-    await expect(strengthTextarea).toBeVisible({ timeout: 5_000 });
+    const strategyTextarea = page.locator('textarea[name="strategy"]');
+    await expect(strategyTextarea).toBeVisible({ timeout: 5_000 });
   });
 
   test('exit survey has fair textarea', async () => {

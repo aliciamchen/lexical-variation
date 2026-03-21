@@ -12,7 +12,9 @@ export function ExitSurvey({ next }) {
 
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
-  const [strength, setStrength] = useState("");
+  const [groupIdentification, setGroupIdentification] = useState("");
+  const [groupLanguage, setGroupLanguage] = useState("");
+  const [strategy, setStrategy] = useState("");
   const [fair, setFair] = useState("");
   const [feedback, setFeedback] = useState("");
   const [education, setEducation] = useState("");
@@ -43,7 +45,9 @@ export function ExitSurvey({ next }) {
     player.set("exitSurvey", {
       age,
       gender,
-      strength,
+      groupIdentification,
+      groupLanguage,
+      strategy,
       fair,
       feedback,
       education,
@@ -291,11 +295,70 @@ export function ExitSurvey({ next }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-x-6 gap-y-3">
+              <div>
                 <label className={labelClassName}>
-                  How would you describe your strategy in the game?
+                  How much did you feel like you were a part of a group?
                 </label>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-sm text-gray-500">Not at all</span>
+                  <div className="flex gap-3">
+                    {[1, 2, 3, 4, 5, 6, 7].map((val) => (
+                      <label key={val} className="flex flex-col items-center text-sm text-gray-700">
+                        <input
+                          type="radio"
+                          name="groupIdentification"
+                          value={val}
+                          checked={groupIdentification === String(val)}
+                          onChange={(e) => setGroupIdentification(e.target.value)}
+                          className="mb-1"
+                        />
+                        {val}
+                      </label>
+                    ))}
+                  </div>
+                  <span className="text-sm text-gray-500">Very much</span>
+                </div>
+              </div>
 
+              <div>
+                <label className={labelClassName}>
+                  Did you notice your group developing its own way of describing
+                  the pictures?
+                </label>
+                <div className="grid gap-2">
+                  <Radio
+                    selected={groupLanguage}
+                    name="groupLanguage"
+                    value="yes"
+                    label="Yes"
+                    onChange={(e) => setGroupLanguage(e.target.value)}
+                  />
+                  <Radio
+                    selected={groupLanguage}
+                    name="groupLanguage"
+                    value="no"
+                    label="No"
+                    onChange={(e) => setGroupLanguage(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="strategy" className={labelClassName}>
+                  What was your strategy in the game?
+                </label>
+                <textarea
+                  className={inputClassName}
+                  dir="auto"
+                  id="strategy"
+                  name="strategy"
+                  rows={3}
+                  value={strategy}
+                  onChange={(e) => setStrategy(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <label className={labelClassName}>
                   Do you feel the pay was fair?
                 </label>
@@ -303,16 +366,6 @@ export function ExitSurvey({ next }) {
                 <label className={labelClassName}>
                   Feedback, including problems you encountered.
                 </label>
-
-                <textarea
-                  className={inputClassName}
-                  dir="auto"
-                  id="strength"
-                  name="strength"
-                  rows={4}
-                  value={strength}
-                  onChange={(e) => setStrength(e.target.value)}
-                />
 
                 <textarea
                   className={inputClassName}

@@ -426,10 +426,19 @@ export async function completeExitSurvey(page: Page): Promise<void> {
     const understandingRadio = page.getByRole('radio', { name: /^yes$/i });
     if (await understandingRadio.count() > 0) await understandingRadio.click();
 
-    // Textareas
-    const strengthTextarea = page.locator('textarea[name="strength"]');
-    if (await strengthTextarea.count() > 0) await strengthTextarea.fill('Test strategy');
+    // Group identification (7-point Likert) — pick radio value "5"
+    const groupIdRadio = page.locator('input[name="groupIdentification"][value="5"]');
+    if (await groupIdRadio.count() > 0) await groupIdRadio.click();
 
+    // Group language radio
+    const groupLanguageYes = page.locator('input[name="groupLanguage"][value="yes"]');
+    if (await groupLanguageYes.count() > 0) await groupLanguageYes.click();
+
+    // Strategy textarea
+    const strategyTextarea = page.locator('textarea[name="strategy"]');
+    if (await strategyTextarea.count() > 0) await strategyTextarea.fill('Test strategy');
+
+    // Textareas
     const fairTextarea = page.locator('textarea[name="fair"]');
     if (await fairTextarea.count() > 0) await fairTextarea.fill('Yes');
 
