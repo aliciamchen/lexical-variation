@@ -98,6 +98,10 @@ continuous_block <- function(df) {
 format_condition <- function(x) str_replace_all(x, "_", " ")
 
 save_fig <- function(p, filename, width = 8, height = 5, dpi = 150) {
-  ggsave(file.path(figures_dir, filename), p,
-         width = width, height = height, dpi = dpi)
+  path <- file.path(figures_dir, filename)
+  if (grepl("\\.pdf$", filename)) {
+    ggsave(path, p, width = width, height = height, device = cairo_pdf)
+  } else {
+    ggsave(path, p, width = width, height = height, dpi = dpi)
+  }
 }

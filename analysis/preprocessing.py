@@ -173,13 +173,15 @@ def build_trials(
     )
     trials = trials.merge(tangram_lookup, on="gameId", how="left")
 
-    # Compute repNum: for each speaker × tangram, number repetitions by block order
+    # Compute repNum: per-phase repetition count for each speaker × tangram
+    # (reset to 1 at the start of each phase)
     speaker_trials = trials[trials["role"] == "speaker"].copy()
     speaker_trials = speaker_trials.sort_values(
-        ["gameId", "playerId", "target", "blockNum"]
+        ["gameId", "playerId", "target", "phaseNum", "blockNum"]
     )
     speaker_trials["repNum"] = (
-        speaker_trials.groupby(["gameId", "playerId", "target"]).cumcount() + 1
+        speaker_trials.groupby(["gameId", "playerId", "target", "phaseNum"]).cumcount()
+        + 1
     )
 
     # Merge repNum back (only speakers have repNum)
