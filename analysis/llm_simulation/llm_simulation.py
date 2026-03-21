@@ -25,7 +25,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from google.genai.errors import ClientError
+from google.genai.errors import ClientError, ServerError
 import yaml
 
 from tangram_images import load_tangram_pngs
@@ -112,6 +112,9 @@ class GroupSimulation:
     summary: dict
     config: dict
     timestamp: str
+    status: str = "complete"  # "in_progress" or "complete"
+    player_orders: dict | None = None  # {player_id: [tangram_id, ...]}
+    block_targets: list | None = None  # [[target_id, ...] per block]
 
 
 # ---------- prompt builders ----------
@@ -171,10 +174,8 @@ def build_listener_prompt(
     parts = [system.strip()]
 
     if game_history:
-        # Show recent history (last 12 rounds to keep context manageable)
-        recent = game_history[-12:]
         lines = []
-        for h in recent:
+        for h in game_history:
             target_in_my_view = player_labels[h["target"]]
             if h["speaker_id"] == player_id:
                 role_prefix = "You described"
@@ -187,7 +188,7 @@ def build_listener_prompt(
                 f'- {role_prefix} image {target_in_my_view}: '
                 f'"{h["description"]}" → listeners: {l_results}'
             )
-        parts.append("\n\nRecent game history:\n" + "\n".join(lines))
+        parts.append("\n\nGame history:\n" + "\n".join(lines))
 
     parts.append(f'\n\n---\nSpeaker\'s description: "{description}"')
     parts.append("\nWhich image is it? Reply with ONLY the number (1-16):")
@@ -210,7 +211,7 @@ def call_gemini(
     temperature: float | None = None,
     top_p: float | None = None,
 ) -> str:
-    """Call Gemini with labeled images and a text prompt. Retries on rate limits."""
+    """Call Gemini with labeled images and a text prompt. Retries on transient errors."""
     content = []
     for label, img_bytes in images_ordered:
         content.append(f"[Image {label}]")
@@ -226,6 +227,7 @@ def call_gemini(
             kwargs["top_p"] = top_p
         config = types.GenerateContentConfig(**kwargs)
 
+    last_error = None
     for attempt in range(MAX_RETRIES):
         try:
             time.sleep(CALL_DELAY)
@@ -233,15 +235,24 @@ def call_gemini(
                 model=model_name, contents=content, config=config,
             )
             return response.text.strip()
+        except (ServerError, ConnectionError, TimeoutError) as e:
+            # Server-side or network errors — always retry
+            last_error = e
+            delay = RETRY_BASE_DELAY * (2 ** attempt)
+            print(f"\n    [{type(e).__name__}, retrying in {delay}s (attempt {attempt + 1}/{MAX_RETRIES})]",
+                  flush=True)
+            time.sleep(delay)
         except ClientError as e:
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                last_error = e
                 delay = RETRY_BASE_DELAY * (2 ** attempt)
                 print(f"\n    [Rate limited, retrying in {delay}s (attempt {attempt + 1}/{MAX_RETRIES})]",
                       flush=True)
                 time.sleep(delay)
             else:
                 raise
-    raise RuntimeError(f"Failed after {MAX_RETRIES} retries due to rate limiting")
+    raise RuntimeError(f"Failed after {MAX_RETRIES} retries: {last_error}")
 
 
 # ---------- simulation logic ----------
@@ -309,14 +320,23 @@ def run_round(
         listener_images = get_images_for_player(lid)
         raw = call_gemini(client, model_name, listener_images, listener_prompt, temperature, top_p)
 
-        # Parse selection (1-16)
+        # Parse selection — must be a number 1-16
+        sel_label = "?"
+        selection = "?"
+        parse_error = None
         match = re.search(r"\b(\d{1,2})\b", raw)
         if match:
-            sel_label = match.group(1)
-            selection = listener_reverse.get(sel_label, "?")
+            num = int(match.group(1))
+            if 1 <= num <= 16:
+                sel_label = match.group(1)
+                selection = listener_reverse.get(sel_label, "?")
+            else:
+                parse_error = f"number out of range: {num}"
         else:
-            sel_label = "?"
-            selection = "?"
+            parse_error = f"no number found in response"
+
+        if parse_error and verbose:
+            print(f"    WARNING: Listener {lid} parse error ({parse_error}), raw: {raw!r}")
 
         correct = selection == target
 
@@ -329,6 +349,8 @@ def run_round(
             "selection": selection,
             "selection_label": sel_label,
             "correct": correct,
+            "raw_response": raw,
+            "parse_error": parse_error,
         })
 
     # Append to shared game history (all players will see this)
@@ -362,6 +384,15 @@ def compute_summary(rounds: list[RoundRecord]) -> dict:
     overall_acc = sum(r.accuracy for r in rounds) / n if n else 0
     overall_words = sum(r.word_count for r in rounds) / n if n else 0
 
+    # Count parse errors across all listener results
+    n_parse_errors = 0
+    n_listener_trials = 0
+    for r in rounds:
+        for lr in r.listener_results:
+            n_listener_trials += 1
+            if lr.get("parse_error"):
+                n_parse_errors += 1
+
     # Per-block stats
     blocks = {}
     for r in rounds:
@@ -381,10 +412,71 @@ def compute_summary(rounds: list[RoundRecord]) -> dict:
             "accuracy": round(overall_acc, 3),
             "avg_word_count": round(overall_words, 2),
             "n": n,
+            "parse_errors": n_parse_errors,
+            "listener_trials": n_listener_trials,
         },
         "per_block": block_stats,
         "word_count_trajectory": [r.word_count for r in rounds],
     }
+
+
+def _save_intermediate(
+    output_path: str,
+    group_id: str,
+    tangram_set: int,
+    target_tangrams: list[str],
+    all_tangram_ids: list[str],
+    model_name: str,
+    all_rounds: list[RoundRecord],
+    num_blocks: int,
+    temperature: float | None,
+    top_p: float | None,
+    player_orders: dict[int, list[str]],
+    block_targets: list[list[str]],
+    status: str = "in_progress",
+) -> None:
+    """Write current simulation state to disk."""
+    summary = compute_summary(all_rounds) if all_rounds else {"overall": {}, "per_block": {}}
+    sim = GroupSimulation(
+        group_id=group_id,
+        tangram_set=tangram_set,
+        target_tangrams=target_tangrams,
+        all_tangrams=all_tangram_ids,
+        model=model_name,
+        rounds=[asdict(r) for r in all_rounds],
+        summary=summary,
+        config={
+            "num_blocks": num_blocks,
+            "group_size": GROUP_SIZE,
+            "num_tangrams": len(all_tangram_ids),
+            "num_targets": len(target_tangrams),
+            "temperature": temperature,
+            "top_p": top_p,
+        },
+        timestamp=datetime.now().isoformat(),
+        status=status,
+        player_orders={str(k): v for k, v in player_orders.items()},
+        block_targets=block_targets,
+    )
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(asdict(sim), f, indent=2)
+
+
+def _load_partial(output_path: str) -> dict | None:
+    """Load a partial simulation file for resuming, or None if not resumable."""
+    path = Path(output_path)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+    if data.get("status") != "in_progress":
+        return None
+    if not data.get("player_orders") or not data.get("block_targets"):
+        return None
+    return data
 
 
 def run_group_simulation(
@@ -398,37 +490,89 @@ def run_group_simulation(
     temperature: float | None = None,
     top_p: float | None = None,
     verbose: bool = True,
+    output_path: str | None = None,
 ) -> GroupSimulation:
-    """Run a full Phase 1 simulation for one group of 3 players."""
+    """Run a full Phase 1 simulation for one group of 3 players.
+
+    If output_path is provided, writes intermediate results after each round
+    so that partial progress is preserved if the process is interrupted.
+    Automatically resumes from a partial file if one exists at output_path.
+    """
     target_tangrams = TANGRAM_SETS[tangram_set]
     all_tangram_ids = list(ALL_TANGRAMS)
 
-    # Fixed grid order per player (randomized once, fixed for the whole game)
-    # Paper: "the grid order is randomized across participants but fixed within each game"
-    player_orders: dict[int, list[str]] = {}
-    for pid in range(GROUP_SIZE):
-        order = all_tangram_ids.copy()
-        random.shuffle(order)
-        player_orders[pid] = order
+    # Check for resumable partial results
+    partial = _load_partial(output_path) if output_path else None
 
-    # Shared game history (all players see all rounds, like the shared chat)
-    game_history: list[dict] = []
+    if partial:
+        # Resume: reload state from partial file
+        player_orders = {int(k): v for k, v in partial["player_orders"].items()}
+        block_targets = partial["block_targets"]
+        all_rounds = [
+            RoundRecord(
+                round_num=r["round_num"],
+                block_num=r["block_num"],
+                target=r["target"],
+                speaker_id=r["speaker_id"],
+                description=r["description"],
+                word_count=r["word_count"],
+                listener_results=r["listener_results"],
+                accuracy=r["accuracy"],
+            )
+            for r in partial["rounds"]
+        ]
+        # Reconstruct game_history from completed rounds
+        game_history = [
+            {
+                "round_num": r["round_num"],
+                "block_num": r["block_num"],
+                "target": r["target"],
+                "speaker_id": r["speaker_id"],
+                "description": r["description"],
+                "listener_results": r["listener_results"],
+            }
+            for r in partial["rounds"]
+        ]
+        resume_from = len(all_rounds)
+        if verbose:
+            print(f"  Resuming from round {resume_from} (loaded {resume_from} completed rounds)")
+    else:
+        # Fresh start: generate player orders and block target schedules
+        player_orders = {}
+        for pid in range(GROUP_SIZE):
+            order = all_tangram_ids.copy()
+            random.shuffle(order)
+            player_orders[pid] = order
 
-    all_rounds: list[RoundRecord] = []
+        block_targets = []
+        for _ in range(num_blocks):
+            targets = target_tangrams.copy()
+            random.shuffle(targets)
+            block_targets.append(targets)
+
+        game_history = []
+        all_rounds = []
+        resume_from = 0
+
+    total_rounds = num_blocks * len(target_tangrams)
     global_round = 0
 
     for block_num in range(num_blocks):
         speaker_id = block_num % GROUP_SIZE
         listener_ids = [i for i in range(GROUP_SIZE) if i != speaker_id]
-
-        # Shuffle target order within block
-        targets = target_tangrams.copy()
-        random.shuffle(targets)
+        targets = block_targets[block_num]
 
         if verbose:
             print(f"\n--- Block {block_num} (speaker: player {speaker_id}) ---")
 
         for target in targets:
+            # Skip already-completed rounds when resuming
+            if global_round < resume_from:
+                global_round += 1
+                if verbose:
+                    print(f"  Round {global_round - 1}: (already completed, skipping)")
+                continue
+
             result = run_round(
                 client=client,
                 model_name=model_name,
@@ -448,6 +592,17 @@ def run_group_simulation(
             all_rounds.append(result)
             global_round += 1
 
+            # Save intermediate results after each round
+            if output_path:
+                _save_intermediate(
+                    output_path, group_id, tangram_set, target_tangrams,
+                    all_tangram_ids, model_name, all_rounds, num_blocks,
+                    temperature, top_p, player_orders, block_targets,
+                    status="in_progress",
+                )
+                if verbose:
+                    print(f"    [saved {global_round}/{total_rounds} rounds to {output_path}]")
+
     summary = compute_summary(all_rounds)
 
     if verbose:
@@ -457,8 +612,10 @@ def run_group_simulation(
         print(f"  Overall avg words: {summary['overall']['avg_word_count']:.1f}")
         for bnum, bs in summary["per_block"].items():
             print(f"  Block {bnum}: acc={bs['accuracy']:.1%}, words={bs['avg_word_count']:.1f}")
+        if summary["overall"].get("parse_errors", 0) > 0:
+            print(f"  Parse errors: {summary['overall']['parse_errors']}/{summary['overall']['listener_trials']} listener trials")
 
-    return GroupSimulation(
+    final = GroupSimulation(
         group_id=group_id,
         tangram_set=tangram_set,
         target_tangrams=target_tangrams,
@@ -475,7 +632,18 @@ def run_group_simulation(
             "top_p": top_p,
         },
         timestamp=datetime.now().isoformat(),
+        status="complete",
+        player_orders={str(k): v for k, v in player_orders.items()},
+        block_targets=block_targets,
     )
+
+    # Write final complete result
+    if output_path:
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w") as f:
+            json.dump(asdict(final), f, indent=2)
+
+    return final
 
 
 # ---------- CLI ----------
@@ -601,18 +769,15 @@ def main():
         temperature=args.temperature,
         top_p=args.top_p,
         verbose=verbose,
+        output_path=args.output,
     )
 
-    # Output
-    result_json = json.dumps(asdict(result), indent=2)
+    # Output (if no output path, print to stdout; file is already written by run_group_simulation)
     if args.output:
-        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-        with open(args.output, "w") as f:
-            f.write(result_json)
         if verbose:
             print(f"\nResults saved to: {args.output}")
     else:
-        print(result_json)
+        print(json.dumps(asdict(result), indent=2))
 
 
 if __name__ == "__main__":

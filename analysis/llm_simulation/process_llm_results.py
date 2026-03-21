@@ -43,14 +43,26 @@ def find_results_dir() -> Path:
 
 
 def load_groups(results_dir: Path) -> list[dict]:
-    """Load all group JSONs from results directory."""
+    """Load all group JSONs from results directory, skipping incomplete ones."""
     files = sorted(results_dir.glob("G*.json"))
     if not files:
         print(f"No G*.json files in {results_dir}", file=sys.stderr)
         sys.exit(1)
     groups = []
+    skipped = []
     for f in files:
-        groups.append(json.loads(f.read_text()))
+        data = json.loads(f.read_text())
+        status = data.get("status", "complete")
+        if status != "complete":
+            skipped.append(f.name)
+            continue
+        groups.append(data)
+    if skipped:
+        print(f"  Warning: skipped {len(skipped)} incomplete group(s): {', '.join(skipped)}",
+              file=sys.stderr)
+    if not groups:
+        print(f"No complete group files in {results_dir}", file=sys.stderr)
+        sys.exit(1)
     return groups
 
 
@@ -60,6 +72,7 @@ def build_rounds_csv(groups: list[dict]) -> pd.DataFrame:
     for g in groups:
         for r in g["rounds"]:
             n_correct = sum(1 for lr in r["listener_results"] if lr["correct"])
+            n_parse_errors = sum(1 for lr in r["listener_results"] if lr.get("parse_error"))
             rows.append({
                 "group_id": g["group_id"],
                 "round_num": r["round_num"],
@@ -70,6 +83,7 @@ def build_rounds_csv(groups: list[dict]) -> pd.DataFrame:
                 "word_count": r["word_count"],
                 "accuracy": r["accuracy"],
                 "n_listeners_correct": n_correct,
+                "n_parse_errors": n_parse_errors,
             })
     return pd.DataFrame(rows)
 
@@ -89,6 +103,7 @@ def build_listener_trials_csv(groups: list[dict]) -> pd.DataFrame:
                     "listener_id": lr["listener_id"],
                     "selection": lr["selection"],
                     "correct": lr["correct"],
+                    "parse_error": lr.get("parse_error") is not None,
                 })
     return pd.DataFrame(rows)
 
@@ -205,7 +220,8 @@ def main():
     # Listener trials
     listener_df = build_listener_trials_csv(groups)
     listener_df.to_csv(results_dir / "llm_listener_trials.csv", index=False)
-    print(f"  llm_listener_trials.csv: {len(listener_df)} rows")
+    n_parse = listener_df["parse_error"].sum()
+    print(f"  llm_listener_trials.csv: {len(listener_df)} rows ({n_parse} parse errors)")
 
     # Exclusion criterion
     exclusion_df = build_exclusion_csv(groups, n_blocks)
