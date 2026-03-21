@@ -17,6 +17,7 @@ import random
 import re
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +25,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from google.genai.errors import ClientError
 import yaml
 
 from tangram_images import load_tangram_pngs
@@ -195,6 +197,11 @@ def build_listener_prompt(
 # ---------- Gemini API ----------
 
 
+MAX_RETRIES = 5
+RETRY_BASE_DELAY = 10  # seconds; doubles each retry
+CALL_DELAY = 1.0  # seconds between API calls to avoid rate limits
+
+
 def call_gemini(
     client: genai.Client,
     model_name: str,
@@ -203,7 +210,7 @@ def call_gemini(
     temperature: float | None = None,
     top_p: float | None = None,
 ) -> str:
-    """Call Gemini with labeled images and a text prompt."""
+    """Call Gemini with labeled images and a text prompt. Retries on rate limits."""
     content = []
     for label, img_bytes in images_ordered:
         content.append(f"[Image {label}]")
@@ -219,10 +226,22 @@ def call_gemini(
             kwargs["top_p"] = top_p
         config = types.GenerateContentConfig(**kwargs)
 
-    response = client.models.generate_content(
-        model=model_name, contents=content, config=config,
-    )
-    return response.text.strip()
+    for attempt in range(MAX_RETRIES):
+        try:
+            time.sleep(CALL_DELAY)
+            response = client.models.generate_content(
+                model=model_name, contents=content, config=config,
+            )
+            return response.text.strip()
+        except ClientError as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                delay = RETRY_BASE_DELAY * (2 ** attempt)
+                print(f"\n    [Rate limited, retrying in {delay}s (attempt {attempt + 1}/{MAX_RETRIES})]",
+                      flush=True)
+                time.sleep(delay)
+            else:
+                raise
+    raise RuntimeError(f"Failed after {MAX_RETRIES} retries due to rate limiting")
 
 
 # ---------- simulation logic ----------

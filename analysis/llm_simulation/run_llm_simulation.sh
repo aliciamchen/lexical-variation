@@ -20,7 +20,7 @@ BOTH=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --num-groups) NUM_GROUPS="$2"; shift 2 ;;
+        --num-groups|--num_groups) NUM_GROUPS="$2"; shift 2 ;;
         --model) MODEL="$2"; shift 2 ;;
         --tangram-set) TANGRAM_SET="$2"; shift 2 ;;
         --blocks) BLOCKS="$2"; shift 2 ;;
