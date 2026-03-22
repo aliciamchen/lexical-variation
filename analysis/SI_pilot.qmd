@@ -602,7 +602,7 @@ if (has_pairwise) {
     geom_line(aes(group = interaction(gameId, condition)), linewidth = 0.6, alpha = 0.6) +
     geom_point(size = 3) +
     scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
-    labs(x = "Phase", y = "Group-specificity coefficient") +
+    labs(x = "Phase", y = "Group-specificity coef") +
     theme(legend.position = "right")
 
   print(fig4)
@@ -812,7 +812,129 @@ print(fig_secondary)
 save_fig(fig_secondary, "SI_secondary_analyses.pdf", width = 12, height = 8)
 ```
 
-# 8. Summary Table
+# 8. H3c: Description Properties Preview
+
+Descriptive preview of the H3c measures comparing `social_mixed` vs
+`social_first` in Phase 1. H3c predicts that anticipating a social-identification
+task leads to descriptions that are less concrete, more lexically unique, and
+use lower-frequency vocabulary.
+
+All three measures are precomputed in Python (`compute_embeddings.py`) with
+consistent tokenization: each utterance is lowercased, split into alphabetic
+sequences, filtered for standard English stopwords, and only tokens with
+length > 1 are retained as *content words*.
+
+- **Concreteness**: the proportion of content words matching concrete term
+  stems (prefix matching) from Boyce et al. 2024. Four categories: geometric
+  (e.g., *triangle*, *square*, *diamond*), body parts (e.g., *arm*, *head*,
+  *leg*), positional (e.g., *left*, *right*, *top*), and posture (e.g.,
+  *kick*, *kneel*, *stand*).
+- **Lexical uniqueness**: the proportion of content words in a description
+  that do not appear in any other group's descriptions for the same tangram
+  in the same game.
+- **Word frequency**: the mean Zipf frequency of content words, computed via
+  the `wordfreq` Python package (which draws on SUBTLEX and other corpora).
+  Common words score higher (e.g., "the" ≈ 7.7); rare words score lower.
+
+With 1 game per social condition, these are purely descriptive — included
+to verify the H3c analysis pipeline and give a qualitative sense of the patterns.
+
+```{r h3c-pilot-data}
+# All three H3c measures are precomputed in Python with consistent tokenization
+# (same stopwords and content-word extraction). See compute_embeddings.py.
+has_desc_props <- file.exists(file.path(data_dir, "description_properties.csv"))
+has_lex_uniq <- file.exists(file.path(data_dir, "lexical_uniqueness.csv"))
+
+if (!has_desc_props || !has_lex_uniq) {
+  cat("Missing H3c data files. Run compute_description_properties() and compute_lexical_uniqueness() first.\n")
+} else {
+  desc_props <- read_csv(file.path(data_dir, "description_properties.csv"), show_col_types = FALSE)
+  lex_uniq <- read_csv(file.path(data_dir, "lexical_uniqueness.csv"), show_col_types = FALSE)
+
+  # Merge properties + uniqueness, filter to final Phase 1 block, social conditions
+  p1_final_social <- desc_props %>%
+    left_join(
+      lex_uniq %>% select(gameId, playerId, target, blockNum, phaseNum, uniqueness),
+      by = c("gameId", "playerId", "target", "blockNum", "phaseNum")
+    ) %>%
+    filter(phaseNum == 1) %>%
+    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+    filter(condition %in% c("social_mixed", "social_first")) %>%
+    group_by(gameId, playerId, target) %>%
+    filter(blockNum == max(blockNum)) %>%
+    ungroup() %>%
+    mutate(condition = factor(condition, levels = c("social_mixed", "social_first")))
+}
+```
+
+```{r h3c-plot, fig.width=14, fig.height=4.5}
+if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
+  p1_h3c <- p1_final_social %>%
+    filter(!is.na(concreteness), !is.na(uniqueness)) %>%
+    select(condition, concreteness, uniqueness, mean_zipf_freq)
+
+  # Panel A: Concrete terms
+  p_concrete <- ggplot(p1_h3c, aes(x = condition, y = concreteness, fill = condition)) +
+    geom_violin(alpha = 0.3) +
+    geom_jitter(width = 0.15, size = 1.5, alpha = 0.4) +
+    stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
+    scale_fill_condition() +
+    scale_x_discrete(labels = function(x) format_condition(x)) +
+    labs(x = NULL, y = "Proportion", title = "Concrete terms") +
+    theme(legend.position = "none")
+
+  # Panel B: Lexical uniqueness
+  p_unique <- ggplot(p1_h3c, aes(x = condition, y = uniqueness, fill = condition)) +
+    geom_violin(alpha = 0.3) +
+    geom_jitter(width = 0.15, size = 1.5, alpha = 0.4) +
+    stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
+    scale_fill_condition() +
+    scale_x_discrete(labels = function(x) format_condition(x)) +
+    labs(x = NULL, y = "Proportion", title = "Lexical uniqueness") +
+    theme(legend.position = "none")
+
+  # Panel C: Word frequency
+  p_freq <- ggplot(p1_h3c %>% filter(!is.na(mean_zipf_freq)),
+                   aes(x = condition, y = mean_zipf_freq, fill = condition)) +
+    geom_violin(alpha = 0.3) +
+    geom_jitter(width = 0.15, size = 1.5, alpha = 0.4) +
+    stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
+    scale_fill_condition() +
+    scale_x_discrete(labels = function(x) format_condition(x)) +
+    labs(x = NULL, y = "Mean Zipf frequency", title = "Word frequency") +
+    theme(legend.position = "none")
+
+  fig_h3c <- p_concrete + p_unique + p_freq +
+    plot_annotation(
+      tag_levels = "a"
+    ) &
+    theme(plot.tag = element_text(face = "bold", size = 20))
+
+  print(fig_h3c)
+  save_fig(fig_h3c, "SI_h3c_description_properties.pdf", width = 14, height = 4.5)
+}
+```
+
+```{r h3c-descriptive}
+if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
+  cat("=== H3c descriptive statistics (final Phase 1 block, social conditions) ===\n\n")
+  p1_final_social %>%
+    group_by(condition) %>%
+    summarise(
+      n = n(),
+      concreteness_M = round(mean(concreteness, na.rm = TRUE), 3),
+      concreteness_SD = round(sd(concreteness, na.rm = TRUE), 3),
+      uniqueness_M = round(mean(uniqueness, na.rm = TRUE), 3),
+      uniqueness_SD = round(sd(uniqueness, na.rm = TRUE), 3),
+      zipf_freq_M = round(mean(mean_zipf_freq, na.rm = TRUE), 3),
+      zipf_freq_SD = round(sd(mean_zipf_freq, na.rm = TRUE), 3),
+      .groups = "drop"
+    ) %>%
+    knitr::kable()
+}
+```
+
+# 9. Summary Table
 
 ```{r summary-table}
 summary_rows <- list()

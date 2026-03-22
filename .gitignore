@@ -15,7 +15,6 @@ tajriba.json
 *.zip
 lexical-variation*/
 .playwright-mcp
-.claude/
 *export*
 
 *.test.js

@@ -307,6 +307,130 @@ def extract_content_words(text: str) -> set[str]:
     return {w for w in words if w not in STOPWORDS and len(w) > 1}
 
 
+def extract_content_word_tokens(text: str) -> list[str]:
+    """Extract content words as a list (preserving duplicates), unlike the set version."""
+    if not isinstance(text, str):
+        return []
+    words = re.findall(r"[a-z]+", text.lower())
+    return [w for w in words if w not in STOPWORDS and len(w) > 1]
+
+
+# Concrete term stems derived from Boyce et al. 2024 (PNAS).
+# Uses prefix matching: "squar" matches "square", "squares", etc.
+# Four categories: geometric, body parts, positional, posture.
+CONCRETE_STEMS_GEOMETRIC = [
+    "squar", "triangle", "triangular", "diamond", "shape", "trapez",
+    "angle", "degree", "parallel", "rhomb", "box", "cube", "line",
+    "rectangle", "rectangular",
+]
+CONCRETE_STEMS_BODY = [
+    "face", "head", "back", "shoulder", "arm", "leg", "foot", "feet",
+    "body", "knee", "toe", "hand", "butt", "heel", "ear", "nose",
+    "neck", "chest", "hair",
+]
+CONCRETE_STEMS_POSITION = [
+    "right", "left", "above", "below", "under", "over", "top",
+    "bottom", "behind", "side", "beneath",
+]
+CONCRETE_STEMS_POSTURE = [
+    "kick", "crouch", "squat", "kneel", "knelt", "stood", "stand",
+    "sit", "sat", "lying", "walk", "facing", "fall", "lean", "seat",
+    "laying", "looking",
+]
+ALL_CONCRETE_STEMS = (
+    CONCRETE_STEMS_GEOMETRIC + CONCRETE_STEMS_BODY
+    + CONCRETE_STEMS_POSITION + CONCRETE_STEMS_POSTURE
+)
+
+
+def _is_concrete(word: str) -> bool:
+    """Check if a word matches any concrete term stem (prefix match)."""
+    return any(word.startswith(stem) for stem in ALL_CONCRETE_STEMS)
+
+
+def compute_description_properties(
+    utterances: pd.DataFrame,
+    games: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Compute H3c description properties per utterance using consistent tokenization.
+
+    Measures:
+    - concreteness: proportion of content words matching concrete term stems
+      (derived from Boyce et al. 2024)
+    - mean_zipf_freq: mean Zipf frequency of content words (via wordfreq package)
+
+    Lexical uniqueness is computed separately via compute_lexical_uniqueness()
+    because it requires cross-group comparison within each game × tangram.
+    """
+    from wordfreq import zipf_frequency
+
+    def _compute_row(text):
+        tokens = extract_content_word_tokens(text)
+        if not tokens:
+            return pd.Series({"concreteness": float("nan"), "mean_zipf_freq": float("nan")})
+
+        concreteness = sum(1 for w in tokens if _is_concrete(w)) / len(tokens)
+        mean_freq = sum(zipf_frequency(w, "en") for w in tokens) / len(tokens)
+
+        return pd.Series({"concreteness": concreteness, "mean_zipf_freq": mean_freq})
+
+    result = utterances.copy()
+    props = result["utterance"].apply(_compute_row)
+    result = pd.concat([result, props], axis=1)
+
+    return result[
+        [
+            "gameId",
+            "playerId",
+            "originalGroup",
+            "target",
+            "blockNum",
+            "phaseNum",
+            "utterance",
+            "concreteness",
+            "mean_zipf_freq",
+        ]
+    ]
+
+
+def compute_lexical_uniqueness(
+    utterances: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Compute lexical uniqueness per utterance: proportion of content words
+    NOT appearing in any other group's descriptions for the same tangram
+    in the same game.
+
+    Uses the same tokenization as compute_description_properties().
+    """
+    rows = []
+    for (game_id, target), group_df in utterances.groupby(["gameId", "target"]):
+        # Build word sets per group
+        group_words: dict[str, set[str]] = {}
+        for grp, grp_df in group_df.groupby("originalGroup"):
+            all_words: set[str] = set()
+            for text in grp_df["utterance"]:
+                all_words.update(extract_content_word_tokens(text))
+            group_words[grp] = all_words
+
+        for _, row in group_df.iterrows():
+            tokens = extract_content_word_tokens(row["utterance"])
+            if not tokens:
+                rows.append({**row, "uniqueness": float("nan")})
+                continue
+
+            other_words: set[str] = set()
+            for grp, words in group_words.items():
+                if grp != row["originalGroup"]:
+                    other_words.update(words)
+
+            uniqueness = sum(1 for w in tokens if w not in other_words) / len(tokens)
+            rows.append({**row, "uniqueness": uniqueness})
+
+    return pd.DataFrame(rows)
+
+
 def compute_term_retention(
     utterances: pd.DataFrame,
     games: pd.DataFrame,
@@ -905,6 +1029,17 @@ def main():
     )
     phase_change.to_csv(output_dir / "phase_change_similarities.csv", index=False)
     print(f"  {len(phase_change)} phase change similarity values")
+
+    # --- H3c description properties ---
+    print("Computing description properties (abstractness, word frequency)...")
+    desc_props = compute_description_properties(utterances, games)
+    desc_props.to_csv(output_dir / "description_properties.csv", index=False)
+    print(f"  Description properties: {len(desc_props)} rows")
+
+    print("Computing lexical uniqueness...")
+    lex_unique = compute_lexical_uniqueness(utterances)
+    lex_unique.to_csv(output_dir / "lexical_uniqueness.csv", index=False)
+    print(f"  Lexical uniqueness: {len(lex_unique)} rows")
 
     print("Computing UMAP projections...")
     try:

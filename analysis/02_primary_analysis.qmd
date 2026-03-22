@@ -432,153 +432,158 @@ if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
 
 ## H3c: Description Properties
 
-Compare abstractness and lexical uniqueness of final Phase 1 descriptions
-between `social_mixed` and `social_first`.
+Compare concreteness, lexical uniqueness, and word frequency of final Phase 1
+descriptions between `social_mixed` and `social_first`.
+
+All three measures are precomputed in Python (`compute_embeddings.py`) with
+consistent tokenization: each utterance is lowercased, split into alphabetic
+sequences, filtered for standard English stopwords, and only tokens with
+length > 1 are retained as *content words*.
+
+- **Concreteness**: the proportion of content words matching concrete term
+  stems (prefix matching) from Boyce et al. 2024. Four categories: geometric
+  (e.g., *triangle*, *square*, *diamond*), body parts (e.g., *arm*, *head*,
+  *leg*), positional (e.g., *left*, *right*, *top*), and posture (e.g.,
+  *kick*, *kneel*, *stand*). Prefix matching means *squar* matches both
+  *square* and *squares*.
+- **Lexical uniqueness**: the proportion of content words in a description
+  that do not appear in any other group's descriptions for the same tangram
+  in the same game.
+- **Word frequency**: the mean Zipf frequency of content words, computed via
+  the `wordfreq` Python package (which draws on SUBTLEX and other corpora).
+  Common words score higher (e.g., "the" ≈ 7.7); rare words score lower.
 
 ```{r h3c-description-properties}
-# Final Phase 1 speaker utterances for social conditions
-p1_final_social <- speaker_utts %>%
-  filter(phaseNum == 1) %>%
-  left_join(games %>% select(gameId, condition), by = "gameId") %>%
-  filter(condition %in% c("social_mixed", "social_first")) %>%
-  group_by(gameId, playerId, target) %>%
-  filter(blockNum == max(blockNum)) %>%
-  ungroup() %>%
-  mutate(condition = factor(condition, levels = c("social_mixed", "social_first")))
+has_desc_props <- file.exists(file.path(data_dir, "description_properties.csv"))
+has_lex_uniq <- file.exists(file.path(data_dir, "lexical_uniqueness.csv"))
 
-if (nrow(p1_final_social) > 0 && n_distinct(p1_final_social$condition) >= 2) {
-  # --- Abstractness ---
-  # Proportion of content words that are NOT concrete geometric/body-part terms
-  concrete_terms <- c(
-    "triangle", "triangles", "square", "squares", "rectangle", "rectangles",
-    "diamond", "diamonds", "shape", "shapes", "line", "lines", "angle", "angles",
-    "arm", "arms", "leg", "legs", "head", "body", "foot", "feet", "hand", "hands",
-    "top", "bottom", "left", "right", "side", "sides", "point", "points",
-    "corner", "corners", "edge", "edges", "block", "blocks", "piece", "pieces"
-  )
-  stopwords <- c(
-    "the", "a", "an", "is", "it", "of", "and", "to", "in", "on", "at",
-    "for", "with", "that", "this", "are", "was", "be", "has", "have",
-    "had", "do", "does", "did", "but", "or", "not", "no", "so", "if",
-    "its", "like", "one", "two", "looks", "look", "looking"
-  )
-
-  compute_abstractness <- function(utterance) {
-    words <- tolower(strsplit(utterance, "\\s+")[[1]])
-    words <- gsub("[^a-z]", "", words)
-    content_words <- words[nchar(words) > 1 & !(words %in% stopwords)]
-    if (length(content_words) == 0) return(NA_real_)
-    mean(!(content_words %in% concrete_terms))
-  }
-
-  # --- Lexical uniqueness ---
-  # Proportion of content words not used by any other group for the same tangram
-  compute_lexical_uniqueness <- function(df) {
-    df %>%
-      group_by(gameId, target) %>%
-      group_modify(~ {
-        .x %>% mutate(uniqueness = {
-          map_dbl(seq_len(n()), function(i) {
-            words_i <- tolower(strsplit(.x$utterance[i], "\\s+")[[1]])
-            words_i <- gsub("[^a-z]", "", words_i)
-            words_i <- words_i[nchar(words_i) > 1 & !(words_i %in% stopwords)]
-            if (length(words_i) == 0) return(NA_real_)
-
-            group_i <- .x$originalGroup[i]
-            other_words <- .x %>%
-              filter(originalGroup != group_i) %>%
-              pull(utterance) %>%
-              paste(collapse = " ") %>%
-              tolower() %>%
-              strsplit("\\s+") %>%
-              `[[`(1) %>%
-              gsub("[^a-z]", "", .) %>%
-              unique()
-
-            mean(!(words_i %in% other_words))
-          })
-        })
-      }) %>%
-      ungroup()
-  }
-
-  p1_final_social <- p1_final_social %>%
-    mutate(abstractness = map_dbl(utterance, compute_abstractness))
-
-  p1_final_social <- compute_lexical_uniqueness(p1_final_social)
-
-  # Model: abstractness ~ condition + (1 | participant) + (1 | tangram)
-  p1_abstract <- p1_final_social %>% filter(!is.na(abstractness))
-  if (nrow(p1_abstract) > 0) {
-    m_abstract <- tryCatch(
-      lmer(
-        abstractness ~ condition + (1 | playerId) + (1 | target),
-        data = p1_abstract,
-        control = lmerControl(optimizer = "bobyqa")
-      ),
-      error = function(e) {
-        cat("Abstractness lmer failed:", e$message, "\n")
-        NULL
-      }
-    )
-    if (!is.null(m_abstract)) {
-      cat("=== Abstractness ===\n")
-      print(summary(m_abstract))
-    }
-  }
-
-  # Model: lexical uniqueness ~ condition + (1 | participant) + (1 | tangram)
-  p1_unique <- p1_final_social %>% filter(!is.na(uniqueness))
-  if (nrow(p1_unique) > 0) {
-    m_uniqueness <- tryCatch(
-      lmer(
-        uniqueness ~ condition + (1 | playerId) + (1 | target),
-        data = p1_unique,
-        control = lmerControl(optimizer = "bobyqa")
-      ),
-      error = function(e) {
-        cat("Lexical uniqueness lmer failed:", e$message, "\n")
-        NULL
-      }
-    )
-    if (!is.null(m_uniqueness)) {
-      cat("\n=== Lexical Uniqueness ===\n")
-      print(summary(m_uniqueness))
-    }
-  }
-
-  # TODO: Word frequency analysis requires SUBTLEX-US norms.
-  # Download from https://www.ugent.be/pp/experimentele-psychologie/en/research/documents/subtlexus
-  # Then compute mean log word frequency per utterance and fit:
-  # lmer(log_freq ~ condition + (1 | playerId) + (1 | target))
+if (!has_desc_props || !has_lex_uniq) {
+  cat("Missing H3c data files. Run compute_description_properties() and compute_lexical_uniqueness() first.\n")
 } else {
-  cat("Insufficient data for H3c (need both social conditions with Phase 1 utterances).\n")
+  desc_props <- read_csv(file.path(data_dir, "description_properties.csv"), show_col_types = FALSE)
+  lex_uniq <- read_csv(file.path(data_dir, "lexical_uniqueness.csv"), show_col_types = FALSE)
+
+  # Merge, filter to final Phase 1 block, social conditions only
+  p1_final_social <- desc_props %>%
+    left_join(
+      lex_uniq %>% select(gameId, playerId, target, blockNum, phaseNum, uniqueness),
+      by = c("gameId", "playerId", "target", "blockNum", "phaseNum")
+    ) %>%
+    filter(phaseNum == 1) %>%
+    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+    filter(condition %in% c("social_mixed", "social_first")) %>%
+    group_by(gameId, playerId, target) %>%
+    filter(blockNum == max(blockNum)) %>%
+    ungroup() %>%
+    mutate(condition = factor(condition, levels = c("social_mixed", "social_first")))
+
+  if (nrow(p1_final_social) > 0 && n_distinct(p1_final_social$condition) >= 2) {
+    # Model: concreteness ~ condition + (1 | participant) + (1 | tangram)
+    p1_concrete <- p1_final_social %>% filter(!is.na(concreteness))
+    if (nrow(p1_concrete) > 0) {
+      m_concrete <- tryCatch(
+        lmer(
+          concreteness ~ condition + (1 | playerId) + (1 | target),
+          data = p1_concrete,
+          control = lmerControl(optimizer = "bobyqa")
+        ),
+        error = function(e) {
+          cat("Concreteness lmer failed:", e$message, "\n")
+          NULL
+        }
+      )
+      if (!is.null(m_concrete)) {
+        cat("=== Concreteness ===\n")
+        print(summary(m_concrete))
+      }
+    }
+
+    # Model: lexical uniqueness ~ condition + (1 | participant) + (1 | tangram)
+    p1_unique <- p1_final_social %>% filter(!is.na(uniqueness))
+    if (nrow(p1_unique) > 0) {
+      m_uniqueness <- tryCatch(
+        lmer(
+          uniqueness ~ condition + (1 | playerId) + (1 | target),
+          data = p1_unique,
+          control = lmerControl(optimizer = "bobyqa")
+        ),
+        error = function(e) {
+          cat("Lexical uniqueness lmer failed:", e$message, "\n")
+          NULL
+        }
+      )
+      if (!is.null(m_uniqueness)) {
+        cat("\n=== Lexical Uniqueness ===\n")
+        print(summary(m_uniqueness))
+      }
+    }
+
+    # Model: word frequency ~ condition + (1 | participant) + (1 | tangram)
+    p1_freq <- p1_final_social %>% filter(!is.na(mean_zipf_freq))
+    if (nrow(p1_freq) > 0) {
+      m_freq <- tryCatch(
+        lmer(
+          mean_zipf_freq ~ condition + (1 | playerId) + (1 | target),
+          data = p1_freq,
+          control = lmerControl(optimizer = "bobyqa")
+        ),
+        error = function(e) {
+          cat("Word frequency lmer failed:", e$message, "\n")
+          NULL
+        }
+      )
+      if (!is.null(m_freq)) {
+        cat("\n=== Word Frequency ===\n")
+        print(summary(m_freq))
+      }
+    }
+  } else {
+    cat("Insufficient data for H3c (need both social conditions with Phase 1 utterances).\n")
+  }
 }
 ```
 
-```{r plot-h3c, fig.width=10, fig.height=5}
-if (exists("p1_final_social") && "abstractness" %in% names(p1_final_social)) {
-  p1_plot <- p1_final_social %>%
-    filter(!is.na(abstractness), !is.na(uniqueness)) %>%
-    pivot_longer(cols = c(abstractness, uniqueness),
-                 names_to = "measure", values_to = "value") %>%
-    mutate(measure = factor(measure,
-      levels = c("abstractness", "uniqueness"),
-      labels = c("Abstractness", "Lexical uniqueness")
-    ))
+```{r plot-h3c, fig.width=14, fig.height=4.5}
+if (exists("p1_final_social") && "concreteness" %in% names(p1_final_social)) {
+  p1_h3c <- p1_final_social %>%
+    filter(!is.na(concreteness), !is.na(uniqueness))
 
-  ggplot(p1_plot, aes(x = condition, y = value, fill = condition)) +
+  p_concrete <- ggplot(p1_h3c, aes(x = condition, y = concreteness, fill = condition)) +
     geom_violin(alpha = 0.3) +
     geom_jitter(width = 0.15, size = 1.2, alpha = 0.3) +
     stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
-    facet_wrap(~measure, scales = "free_y") +
     scale_fill_condition() +
-    labs(
-      x = "Condition",
-      y = "Proportion",
-      title = "H3c: Description properties in final Phase 1 utterances"
-    ) +
+    scale_x_discrete(labels = function(x) format_condition(x)) +
+    labs(x = NULL, y = "Proportion", title = "Concrete terms") +
     theme(legend.position = "none")
+
+  p_unique <- ggplot(p1_h3c, aes(x = condition, y = uniqueness, fill = condition)) +
+    geom_violin(alpha = 0.3) +
+    geom_jitter(width = 0.15, size = 1.2, alpha = 0.3) +
+    stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
+    scale_fill_condition() +
+    scale_x_discrete(labels = function(x) format_condition(x)) +
+    labs(x = NULL, y = "Proportion", title = "Lexical uniqueness") +
+    theme(legend.position = "none")
+
+  p_freq <- ggplot(p1_h3c %>% filter(!is.na(mean_zipf_freq)),
+                   aes(x = condition, y = mean_zipf_freq, fill = condition)) +
+    geom_violin(alpha = 0.3) +
+    geom_jitter(width = 0.15, size = 1.2, alpha = 0.3) +
+    stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
+    scale_fill_condition() +
+    scale_x_discrete(labels = function(x) format_condition(x)) +
+    labs(x = NULL, y = "Mean Zipf frequency", title = "Word frequency") +
+    theme(legend.position = "none")
+
+  fig_h3c <- p_concrete + p_unique + p_freq +
+    plot_annotation(
+      title = "H3c: Description properties in final Phase 1 utterances",
+      tag_levels = "a"
+    ) &
+    theme(plot.tag = element_text(face = "bold", size = 20))
+
+  print(fig_h3c)
 }
 ```
 
