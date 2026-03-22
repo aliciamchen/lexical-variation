@@ -87,14 +87,21 @@ summary(m_length)
 
 ```{r plot-utt-length, fig.width=7, fig.height=4}
 # Plot 1: Description length over blocks (by blockNum, not repNum)
+length_by_group <- p1_utts %>%
+  group_by(gameId, group, blockNum) %>%
+  summarise(mean_length = mean(uttLength, na.rm = TRUE), .groups = "drop")
+
 length_by_block <- p1_utts %>%
   group_by(blockNum) %>%
   tidyboot_mean(uttLength, nboot = 1000)
 
 ggplot(length_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = ACCENT$length) +
-  geom_line(color = ACCENT$length, linewidth = 1) +
-  geom_point(color = ACCENT$length, size = 2) +
+  geom_line(data = length_by_group,
+            aes(x = blockNum + 1, y = mean_length, group = interaction(gameId, group)),
+            color = "gray70", alpha = 0.5, linewidth = 0.4) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = "black") +
+  geom_line(color = "black", linewidth = 1) +
+  geom_point(color = "black", size = 2) +
   labs(
     x = "Block",
     y = "Mean word count",
@@ -119,18 +126,26 @@ summary(m_accuracy)
 
 ```{r plot-accuracy, fig.width=7, fig.height=4}
 # Plot 2: Listener accuracy over blocks
+acc_by_group <- p1_ref_accuracy %>%
+  filter(!is.na(ref_accuracy)) %>%
+  group_by(gameId, group, blockNum) %>%
+  summarise(mean_acc = mean(ref_accuracy, na.rm = TRUE), .groups = "drop")
+
 acc_by_block <- p1_ref_accuracy %>%
   filter(!is.na(ref_accuracy), !is.na(blockNum)) %>%
   group_by(blockNum) %>%
   tidyboot_mean(ref_accuracy, nboot = 1000)
 
 ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = ACCENT$accuracy) +
-  geom_line(color = ACCENT$accuracy, linewidth = 1) +
-  geom_point(color = ACCENT$accuracy, size = 2) +
-  geom_hline(yintercept = 1/6, linetype = "dashed", color = "gray50") +
-  annotate("text", x = 6, y = 1/6 + 0.02,
-           label = "Chance (1/6)", hjust = 1, color = "gray50", size = 3) +
+  geom_line(data = acc_by_group,
+            aes(x = blockNum + 1, y = mean_acc, group = interaction(gameId, group)),
+            color = "gray70", alpha = 0.5, linewidth = 0.4) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = "black") +
+  geom_line(color = "black", linewidth = 1) +
+  geom_point(color = "black", size = 2) +
+  geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
+  annotate("text", x = 6, y = 1/16 + 0.02,
+           label = "Chance (1/16)", hjust = 1, color = "gray50", size = 3) +
   labs(
     x = "Block",
     y = "Proportion correct",
@@ -163,14 +178,21 @@ if (has_adjacent) {
 ```{r plot-adjacent-sim, fig.width=7, fig.height=4}
 if (has_adjacent && exists("p1_adjacent_valid")) {
   # Plot 3: Adjacent similarity over blocks
+  sim_by_group <- p1_adjacent_valid %>%
+    group_by(gameId, group, blockNum) %>%
+    summarise(mean_sim = mean(simAdjacent, na.rm = TRUE), .groups = "drop")
+
   sim_by_block <- p1_adjacent_valid %>%
     group_by(blockNum) %>%
     tidyboot_mean(simAdjacent, nboot = 1000)
 
   ggplot(sim_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
-    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = ACCENT$similarity) +
-    geom_line(color = ACCENT$similarity, linewidth = 1) +
-    geom_point(color = ACCENT$similarity, size = 2) +
+    geom_line(data = sim_by_group,
+              aes(x = blockNum + 1, y = mean_sim, group = interaction(gameId, group)),
+              color = "gray70", alpha = 0.5, linewidth = 0.4) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = "black") +
+    geom_line(color = "black", linewidth = 1) +
+    geom_point(color = "black", size = 2) +
     labs(
       x = "Block",
       y = "Cosine similarity (adjacent descriptions)",

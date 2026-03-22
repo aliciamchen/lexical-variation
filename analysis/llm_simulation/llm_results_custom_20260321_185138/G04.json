@@ -1,0 +1,915 @@
+{
+  "group_id": "G04",
+  "tangram_set": 0,
+  "target_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B"
+  ],
+  "all_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B",
+    "page3-121",
+    "page4-157",
+    "page7-26",
+    "page5-64",
+    "page6-149",
+    "page3-193",
+    "page5-63",
+    "page9-7",
+    "page5-142",
+    "page4-15"
+  ],
+  "model": "gemini-3.1-pro-preview",
+  "rounds": [
+    {
+      "round_num": 0,
+      "block_num": 0,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "Sitting animal facing left with a diamond head, one pointy triangle ear on top, and a straight tail pointing right.",
+      "word_count": 20,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 1,
+      "block_num": 0,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "Figure running right with a diamond head, one arm raised up and pointing back to the upper-left, and the front leg extending straight horizontally to the right.",
+      "word_count": 27,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 2,
+      "block_num": 0,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Figure facing left with a diamond head on top. The entire right side of its body is a perfectly straight, flat vertical line.",
+      "word_count": 23,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-193",
+          "selection_label": "13",
+          "correct": false,
+          "raw_response": "13",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 3,
+      "block_num": 0,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "Figure facing right with a diamond head, one arm pointing perfectly straight up vertically, and the back leg extending straight horizontally to the left.",
+      "word_count": 24,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 4,
+      "block_num": 0,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Figure with a diamond head, one arm pointing diagonally up to the right, one leg extending horizontally to the left, and the bottom leg pointing straight down.",
+      "word_count": 27,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-142",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "15",
+          "correct": false,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 5,
+      "block_num": 0,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Diamond head top-left. The main body is a large sharp triangle pointing straight horizontally to the right. Below it, a thick leg extends diagonally down-left, and a small triangular tip points diagonally down-right.",
+      "word_count": 33,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 6,
+      "block_num": 1,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Diamond head top-left. Has a very large, sharp point extending perfectly horizontally to the right. Base splits into a thick, flat-bottomed leg pointing down-left and a small sharp point pointing down-right.",
+      "word_count": 31,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-7",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-193",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 7,
+      "block_num": 1,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Diamond head. Small arm points diagonally up-left. Large shape points perfectly horizontally right. The thick bottom leg slants diagonally down-right.",
+      "word_count": 20,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-15",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 8,
+      "block_num": 1,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Diamond head on top. The right edge of the figure drops in a perfectly straight, vertical line starting exactly from the right corner of the diamond. The left side is jagged, with a large sharp point sticking out to the left.",
+      "word_count": 41,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "14",
+          "correct": true,
+          "raw_response": "14",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-255",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 9,
+      "block_num": 1,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Diamond head. Small arm points diagonally up-right. A large sharp shape points horizontally to the left. The bottom leg drops straight down, featuring a perfectly vertical left edge and a flat horizontal bottom.",
+      "word_count": 33,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page6-149",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 10,
+      "block_num": 1,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "Diamond head with a small triangle pointing straight up on top. The left side is a sharp point extending left, not a flat vertical edge. The right side is a long sharp point extending right with a perfectly horizontal top edge.",
+      "word_count": 41,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 11,
+      "block_num": 1,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "Diamond head. A sharp arm points straight up with a perfectly vertical left edge. A large leg points perfectly horizontally to the left with a flat horizontal bottom edge. The thick leg points diagonally down-right.",
+      "word_count": 35,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 12,
+      "block_num": 2,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Diamond head. A sharp arm points straight UP with a perfectly vertical right edge. Another shape points perfectly horizontally LEFT with a flat horizontal bottom edge. Has exactly one single thick leg at the bottom that slants diagonally down-right.",
+      "word_count": 39,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-142",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-63",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 13,
+      "block_num": 2,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "Diamond head. The small arm on the top-left points diagonally UP-LEFT (not straight up). The large shape points perfectly horizontally to the RIGHT with a flat horizontal top edge. The single thick bottom leg slants diagonally DOWN-RIGHT (not straight down) and has a flat horizontal base.",
+      "word_count": 46,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-7",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page6-149",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 14,
+      "block_num": 2,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Diamond head. A large shape points RIGHT with a perfectly horizontal BOTTOM edge. Below it, a thick leg slants diagonally DOWN-LEFT with a flat base, and a small point sticks out DOWN-RIGHT.",
+      "word_count": 32,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-157",
+          "selection_label": "7",
+          "correct": false,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-121",
+          "selection_label": "11",
+          "correct": false,
+          "raw_response": "11",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 15,
+      "block_num": 2,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "Diamond head with a small triangle attached directly to its top corner, pointing straight UP. It has a long pointed tail extending to the RIGHT with a perfectly horizontal top edge, and a flat horizontal base on the bottom-left.",
+      "word_count": 39,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "12",
+          "correct": true,
+          "raw_response": "12",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 16,
+      "block_num": 2,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Diamond head. Small arm points diagonally UP-RIGHT (not straight up). The large shape points perfectly horizontally LEFT with a flat horizontal TOP edge. The thick bottom leg points straight DOWN with a perfectly vertical LEFT edge and a flat horizontal base.",
+      "word_count": 41,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "16",
+          "correct": true,
+          "raw_response": "16",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-26",
+          "selection_label": "15",
+          "correct": false,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 17,
+      "block_num": 2,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Diamond head on top. The right edge of the figure drops in a perfectly straight, vertical line starting exactly from the right corner of the diamond. The left side is jagged, with a large sharp point sticking out to the left.",
+      "word_count": 41,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page6-149",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-26",
+          "selection_label": "15",
+          "correct": false,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 18,
+      "block_num": 3,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Diamond head. The large shape pointing LEFT has a perfectly flat horizontal TOP edge. A small arm points diagonally UP-RIGHT. The bottom leg drops straight down, featuring a perfectly vertical LEFT edge (its right side slants inward) and a flat horizontal base.",
+      "word_count": 42,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 19,
+      "block_num": 3,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Diamond head. The large shape pointing RIGHT has a perfectly horizontal BOTTOM edge (its top edge slants downward). The base splits into a thick leg slanting diagonally DOWN-LEFT with a flat bottom, and a small sharp point aiming diagonally DOWN-RIGHT.",
+      "word_count": 40,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-7",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 20,
+      "block_num": 3,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Diamond head on top. The entire RIGHT edge is a perfectly straight, continuous VERTICAL line starting from the right point of the diamond down to a flat base, forming a 90-degree bottom-right corner. The left side has a large sharp point sticking horizontally out to the left.",
+      "word_count": 47,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-7",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-193",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 21,
+      "block_num": 3,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "Diamond head with a small triangle attached directly to its top corner, pointing straight UP. It has a long pointed tail extending to the RIGHT with a perfectly horizontal top edge, and a flat horizontal base on the bottom-left.",
+      "word_count": 39,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-63",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 22,
+      "block_num": 3,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "Diamond head. A small triangular arm points perfectly straight vertically UP. A large sharp shape extends horizontally to the LEFT with a flat horizontal bottom edge. It has exactly one leg, slanting diagonally down-right.",
+      "word_count": 34,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page6-149",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 23,
+      "block_num": 3,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "Diamond head. Small arm points up-left. Large sharp shape points horizontally to the right with a perfectly flat top edge. The single bottom leg slants diagonally down-right (pointing in the same direction as the large shape).",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page6-149",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 24,
+      "block_num": 4,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Diamond head. NO small arms pointing UP. The large shape points RIGHT with a perfectly flat horizontal BOTTOM edge (do NOT pick the similar figure that has a flat top edge). The thick leg slants DOWN-LEFT, and a tiny point aims DOWN-RIGHT.",
+      "word_count": 42,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-142",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 25,
+      "block_num": 4,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Diamond head. Check three exact features: 1) Small arm points UP-LEFT. 2) The single bottom leg points DOWN-RIGHT. 3) The large shape pointing RIGHT has a perfectly flat horizontal TOP edge. (Careful: do not pick the one with a down-left leg, or the one with a flat bottom edge).",
+      "word_count": 49,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    }
+  ],
+  "summary": {
+    "overall": {
+      "accuracy": 0.212,
+      "avg_word_count": 35.46,
+      "n": 26,
+      "parse_errors": 0,
+      "listener_trials": 52
+    },
+    "per_block": {
+      "0": {
+        "accuracy": 0.083,
+        "avg_word_count": 25.67,
+        "n": 6
+      },
+      "1": {
+        "accuracy": 0.333,
+        "avg_word_count": 33.5,
+        "n": 6
+      },
+      "2": {
+        "accuracy": 0.25,
+        "avg_word_count": 39.67,
+        "n": 6
+      },
+      "3": {
+        "accuracy": 0.167,
+        "avg_word_count": 39.67,
+        "n": 6
+      },
+      "4": {
+        "accuracy": 0.25,
+        "avg_word_count": 45.5,
+        "n": 2
+      }
+    },
+    "word_count_trajectory": [
+      20,
+      27,
+      23,
+      24,
+      27,
+      33,
+      31,
+      20,
+      41,
+      33,
+      41,
+      35,
+      39,
+      46,
+      32,
+      39,
+      41,
+      41,
+      42,
+      40,
+      47,
+      39,
+      34,
+      36,
+      42,
+      49
+    ]
+  },
+  "config": {
+    "num_blocks": 6,
+    "group_size": 3,
+    "num_tangrams": 16,
+    "num_targets": 6,
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "timestamp": "2026-03-22T00:17:41.106732",
+  "status": "in_progress",
+  "player_orders": {
+    "0": [
+      "page9-46",
+      "page3-35",
+      "page6-149",
+      "page-B",
+      "page3-193",
+      "page5-142",
+      "page4-157",
+      "page9-7",
+      "page4-15",
+      "page7-26",
+      "page7-107",
+      "page5-63",
+      "page5-64",
+      "page7-255",
+      "page3-121",
+      "page5-28"
+    ],
+    "1": [
+      "page5-63",
+      "page3-35",
+      "page4-15",
+      "page5-142",
+      "page7-255",
+      "page6-149",
+      "page7-107",
+      "page5-28",
+      "page9-7",
+      "page4-157",
+      "page3-121",
+      "page9-46",
+      "page3-193",
+      "page-B",
+      "page7-26",
+      "page5-64"
+    ],
+    "2": [
+      "page3-193",
+      "page3-121",
+      "page5-63",
+      "page5-142",
+      "page5-64",
+      "page6-149",
+      "page7-255",
+      "page4-15",
+      "page9-46",
+      "page5-28",
+      "page3-35",
+      "page4-157",
+      "page7-26",
+      "page-B",
+      "page7-107",
+      "page9-7"
+    ]
+  },
+  "block_targets": [
+    [
+      "page9-46",
+      "page-B",
+      "page7-255",
+      "page3-35",
+      "page5-28",
+      "page7-107"
+    ],
+    [
+      "page7-107",
+      "page-B",
+      "page7-255",
+      "page5-28",
+      "page9-46",
+      "page3-35"
+    ],
+    [
+      "page3-35",
+      "page-B",
+      "page7-107",
+      "page9-46",
+      "page5-28",
+      "page7-255"
+    ],
+    [
+      "page5-28",
+      "page7-107",
+      "page7-255",
+      "page9-46",
+      "page3-35",
+      "page-B"
+    ],
+    [
+      "page7-107",
+      "page-B",
+      "page3-35",
+      "page9-46",
+      "page5-28",
+      "page7-255"
+    ],
+    [
+      "page7-107",
+      "page7-255",
+      "page3-35",
+      "page5-28",
+      "page9-46",
+      "page-B"
+    ]
+  ]
+}

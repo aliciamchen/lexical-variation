@@ -33,29 +33,19 @@ CONDITION_COLORS <- c(
 
 CONDITION_ORDER <- c("refer_separated", "refer_mixed", "social_mixed", "social_first")
 
+CONDITION_LABELS <- c(
+  refer_separated = "Refer separated",
+  refer_mixed     = "Refer mixed",
+  social_mixed    = "Social mixed",
+  social_first    = "Social-first"
+)
+
 GROUP_COLORS <- c(A = "#ce3045", B = "#27689e", C = "#edc35d")
 GROUP_ORDER  <- c("A", "B", "C")
 
-# Single-metric accent colors (for outcome-neutral plots without condition facets)
-ACCENT <- list(
-  length     = "black",
-  accuracy   = "black",
-  similarity = "black",
-  social     = "black"
-)
-
-# Qualitative palette (Pastel1) for categorical comparisons (e.g. within vs between)
-scale_fill_qualitative <- function(...) {
-  scale_fill_brewer(palette = "Pastel1", ...)
-}
-
-scale_color_qualitative <- function(...) {
-  scale_color_brewer(palette = "Pastel1", ...)
-}
-
 # ── Phase boundary ──────────────────────────────────────────
-
-PHASE_BOUNDARY <- 5.5
+# Blocks are 1-indexed in plots: Phase 1 = 1–6, Phase 2 = 7–12
+PHASE_BOUNDARY <- 6.5
 PHASE2_OFFSET  <- 6
 
 # ── Global ggplot theme ───────────────────────────────────
@@ -93,19 +83,14 @@ scale_fill_group <- function(...) {
 
 # ── Helper functions ────────────────────────────────────────
 
-add_phase_boundary <- function(p) {
-  p + annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
-               ymin = -Inf, ymax = Inf,
-               fill = "gray90", alpha = 0.5) +
-    geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70",
-               linetype = "dotted")
-}
-
 continuous_block <- function(df) {
   df %>% mutate(block = blockNum + (phaseNum == 2) * PHASE2_OFFSET)
 }
 
-format_condition <- function(x) str_replace_all(x, "_", " ")
+format_condition <- function(x) {
+  ifelse(x %in% names(CONDITION_LABELS), CONDITION_LABELS[x],
+         str_to_sentence(str_replace_all(x, "_", " ")))
+}
 
 save_fig <- function(p, filename, width = 8, height = 5, dpi = 150) {
   path <- file.path(figures_dir, filename)

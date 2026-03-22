@@ -392,9 +392,9 @@ if (nrow(social_guesses) > 0) {
 
   ggplot(social_by_block, aes(x = blockNum, y = empirical_stat)) +
     geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper),
-                alpha = 0.2, fill = ACCENT$social) +
-    geom_line(color = ACCENT$social, linewidth = 1) +
-    geom_point(color = ACCENT$social, size = 2) +
+                alpha = 0.2, fill = "black") +
+    geom_line(color = "black", linewidth = 1) +
+    geom_point(color = "black", size = 2) +
     geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
     annotate("text", x = max(social_by_block$blockNum), y = 0.52,
              label = "Chance (50%)", hjust = 1, color = "gray50", size = 3) +

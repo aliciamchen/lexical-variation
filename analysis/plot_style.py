@@ -75,6 +75,14 @@ def save_fig(fig, path, dpi=150):
     plt.close(fig)
 
 
+_CONDITION_LABELS = {
+    "refer_separated": "Refer separated",
+    "refer_mixed": "Refer mixed",
+    "social_mixed": "Social mixed",
+    "social_first": "Social-first",
+}
+
+
 def format_condition(name):
-    """Format condition name for display: 'refer_mixed' → 'refer mixed'."""
-    return name.replace("_", " ")
+    """Format condition name for display: 'refer_mixed' → 'Refer mixed'."""
+    return _CONDITION_LABELS.get(name, name.replace("_", " ").capitalize())

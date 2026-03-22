@@ -15,6 +15,18 @@ library(lmerTest)
 library(tidyboot)
 source(here::here("analysis", "config.R"))
 
+# Override paths: pilot notebook reads from pilot data, saves to pilot figures
+data_dir <- here("data", "pilots")
+figures_dir <- here("analysis", "pilot_outputs")
+dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
+
+# Re-resolve utterances file for the pilot data dir
+utterances_file <- if (file.exists(file.path(data_dir, "speaker_utterances_filtered.csv"))) {
+  "speaker_utterances_filtered.csv"
+} else {
+  "speaker_utterances.csv"
+}
+
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 players <- read_csv(file.path(data_dir, "players.csv"), show_col_types = FALSE)
 trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
@@ -203,7 +215,7 @@ cat(sprintf("First block accuracy: M = %.2f (SD = %.2f)\n",
             mean(acc_first, na.rm = TRUE), sd(acc_first, na.rm = TRUE)))
 cat(sprintf("Last block accuracy: M = %.2f (SD = %.2f)\n",
             mean(acc_last, na.rm = TRUE), sd(acc_last, na.rm = TRUE)))
-cat(sprintf("Chance level: %.3f (1/6)\n", 1/6))
+cat(sprintf("Chance level: %.4f (1/16)\n", 1/16))
 ```
 
 ## 2c. Convention Stability Increases
@@ -274,10 +286,24 @@ if (!has_pairwise) {
 # 3. Combined Figure: Convention Formation (SI Figure 1)
 
 Three-panel figure showing description length, listener accuracy, and convention
-stability over Phase 1 blocks.
+stability over Phase 1 blocks. Thin gray lines show per-group trajectories
+(4 games × 3 groups = 12 lines), with the bold line and ribbon showing the
+overall mean ± 95% bootstrapped CI.
+
+**Note on CIs:** Bootstrapped CIs here resample individual observations
+(utterances or trials), not games or groups. With only 4 pilot games, these
+CIs reflect observation-level variability and overstate precision relative to
+the true game-level uncertainty. They are intended to show directional trends,
+not for inference. The per-group lines provide a more honest picture of
+variability across independent units.
 
 ```{r si-fig-convention, fig.width=14, fig.height=4.5}
 library(patchwork)
+
+# Per-group means for spaghetti lines
+length_by_group <- p1_utts %>%
+  group_by(gameId, group, blockNum) %>%
+  summarise(mean_length = mean(uttLength, na.rm = TRUE), .groups = "drop")
 
 # Panel A: Description length (by blockNum, not repNum)
 length_by_block <- p1_utts %>%
@@ -285,11 +311,20 @@ length_by_block <- p1_utts %>%
   tidyboot_mean(uttLength, nboot = 1000)
 
 p_length <- ggplot(length_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
+  geom_line(data = length_by_group,
+            aes(x = blockNum + 1, y = mean_length, group = interaction(gameId, group)),
+            color = "gray70", alpha = 0.5, linewidth = 0.4) +
   geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.15) +
   geom_line(linewidth = 1) +
   geom_point(size = 2.5) +
   labs(x = "Block", y = "Words per description", title = "Description length") +
-  scale_x_continuous(breaks = 1:6)
+  scale_x_continuous(breaks = 1:6, labels = as.integer)
+
+# Per-group accuracy
+acc_by_group <- p1_ref_accuracy %>%
+  filter(!is.na(ref_accuracy)) %>%
+  group_by(gameId, group, blockNum) %>%
+  summarise(mean_acc = mean(ref_accuracy, na.rm = TRUE), .groups = "drop")
 
 # Panel B: Listener accuracy
 acc_by_block <- p1_ref_accuracy %>%
@@ -298,37 +333,46 @@ acc_by_block <- p1_ref_accuracy %>%
   tidyboot_mean(ref_accuracy, nboot = 1000)
 
 p_accuracy <- ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
+  geom_line(data = acc_by_group,
+            aes(x = blockNum + 1, y = mean_acc, group = interaction(gameId, group)),
+            color = "gray70", alpha = 0.5, linewidth = 0.4) +
   geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.15) +
   geom_line(linewidth = 1) +
   geom_point(size = 2.5) +
-  geom_hline(yintercept = 1/6, linetype = "dashed", color = "gray50") +
-  annotate("text", x = 6, y = 1/6 + 0.03,
-           label = "Chance (1/6)", hjust = 1, color = "gray50", size = 3.5) +
+  geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
   labs(x = "Block", y = "Proportion correct", title = "Listener accuracy") +
-  scale_x_continuous(breaks = 1:6) +
+  scale_x_continuous(breaks = 1:6, labels = as.integer) +
   scale_y_continuous(limits = c(0, 1))
 
 # Panel C: Adjacent similarity
 if (has_adjacent && exists("p1_adjacent")) {
   p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent))
+
+  sim_by_group <- p1_adjacent_valid %>%
+    group_by(gameId, group, blockNum) %>%
+    summarise(mean_sim = mean(simAdjacent, na.rm = TRUE), .groups = "drop")
+
   sim_by_block <- p1_adjacent_valid %>%
     group_by(blockNum) %>%
     tidyboot_mean(simAdjacent, nboot = 1000)
 
   p_sim <- ggplot(sim_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
+    geom_line(data = sim_by_group,
+              aes(x = blockNum + 1, y = mean_sim, group = interaction(gameId, group)),
+              color = "gray70", alpha = 0.5, linewidth = 0.4) +
     geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.15) +
     geom_line(linewidth = 1) +
     geom_point(size = 2.5) +
     labs(x = "Block", y = "Cosine similarity", title = "Convention stability") +
-    scale_x_continuous(breaks = 1:6)
+    scale_x_continuous(breaks = 1:6, labels = as.integer)
 
   fig1 <- p_length + p_accuracy + p_sim +
     plot_annotation(tag_levels = "a") &
-    theme(plot.tag = element_text(face = "bold", size = 16))
+    theme(plot.tag = element_text(face = "bold", size = 20))
 } else {
   fig1 <- p_length + p_accuracy +
     plot_annotation(tag_levels = "a") &
-    theme(plot.tag = element_text(face = "bold", size = 16))
+    theme(plot.tag = element_text(face = "bold", size = 20))
 }
 
 fig1
@@ -338,7 +382,20 @@ save_fig(fig1, "SI_convention_formation.pdf", width = 14, height = 4.5)
 
 # 4. Permutation Test Figure (SI Figure 2)
 
-```{r si-fig-permutation, fig.width=10, fig.height=6}
+For each pilot game, we test whether group-specificity exceeds chance using a
+permutation test. We fit a linear mixed-effects model predicting pairwise
+cosine similarity from a binary same-group indicator (with random intercepts
+for tangram and both speakers). The observed coefficient captures how much more
+similar within-group descriptions are compared to between-group descriptions.
+
+To build a null distribution, we permute the group labels of speakers 1,000
+times and refit the model each time. The histograms show these null
+distributions; the red vertical line marks the observed coefficient. The
+p-value is the proportion of permuted coefficients that equal or exceed the
+observed value. We require ≥80% of games to show significant group-specificity
+(p < .05) to satisfy the outcome-neutral criterion.
+
+```{r si-fig-permutation, fig.width=12, fig.height=3}
 if (exists("perm_results") && nrow(perm_results) > 0) {
   perm_plot_data <- perm_results %>%
     left_join(games %>% select(gameId, condition), by = "gameId") %>%
@@ -350,9 +407,7 @@ if (exists("perm_results") && nrow(perm_results) > 0) {
     left_join(games %>% select(gameId, condition), by = "gameId") %>%
     mutate(
       condition_label = format_condition(condition),
-      sig_label = ifelse(p_value < 0.05,
-                         sprintf("p = %.3f *", p_value),
-                         sprintf("p = %.3f", p_value))
+      sig_label = sprintf("p = %.3f", p_value),
     )
 
   fig2 <- ggplot(perm_plot_data, aes(x = perm_coef)) +
@@ -362,16 +417,15 @@ if (exists("perm_results") && nrow(perm_results) > 0) {
                color = "#ce3045", linewidth = 1) +
     geom_text(data = obs_labels,
               aes(x = obs_coefficient, y = Inf, label = sig_label),
-              vjust = 1.5, hjust = -0.1, color = "#ce3045", size = 4) +
-    facet_wrap(~condition_label, scales = "free_y") +
+              vjust = 1.5, hjust = 1.1, color = "#ce3045", size = 4) +
+    facet_wrap(~condition_label, nrow = 1, scales = "free_y") +
     labs(
       x = "Group-specificity coefficient (permuted)",
       y = "Count",
-      title = "Permutation test for group-specificity"
     )
 
   print(fig2)
-  save_fig(fig2, "SI_permutation_test.pdf", width = 10, height = 6)
+  save_fig(fig2, "SI_permutation_test.pdf", width = 12, height = 3)
 }
 ```
 
@@ -379,6 +433,30 @@ if (exists("perm_results") && nrow(perm_results) > 0) {
 
 Within- vs between-group similarity over all blocks, showing how group-specificity
 emerges in Phase 1 and evolves in Phase 2.
+
+**How pairwise similarity is computed:** For each block and tangram, we take
+each speaker's most recent description of that tangram up to and including the
+current block (within the same phase). We then compute pairwise cosine
+similarity (using SBERT embeddings) between all speaker pairs for that tangram.
+This is a cumulative approach, not a sliding window: at block 0, only speakers
+who described the tangram in block 0 are included; by block 5, each speaker's
+representation is their latest description from any block 0–5. Pairs are
+labeled as "within group" or "between group" based on original group
+assignment. Group-specificity is the difference (within − between).
+
+**Figure 3a (within vs between):** Faded points show per-tangram mean similarity
+for each block (1 game per condition facet, 6 tangrams per block per pair type).
+Lines and ribbons show the overall mean ± 95% bootstrapped CI.
+
+**Figure 3b (specificity trajectory):** Faded points show per-tangram
+group-specificity (within − between similarity) for each block and condition.
+Lines and ribbons show the mean ± 95% bootstrapped CI across tangrams.
+
+**Note on CIs:** Same caveat as above — CIs resample pairwise similarity
+values (or per-tangram specificity scores), not games. With 1 game per
+condition, these reflect within-game variability across tangrams and speaker
+pairs, not between-game uncertainty. The individual points provide the
+underlying spread.
 
 ```{r load-block-pairwise}
 has_block_pw <- file.exists(file.path(data_dir, "block_pairwise_similarities.csv"))
@@ -388,6 +466,7 @@ if (has_block_pw) {
     left_join(games %>% select(gameId, condition), by = "gameId") %>%
     continuous_block() %>%
     mutate(
+      block1 = block + 1,
       pair_type = ifelse(sameGroup == 1, "Within group", "Between group"),
       condition = factor(condition, levels = CONDITION_ORDER)
     )
@@ -396,19 +475,27 @@ if (has_block_pw) {
 }
 ```
 
-```{r si-fig-within-between, fig.width=9, fig.height=4}
+```{r si-fig-within-between, fig.width=10, fig.height=3.7}
 if (has_block_pw) {
   # Bootstrapped means by block, pair type, and condition
   wb_summary <- block_pw %>%
-    group_by(condition, block, pair_type) %>%
+    group_by(condition, block1, pair_type) %>%
     tidyboot_mean(similarity, nboot = 1000) %>%
     ungroup()
 
-  fig3a <- ggplot(wb_summary, aes(x = block, y = empirical_stat,
+  # Per-tangram means for jittered points
+  wb_by_tangram <- block_pw %>%
+    group_by(condition, block1, pair_type, target) %>%
+    summarise(mean_sim = mean(similarity, na.rm = TRUE), .groups = "drop")
+
+  fig3a <- ggplot(wb_summary, aes(x = block1, y = empirical_stat,
                                    color = pair_type, fill = pair_type)) +
     annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
              ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5) +
     geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted") +
+    geom_point(data = wb_by_tangram,
+               aes(x = block1, y = mean_sim, color = pair_type),
+               alpha = 0.15, size = 0.8, position = position_jitter(width = 0.2)) +
     geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2,
                 color = NA) +
     geom_line(linewidth = 0.8) +
@@ -417,75 +504,315 @@ if (has_block_pw) {
                labeller = labeller(condition = function(x) format_condition(x))) +
     scale_fill_brewer(name = "Pair type", palette = "Accent") +
     scale_color_brewer(name = "Pair type", palette = "Accent") +
-    labs(x = "Block", y = "Pairwise cosine similarity",
-         title = "Within- vs between-group similarity") +
+    labs(x = "Block", y = "Pairwise cosine similarity") +
     coord_cartesian(ylim = c(0, 1)) +
     theme(legend.position = "bottom")
 
   print(fig3a)
-  save_fig(fig3a, "SI_within_between_similarity.pdf", width = 12, height = 4)
+  save_fig(fig3a, "SI_within_between_similarity.pdf", width = 10, height = 3.7)
 }
 ```
 
-```{r si-fig-specificity-trajectory, fig.width=8, fig.height=5}
+```{r si-fig-specificity-trajectory, fig.width=9, fig.height=4}
 if (has_block_pw) {
   # Compute group-specificity = within - between per block, condition, tangram
   within_means <- block_pw %>%
     filter(sameGroup == 1) %>%
-    group_by(condition, block, target) %>%
+    group_by(condition, block1, target) %>%
     summarise(sim_within = mean(similarity, na.rm = TRUE), .groups = "drop")
 
   between_means <- block_pw %>%
     filter(sameGroup == 0) %>%
-    group_by(condition, block, target) %>%
+    group_by(condition, block1, target) %>%
     summarise(sim_between = mean(similarity, na.rm = TRUE), .groups = "drop")
 
   specificity_by_tangram <- inner_join(within_means, between_means,
-                                       by = c("condition", "block", "target")) %>%
+                                       by = c("condition", "block1", "target")) %>%
     mutate(specificity = sim_within - sim_between)
 
   # Bootstrapped means of the tangram-level specificity
   spec_summary <- specificity_by_tangram %>%
-    group_by(condition, block) %>%
+    group_by(condition, block1) %>%
     tidyboot_mean(specificity, nboot = 1000) %>%
     ungroup() %>%
     mutate(condition = factor(condition, levels = CONDITION_ORDER))
 
-  fig3b <- ggplot(spec_summary, aes(x = block, y = empirical_stat,
+  # Per-tangram specificity points (jittered, faded)
+  spec_tangram_plot <- specificity_by_tangram %>%
+    mutate(condition = factor(condition, levels = CONDITION_ORDER))
+
+  fig3b <- ggplot(spec_summary, aes(x = block1, y = empirical_stat,
                                      color = condition, fill = condition)) +
     annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
              ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5) +
     geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted") +
     geom_hline(yintercept = 0, color = "gray", linetype = "dotted", alpha = 0.5) +
+    geom_point(data = spec_tangram_plot,
+               aes(x = block1, y = specificity, color = condition),
+               alpha = 0.15, size = 1, position = position_jitter(width = 0.15)) +
     geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12,
                 color = NA) +
     geom_line(linewidth = 0.8) +
     geom_point(size = 2) +
-    scale_color_condition(labels = function(x) format_condition(x), name = NULL) +
-    scale_fill_condition(labels = function(x) format_condition(x), name = NULL) +
+    scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
+    scale_fill_condition(labels = function(x) format_condition(x), name = "Condition") +
     labs(x = "Block",
-         y = "Group specificity\n(within \u2212 between similarity)",
-         title = "Group-specificity trajectory across phases") +
-    theme(legend.position = "bottom")
+         y = "Group specificity\n(within - between similarity)") +
+    theme(legend.position = "right")
 
   print(fig3b)
-  save_fig(fig3b, "SI_specificity_trajectory.pdf", width = 8, height = 5)
+  save_fig(fig3b, "SI_specificity_trajectory.pdf", width = 9, height = 4)
 }
 ```
 
-```{r si-fig-specificity-combined, fig.width=14, fig.height=5}
-if (has_block_pw && exists("fig3a") && exists("fig3b")) {
-  fig3 <- fig3a + fig3b +
-    plot_layout(widths = c(3, 2)) +
-    plot_annotation(tag_levels = "a") &
-    theme(plot.tag = element_text(face = "bold", size = 16))
+# 6. Phase 1 vs Phase 2 Comparisons (SI Figure 4)
 
-  print(fig3)
-  save_fig(fig3, "SI_group_specificity_trajectory.pdf", width = 14, height = 5)
+These plots correspond directly to the paper's primary analyses, which compare
+the final three blocks of Phase 1 (baseline) to the final three blocks of
+Phase 2 (post-manipulation). Group-specificity is computed from pairwise
+cosine similarity between speaker descriptions within the same window, using
+the model described in the outcome-neutral criteria (similarity ~ same_group +
+random effects for tangram and speakers).
+
+Group-specificity coefficient (the same_group effect from the pairwise
+similarity model) for Phase 1 final vs Phase 2 final, by condition. Lines
+connect the same game across phases. This is the primary dependent variable
+for H1 and H2.
+
+```{r si-fig-phase-comparison, fig.width=6.5, fig.height=3.5}
+if (has_pairwise) {
+  # Fit group-specificity model per game per window
+  gs_by_window <- map_dfr(c("phase1_final", "phase2_final"), function(w) {
+    pw_w <- pairwise_sim %>% filter(window == w)
+    gs <- fit_group_specificity(pw_w)
+    gs$window <- w
+    gs
+  }) %>%
+    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+    mutate(
+      phase = ifelse(window == "phase1_final", "Phase 1\n(final 3 blocks)",
+                     "Phase 2\n(final 3 blocks)"),
+      phase = factor(phase, levels = c("Phase 1\n(final 3 blocks)",
+                                        "Phase 2\n(final 3 blocks)")),
+      condition = factor(condition, levels = CONDITION_ORDER)
+    )
+
+  fig4 <- ggplot(gs_by_window, aes(x = phase, y = coefficient,
+                                    color = condition)) +
+    geom_line(aes(group = interaction(gameId, condition)), linewidth = 0.6, alpha = 0.6) +
+    geom_point(size = 3) +
+    scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
+    labs(x = "Phase", y = "Group-specificity coefficient") +
+    theme(legend.position = "right")
+
+  print(fig4)
+  save_fig(fig4, "SI_phase_comparison.pdf", width = 6.5, height = 3.5)
 }
 ```
 
-# 6. Summary Table
+# 7. Secondary Analysis Previews
+
+Pilot previews of the secondary analyses described in the paper. With only
+1 game per condition these are purely descriptive — included to show the
+data pipeline works end-to-end and to give a qualitative sense of the patterns.
+
+**Panel (a) Referential accuracy:** Listener accuracy over both phases by
+condition. Gray shading marks Phase 2. Thin lines show per-group trajectories.
+Dashed line marks chance (1/16).
+
+**Panel (b) Description length:** Speaker word count over both phases by
+condition. Thin lines show per-group trajectories.
+
+**Panel (c) Social-signaling accuracy:** Social guess accuracy (social
+conditions only). Data exists only in Phase 2; x-axis matches the other
+panels. Dashed line marks chance (50%).
+
+**Panel (d) Convention stability:** Cosine similarity between successive
+descriptions of the same tangram by the same speaker, across both phases.
+Higher values = more stable conventions. Thin lines show per-group
+trajectories.
+
+```{r si-fig-secondary-combined, fig.width=12, fig.height=8}
+# --- Data prep ---
+
+# (a) Referential accuracy
+all_listener <- trials %>%
+  filter(role == "listener") %>%
+  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  continuous_block() %>%
+  mutate(
+    correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
+    condition = factor(condition, levels = CONDITION_ORDER),
+    group = originalGroup,
+    block1 = block + 1
+  )
+
+acc_group_all <- all_listener %>%
+  group_by(condition, gameId, group, block1) %>%
+  summarise(mean_acc = mean(correct, na.rm = TRUE), .groups = "drop")
+
+# Split to avoid tidyboot failing on zero-variance groups
+acc_data <- all_listener %>% filter(!is.na(correct))
+acc_variance <- acc_data %>%
+  group_by(condition, block1) %>%
+  summarise(sd = sd(correct), m = mean(correct), .groups = "drop")
+
+acc_boot <- acc_data %>%
+  semi_join(acc_variance %>% filter(sd > 0), by = c("condition", "block1")) %>%
+  group_by(condition, block1) %>%
+  tidyboot_mean(correct, nboot = 1000) %>%
+  ungroup()
+
+acc_novar <- acc_variance %>%
+  filter(sd == 0) %>%
+  transmute(condition, block1,
+            empirical_stat = m, ci_lower = m, ci_upper = m)
+
+acc_block_all <- bind_rows(acc_boot, acc_novar)
+
+# (b) Description length
+all_utts <- speaker_utts %>%
+  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  continuous_block() %>%
+  mutate(
+    condition = factor(condition, levels = CONDITION_ORDER),
+    group = originalGroup,
+    block1 = block + 1
+  )
+
+len_group_all <- all_utts %>%
+  group_by(condition, gameId, group, block1) %>%
+  summarise(mean_length = mean(uttLength, na.rm = TRUE), .groups = "drop")
+
+len_block_all <- all_utts %>%
+  group_by(condition, block1) %>%
+  tidyboot_mean(uttLength, nboot = 1000) %>%
+  ungroup()
+
+# (c) Social-signaling accuracy — use continuous block (Phase 2 only)
+social_guesses_cond <- social_guesses %>%
+  filter(!is.na(socialGuessCorrect)) %>%
+  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  mutate(
+    correct = as.numeric(socialGuessCorrect == TRUE),
+    condition = factor(condition, levels = CONDITION_ORDER),
+    group = originalGroup,
+    block1 = blockNum + PHASE2_OFFSET + 1  # align to continuous x-axis
+  )
+
+sg_group <- social_guesses_cond %>%
+  group_by(condition, gameId, group, block1) %>%
+  summarise(mean_acc = mean(correct, na.rm = TRUE), .groups = "drop")
+
+sg_block <- social_guesses_cond %>%
+  group_by(condition, block1) %>%
+  tidyboot_mean(correct, nboot = 1000) %>%
+  ungroup()
+
+# (d) Convention stability (adjacent similarity across both phases)
+all_adjacent <- adjacent_sim %>%
+  filter(!is.na(simAdjacent)) %>%
+  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  continuous_block() %>%
+  mutate(
+    condition = factor(condition, levels = CONDITION_ORDER),
+    group = originalGroup,
+    block1 = block + 1
+  )
+
+# --- Shared phase boundary layers ---
+phase2_bg <- list(
+  annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
+           ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5),
+  geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted"),
+  scale_x_continuous(breaks = 1:12, limits = c(1, 12), labels = as.integer),
+  scale_color_condition(labels = function(x) format_condition(x), name = NULL),
+  scale_fill_condition(labels = function(x) format_condition(x), name = NULL)
+)
+
+# --- Panel (a): Referential accuracy ---
+p_acc <- ggplot(acc_block_all, aes(x = block1, y = empirical_stat,
+                                    color = condition, fill = condition)) +
+  phase2_bg +
+  geom_line(data = acc_group_all,
+            aes(x = block1, y = mean_acc,
+                group = interaction(gameId, group, condition)),
+            alpha = 0.25, linewidth = 0.3) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.8) +
+  geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
+  labs(x = "Block", y = "Proportion correct",
+       title = "Referential accuracy") +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme(legend.position = "none")
+
+# --- Panel (b): Description length ---
+p_len <- ggplot(len_block_all, aes(x = block1, y = empirical_stat,
+                                    color = condition, fill = condition)) +
+  phase2_bg +
+  geom_line(data = len_group_all,
+            aes(x = block1, y = mean_length,
+                group = interaction(gameId, group, condition)),
+            alpha = 0.25, linewidth = 0.3) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.8) +
+  labs(x = "Block", y = "Words per description",
+       title = "Description length") +
+  theme(legend.position = "none")
+
+# --- Panel (c): Social-signaling accuracy ---
+p_sg <- ggplot(sg_block, aes(x = block1, y = empirical_stat,
+                              color = condition, fill = condition)) +
+  phase2_bg +
+  geom_line(data = sg_group,
+            aes(x = block1, y = mean_acc,
+                group = interaction(gameId, group, condition)),
+            alpha = 0.3, linewidth = 0.3) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.8) +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
+  labs(x = "Block", y = "Proportion correct",
+       title = "Social-signaling accuracy") +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme(legend.position = "none")
+
+# --- Panel (d): Convention stability ---
+adj_group_all <- all_adjacent %>%
+  group_by(condition, gameId, group, block1) %>%
+  summarise(mean_sim = mean(simAdjacent, na.rm = TRUE), .groups = "drop")
+
+adj_block_all <- all_adjacent %>%
+  group_by(condition, block1) %>%
+  tidyboot_mean(simAdjacent, nboot = 1000) %>%
+  ungroup()
+
+p_stab <- ggplot(adj_block_all, aes(x = block1, y = empirical_stat,
+                                     color = condition, fill = condition)) +
+  phase2_bg +
+  geom_line(data = adj_group_all,
+            aes(x = block1, y = mean_sim,
+                group = interaction(gameId, group, condition)),
+            alpha = 0.25, linewidth = 0.3) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.8) +
+  labs(x = "Block", y = "Cosine similarity\n(adjacent descriptions)",
+       title = "Convention stability") +
+  theme(legend.position = "none")
+
+# --- Combine ---
+fig_secondary <- (p_acc + p_len) / (p_sg + p_stab) +
+  plot_annotation(tag_levels = "a") &
+  theme(plot.tag = element_text(face = "bold", size = 20))
+
+print(fig_secondary)
+save_fig(fig_secondary, "SI_secondary_analyses.pdf", width = 12, height = 8)
+```
+
+# 8. Summary Table
 
 ```{r summary-table}
 summary_rows <- list()
@@ -541,7 +868,7 @@ bind_rows(summary_rows) %>%
   knitr::kable(caption = "Outcome-neutral criteria summary")
 ```
 
-# 7. Descriptive Statistics for LaTeX
+# 9. Descriptive Statistics for LaTeX
 
 Collect all numbers needed for the SI text in one place.
 

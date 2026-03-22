@@ -358,6 +358,17 @@ cd analysis/llm_simulation && quarto render SI_llm_simulation.qmd
 
 Each group simulation runs 6 blocks x 6 tangrams = 36 rounds with 3 API calls per round (1 speaker + 2 listeners) = 108 Gemini calls per group. Output is JSON per group in `analysis/llm_simulation/llm_results_{timestamp}/`.
 
+**Fault tolerance:** Results are saved after every round, so interrupted runs preserve all completed work. If a group fails (API error, laptop sleep, etc.), re-run the shell script with `--output-dir` pointing at the same results directory:
+
+```bash
+# Resume a failed/interrupted run — completed groups are skipped, partial groups resume
+bash analysis/llm_simulation/run_llm_simulation.sh --output-dir analysis/llm_simulation/llm_results_nucleus_20260321_182301
+```
+
+Note: closing a laptop suspends processes even inside tmux (tmux only survives terminal disconnects, not system sleep). Use `--output-dir` to resume after reopening.
+
+The processing script (`process_llm_results.py`) automatically skips incomplete group files (those still marked `in_progress`).
+
 #### Non-Referential Message Filter
 
 LLM-based classifier to filter non-referential messages (e.g., "thanks", "good job") from speaker utterances before SBERT embedding analysis. Uses Gemini via Vertex AI.

@@ -263,7 +263,7 @@ ggplot(pw_means, aes(x = condition, y = mean_sim, fill = groupType)) +
     position = position_dodge(0.8), width = 0.2
   ) +
   facet_wrap(~phase) +
-  scale_fill_qualitative() +
+  scale_fill_brewer(palette = "Pastel1") +
   labs(
     x = "Condition",
     y = "Mean cosine similarity",
