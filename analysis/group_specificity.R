@@ -17,7 +17,7 @@ fit_group_specificity <- function(pairwise_df) {
   game_ids <- unique(pairwise_df$gameId)
 
   results <- map_dfr(game_ids, function(gid) {
-    game_data <- pairwise_df %>% filter(gameId == gid)
+    game_data <- pairwise_df |> filter(gameId == gid)
     if (nrow(game_data) < 5) return(NULL)
     if (n_distinct(game_data$sameGroup) < 2) return(NULL)
 
@@ -44,7 +44,7 @@ permutation_test <- function(pairwise_df, n_perm = 1000) {
   game_ids <- unique(pairwise_df$gameId)
 
   results <- map_dfr(game_ids, function(gid) {
-    game_data <- pairwise_df %>% filter(gameId == gid)
+    game_data <- pairwise_df |> filter(gameId == gid)
     if (nrow(game_data) < 5) return(NULL)
     if (n_distinct(game_data$sameGroup) < 2) return(NULL)
 
@@ -56,23 +56,23 @@ permutation_test <- function(pairwise_df, n_perm = 1000) {
     if (is.null(obs_model)) return(NULL)
     obs_coef <- coef(summary(obs_model))["sameGroup", "Estimate"]
 
-    speakers <- game_data %>%
-      select(speaker1, group1) %>%
-      rename(speaker = speaker1, group = group1) %>%
+    speakers <- game_data |>
+      select(speaker1, group1) |>
+      rename(speaker = speaker1, group = group1) |>
       bind_rows(
-        game_data %>% select(speaker2, group2) %>% rename(speaker = speaker2, group = group2)
-      ) %>%
+        game_data |> select(speaker2, group2) |> rename(speaker = speaker2, group = group2)
+      ) |>
       distinct()
 
     perm_coefs <- map_dbl(seq_len(n_perm), function(i) {
-      perm_groups <- speakers %>% mutate(perm_group = sample(group))
-      perm_data <- game_data %>%
-        left_join(perm_groups %>% select(speaker, perm_group),
-                  by = c("speaker1" = "speaker")) %>%
-        rename(perm_group1 = perm_group) %>%
-        left_join(perm_groups %>% select(speaker, perm_group),
-                  by = c("speaker2" = "speaker")) %>%
-        rename(perm_group2 = perm_group) %>%
+      perm_groups <- speakers |> mutate(perm_group = sample(group))
+      perm_data <- game_data |>
+        left_join(perm_groups |> select(speaker, perm_group),
+                  by = c("speaker1" = "speaker")) |>
+        rename(perm_group1 = perm_group) |>
+        left_join(perm_groups |> select(speaker, perm_group),
+                  by = c("speaker2" = "speaker")) |>
+        rename(perm_group2 = perm_group) |>
         mutate(sameGroup = as.numeric(perm_group1 == perm_group2))
 
       tryCatch({

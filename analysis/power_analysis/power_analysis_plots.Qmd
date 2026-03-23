@@ -30,13 +30,13 @@ Stack the pairwise dataframes, and the results dataframes, and add columns for c
 
 ```{r}
 pairwise_all <- bind_rows(
-  pairwise_mixed %>% mutate(condition = "Mixed", gameId = as.character(gameId)),
-  pairwise_separate %>% mutate(condition = "Separate", gameId = as.character(gameId))
+  pairwise_mixed |> mutate(condition = "Mixed", gameId = as.character(gameId)),
+  pairwise_separate |> mutate(condition = "Separate", gameId = as.character(gameId))
 )
 
 results_all <- bind_rows(
-  results_mixed %>% mutate(gameId = as.character(gameId)),
-  results_separate %>% mutate(gameId = as.character(gameId))
+  results_mixed |> mutate(gameId = as.character(gameId)),
+  results_separate |> mutate(gameId = as.character(gameId))
 )
 
 head(pairwise_all)
@@ -107,11 +107,11 @@ ggplot(results_all, aes(x = condition, y = coefficient)) +
 Show coefficient for each simulated game:
 
 ```{r}
-results_all %>%
-  arrange(coefficient) %>%
+results_all |>
+  arrange(coefficient) |>
   mutate(game_rank = row_number(),
          ci_lower = coefficient - std_error,
-         ci_upper = coefficient + std_error) %>%
+         ci_upper = coefficient + std_error) |>
   ggplot(aes(x = game_rank, y = coefficient, color = condition)) +
   geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.3) +
   geom_point(size = 2, alpha = 0.7) +
@@ -137,8 +137,8 @@ First, calculate the observed difference in group-specificity coefficients betwe
 
 ```{r}
 # Calculate summary statistics by condition
-effect_stats <- results_all %>%
-  group_by(condition) %>%
+effect_stats <- results_all |>
+  group_by(condition) |>
   summarise(
     n = n(),
     mean_coef = mean(coefficient),
@@ -204,7 +204,7 @@ sample_sizes <- seq(2, 30, by = 1)
 power_curves <- expand_grid(
   n = sample_sizes,
   effect_proportion = effect_proportions
-) %>%
+) |>
   mutate(
     effect_size = observed_diff * effect_proportion,
     power = pmap_dbl(list(n, effect_size), function(n, es) {

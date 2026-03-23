@@ -51,41 +51,41 @@ n_per_game <- n_players / n_games
 cat(sprintf("Pilot games: %d (1 per condition)\n", n_games))
 cat(sprintf("Total players: %d (%d per game)\n", n_players, n_per_game))
 cat("\nConditions:\n")
-games %>%
-  select(gameId, condition, activeGroups, phase1Blocks, phase2Blocks) %>%
+games |>
+  select(gameId, condition, activeGroups, phase1Blocks, phase2Blocks) |>
   knitr::kable()
 ```
 
 ```{r completion-rates}
 # Active groups (3 = all groups survived, <3 = dropout)
-games_complete <- games %>%
+games_complete <- games |>
   mutate(all_groups_active = activeGroups == 3)
 
 cat(sprintf("\nGames with all 3 groups active through completion: %d / %d\n",
             sum(games_complete$all_groups_active), n_games))
 
 # Per-game active groups
-games %>%
-  select(condition, activeGroups) %>%
+games |>
+  select(condition, activeGroups) |>
   knitr::kable(col.names = c("Condition", "Active groups at end"))
 ```
 
 ```{r session-duration}
 # Compute session duration from message timestamps
-duration_by_game <- messages %>%
-  group_by(gameId) %>%
+duration_by_game <- messages |>
+  group_by(gameId) |>
   summarise(
     first_msg = min(timestamp, na.rm = TRUE),
     last_msg = max(timestamp, na.rm = TRUE),
     duration_min = (last_msg - first_msg) / 60000,
     .groups = "drop"
-  ) %>%
-  left_join(games %>% select(gameId, condition), by = "gameId")
+  ) |>
+  left_join(games |> select(gameId, condition), by = "gameId")
 
 cat("Session duration (minutes, from first to last message):\n")
-duration_by_game %>%
-  select(condition, duration_min) %>%
-  mutate(duration_min = round(duration_min, 1)) %>%
+duration_by_game |>
+  select(condition, duration_min) |>
+  mutate(duration_min = round(duration_min, 1)) |>
   knitr::kable(col.names = c("Condition", "Duration (min)"))
 
 cat(sprintf("\nMedian session duration: %.1f minutes\n", median(duration_by_game$duration_min)))
@@ -95,15 +95,15 @@ cat(sprintf("Range: %.1f - %.1f minutes\n",
 
 ```{r idle-players}
 # Check for idle players
-idle_players <- players %>%
-  filter(idleRounds > 0) %>%
-  select(gameId, playerId, originalGroup, idleRounds, isActive) %>%
-  left_join(games %>% select(gameId, condition), by = "gameId")
+idle_players <- players |>
+  filter(idleRounds > 0) |>
+  select(gameId, playerId, originalGroup, idleRounds, isActive) |>
+  left_join(games |> select(gameId, condition), by = "gameId")
 
 if (nrow(idle_players) > 0) {
   cat(sprintf("Players with idle rounds: %d\n", nrow(idle_players)))
-  idle_players %>%
-    select(condition, originalGroup, idleRounds, isActive) %>%
+  idle_players |>
+    select(condition, originalGroup, idleRounds, isActive) |>
     knitr::kable()
 } else {
   cat("No idle players detected.\n")
@@ -116,8 +116,8 @@ if (nrow(idle_players) > 0) {
 
 ```{r prep-data}
 # Phase 1 speaker utterances
-p1_utts <- speaker_utts %>%
-  filter(phaseNum == 1) %>%
+p1_utts <- speaker_utts |>
+  filter(phaseNum == 1) |>
   mutate(
     blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
     log_uttLength = log(uttLength + 1),
@@ -127,28 +127,28 @@ p1_utts <- speaker_utts %>%
   )
 
 # Phase 1 listener accuracy
-p1_listener <- trials %>%
-  filter(phaseNum == 1, role == "listener") %>%
+p1_listener <- trials |>
+  filter(phaseNum == 1, role == "listener") |>
   mutate(
     correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
     group = originalGroup,
     tangram = target
   )
 
-p1_ref_accuracy <- p1_listener %>%
-  group_by(gameId, roundId, blockNum, tangram, group) %>%
+p1_ref_accuracy <- p1_listener |>
+  group_by(gameId, roundId, blockNum, tangram, group) |>
   summarise(
     ref_accuracy = mean(correct, na.rm = TRUE),
     .groups = "drop"
-  ) %>%
+  ) |>
   mutate(
     blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
   )
 
 # Phase 1 adjacent similarities
 if (has_adjacent) {
-  p1_adjacent <- adjacent_sim %>%
-    filter(phaseNum == 1) %>%
+  p1_adjacent <- adjacent_sim |>
+    filter(phaseNum == 1) |>
     mutate(
       blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
       participant = playerId,
@@ -179,8 +179,8 @@ cat(sprintf("\nFor LaTeX: β = %.3f, SE = %.3f, t = %.2f\n",
 
 ```{r descriptive-length}
 # Descriptive stats for text (by blockNum, not repNum)
-length_first <- p1_utts %>% filter(blockNum == min(blockNum)) %>% pull(uttLength)
-length_last <- p1_utts %>% filter(blockNum == max(blockNum)) %>% pull(uttLength)
+length_first <- p1_utts |> filter(blockNum == min(blockNum)) |> pull(uttLength)
+length_last <- p1_utts |> filter(blockNum == max(blockNum)) |> pull(uttLength)
 
 cat(sprintf("First block: M = %.1f words (SD = %.1f)\n",
             mean(length_first), sd(length_first)))
@@ -208,8 +208,8 @@ cat(sprintf("\nFor LaTeX: β = %.3f, SE = %.3f, t = %.2f\n",
 ```
 
 ```{r descriptive-accuracy}
-acc_first <- p1_ref_accuracy %>% filter(blockNum == min(blockNum)) %>% pull(ref_accuracy)
-acc_last <- p1_ref_accuracy %>% filter(blockNum == max(blockNum)) %>% pull(ref_accuracy)
+acc_first <- p1_ref_accuracy |> filter(blockNum == min(blockNum)) |> pull(ref_accuracy)
+acc_last <- p1_ref_accuracy |> filter(blockNum == max(blockNum)) |> pull(ref_accuracy)
 
 cat(sprintf("First block accuracy: M = %.2f (SD = %.2f)\n",
             mean(acc_first, na.rm = TRUE), sd(acc_first, na.rm = TRUE)))
@@ -222,7 +222,7 @@ cat(sprintf("Chance level: %.4f (1/16)\n", 1/16))
 
 ```{r model-adjacent}
 if (has_adjacent) {
-  p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent), blockNum > 0)
+  p1_adjacent_valid <- p1_adjacent |> filter(!is.na(simAdjacent), blockNum > 0)
 
   m_adjacent <- lmer(
     simAdjacent ~ blockNum_c + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram),
@@ -251,7 +251,7 @@ source(here::here("analysis", "group_specificity.R"))
 if (!has_pairwise) {
   cat("Skipping: pairwise_similarities.csv not found.\n")
 } else {
-  p1_pairwise <- pairwise_sim %>% filter(window == "phase1_final")
+  p1_pairwise <- pairwise_sim |> filter(window == "phase1_final")
 
   if (nrow(p1_pairwise) > 0) {
     # Uses cached RDS if available; pass force = TRUE to recompute
@@ -260,17 +260,17 @@ if (!has_pairwise) {
     perm_results <- gs_cached$perm_results
 
     cat("Group-specificity coefficients (Phase 1 final):\n")
-    gs_results %>%
-      left_join(games %>% select(gameId, condition), by = "gameId") %>%
-      select(condition, coefficient, std_error, t_value) %>%
-      mutate(across(where(is.numeric), ~round(., 3))) %>%
+    gs_results |>
+      left_join(games |> select(gameId, condition), by = "gameId") |>
+      select(condition, coefficient, std_error, t_value) |>
+      mutate(across(where(is.numeric), ~round(., 3))) |>
       knitr::kable()
 
     cat("\nPermutation test results:\n")
-    perm_results %>%
-      left_join(games %>% select(gameId, condition), by = "gameId") %>%
-      select(condition, obs_coefficient, perm_mean, p_value) %>%
-      mutate(across(where(is.numeric), ~round(., 4))) %>%
+    perm_results |>
+      left_join(games |> select(gameId, condition), by = "gameId") |>
+      select(condition, obs_coefficient, perm_mean, p_value) |>
+      mutate(across(where(is.numeric), ~round(., 4))) |>
       knitr::kable()
 
     prop_significant <- mean(perm_results$p_value < 0.05)
@@ -301,13 +301,13 @@ variability across independent units.
 library(patchwork)
 
 # Per-group means for spaghetti lines
-length_by_group <- p1_utts %>%
-  group_by(gameId, group, blockNum) %>%
+length_by_group <- p1_utts |>
+  group_by(gameId, group, blockNum) |>
   summarise(mean_length = mean(uttLength, na.rm = TRUE), .groups = "drop")
 
 # Panel A: Description length (by blockNum, not repNum)
-length_by_block <- p1_utts %>%
-  group_by(blockNum) %>%
+length_by_block <- p1_utts |>
+  group_by(blockNum) |>
   tidyboot_mean(uttLength, nboot = 1000)
 
 p_length <- ggplot(length_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
@@ -321,15 +321,15 @@ p_length <- ggplot(length_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
   scale_x_continuous(breaks = 1:6, labels = as.integer)
 
 # Per-group accuracy
-acc_by_group <- p1_ref_accuracy %>%
-  filter(!is.na(ref_accuracy)) %>%
-  group_by(gameId, group, blockNum) %>%
+acc_by_group <- p1_ref_accuracy |>
+  filter(!is.na(ref_accuracy)) |>
+  group_by(gameId, group, blockNum) |>
   summarise(mean_acc = mean(ref_accuracy, na.rm = TRUE), .groups = "drop")
 
 # Panel B: Listener accuracy
-acc_by_block <- p1_ref_accuracy %>%
-  filter(!is.na(ref_accuracy), !is.na(blockNum)) %>%
-  group_by(blockNum) %>%
+acc_by_block <- p1_ref_accuracy |>
+  filter(!is.na(ref_accuracy), !is.na(blockNum)) |>
+  group_by(blockNum) |>
   tidyboot_mean(ref_accuracy, nboot = 1000)
 
 p_accuracy <- ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
@@ -347,14 +347,14 @@ p_accuracy <- ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
 
 # Panel C: Adjacent similarity
 if (has_adjacent && exists("p1_adjacent")) {
-  p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent), blockNum > 0)
+  p1_adjacent_valid <- p1_adjacent |> filter(!is.na(simAdjacent), blockNum > 0)
 
-  sim_by_group <- p1_adjacent_valid %>%
-    group_by(gameId, group, blockNum) %>%
+  sim_by_group <- p1_adjacent_valid |>
+    group_by(gameId, group, blockNum) |>
     summarise(mean_sim = mean(simAdjacent, na.rm = TRUE), .groups = "drop")
 
-  sim_by_block <- p1_adjacent_valid %>%
-    group_by(blockNum) %>%
+  sim_by_block <- p1_adjacent_valid |>
+    group_by(blockNum) |>
     tidyboot_mean(simAdjacent, nboot = 1000)
 
   p_sim <- ggplot(sim_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
@@ -399,14 +399,14 @@ observed value. We require ≥80% of games to show significant group-specificity
 
 ```{r si-fig-permutation, fig.width=12, fig.height=3}
 if (exists("perm_results") && nrow(perm_results) > 0) {
-  perm_plot_data <- perm_results %>%
-    left_join(games %>% select(gameId, condition), by = "gameId") %>%
-    unnest(perm_coefs) %>%
-    rename(perm_coef = perm_coefs) %>%
+  perm_plot_data <- perm_results |>
+    left_join(games |> select(gameId, condition), by = "gameId") |>
+    unnest(perm_coefs) |>
+    rename(perm_coef = perm_coefs) |>
     mutate(condition_label = format_condition(condition))
 
-  obs_labels <- perm_results %>%
-    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  obs_labels <- perm_results |>
+    left_join(games |> select(gameId, condition), by = "gameId") |>
     mutate(
       condition_label = format_condition(condition),
       sig_label = sprintf("p = %.3f", p_value),
@@ -464,9 +464,9 @@ underlying spread.
 has_block_pw <- file.exists(file.path(data_dir, "block_pairwise_similarities.csv"))
 if (has_block_pw) {
   block_pw <- read_csv(file.path(data_dir, "block_pairwise_similarities.csv"),
-                       show_col_types = FALSE) %>%
-    left_join(games %>% select(gameId, condition), by = "gameId") %>%
-    continuous_block() %>%
+                       show_col_types = FALSE) |>
+    left_join(games |> select(gameId, condition), by = "gameId") |>
+    continuous_block() |>
     mutate(
       block1 = block + 1,
       pair_type = ifelse(sameGroup == 1, "Within group", "Between group"),
@@ -480,14 +480,14 @@ if (has_block_pw) {
 ```{r si-fig-within-between, fig.width=10, fig.height=3.7}
 if (has_block_pw) {
   # Bootstrapped means by block, pair type, and condition
-  wb_summary <- block_pw %>%
-    group_by(condition, block1, pair_type) %>%
-    tidyboot_mean(similarity, nboot = 1000) %>%
+  wb_summary <- block_pw |>
+    group_by(condition, block1, pair_type) |>
+    tidyboot_mean(similarity, nboot = 1000) |>
     ungroup()
 
   # Per-tangram means for jittered points
-  wb_by_tangram <- block_pw %>%
-    group_by(condition, block1, pair_type, target) %>%
+  wb_by_tangram <- block_pw |>
+    group_by(condition, block1, pair_type, target) |>
     summarise(mean_sim = mean(similarity, na.rm = TRUE), .groups = "drop")
 
   fig3a <- ggplot(wb_summary, aes(x = block1, y = empirical_stat,
@@ -518,29 +518,29 @@ if (has_block_pw) {
 ```{r si-fig-specificity-trajectory, fig.width=9, fig.height=4}
 if (has_block_pw) {
   # Compute group-specificity = within - between per block, condition, tangram
-  within_means <- block_pw %>%
-    filter(sameGroup == 1) %>%
-    group_by(condition, block1, target) %>%
+  within_means <- block_pw |>
+    filter(sameGroup == 1) |>
+    group_by(condition, block1, target) |>
     summarise(sim_within = mean(similarity, na.rm = TRUE), .groups = "drop")
 
-  between_means <- block_pw %>%
-    filter(sameGroup == 0) %>%
-    group_by(condition, block1, target) %>%
+  between_means <- block_pw |>
+    filter(sameGroup == 0) |>
+    group_by(condition, block1, target) |>
     summarise(sim_between = mean(similarity, na.rm = TRUE), .groups = "drop")
 
   specificity_by_tangram <- inner_join(within_means, between_means,
-                                       by = c("condition", "block1", "target")) %>%
+                                       by = c("condition", "block1", "target")) |>
     mutate(specificity = sim_within - sim_between)
 
   # Bootstrapped means of the tangram-level specificity
-  spec_summary <- specificity_by_tangram %>%
-    group_by(condition, block1) %>%
-    tidyboot_mean(specificity, nboot = 1000) %>%
-    ungroup() %>%
+  spec_summary <- specificity_by_tangram |>
+    group_by(condition, block1) |>
+    tidyboot_mean(specificity, nboot = 1000) |>
+    ungroup() |>
     mutate(condition = factor(condition, levels = CONDITION_ORDER))
 
   # Per-tangram specificity points (jittered, faded)
-  spec_tangram_plot <- specificity_by_tangram %>%
+  spec_tangram_plot <- specificity_by_tangram |>
     mutate(condition = factor(condition, levels = CONDITION_ORDER))
 
   fig3b <- ggplot(spec_summary, aes(x = block1, y = empirical_stat,
@@ -585,12 +585,12 @@ for H1 and H2.
 if (has_pairwise) {
   # Fit group-specificity model per game per window
   gs_by_window <- map_dfr(c("phase1_final", "phase2_final"), function(w) {
-    pw_w <- pairwise_sim %>% filter(window == w)
+    pw_w <- pairwise_sim |> filter(window == w)
     gs <- fit_group_specificity(pw_w)
     gs$window <- w
     gs
-  }) %>%
-    left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  }) |>
+    left_join(games |> select(gameId, condition), by = "gameId") |>
     mutate(
       phase = ifelse(window == "phase1_final", "Phase 1\n(final 3 blocks)",
                      "Phase 2\n(final 3 blocks)"),
@@ -638,10 +638,10 @@ trajectories.
 # --- Data prep ---
 
 # (a) Referential accuracy
-all_listener <- trials %>%
-  filter(role == "listener") %>%
-  left_join(games %>% select(gameId, condition), by = "gameId") %>%
-  continuous_block() %>%
+all_listener <- trials |>
+  filter(role == "listener") |>
+  left_join(games |> select(gameId, condition), by = "gameId") |>
+  continuous_block() |>
   mutate(
     correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
     condition = factor(condition, levels = CONDITION_ORDER),
@@ -649,52 +649,52 @@ all_listener <- trials %>%
     block1 = block + 1
   )
 
-acc_group_all <- all_listener %>%
-  group_by(condition, gameId, group, block1) %>%
+acc_group_all <- all_listener |>
+  group_by(condition, gameId, group, block1) |>
   summarise(mean_acc = mean(correct, na.rm = TRUE), .groups = "drop")
 
 # Split to avoid tidyboot failing on zero-variance groups
-acc_data <- all_listener %>% filter(!is.na(correct))
-acc_variance <- acc_data %>%
-  group_by(condition, block1) %>%
+acc_data <- all_listener |> filter(!is.na(correct))
+acc_variance <- acc_data |>
+  group_by(condition, block1) |>
   summarise(sd = sd(correct), m = mean(correct), .groups = "drop")
 
-acc_boot <- acc_data %>%
-  semi_join(acc_variance %>% filter(sd > 0), by = c("condition", "block1")) %>%
-  group_by(condition, block1) %>%
-  tidyboot_mean(correct, nboot = 1000) %>%
+acc_boot <- acc_data |>
+  semi_join(acc_variance |> filter(sd > 0), by = c("condition", "block1")) |>
+  group_by(condition, block1) |>
+  tidyboot_mean(correct, nboot = 1000) |>
   ungroup()
 
-acc_novar <- acc_variance %>%
-  filter(sd == 0) %>%
+acc_novar <- acc_variance |>
+  filter(sd == 0) |>
   transmute(condition, block1,
             empirical_stat = m, ci_lower = m, ci_upper = m)
 
 acc_block_all <- bind_rows(acc_boot, acc_novar)
 
 # (b) Description length
-all_utts <- speaker_utts %>%
-  left_join(games %>% select(gameId, condition), by = "gameId") %>%
-  continuous_block() %>%
+all_utts <- speaker_utts |>
+  left_join(games |> select(gameId, condition), by = "gameId") |>
+  continuous_block() |>
   mutate(
     condition = factor(condition, levels = CONDITION_ORDER),
     group = originalGroup,
     block1 = block + 1
   )
 
-len_group_all <- all_utts %>%
-  group_by(condition, gameId, group, block1) %>%
+len_group_all <- all_utts |>
+  group_by(condition, gameId, group, block1) |>
   summarise(mean_length = mean(uttLength, na.rm = TRUE), .groups = "drop")
 
-len_block_all <- all_utts %>%
-  group_by(condition, block1) %>%
-  tidyboot_mean(uttLength, nboot = 1000) %>%
+len_block_all <- all_utts |>
+  group_by(condition, block1) |>
+  tidyboot_mean(uttLength, nboot = 1000) |>
   ungroup()
 
 # (c) Social-signaling accuracy — use continuous block (Phase 2 only)
-social_guesses_cond <- social_guesses %>%
-  filter(!is.na(socialGuessCorrect)) %>%
-  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+social_guesses_cond <- social_guesses |>
+  filter(!is.na(socialGuessCorrect)) |>
+  left_join(games |> select(gameId, condition), by = "gameId") |>
   mutate(
     correct = as.numeric(socialGuessCorrect == TRUE),
     condition = factor(condition, levels = CONDITION_ORDER),
@@ -702,20 +702,20 @@ social_guesses_cond <- social_guesses %>%
     block1 = blockNum + PHASE2_OFFSET + 1  # align to continuous x-axis
   )
 
-sg_group <- social_guesses_cond %>%
-  group_by(condition, gameId, group, block1) %>%
+sg_group <- social_guesses_cond |>
+  group_by(condition, gameId, group, block1) |>
   summarise(mean_acc = mean(correct, na.rm = TRUE), .groups = "drop")
 
-sg_block <- social_guesses_cond %>%
-  group_by(condition, block1) %>%
-  tidyboot_mean(correct, nboot = 1000) %>%
+sg_block <- social_guesses_cond |>
+  group_by(condition, block1) |>
+  tidyboot_mean(correct, nboot = 1000) |>
   ungroup()
 
 # (d) Convention stability (adjacent similarity across both phases)
-all_adjacent <- adjacent_sim %>%
-  filter(!is.na(simAdjacent)) %>%
-  left_join(games %>% select(gameId, condition), by = "gameId") %>%
-  continuous_block() %>%
+all_adjacent <- adjacent_sim |>
+  filter(!is.na(simAdjacent)) |>
+  left_join(games |> select(gameId, condition), by = "gameId") |>
+  continuous_block() |>
   mutate(
     condition = factor(condition, levels = CONDITION_ORDER),
     group = originalGroup,
@@ -784,13 +784,13 @@ p_sg <- ggplot(sg_block, aes(x = block1, y = empirical_stat,
   theme(legend.position = "none")
 
 # --- Panel (d): Convention stability ---
-adj_group_all <- all_adjacent %>%
-  group_by(condition, gameId, group, block1) %>%
+adj_group_all <- all_adjacent |>
+  group_by(condition, gameId, group, block1) |>
   summarise(mean_sim = mean(simAdjacent, na.rm = TRUE), .groups = "drop")
 
-adj_block_all <- all_adjacent %>%
-  group_by(condition, block1) %>%
-  tidyboot_mean(simAdjacent, nboot = 1000) %>%
+adj_block_all <- all_adjacent |>
+  group_by(condition, block1) |>
+  tidyboot_mean(simAdjacent, nboot = 1000) |>
   ungroup()
 
 p_stab <- ggplot(adj_block_all, aes(x = block1, y = empirical_stat,
@@ -866,25 +866,25 @@ if (!has_desc_props || !has_lex_uniq) {
   lex_uniq <- read_csv(file.path(data_dir, "lexical_uniqueness.csv"), show_col_types = FALSE)
 
   # Merge properties + uniqueness, filter to final Phase 1 block, social conditions
-  p1_final_social <- desc_props %>%
+  p1_final_social <- desc_props |>
     left_join(
-      lex_uniq %>% select(gameId, playerId, target, blockNum, phaseNum, uniqueness),
+      lex_uniq |> select(gameId, playerId, target, blockNum, phaseNum, uniqueness),
       by = c("gameId", "playerId", "target", "blockNum", "phaseNum")
-    ) %>%
-    filter(phaseNum == 1) %>%
-    left_join(games %>% select(gameId, condition), by = "gameId") %>%
-    filter(condition %in% c("social_mixed", "social_first")) %>%
-    group_by(gameId, playerId, target) %>%
-    filter(blockNum == max(blockNum)) %>%
-    ungroup() %>%
+    ) |>
+    filter(phaseNum == 1) |>
+    left_join(games |> select(gameId, condition), by = "gameId") |>
+    filter(condition %in% c("social_mixed", "social_first")) |>
+    group_by(gameId, playerId, target) |>
+    filter(blockNum == max(blockNum)) |>
+    ungroup() |>
     mutate(condition = factor(condition, levels = c("social_mixed", "social_first")))
 }
 ```
 
 ```{r h3c-plot, fig.width=14, fig.height=4.5}
 if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
-  p1_h3c <- p1_final_social %>%
-    filter(!is.na(concreteness), !is.na(uniqueness)) %>%
+  p1_h3c <- p1_final_social |>
+    filter(!is.na(concreteness), !is.na(uniqueness)) |>
     select(condition, concreteness, uniqueness, mean_zipf_freq)
 
   # Panel A: Concrete terms
@@ -908,7 +908,7 @@ if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
     theme(legend.position = "none")
 
   # Panel C: Word frequency
-  p_freq <- ggplot(p1_h3c %>% filter(!is.na(mean_zipf_freq)),
+  p_freq <- ggplot(p1_h3c |> filter(!is.na(mean_zipf_freq)),
                    aes(x = condition, y = mean_zipf_freq, fill = condition)) +
     geom_violin(alpha = 0.3) +
     geom_jitter(width = 0.15, size = 1.5, alpha = 0.4) +
@@ -932,8 +932,8 @@ if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
 ```{r h3c-descriptive}
 if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
   cat("=== H3c descriptive statistics (final Phase 1 block, social conditions) ===\n\n")
-  p1_final_social %>%
-    group_by(condition) %>%
+  p1_final_social |>
+    group_by(condition) |>
     summarise(
       n = n(),
       concreteness_M = round(mean(concreteness, na.rm = TRUE), 3),
@@ -943,7 +943,7 @@ if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
       zipf_freq_M = round(mean(mean_zipf_freq, na.rm = TRUE), 3),
       zipf_freq_SD = round(sd(mean_zipf_freq, na.rm = TRUE), 3),
       .groups = "drop"
-    ) %>%
+    ) |>
     knitr::kable()
 }
 ```
@@ -1000,7 +1000,7 @@ if (exists("perm_results")) {
   )
 }
 
-bind_rows(summary_rows) %>%
+bind_rows(summary_rows) |>
   knitr::kable(caption = "Outcome-neutral criteria summary")
 ```
 
@@ -1057,16 +1057,16 @@ if (has_adjacent && exists("m_adjacent")) {
 if (exists("perm_results")) {
   cat(sprintf("\nGroup-specificity: %d/%d games significant (p < .05)\n",
               sum(perm_results$p_value < 0.05), nrow(perm_results)))
-  perm_results %>%
-    left_join(games %>% select(gameId, condition), by = "gameId") %>%
-    select(condition, obs_coefficient, p_value) %>%
-    mutate(across(where(is.numeric), ~round(., 4))) %>%
+  perm_results |>
+    left_join(games |> select(gameId, condition), by = "gameId") |>
+    select(condition, obs_coefficient, p_value) |>
+    mutate(across(where(is.numeric), ~round(., 4))) |>
     print()
 }
 
 # Idle / dropout
-n_idle <- nrow(players %>% filter(idleRounds > 0))
-n_inactive <- nrow(players %>% filter(isActive == FALSE | isActive == "false"))
+n_idle <- nrow(players |> filter(idleRounds > 0))
+n_inactive <- nrow(players |> filter(isActive == FALSE | isActive == "false"))
 cat(sprintf("\nPlayers with idle rounds: %d/%d\n", n_idle, n_players))
 cat(sprintf("Players marked inactive: %d/%d\n", n_inactive, n_players))
 

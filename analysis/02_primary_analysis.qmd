@@ -50,7 +50,7 @@ fit_gs_by_game_window <- function(pw_df) {
   game_ids <- unique(pw_df$gameId)
 
   map_dfr(game_ids, function(gid) {
-    game_data <- pw_df %>% filter(gameId == gid)
+    game_data <- pw_df |> filter(gameId == gid)
 
     if (nrow(game_data) < 5) return(NULL)
     if (n_distinct(game_data$sameGroup) < 2) return(NULL)
@@ -73,26 +73,26 @@ fit_gs_by_game_window <- function(pw_df) {
 }
 
 # Phase 1 final
-gs_p1 <- pairwise_sim %>%
-  filter(window == "phase1_final") %>%
-  fit_gs_by_game_window() %>%
-  rename(gs_phase1 = coefficient, se_phase1 = std_error) %>%
+gs_p1 <- pairwise_sim |>
+  filter(window == "phase1_final") |>
+  fit_gs_by_game_window() |>
+  rename(gs_phase1 = coefficient, se_phase1 = std_error) |>
   select(gameId, gs_phase1, se_phase1)
 
 # Phase 2 final
-gs_p2 <- pairwise_sim %>%
-  filter(window == "phase2_final") %>%
-  fit_gs_by_game_window() %>%
-  rename(gs_phase2 = coefficient, se_phase2 = std_error) %>%
+gs_p2 <- pairwise_sim |>
+  filter(window == "phase2_final") |>
+  fit_gs_by_game_window() |>
+  rename(gs_phase2 = coefficient, se_phase2 = std_error) |>
   select(gameId, gs_phase2, se_phase2)
 
 # Combine
-gs_combined <- gs_p1 %>%
-  inner_join(gs_p2, by = "gameId") %>%
-  left_join(games %>% select(gameId, condition), by = "gameId")
+gs_combined <- gs_p1 |>
+  inner_join(gs_p2, by = "gameId") |>
+  left_join(games |> select(gameId, condition), by = "gameId")
 
 cat("Group-specificity estimates:\n")
-gs_combined %>%
+gs_combined |>
   knitr::kable(digits = 4, caption = "Group-specificity by game and phase")
 } # end has_pairwise
 ```
@@ -108,7 +108,7 @@ Weights: `1 / SE_phase2^2` (inverse variance of Phase 2 estimates).
 if (!exists("gs_combined")) {
   cat("Skipping: no group-specificity data.\n")
 } else {
-gs_combined <- gs_combined %>%
+gs_combined <- gs_combined |>
   mutate(
     weight = 1 / se_phase2^2,
     condition = factor(condition, levels = CONDITION_ORDER)
@@ -174,12 +174,12 @@ if (!exists("gs_combined")) {
   cat("Skipping plot: no group-specificity data.\n")
 } else {
 # Plot 6: Group-specificity Phase 1 vs Phase 2 by condition
-gs_long <- gs_combined %>%
+gs_long <- gs_combined |>
   pivot_longer(
     cols = c(gs_phase1, gs_phase2),
     names_to = "phase",
     values_to = "group_specificity"
-  ) %>%
+  ) |>
   mutate(phase = ifelse(phase == "gs_phase1", "Phase 1", "Phase 2"))
 
 ggplot(gs_long, aes(x = phase, y = group_specificity, group = gameId)) +
@@ -219,7 +219,7 @@ ggplot(gs_combined, aes(x = condition, y = gs_phase2, fill = condition)) +
 ```{r plot-wls-forest, fig.width=7, fig.height=4}
 # Plot 8: WLS coefficient forest plot
 if (!is.null(wls_model)) {
-  wls_coefs <- broom::tidy(wls_model, conf.int = TRUE) %>%
+  wls_coefs <- broom::tidy(wls_model, conf.int = TRUE) |>
     filter(term != "(Intercept)")
 
   ggplot(wls_coefs, aes(x = estimate, y = term)) +
@@ -241,15 +241,15 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
   cat("Skipping plot: no pairwise similarity data.\n")
 } else {
 # Plot 9: Within- vs between-group similarity by condition
-pw_summary <- pairwise_sim %>%
-  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+pw_summary <- pairwise_sim |>
+  left_join(games |> select(gameId, condition), by = "gameId") |>
   mutate(
     groupType = ifelse(sameGroup == 1, "Within-group", "Between-group"),
     phase = ifelse(window == "phase1_final", "Phase 1 final", "Phase 2 final")
   )
 
-pw_means <- pw_summary %>%
-  group_by(condition, phase, groupType) %>%
+pw_means <- pw_summary |>
+  group_by(condition, phase, groupType) |>
   summarise(
     mean_sim = mean(similarity, na.rm = TRUE),
     se_sim = sd(similarity, na.rm = TRUE) / sqrt(n()),
@@ -325,8 +325,8 @@ variance of Phase 1 GS estimates. Contrast: `social_first > social_mixed`.
 if (!exists("gs_combined")) {
   cat("Skipping H3a: no group-specificity data.\n")
 } else {
-  gs_social <- gs_combined %>%
-    filter(condition %in% c("social_mixed", "social_first")) %>%
+  gs_social <- gs_combined |>
+    filter(condition %in% c("social_mixed", "social_first")) |>
     mutate(
       weight_p1 = 1 / se_phase1^2,
       condition = factor(condition, levels = c("social_mixed", "social_first"))
@@ -378,10 +378,10 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
   cat("Skipping H3b: block_pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
 } else {
   # Filter to Phase 1, within-group pairs, social conditions
-  p1_within_social <- block_pairwise_sim %>%
-    filter(phaseNum == 1, sameGroup == 1) %>%
-    left_join(games %>% select(gameId, condition), by = "gameId") %>%
-    filter(condition %in% c("social_mixed", "social_first")) %>%
+  p1_within_social <- block_pairwise_sim |>
+    filter(phaseNum == 1, sameGroup == 1) |>
+    left_join(games |> select(gameId, condition), by = "gameId") |>
+    filter(condition %in% c("social_mixed", "social_first")) |>
     mutate(
       blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
       condition = factor(condition, levels = c("social_mixed", "social_first"))
@@ -409,9 +409,9 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
 
 ```{r plot-h3b, fig.width=8, fig.height=5}
 if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
-  conv_by_block <- p1_within_social %>%
-    filter(!is.na(similarity)) %>%
-    group_by(condition, blockNum) %>%
+  conv_by_block <- p1_within_social |>
+    filter(!is.na(similarity)) |>
+    group_by(condition, blockNum) |>
     tidyboot_mean(similarity, nboot = 1000)
 
   ggplot(conv_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
@@ -464,22 +464,22 @@ if (!has_desc_props || !has_lex_uniq) {
   lex_uniq <- read_csv(file.path(data_dir, "lexical_uniqueness.csv"), show_col_types = FALSE)
 
   # Merge, filter to final Phase 1 block, social conditions only
-  p1_final_social <- desc_props %>%
+  p1_final_social <- desc_props |>
     left_join(
-      lex_uniq %>% select(gameId, playerId, target, blockNum, phaseNum, uniqueness),
+      lex_uniq |> select(gameId, playerId, target, blockNum, phaseNum, uniqueness),
       by = c("gameId", "playerId", "target", "blockNum", "phaseNum")
-    ) %>%
-    filter(phaseNum == 1) %>%
-    left_join(games %>% select(gameId, condition), by = "gameId") %>%
-    filter(condition %in% c("social_mixed", "social_first")) %>%
-    group_by(gameId, playerId, target) %>%
-    filter(blockNum == max(blockNum)) %>%
-    ungroup() %>%
+    ) |>
+    filter(phaseNum == 1) |>
+    left_join(games |> select(gameId, condition), by = "gameId") |>
+    filter(condition %in% c("social_mixed", "social_first")) |>
+    group_by(gameId, playerId, target) |>
+    filter(blockNum == max(blockNum)) |>
+    ungroup() |>
     mutate(condition = factor(condition, levels = c("social_mixed", "social_first")))
 
   if (nrow(p1_final_social) > 0 && n_distinct(p1_final_social$condition) >= 2) {
     # Model: concreteness ~ condition + (1 | participant) + (1 | tangram)
-    p1_concrete <- p1_final_social %>% filter(!is.na(concreteness))
+    p1_concrete <- p1_final_social |> filter(!is.na(concreteness))
     if (nrow(p1_concrete) > 0) {
       m_concrete <- tryCatch(
         lmer(
@@ -499,7 +499,7 @@ if (!has_desc_props || !has_lex_uniq) {
     }
 
     # Model: lexical uniqueness ~ condition + (1 | participant) + (1 | tangram)
-    p1_unique <- p1_final_social %>% filter(!is.na(uniqueness))
+    p1_unique <- p1_final_social |> filter(!is.na(uniqueness))
     if (nrow(p1_unique) > 0) {
       m_uniqueness <- tryCatch(
         lmer(
@@ -519,7 +519,7 @@ if (!has_desc_props || !has_lex_uniq) {
     }
 
     # Model: word frequency ~ condition + (1 | participant) + (1 | tangram)
-    p1_freq <- p1_final_social %>% filter(!is.na(mean_zipf_freq))
+    p1_freq <- p1_final_social |> filter(!is.na(mean_zipf_freq))
     if (nrow(p1_freq) > 0) {
       m_freq <- tryCatch(
         lmer(
@@ -545,7 +545,7 @@ if (!has_desc_props || !has_lex_uniq) {
 
 ```{r plot-h3c, fig.width=14, fig.height=4.5}
 if (exists("p1_final_social") && "concreteness" %in% names(p1_final_social)) {
-  p1_h3c <- p1_final_social %>%
+  p1_h3c <- p1_final_social |>
     filter(!is.na(concreteness), !is.na(uniqueness))
 
   p_concrete <- ggplot(p1_h3c, aes(x = condition, y = concreteness, fill = condition)) +
@@ -566,7 +566,7 @@ if (exists("p1_final_social") && "concreteness" %in% names(p1_final_social)) {
     labs(x = NULL, y = "Proportion", title = "Lexical uniqueness") +
     theme(legend.position = "none")
 
-  p_freq <- ggplot(p1_h3c %>% filter(!is.na(mean_zipf_freq)),
+  p_freq <- ggplot(p1_h3c |> filter(!is.na(mean_zipf_freq)),
                    aes(x = condition, y = mean_zipf_freq, fill = condition)) +
     geom_violin(alpha = 0.3) +
     geom_jitter(width = 0.15, size = 1.2, alpha = 0.3) +
@@ -601,9 +601,9 @@ Contrast: `social_first > social_mixed`.
 
 ```{r h4a-social-accuracy}
 if (nrow(social_guesses) > 0) {
-  social_h4 <- social_guesses %>%
-    left_join(games %>% select(gameId, condition), by = "gameId") %>%
-    filter(condition %in% c("social_mixed", "social_first")) %>%
+  social_h4 <- social_guesses |>
+    left_join(games |> select(gameId, condition), by = "gameId") |>
+    filter(condition %in% c("social_mixed", "social_first")) |>
     mutate(
       correct = as.numeric(socialGuessCorrect == TRUE | socialGuessCorrect == "true"),
       condition = factor(condition, levels = c("social_mixed", "social_first"))
@@ -641,9 +641,9 @@ if (nrow(social_guesses) > 0) {
 
 ```{r plot-h4a, fig.width=6, fig.height=5}
 if (exists("social_h4") && nrow(social_h4) > 0) {
-  h4a_summary <- social_h4 %>%
-    filter(!is.na(correct)) %>%
-    group_by(condition) %>%
+  h4a_summary <- social_h4 |>
+    filter(!is.na(correct)) |>
+    group_by(condition) |>
     tidyboot_mean(correct, nboot = 1000)
 
   ggplot(h4a_summary, aes(x = condition, y = empirical_stat, fill = condition)) +
@@ -668,10 +668,10 @@ if (exists("social_h4") && nrow(social_h4) > 0) {
 Contrast: `social_mixed > social_first` (lower ref accuracy expected in social_first).
 
 ```{r h4b-ref-accuracy}
-p2_listener_social <- trials %>%
-  filter(phaseNum == 2, role == "listener") %>%
-  left_join(games %>% select(gameId, condition), by = "gameId") %>%
-  filter(condition %in% c("social_mixed", "social_first")) %>%
+p2_listener_social <- trials |>
+  filter(phaseNum == 2, role == "listener") |>
+  left_join(games |> select(gameId, condition), by = "gameId") |>
+  filter(condition %in% c("social_mixed", "social_first")) |>
   mutate(
     correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
     condition = factor(condition, levels = c("social_mixed", "social_first"))
@@ -706,9 +706,9 @@ if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 
 
 ```{r plot-h4b, fig.width=6, fig.height=5}
 if (exists("p2_listener_social") && nrow(p2_listener_social) > 0) {
-  h4b_summary <- p2_listener_social %>%
-    filter(!is.na(correct)) %>%
-    group_by(condition) %>%
+  h4b_summary <- p2_listener_social |>
+    filter(!is.na(correct)) |>
+    group_by(condition) |>
     tidyboot_mean(correct, nboot = 1000)
 
   ggplot(h4b_summary, aes(x = condition, y = empirical_stat, fill = condition)) +

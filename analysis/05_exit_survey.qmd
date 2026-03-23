@@ -24,13 +24,13 @@ games <- read_csv(
 )
 
 # Keep only players from real games (non-NA condition) with survey data
-real_game_ids <- games %>% filter(!is.na(condition)) %>% pull(gameId)
+real_game_ids <- games |> filter(!is.na(condition)) |> pull(gameId)
 
-survey <- players_raw %>%
-  filter(gameId %in% real_game_ids) %>%
-  filter(!is.na(exitSurvey_age)) %>%
-  left_join(games %>% select(gameId, condition), by = "gameId") %>%
-  rename_with(~ str_remove(., "^exitSurvey_")) %>%
+survey <- players_raw |>
+  filter(gameId %in% real_game_ids) |>
+  filter(!is.na(exitSurvey_age)) |>
+  left_join(games |> select(gameId, condition), by = "gameId") |>
+  rename_with(~ str_remove(., "^exitSurvey_")) |>
   mutate(gender = str_to_lower(gender))
 
 cat("Players with survey data:", nrow(survey), "\n")
@@ -40,8 +40,8 @@ cat("Conditions:", paste(unique(survey$condition), collapse = ", "), "\n")
 # Demographics
 
 ```{r age-summary}
-survey %>%
-  group_by(condition) %>%
+survey |>
+  group_by(condition) |>
   summarise(
     n = n(),
     mean = mean(age),
@@ -49,13 +49,13 @@ survey %>%
     min = min(age),
     max = max(age),
     .groups = "drop"
-  ) %>%
+  ) |>
   knitr::kable(caption = "Age summary by condition")
 ```
 
 ```{r gender}
-survey %>%
-  count(condition, gender) %>%
+survey |>
+  count(condition, gender) |>
   knitr::kable(caption = "Gender distribution by condition")
 
 ggplot(survey, aes(x = gender, fill = originalGroup)) +
@@ -66,8 +66,8 @@ ggplot(survey, aes(x = gender, fill = originalGroup)) +
 ```
 
 ```{r education}
-survey %>%
-  count(condition, education) %>%
+survey |>
+  count(condition, education) |>
   knitr::kable(caption = "Education distribution by condition")
 
 ggplot(survey, aes(x = education, fill = originalGroup)) +
@@ -80,36 +80,36 @@ ggplot(survey, aes(x = education, fill = originalGroup)) +
 # Comprehension & Pay Fairness
 
 ```{r comprehension-fairness}
-survey %>%
-  select(condition, playerId, originalName, originalGroup, understood, fair) %>%
-  arrange(condition, originalGroup) %>%
+survey |>
+  select(condition, playerId, originalName, originalGroup, understood, fair) |>
+  arrange(condition, originalGroup) |>
   knitr::kable(caption = "Comprehension and pay fairness")
 ```
 
 # Strategy
 
 ```{r strategy}
-survey %>%
-  select(condition, playerId, originalName, originalGroup, strength) %>%
-  arrange(condition, originalGroup) %>%
+survey |>
+  select(condition, playerId, originalName, originalGroup, strength) |>
+  arrange(condition, originalGroup) |>
   knitr::kable(caption = "Strategy descriptions")
 ```
 
 # Open Feedback
 
 ```{r feedback}
-survey %>%
-  select(condition, playerId, originalName, originalGroup, feedback) %>%
-  arrange(condition, originalGroup) %>%
+survey |>
+  select(condition, playerId, originalName, originalGroup, feedback) |>
+  arrange(condition, originalGroup) |>
   knitr::kable(caption = "Open feedback")
 ```
 
 # Full Response Table
 
 ```{r full-table}
-survey %>%
+survey |>
   select(condition, playerId, originalName, originalGroup, age, gender, education,
-         understood, fair, strength, feedback) %>%
-  arrange(condition, originalGroup) %>%
+         understood, fair, strength, feedback) |>
+  arrange(condition, originalGroup) |>
   knitr::kable(caption = "All exit survey responses")
 ```

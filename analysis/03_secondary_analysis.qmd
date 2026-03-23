@@ -37,7 +37,7 @@ Higher similarity = less semantic change.
 if (!has_phase_change || nrow(phase_change) == 0) {
   cat("Skipping: phase_change_similarities.csv not found. Run compute_embeddings.py first.\n")
 } else {
-phase_change <- phase_change %>%
+phase_change <- phase_change |>
   mutate(condition = factor(condition, levels = CONDITION_ORDER))
 
 if (n_conditions >= 2) {
@@ -84,12 +84,12 @@ ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) 
 
 ```{r prep-accuracy}
 # Phase 2 listener accuracy — trial-level binary outcome
-p2_listener <- trials %>%
-  filter(phaseNum == 2, role == "listener") %>%
+p2_listener <- trials |>
+  filter(phaseNum == 2, role == "listener") |>
   mutate(
     correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true")
-  ) %>%
-  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+  ) |>
+  left_join(games |> select(gameId, condition), by = "gameId") |>
   mutate(
     blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
     condition = factor(condition, levels = CONDITION_ORDER)
@@ -138,9 +138,9 @@ summary(m_ref_accuracy)
 
 ```{r plot-accuracy, fig.width=8, fig.height=5}
 # Plot 11: Referential accuracy over Phase 2 blocks by condition
-acc_by_block <- p2_listener %>%
-  filter(!is.na(correct)) %>%
-  group_by(condition, blockNum) %>%
+acc_by_block <- p2_listener |>
+  filter(!is.na(correct)) |>
+  group_by(condition, blockNum) |>
   tidyboot_mean(correct, nboot = 1000)
 
 ggplot(acc_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
@@ -167,22 +167,22 @@ ggplot(acc_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
 Within `social_mixed` and `social_first`: do listeners understand in-group speakers better?
 
 ```{r model-ingroup}
-social_listener <- trials %>%
-  filter(phaseNum == 2, role == "listener") %>%
-  left_join(games %>% select(gameId, condition), by = "gameId") %>%
-  filter(condition %in% c("social_mixed", "social_first")) %>%
+social_listener <- trials |>
+  filter(phaseNum == 2, role == "listener") |>
+  left_join(games |> select(gameId, condition), by = "gameId") |>
+  filter(condition %in% c("social_mixed", "social_first")) |>
   mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"))
 
 if (nrow(social_listener) > 0) {
   # Determine in-group status: listener's original group matches speaker's original group
-  speaker_groups <- trials %>%
-    filter(role == "speaker") %>%
-    select(gameId, roundId, playerId, originalGroup) %>%
-    rename(speakerId = playerId, speakerGroup = originalGroup) %>%
+  speaker_groups <- trials |>
+    filter(role == "speaker") |>
+    select(gameId, roundId, playerId, originalGroup) |>
+    rename(speakerId = playerId, speakerGroup = originalGroup) |>
     distinct()
 
-  social_listener <- social_listener %>%
-    left_join(speaker_groups, by = c("gameId", "roundId")) %>%
+  social_listener <- social_listener |>
+    left_join(speaker_groups, by = c("gameId", "roundId")) |>
     mutate(inGroupSpeaker = as.numeric(originalGroup == speakerGroup))
 
   # Paper formula: ref_correct ~ in_group_speaker + (1 | speaker) + (1 | listener) + (1 | tangram)
@@ -211,10 +211,10 @@ if (nrow(social_listener) > 0) {
 # Plot 12: In-group vs out-group accuracy (social conditions)
 if (exists("social_listener") && nrow(social_listener) > 0 &&
     "inGroupSpeaker" %in% names(social_listener)) {
-  ingroup_acc <- social_listener %>%
-    filter(!is.na(correct), !is.na(inGroupSpeaker)) %>%
-    mutate(speaker_type = ifelse(inGroupSpeaker == 1, "In-group", "Out-group")) %>%
-    group_by(speaker_type) %>%
+  ingroup_acc <- social_listener |>
+    filter(!is.na(correct), !is.na(inGroupSpeaker)) |>
+    mutate(speaker_type = ifelse(inGroupSpeaker == 1, "In-group", "Out-group")) |>
+    group_by(speaker_type) |>
     tidyboot_mean(correct, nboot = 1000)
 
   ggplot(ingroup_acc, aes(x = speaker_type, y = empirical_stat, fill = speaker_type)) +
@@ -233,10 +233,10 @@ if (exists("social_listener") && nrow(social_listener) > 0 &&
 if (exists("social_listener") && nrow(social_listener) > 0 &&
     "inGroupSpeaker" %in% names(social_listener) &&
     n_distinct(social_listener$condition) >= 2) {
-  ingroup_by_cond <- social_listener %>%
-    filter(!is.na(correct), !is.na(inGroupSpeaker)) %>%
-    mutate(speaker_type = ifelse(inGroupSpeaker == 1, "In-group", "Out-group")) %>%
-    group_by(condition, speaker_type) %>%
+  ingroup_by_cond <- social_listener |>
+    filter(!is.na(correct), !is.na(inGroupSpeaker)) |>
+    mutate(speaker_type = ifelse(inGroupSpeaker == 1, "In-group", "Out-group")) |>
+    group_by(condition, speaker_type) |>
     tidyboot_mean(correct, nboot = 1000)
 
   ggplot(ingroup_by_cond, aes(x = speaker_type, y = empirical_stat, fill = speaker_type)) +
@@ -263,17 +263,17 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
   cat("Skipping: pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
 } else if (nrow(social_guesses) > 0) {
   # Compute mean social accuracy per game
-  social_acc_by_game <- social_guesses %>%
+  social_acc_by_game <- social_guesses |>
     mutate(correct = as.numeric(
       socialGuessCorrect == TRUE | socialGuessCorrect == "true"
-    )) %>%
-    group_by(gameId) %>%
+    )) |>
+    group_by(gameId) |>
     summarise(social_accuracy = mean(correct, na.rm = TRUE), .groups = "drop")
 
   # Get Phase 2 group-specificity per game
-  gs_p2 <- pairwise_sim %>%
-    filter(window == "phase2_final") %>%
-    group_by(gameId) %>%
+  gs_p2 <- pairwise_sim |>
+    filter(window == "phase2_final") |>
+    group_by(gameId) |>
     group_modify(~ {
       if (nrow(.x) < 5 || n_distinct(.x$sameGroup) < 2) return(tibble())
       tryCatch({
@@ -283,13 +283,13 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
         )
         tibble(gs_phase2 = coef(summary(model))["sameGroup", "Estimate"])
       }, error = function(e) tibble())
-    }) %>%
+    }) |>
     ungroup()
 
   # Get Phase 1 group-specificity
-  gs_p1 <- pairwise_sim %>%
-    filter(window == "phase1_final") %>%
-    group_by(gameId) %>%
+  gs_p1 <- pairwise_sim |>
+    filter(window == "phase1_final") |>
+    group_by(gameId) |>
     group_modify(~ {
       if (nrow(.x) < 5 || n_distinct(.x$sameGroup) < 2) return(tibble())
       tryCatch({
@@ -299,11 +299,11 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
         )
         tibble(gs_phase1 = coef(summary(model))["sameGroup", "Estimate"])
       }, error = function(e) tibble())
-    }) %>%
+    }) |>
     ungroup()
 
-  gs_social <- gs_p2 %>%
-    inner_join(gs_p1, by = "gameId") %>%
+  gs_social <- gs_p2 |>
+    inner_join(gs_p1, by = "gameId") |>
     inner_join(social_acc_by_game, by = "gameId")
 
   if (nrow(gs_social) >= 3) {
@@ -340,7 +340,7 @@ Does social identification improve over blocks?
 
 ```{r model-social-accuracy}
 if (nrow(social_guesses) > 0) {
-  social_guesses_model <- social_guesses %>%
+  social_guesses_model <- social_guesses |>
     mutate(
       correct = as.numeric(
         socialGuessCorrect == TRUE | socialGuessCorrect == "true"
@@ -382,12 +382,12 @@ if (nrow(social_guesses) > 0) {
 ```{r plot-social-accuracy, fig.width=7, fig.height=4}
 # Plot 14: Social-signaling accuracy over blocks (pooled)
 if (nrow(social_guesses) > 0) {
-  social_by_block <- social_guesses %>%
+  social_by_block <- social_guesses |>
     mutate(correct = as.numeric(
       socialGuessCorrect == TRUE | socialGuessCorrect == "true"
-    )) %>%
-    filter(!is.na(correct)) %>%
-    group_by(blockNum) %>%
+    )) |>
+    filter(!is.na(correct)) |>
+    group_by(blockNum) |>
     tidyboot_mean(correct, nboot = 1000)
 
   ggplot(social_by_block, aes(x = blockNum, y = empirical_stat)) +
@@ -410,17 +410,17 @@ if (nrow(social_guesses) > 0) {
 ```{r plot-social-accuracy-by-condition, fig.width=8, fig.height=5}
 # Social accuracy trajectories by condition (paper: compare across social conditions)
 if (nrow(social_guesses) > 0) {
-  social_with_cond <- social_guesses %>%
-    left_join(games %>% select(gameId, condition), by = "gameId") %>%
-    filter(condition %in% c("social_mixed", "social_first")) %>%
+  social_with_cond <- social_guesses |>
+    left_join(games |> select(gameId, condition), by = "gameId") |>
+    filter(condition %in% c("social_mixed", "social_first")) |>
     mutate(correct = as.numeric(
       socialGuessCorrect == TRUE | socialGuessCorrect == "true"
     ))
 
   if (n_distinct(social_with_cond$condition) >= 2) {
-    social_by_block_cond <- social_with_cond %>%
-      filter(!is.na(correct)) %>%
-      group_by(condition, blockNum) %>%
+    social_by_block_cond <- social_with_cond |>
+      filter(!is.na(correct)) |>
+      group_by(condition, blockNum) |>
       tidyboot_mean(correct, nboot = 1000)
 
     ggplot(social_by_block_cond, aes(x = blockNum, y = empirical_stat,
@@ -448,14 +448,14 @@ if (nrow(social_guesses) > 0) {
 How does description length evolve across Phase 2 blocks by condition?
 
 ```{r plot-utt-length-phase2, fig.width=8, fig.height=5}
-p2_utts <- speaker_utts %>%
-  filter(phaseNum == 2) %>%
-  left_join(games %>% select(gameId, condition), by = "gameId") %>%
+p2_utts <- speaker_utts |>
+  filter(phaseNum == 2) |>
+  left_join(games |> select(gameId, condition), by = "gameId") |>
   mutate(condition = factor(condition, levels = CONDITION_ORDER))
 
 if (nrow(p2_utts) > 0) {
-  length_by_block_cond <- p2_utts %>%
-    group_by(condition, blockNum) %>%
+  length_by_block_cond <- p2_utts |>
+    group_by(condition, blockNum) |>
     tidyboot_mean(uttLength, nboot = 1000)
 
   ggplot(length_by_block_cond, aes(x = blockNum, y = empirical_stat,

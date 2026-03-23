@@ -84,7 +84,7 @@ scale_fill_group <- function(...) {
 # ── Helper functions ────────────────────────────────────────
 
 continuous_block <- function(df) {
-  df %>% mutate(block = blockNum + (phaseNum == 2) * PHASE2_OFFSET)
+  df |> mutate(block = blockNum + (phaseNum == 2) * PHASE2_OFFSET)
 }
 
 format_condition <- function(x) {

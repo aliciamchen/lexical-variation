@@ -5,7 +5,7 @@ fit_group_specificity_by_game <- function(pairwise_df, condition_name) {
   games <- unique(pairwise_df$gameId)
 
   results <- purrr::map_dfr(games, function(game) {
-    game_data <- pairwise_df %>% filter(gameId == game)
+    game_data <- pairwise_df |> filter(gameId == game)
 
     # Skip if not enough data
     if (nrow(game_data) < 5) return(NULL)

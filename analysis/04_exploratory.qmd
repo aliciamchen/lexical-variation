@@ -23,26 +23,26 @@ adjacent_sim <- if (has_adjacent) read_csv(file.path(data_dir, "adjacent_similar
 
 ```{r prep-data}
 # Add condition and compute global block number (blockNum resets per phase)
-utts_with_condition <- speaker_utts %>%
-  left_join(games %>% select(gameId, condition, phase1Blocks), by = "gameId") %>%
+utts_with_condition <- speaker_utts |>
+  left_join(games |> select(gameId, condition, phase1Blocks), by = "gameId") |>
   mutate(
     condition = factor(condition, levels = CONDITION_ORDER),
     globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
   )
 
-listener_trials <- trials %>%
-  filter(role == "listener") %>%
-  mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true")) %>%
-  filter(!is.na(correct)) %>%
-  left_join(games %>% select(gameId, condition, phase1Blocks), by = "gameId") %>%
+listener_trials <- trials |>
+  filter(role == "listener") |>
+  mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true")) |>
+  filter(!is.na(correct)) |>
+  left_join(games |> select(gameId, condition, phase1Blocks), by = "gameId") |>
   mutate(
     condition = factor(condition, levels = CONDITION_ORDER),
     globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
   )
 
 if (has_adjacent && nrow(adjacent_sim) > 0) {
-  adj_with_condition <- adjacent_sim %>%
-    left_join(games %>% select(gameId, condition, phase1Blocks), by = "gameId") %>%
+  adj_with_condition <- adjacent_sim |>
+    left_join(games |> select(gameId, condition, phase1Blocks), by = "gameId") |>
     mutate(
       condition = factor(condition, levels = CONDITION_ORDER),
       globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
@@ -53,8 +53,8 @@ if (has_adjacent && nrow(adjacent_sim) > 0) {
 # 1. Description Length in Phase 2 by Condition
 
 ```{r model-phase2-length}
-p2_utts <- utts_with_condition %>%
-  filter(phaseNum == 2) %>%
+p2_utts <- utts_with_condition |>
+  filter(phaseNum == 2) |>
   mutate(
     blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
     log_uttLength = log(uttLength + 1)
@@ -85,9 +85,9 @@ summary(m_p2_length)
 phase_boundary <- games$phase1Blocks[1] - 0.5
 
 # Plot 15: Description length over ALL blocks by condition
-length_all <- utts_with_condition %>%
-  filter(!is.na(uttLength)) %>%
-  group_by(condition, globalBlock) %>%
+length_all <- utts_with_condition |>
+  filter(!is.na(uttLength)) |>
+  group_by(condition, globalBlock) |>
   tidyboot_mean(uttLength, nboot = 1000)
 
 p_length <- ggplot(length_all, aes(x = globalBlock, y = empirical_stat, color = condition)) +
@@ -104,9 +104,9 @@ p_length <- ggplot(length_all, aes(x = globalBlock, y = empirical_stat, color = 
   theme(legend.position = "bottom")
 
 # Plot 16a: Referential accuracy over all blocks
-acc_all <- listener_trials %>%
-  filter(!is.na(correct)) %>%
-  group_by(condition, globalBlock) %>%
+acc_all <- listener_trials |>
+  filter(!is.na(correct)) |>
+  group_by(condition, globalBlock) |>
   tidyboot_mean(correct, nboot = 1000)
 
 p_acc <- ggplot(acc_all, aes(x = globalBlock, y = empirical_stat, color = condition)) +
@@ -124,9 +124,9 @@ p_acc <- ggplot(acc_all, aes(x = globalBlock, y = empirical_stat, color = condit
 
 # Plot 16b: Adjacent similarity over all blocks
 if (exists("adj_with_condition")) {
-  adj_all <- adj_with_condition %>%
-    filter(!is.na(simAdjacent)) %>%
-    group_by(condition, globalBlock) %>%
+  adj_all <- adj_with_condition |>
+    filter(!is.na(simAdjacent)) |>
+    group_by(condition, globalBlock) |>
     tidyboot_mean(simAdjacent, nboot = 1000)
 
   p_sim <- ggplot(adj_all, aes(x = globalBlock, y = empirical_stat, color = condition)) +
@@ -165,11 +165,11 @@ if (has_umap) {
 
   # Add condition from games if not present
   if (!"condition" %in% names(umap_data)) {
-    umap_data <- umap_data %>%
-      left_join(games %>% select(gameId, condition), by = "gameId")
+    umap_data <- umap_data |>
+      left_join(games |> select(gameId, condition), by = "gameId")
   }
 
-  umap_data <- umap_data %>%
+  umap_data <- umap_data |>
     mutate(
       condition = factor(condition, levels = CONDITION_ORDER),
       phase_label = ifelse(phaseNum == 1, "Phase 1", "Phase 2")
@@ -194,15 +194,15 @@ if (has_umap) {
 ```{r plot-umap-example, fig.width=14, fig.height=8}
 # Plot 18: Example game trajectory
 if (has_umap && exists("umap_data")) {
-  example_game <- umap_data %>%
-    count(gameId) %>%
-    filter(n >= 20) %>%
-    slice(1) %>%
+  example_game <- umap_data |>
+    count(gameId) |>
+    filter(n >= 20) |>
+    slice(1) |>
     pull(gameId)
 
   if (length(example_game) > 0) {
-    example_data <- umap_data %>%
-      filter(gameId == example_game) %>%
+    example_data <- umap_data |>
+      filter(gameId == example_game) |>
       mutate(globalBlock = ifelse(phaseNum == 1, blockNum,
                                    blockNum + games$phase1Blocks[1]))
 
@@ -237,7 +237,7 @@ body_words <- c(
   "dancing", "jumping", "kicking", "reaching", "bending"
 )
 
-utts_props <- utts_with_condition %>%
+utts_props <- utts_with_condition |>
   mutate(
     utt_lower = str_to_lower(utterance),
     n_geometric = map_int(utt_lower, ~sum(str_count(.x, paste0("\\b", geometric_words, "\\b")))),
@@ -247,30 +247,30 @@ utts_props <- utts_with_condition %>%
   )
 
 # Summary by condition and phase
-utts_props %>%
-  group_by(condition, phaseNum) %>%
+utts_props |>
+  group_by(condition, phaseNum) |>
   summarise(
     mean_geometric = mean(prop_geometric, na.rm = TRUE),
     mean_body = mean(prop_body, na.rm = TRUE),
     mean_length = mean(uttLength, na.rm = TRUE),
     .groups = "drop"
-  ) %>%
+  ) |>
   knitr::kable(digits = 3,
     caption = "Utterance properties by condition and phase")
 ```
 
 ```{r plot-word-types, fig.width=10, fig.height=5}
-props_long <- utts_props %>%
-  select(condition, phaseNum, blockNum, prop_geometric, prop_body) %>%
+props_long <- utts_props |>
+  select(condition, phaseNum, blockNum, prop_geometric, prop_body) |>
   pivot_longer(
     cols = c(prop_geometric, prop_body),
     names_to = "word_type",
     values_to = "proportion"
-  ) %>%
+  ) |>
   mutate(word_type = ifelse(word_type == "prop_geometric", "Geometric", "Body-part"))
 
-props_by_block <- props_long %>%
-  group_by(condition, blockNum, word_type) %>%
+props_by_block <- props_long |>
+  group_by(condition, blockNum, word_type) |>
   summarise(
     mean_prop = mean(proportion, na.rm = TRUE),
     se_prop = sd(proportion, na.rm = TRUE) / sqrt(n()),

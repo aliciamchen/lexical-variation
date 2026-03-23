@@ -28,8 +28,8 @@ pairwise_sim <- if (has_pairwise) read_csv(file.path(data_dir, "pairwise_similar
 
 ```{r prep-data}
 # Phase 1 speaker utterances only
-p1_utts <- speaker_utts %>%
-  filter(phaseNum == 1) %>%
+p1_utts <- speaker_utts |>
+  filter(phaseNum == 1) |>
   mutate(
     blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
     log_uttLength = log(uttLength + 1),
@@ -39,8 +39,8 @@ p1_utts <- speaker_utts %>%
   )
 
 # Phase 1 listener trials: compute per-trial accuracy
-p1_listener <- trials %>%
-  filter(phaseNum == 1, role == "listener") %>%
+p1_listener <- trials |>
+  filter(phaseNum == 1, role == "listener") |>
   mutate(
     correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
     group = originalGroup,
@@ -48,20 +48,20 @@ p1_listener <- trials %>%
   )
 
 # Aggregate to per-round accuracy (proportion of listeners correct)
-p1_ref_accuracy <- p1_listener %>%
-  group_by(gameId, roundId, blockNum, tangram, group) %>%
+p1_ref_accuracy <- p1_listener |>
+  group_by(gameId, roundId, blockNum, tangram, group) |>
   summarise(
     ref_accuracy = mean(correct, na.rm = TRUE),
     .groups = "drop"
-  ) %>%
+  ) |>
   mutate(
     blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
   )
 
 # Phase 1 adjacent similarities (phaseNum is in the CSV)
 if (has_adjacent) {
-  p1_adjacent <- adjacent_sim %>%
-    filter(phaseNum == 1) %>%
+  p1_adjacent <- adjacent_sim |>
+    filter(phaseNum == 1) |>
     mutate(
       blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
       participant = playerId,
@@ -87,12 +87,12 @@ summary(m_length)
 
 ```{r plot-utt-length, fig.width=7, fig.height=4}
 # Plot 1: Description length over blocks (by blockNum, not repNum)
-length_by_group <- p1_utts %>%
-  group_by(gameId, group, blockNum) %>%
+length_by_group <- p1_utts |>
+  group_by(gameId, group, blockNum) |>
   summarise(mean_length = mean(uttLength, na.rm = TRUE), .groups = "drop")
 
-length_by_block <- p1_utts %>%
-  group_by(blockNum) %>%
+length_by_block <- p1_utts |>
+  group_by(blockNum) |>
   tidyboot_mean(uttLength, nboot = 1000)
 
 ggplot(length_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
@@ -126,14 +126,14 @@ summary(m_accuracy)
 
 ```{r plot-accuracy, fig.width=7, fig.height=4}
 # Plot 2: Listener accuracy over blocks
-acc_by_group <- p1_ref_accuracy %>%
-  filter(!is.na(ref_accuracy)) %>%
-  group_by(gameId, group, blockNum) %>%
+acc_by_group <- p1_ref_accuracy |>
+  filter(!is.na(ref_accuracy)) |>
+  group_by(gameId, group, blockNum) |>
   summarise(mean_acc = mean(ref_accuracy, na.rm = TRUE), .groups = "drop")
 
-acc_by_block <- p1_ref_accuracy %>%
-  filter(!is.na(ref_accuracy), !is.na(blockNum)) %>%
-  group_by(blockNum) %>%
+acc_by_block <- p1_ref_accuracy |>
+  filter(!is.na(ref_accuracy), !is.na(blockNum)) |>
+  group_by(blockNum) |>
   tidyboot_mean(ref_accuracy, nboot = 1000)
 
 ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
@@ -161,7 +161,7 @@ ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
 
 ```{r model-adjacent-sim}
 if (has_adjacent) {
-  p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent))
+  p1_adjacent_valid <- p1_adjacent |> filter(!is.na(simAdjacent))
 
   m_adjacent <- lmer(
     simAdjacent ~ blockNum_c + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram),
@@ -178,12 +178,12 @@ if (has_adjacent) {
 ```{r plot-adjacent-sim, fig.width=7, fig.height=4}
 if (has_adjacent && exists("p1_adjacent_valid")) {
   # Plot 3: Adjacent similarity over blocks
-  sim_by_group <- p1_adjacent_valid %>%
-    group_by(gameId, group, blockNum) %>%
+  sim_by_group <- p1_adjacent_valid |>
+    group_by(gameId, group, blockNum) |>
     summarise(mean_sim = mean(simAdjacent, na.rm = TRUE), .groups = "drop")
 
-  sim_by_block <- p1_adjacent_valid %>%
-    group_by(blockNum) %>%
+  sim_by_block <- p1_adjacent_valid |>
+    group_by(blockNum) |>
     tidyboot_mean(simAdjacent, nboot = 1000)
 
   ggplot(sim_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
@@ -213,7 +213,7 @@ if (!has_pairwise) {
   cat("Skipping: pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
 } else {
 # Use Phase 1 final pairwise similarities
-p1_pairwise <- pairwise_sim %>% filter(window == "phase1_final")
+p1_pairwise <- pairwise_sim |> filter(window == "phase1_final")
 
 if (nrow(p1_pairwise) > 0) {
   # Uses cached RDS if available; pass force = TRUE to recompute
@@ -225,8 +225,8 @@ if (nrow(p1_pairwise) > 0) {
   print(gs_results)
 
   cat("\nPermutation test results:\n")
-  perm_results %>%
-    select(gameId, obs_coefficient, perm_mean, p_value) %>%
+  perm_results |>
+    select(gameId, obs_coefficient, perm_mean, p_value) |>
     knitr::kable(digits = 4)
 
   prop_significant <- mean(perm_results$p_value < 0.05)
@@ -243,8 +243,8 @@ if (nrow(p1_pairwise) > 0) {
 ```{r plot-permutation, fig.width=10, fig.height=6}
 # Plot 4: Permutation test histograms
 if (exists("perm_results") && nrow(perm_results) > 0) {
-  perm_plot_data <- perm_results %>%
-    unnest(perm_coefs) %>%
+  perm_plot_data <- perm_results |>
+    unnest(perm_coefs) |>
     rename(perm_coef = perm_coefs)
 
   ggplot(perm_plot_data, aes(x = perm_coef)) +
@@ -263,8 +263,8 @@ if (exists("perm_results") && nrow(perm_results) > 0) {
 # Plot 5: Group-specificity summary dot plot
 if (exists("gs_results") && nrow(gs_results) > 0) {
   # Join condition info
-  gs_with_condition <- gs_results %>%
-    left_join(games %>% select(gameId, condition), by = "gameId")
+  gs_with_condition <- gs_results |>
+    left_join(games |> select(gameId, condition), by = "gameId")
 
   ggplot(gs_with_condition, aes(x = condition, y = coefficient)) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
