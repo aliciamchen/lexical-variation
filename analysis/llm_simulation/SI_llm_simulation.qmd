@@ -237,7 +237,7 @@ save_fig(p_heat, "SI_llm_exclusion_heatmap.pdf",
 Three-panel figure matching the structure of the pilot outcome-neutral criteria
 plots: description length, listener accuracy, and convention stability.
 
-```{r panel-figure, fig.width=14, fig.height=4.5}
+```{r panel-figure, fig.width=14, fig.height=5.5}
 library(patchwork)
 
 PILOT_COLOR <- "black"
@@ -273,7 +273,7 @@ p_sim2 <- if (has_similarity) p_sim else NULL
 
 legend_scale <- scale_color_manual(
   name = NULL,
-  values = c("LLM (Gemini 3.1 Pro)" = LLM_COLOR, "Human (pilot)" = PILOT_COLOR),
+  values = c("Gemini 3.1 Pro" = LLM_COLOR, "Humans (pilot)" = PILOT_COLOR),
   guide = guide_legend(override.aes = list(linewidth = 1, size = 2.5))
 )
 
@@ -282,11 +282,11 @@ add_llm_legend <- function(p, summary_df, x_col, y_col, group_df = NULL, group_y
   p <- p +
     geom_line(data = summary_df,
               aes(x = .data[[x_col]], y = .data[[y_col]],
-                  color = "LLM (Gemini 3.1 Pro)"),
+                  color = "Gemini 3.1 Pro"),
               linewidth = 1, inherit.aes = FALSE) +
     geom_point(data = summary_df,
                aes(x = .data[[x_col]], y = .data[[y_col]],
-                   color = "LLM (Gemini 3.1 Pro)"),
+                   color = "Gemini 3.1 Pro"),
                size = 2.5, inherit.aes = FALSE)
   p
 }
@@ -300,10 +300,10 @@ p_wc2 <- ggplot() +
   geom_ribbon(data = wc_summary, aes(x = block_num + 1, ymin = ci_lower, ymax = ci_upper),
               fill = LLM_COLOR, alpha = 0.15) +
   geom_line(data = llm_wc_for_legend,
-            aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+            aes(x = block1, y = empirical_stat, color = "Gemini 3.1 Pro"),
             linewidth = 1) +
   geom_point(data = llm_wc_for_legend,
-             aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+             aes(x = block1, y = empirical_stat, color = "Gemini 3.1 Pro"),
              size = 2.5) +
   scale_x_continuous(breaks = 1:6, labels = as.integer) +
   labs(x = "Block", y = "Words per description", title = "Description length") +
@@ -317,10 +317,10 @@ p_acc2 <- ggplot() +
   geom_ribbon(data = acc_summary, aes(x = block_num + 1, ymin = ci_lower, ymax = ci_upper),
               fill = LLM_COLOR, alpha = 0.15) +
   geom_line(data = llm_acc_for_legend,
-            aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+            aes(x = block1, y = empirical_stat, color = "Gemini 3.1 Pro"),
             linewidth = 1) +
   geom_point(data = llm_acc_for_legend,
-             aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+             aes(x = block1, y = empirical_stat, color = "Gemini 3.1 Pro"),
              size = 2.5) +
   geom_hline(yintercept = 2/3, linetype = "dashed", color = "red", alpha = 0.7) +
   geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
@@ -339,10 +339,10 @@ if (has_similarity) {
     geom_ribbon(data = sim_summary, aes(x = block_num + 1, ymin = ci_lower, ymax = ci_upper),
                 fill = LLM_COLOR, alpha = 0.15) +
     geom_line(data = llm_sim_for_legend,
-              aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+              aes(x = block1, y = empirical_stat, color = "Gemini 3.1 Pro"),
               linewidth = 1) +
     geom_point(data = llm_sim_for_legend,
-               aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+               aes(x = block1, y = empirical_stat, color = "Gemini 3.1 Pro"),
                size = 2.5) +
     scale_x_continuous(breaks = 1:6, labels = as.integer, limits = c(1, 6)) +
     scale_y_continuous(limits = c(0, 1)) +
@@ -357,10 +357,10 @@ if (has_pilot) {
                 aes(x = block1, ymin = ci_lower, ymax = ci_upper),
                 fill = PILOT_COLOR, alpha = 0.08) +
     geom_line(data = pilot_wc_summary,
-              aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+              aes(x = block1, y = empirical_stat, color = "Humans (pilot)"),
               linewidth = 1) +
     geom_point(data = pilot_wc_summary,
-               aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+               aes(x = block1, y = empirical_stat, color = "Humans (pilot)"),
                size = 2.5)
 
   p_acc2 <- p_acc2 +
@@ -368,10 +368,10 @@ if (has_pilot) {
                 aes(x = block1, ymin = ci_lower, ymax = ci_upper),
                 fill = PILOT_COLOR, alpha = 0.08) +
     geom_line(data = pilot_acc_summary,
-              aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+              aes(x = block1, y = empirical_stat, color = "Humans (pilot)"),
               linewidth = 1) +
     geom_point(data = pilot_acc_summary,
-               aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+               aes(x = block1, y = empirical_stat, color = "Humans (pilot)"),
                size = 2.5)
 
   if (!is.null(p_sim2) && pilot_has_adjacent) {
@@ -380,10 +380,10 @@ if (has_pilot) {
                   aes(x = block1, ymin = ci_lower, ymax = ci_upper),
                   fill = PILOT_COLOR, alpha = 0.08) +
       geom_line(data = pilot_sim_summary,
-                aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+                aes(x = block1, y = empirical_stat, color = "Humans (pilot)"),
                 linewidth = 1) +
       geom_point(data = pilot_sim_summary,
-                 aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+                 aes(x = block1, y = empirical_stat, color = "Humans (pilot)"),
                  size = 2.5)
   }
 }
@@ -393,17 +393,21 @@ if (!is.null(p_sim2)) {
     plot_layout(guides = "collect") +
     plot_annotation(tag_levels = "a") &
     theme(plot.tag = element_text(face = "bold", size = 20),
-          legend.position = "bottom")
+          legend.position = "bottom",
+          legend.text = element_text(size = 16),
+          legend.key.size = unit(1.2, "cm"))
 } else {
   p_combined <- p_wc2 + p_acc2 +
     plot_layout(guides = "collect") +
     plot_annotation(tag_levels = "a") &
     theme(plot.tag = element_text(face = "bold", size = 20),
-          legend.position = "bottom")
+          legend.position = "bottom",
+          legend.text = element_text(size = 16),
+          legend.key.size = unit(1.2, "cm"))
 }
 
 p_combined
-save_fig(p_combined, "SI_llm_combined.pdf", width = 14, height = 5)
+save_fig(p_combined, "SI_llm_combined.pdf", width = 14, height = 5.5)
 ```
 
 ## Example descriptions across blocks

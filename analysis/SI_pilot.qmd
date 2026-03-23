@@ -812,7 +812,10 @@ p_stab <- ggplot(adj_block_all, aes(x = block1, y = empirical_stat,
 p_for_legend <- p_acc +
   scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
   guides(fill = "none") +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom",
+        legend.text = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.key.size = unit(1.2, "cm"))
 legend_grob <- ggplotGrob(p_for_legend)$grobs[[
   which(ggplotGrob(p_for_legend)$layout$name == "guide-box-bottom")
 ]]

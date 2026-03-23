@@ -1,6 +1,6 @@
 {
   "results_dir": "/Users/aliciachen/Dropbox/projects/lexical-variation/analysis/llm_simulation/llm_results_custom_20260321_185138",
-  "n_groups": 14,
+  "n_groups": 20,
   "n_blocks": 6,
   "model": "gemini-3.1-pro-preview",
   "temperature": 1.0,
