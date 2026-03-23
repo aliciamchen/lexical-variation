@@ -62,11 +62,30 @@ p2_utts <- utts_with_condition |>
 
 n_cond <- n_distinct(p2_utts$condition)
 if (n_cond >= 2) {
-  m_p2_length <- lmer(
-    log_uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
-    data = p2_utts,
-    control = lmerControl(optimizer = "bobyqa")
+  # Maximal RE: blockNum varies within player and tangram
+  m_p2_length <- tryCatch(
+    lmer(
+      log_uttLength ~ condition * blockNum_c + (blockNum_c | playerId) + (blockNum_c | target),
+      data = p2_utts,
+      control = lmerControl(optimizer = "bobyqa")
+    ),
+    error = function(e) {
+      cat("Maximal model failed:", e$message, "\nSimplifying to intercepts-only.\n")
+      lmer(
+        log_uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
+        data = p2_utts,
+        control = lmerControl(optimizer = "bobyqa")
+      )
+    }
   )
+  if (isSingular(m_p2_length)) {
+    cat("Maximal model is singular; refitting with intercepts-only random effects.\n")
+    m_p2_length <- lmer(
+      log_uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
+      data = p2_utts,
+      control = lmerControl(optimizer = "bobyqa")
+    )
+  }
 } else {
   m_p2_length <- lmer(
     log_uttLength ~ blockNum_c + (1 | playerId) + (1 | target),
@@ -77,6 +96,7 @@ if (n_cond >= 2) {
 }
 
 summary(m_p2_length)
+report_effect_sizes(m_p2_length)
 ```
 
 # 2. Temporal Dynamics: Full Game

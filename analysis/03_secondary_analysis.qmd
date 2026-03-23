@@ -47,6 +47,7 @@ if (n_conditions >= 2) {
     control = lmerControl(optimizer = "bobyqa")
   )
   summary(m_semantic)
+  report_effect_sizes(m_semantic)
 } else {
   # With only 1 condition, fit without condition predictor
   m_semantic <- lmer(
@@ -100,33 +101,74 @@ p2_listener <- trials |>
 n_games <- n_distinct(p2_listener$gameId)
 
 if (n_conditions >= 2 && n_games >= 2) {
+  # Maximal RE: blockNum varies within game, player, and tangram
   m_ref_accuracy <- tryCatch(
     glmer(
+      correct ~ condition * blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | target),
+      data = p2_listener,
+      family = binomial,
+      control = glmerControl(optimizer = "bobyqa")
+    ),
+    error = function(e) {
+      cat("Maximal glmer failed:", e$message, "\nSimplifying to intercepts-only.\n")
+      tryCatch(
+        glmer(
+          correct ~ condition * blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
+          data = p2_listener,
+          family = binomial,
+          control = glmerControl(optimizer = "bobyqa")
+        ),
+        error = function(e2) {
+          cat("Intercepts-only glmer also failed:", e2$message, "\nFalling back to lmer.\n")
+          lmer(correct ~ condition * blockNum_c + (1 | gameId),
+               data = p2_listener, control = lmerControl(optimizer = "bobyqa"))
+        }
+      )
+    }
+  )
+  if (inherits(m_ref_accuracy, "glmerMod") && isSingular(m_ref_accuracy)) {
+    cat("Maximal model is singular; refitting with intercepts-only random effects.\n")
+    m_ref_accuracy <- glmer(
       correct ~ condition * blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
       data = p2_listener,
       family = binomial,
       control = glmerControl(optimizer = "bobyqa")
-    ),
-    error = function(e) {
-      cat("glmer failed:", e$message, "\nFalling back to lmer on proportions.\n")
-      lmer(correct ~ condition * blockNum_c + (1 | gameId),
-           data = p2_listener, control = lmerControl(optimizer = "bobyqa"))
-    }
-  )
+    )
+  }
 } else if (n_games >= 2) {
   m_ref_accuracy <- tryCatch(
     glmer(
-      correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
+      correct ~ blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | target),
       data = p2_listener,
       family = binomial,
       control = glmerControl(optimizer = "bobyqa")
     ),
     error = function(e) {
-      cat("glmer failed:", e$message, "\nFalling back to lmer.\n")
-      lmer(correct ~ blockNum_c + (1 | gameId),
-           data = p2_listener, control = lmerControl(optimizer = "bobyqa"))
+      cat("Maximal glmer failed:", e$message, "\nSimplifying to intercepts-only.\n")
+      tryCatch(
+        glmer(
+          correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
+          data = p2_listener,
+          family = binomial,
+          control = glmerControl(optimizer = "bobyqa")
+        ),
+        error = function(e2) {
+          cat("glmer failed:", e2$message, "\nFalling back to lmer.\n")
+          lmer(correct ~ blockNum_c + (1 | gameId),
+               data = p2_listener, control = lmerControl(optimizer = "bobyqa"))
+        }
+      )
     }
   )
+  if (inherits(m_ref_accuracy, "glmerMod") && isSingular(m_ref_accuracy)) {
+    cat("Maximal model is singular; refitting with intercepts-only random effects.\n")
+    m_ref_accuracy <- glmer(
+      correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
+      data = p2_listener,
+      family = binomial,
+      control = glmerControl(optimizer = "bobyqa")
+    )
+  }
   cat("Only 1 condition; fitting without condition predictor.\n")
 } else {
   m_ref_accuracy <- glm(correct ~ blockNum_c, data = p2_listener, family = binomial)
@@ -134,6 +176,7 @@ if (n_conditions >= 2 && n_games >= 2) {
 }
 
 summary(m_ref_accuracy)
+report_effect_sizes(m_ref_accuracy)
 ```
 
 ```{r plot-accuracy, fig.width=8, fig.height=5}
@@ -202,6 +245,7 @@ if (nrow(social_listener) > 0) {
   )
 
   summary(m_ingroup)
+  report_effect_sizes(m_ingroup)
 } else {
   cat("No social condition listener data available.\n")
 }
@@ -309,6 +353,7 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
   if (nrow(gs_social) >= 3) {
     m_gs_social <- lm(gs_phase2 ~ social_accuracy + gs_phase1, data = gs_social)
     summary(m_gs_social)
+    report_effect_sizes(m_gs_social)
   } else {
     cat(sprintf("Not enough games (%d) for regression (need ≥3).\n", nrow(gs_social)))
   }
@@ -370,6 +415,7 @@ if (nrow(social_guesses) > 0) {
   }
 
   summary(m_social_acc)
+  report_effect_sizes(m_social_acc)
 
   cat(sprintf("\nOverall social accuracy: %.1f%%\n",
               mean(social_guesses_model$correct, na.rm = TRUE) * 100))
@@ -447,12 +493,58 @@ if (nrow(social_guesses) > 0) {
 
 How does description length evolve across Phase 2 blocks by condition?
 
-```{r plot-utt-length-phase2, fig.width=8, fig.height=5}
+Paper formula: `log(utt_length) ~ condition * block_num + (1 | participant) + (1 | tangram)`
+
+```{r model-utt-length-phase2}
 p2_utts <- speaker_utts |>
   filter(phaseNum == 2) |>
   left_join(games |> select(gameId, condition), by = "gameId") |>
-  mutate(condition = factor(condition, levels = CONDITION_ORDER))
+  mutate(
+    condition = factor(condition, levels = CONDITION_ORDER),
+    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
+    log_uttLength = log(uttLength + 1)
+  )
 
+n_cond <- n_distinct(p2_utts$condition)
+if (n_cond >= 2) {
+  # Maximal RE: blockNum varies within player and tangram
+  m_p2_length <- tryCatch(
+    lmer(
+      log_uttLength ~ condition * blockNum_c + (blockNum_c | playerId) + (blockNum_c | target),
+      data = p2_utts,
+      control = lmerControl(optimizer = "bobyqa")
+    ),
+    error = function(e) {
+      cat("Maximal model failed:", e$message, "\nSimplifying to intercepts-only.\n")
+      lmer(
+        log_uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
+        data = p2_utts,
+        control = lmerControl(optimizer = "bobyqa")
+      )
+    }
+  )
+  if (isSingular(m_p2_length)) {
+    cat("Maximal model is singular; refitting with intercepts-only random effects.\n")
+    m_p2_length <- lmer(
+      log_uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
+      data = p2_utts,
+      control = lmerControl(optimizer = "bobyqa")
+    )
+  }
+} else {
+  m_p2_length <- lmer(
+    log_uttLength ~ blockNum_c + (1 | playerId) + (1 | target),
+    data = p2_utts,
+    control = lmerControl(optimizer = "bobyqa")
+  )
+  cat("Only 1 condition; fitting without condition predictor.\n")
+}
+
+summary(m_p2_length)
+report_effect_sizes(m_p2_length)
+```
+
+```{r plot-utt-length-phase2, fig.width=8, fig.height=5}
 if (nrow(p2_utts) > 0) {
   length_by_block_cond <- p2_utts |>
     group_by(condition, blockNum) |>

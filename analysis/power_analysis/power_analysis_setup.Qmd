@@ -221,9 +221,9 @@ print(f"speaker_data_separate shape: {speaker_data_separate.shape}")
 ## Group-specificity
 
 If the emergent lexicons are group-specific, then a description a participant uses for a given tangram should be more similar to other descriptions produced by members of the same group, compared to descriptions produced by members of other groups. 
-For each game and tangram, will compute the pairwise similarities between each participant's utterances, and predict the similarity from whether they were produced by members of the same group, with random effects for tangram and participant pair. The coefficient for `same_group` corresponds to the group-specificity score for the game.  
+For each game and tangram, we compute the pairwise similarities between each participant's utterances, and predict the similarity from whether they were produced by members of the same group, with random effects for tangram and crossed random effects for the two participants in each pair. The coefficient for `same_group` corresponds to the group-specificity score for the game.
 $$
-\texttt{similarity} \sim \texttt{same\_group} + \texttt{(1 | tangram)} + \texttt{(1 | participant\_pair)}
+\texttt{similarity} \sim \texttt{same\_group} + \texttt{(1 | tangram)} + \texttt{(1 | speaker\_1)} + \texttt{(1 | speaker\_2)}
 $$
 
 As a complementary approach, for each game, we will also calculate the average similarity among members of the same group (within-group similarity) and among members of different groups (between-group similarity). Lexical differentiation corresponds to the difference between within-group and between-group similarity, with larger differences indicating more group-specific conventions and greater lexical differentiation. 

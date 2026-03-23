@@ -83,6 +83,7 @@ m_length <- lmer(
 )
 
 summary(m_length)
+report_effect_sizes(m_length)
 ```
 
 ```{r plot-utt-length, fig.width=7, fig.height=4}
@@ -122,6 +123,7 @@ m_accuracy <- lmer(
 )
 
 summary(m_accuracy)
+report_effect_sizes(m_accuracy)
 ```
 
 ```{r plot-accuracy, fig.width=7, fig.height=4}
@@ -170,6 +172,7 @@ if (has_adjacent) {
   )
 
   summary(m_adjacent)
+  report_effect_sizes(m_adjacent)
 } else {
   cat("Skipping: adjacent_similarities.csv not found. Run compute_embeddings.py first.\n")
 }

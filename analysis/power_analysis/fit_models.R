@@ -15,7 +15,7 @@ fit_group_specificity_by_game <- function(pairwise_df, condition_name) {
     warnings_list <- character(0)
     model <- tryCatch(
       withCallingHandlers(
-        lmer(similarity ~ same_group + (1 | target) + (1 | participant_pair),
+        lmer(similarity ~ same_group + (1 | target) + (1 | speaker_1) + (1 | speaker_2),
              data = game_data),
         warning = function(w) {
           warnings_list <<- c(warnings_list, conditionMessage(w))
@@ -43,7 +43,8 @@ fit_group_specificity_by_game <- function(pairwise_df, condition_name) {
       t_value = coefs["same_group", "t value"],
       n_pairs = nrow(game_data),
       n_targets = n_distinct(game_data$target),
-      n_participant_pairs = n_distinct(game_data$participant_pair),
+      n_speaker_1 = n_distinct(game_data$speaker_1),
+      n_speaker_2 = n_distinct(game_data$speaker_2),
       convergence_warning = convergence_warning,
       warnings = paste(warnings_list, collapse = "; ")
     )

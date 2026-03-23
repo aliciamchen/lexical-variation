@@ -123,6 +123,7 @@ if (n_conditions >= 2) {
     weights = weight
   )
   summary(wls_model)
+  report_effect_sizes(wls_model)
 } else {
   cat(sprintf("Only %d condition(s) in data (%s). Need ≥2 for WLS model.\n",
               n_conditions, paste(unique(gs_combined$condition), collapse = ", ")))
@@ -139,7 +140,7 @@ Two-tailed tests at α = 0.05.
 - **H2:** `social_mixed > refer_mixed`
 
 ```{r planned-contrasts}
-if (!is.null(wls_model) && n_conditions >= 3) {
+if (!is.null(wls_model) && n_conditions >= 4) {
   em <- emmeans(wls_model, "condition")
   # Order: refer_separated, refer_mixed, social_mixed, social_first
   contrasts <- contrast(em, list(
@@ -339,6 +340,7 @@ if (!exists("gs_combined")) {
       weights = weight_p1
     )
     summary(wls_h3a)
+    report_effect_sizes(wls_h3a)
 
     em_h3a <- emmeans(wls_h3a, "condition")
     contrast_h3a <- contrast(em_h3a, list(
@@ -388,19 +390,35 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
     )
 
   if (nrow(p1_within_social) > 0 && n_distinct(p1_within_social$condition) >= 2) {
+    # Maximal RE justified by design: blockNum varies within game and tangram
     m_h3b <- tryCatch(
       lmer(
-        similarity ~ condition * blockNum_c + (1 | gameId) + (1 | target),
+        similarity ~ condition * blockNum_c + (blockNum_c | gameId) + (blockNum_c | target),
         data = p1_within_social,
         control = lmerControl(optimizer = "bobyqa")
       ),
       error = function(e) {
-        cat("lmer failed:", e$message, "\n")
-        NULL
+        cat("Maximal model failed:", e$message, "\nSimplifying to intercepts-only.\n")
+        lmer(
+          similarity ~ condition * blockNum_c + (1 | gameId) + (1 | target),
+          data = p1_within_social,
+          control = lmerControl(optimizer = "bobyqa")
+        )
       }
     )
+    if (isSingular(m_h3b)) {
+      cat("Maximal model is singular; refitting with intercepts-only random effects.\n")
+      m_h3b <- lmer(
+        similarity ~ condition * blockNum_c + (1 | gameId) + (1 | target),
+        data = p1_within_social,
+        control = lmerControl(optimizer = "bobyqa")
+      )
+    }
 
-    if (!is.null(m_h3b)) summary(m_h3b)
+    if (!is.null(m_h3b)) {
+      summary(m_h3b)
+      report_effect_sizes(m_h3b)
+    }
   } else {
     cat("Insufficient data for H3b convergence analysis.\n")
   }
@@ -495,6 +513,7 @@ if (!has_desc_props || !has_lex_uniq) {
       if (!is.null(m_concrete)) {
         cat("=== Concreteness ===\n")
         print(summary(m_concrete))
+        report_effect_sizes(m_concrete)
       }
     }
 
@@ -515,6 +534,7 @@ if (!has_desc_props || !has_lex_uniq) {
       if (!is.null(m_uniqueness)) {
         cat("\n=== Lexical Uniqueness ===\n")
         print(summary(m_uniqueness))
+        report_effect_sizes(m_uniqueness)
       }
     }
 
@@ -535,6 +555,7 @@ if (!has_desc_props || !has_lex_uniq) {
       if (!is.null(m_freq)) {
         cat("\n=== Word Frequency ===\n")
         print(summary(m_freq))
+        report_effect_sizes(m_freq)
       }
     }
   } else {
@@ -623,6 +644,7 @@ if (nrow(social_guesses) > 0) {
       }
     )
     summary(m_h4a)
+    report_effect_sizes(m_h4a)
 
     if (inherits(m_h4a, "glmerMod")) {
       em_h4a <- emmeans(m_h4a, "condition", type = "response")
@@ -691,6 +713,7 @@ if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 
     }
   )
   summary(m_h4b)
+  report_effect_sizes(m_h4b)
 
   if (inherits(m_h4b, "glmerMod")) {
     em_h4b <- emmeans(m_h4b, "condition", type = "response")

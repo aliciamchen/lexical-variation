@@ -92,6 +92,17 @@ format_condition <- function(x) {
          str_to_sentence(str_replace_all(x, "_", " ")))
 }
 
+# ── Effect sizes ──────────────────────────────────────────
+
+library(effectsize)
+
+report_effect_sizes <- function(model) {
+  cat("\nStandardized parameters (effect sizes):\n")
+  std_params <- standardize_parameters(model, method = "basic")
+  print(std_params)
+  invisible(std_params)
+}
+
 save_fig <- function(p, filename, width = 8, height = 5, dpi = 150) {
   path <- file.path(figures_dir, filename)
   if (grepl("\\.pdf$", filename)) {
