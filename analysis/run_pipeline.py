@@ -200,25 +200,12 @@ def step_embeddings(data_dir: Path, utterances_file: str = "speaker_utterances.c
 
 
 def step_visualize(data_dir: Path, figures_dir: Path) -> None:
-    """Step 6: Run pilot_analysis.py and animate_umap.py for all conditions."""
+    """Step 6: Run animate_umap.py for all conditions."""
     print(f"\n{'=' * 60}")
     print("Step 6: Generating visualizations")
     print(f"{'=' * 60}")
 
     figures_dir.mkdir(parents=True, exist_ok=True)
-
-    # pilot_analysis.py
-    vis_script = ANALYSIS_DIR / "pilot_analysis.py"
-    cmd = [
-        sys.executable,
-        str(vis_script),
-        "--data-dir",
-        str(data_dir),
-        "--output-dir",
-        str(figures_dir),
-    ]
-    print(f"\n  Running pilot_analysis.py ...")
-    subprocess.run(cmd, check=True)
 
     # animate_umap.py
     anim_script = ANALYSIS_DIR / "animate_umap.py"

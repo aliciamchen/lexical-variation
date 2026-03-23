@@ -31,8 +31,7 @@ paths:
 |--------|---------|
 | `run_pipeline.py` | Entry point — process zips, combine runs, browse metadata |
 | `preprocessing.py` | Raw Empirica CSVs → analysis-ready CSVs (called by run_pipeline) |
-| `compute_embeddings.py` | Speaker utterances → SBERT embeddings, similarity metrics, UMAP |
-| `pilot_analysis.py` | Preprocessed data → static comparison plots across conditions |
+| `compute_embeddings.py` | Speaker utterances → SBERT embeddings, similarity metrics, H3c description properties (concreteness, lexical uniqueness, word frequency), UMAP |
 | `animate_umap.py` | UMAP projections → animated videos of embedding trajectories |
 | `plot_style.py` | Shared plotting constants and helpers (imported, not run directly) |
 | `test_data_integrity.py` | Pytest validation of preprocessed CSV structure and content |
@@ -88,7 +87,6 @@ uv run python analysis/run_pipeline.py bonuses --run 20260225_210047      # spec
 ### Running individual scripts standalone
 
 ```bash
-uv run python analysis/pilot_analysis.py --data-dir data/pilots/ --output-dir analysis/pilots/figures/
 uv run python analysis/animate_umap.py --data-dir data/pilots/ --output-dir analysis/pilots/figures/
 uv run python analysis/compute_embeddings.py data/pilots/
 uv run pytest analysis/test_data_integrity.py -v
