@@ -271,55 +271,139 @@ p_wc2 <- p_wc
 p_acc2 <- p_acc
 p_sim2 <- if (has_similarity) p_sim else NULL
 
+legend_scale <- scale_color_manual(
+  name = NULL,
+  values = c("LLM (Gemini 3.1 Pro)" = LLM_COLOR, "Human (pilot)" = PILOT_COLOR),
+  guide = guide_legend(override.aes = list(linewidth = 1, size = 2.5))
+)
+
+# Helper to add legend-mapped LLM line to a panel
+add_llm_legend <- function(p, summary_df, x_col, y_col, group_df = NULL, group_y = NULL) {
+  p <- p +
+    geom_line(data = summary_df,
+              aes(x = .data[[x_col]], y = .data[[y_col]],
+                  color = "LLM (Gemini 3.1 Pro)"),
+              linewidth = 1, inherit.aes = FALSE) +
+    geom_point(data = summary_df,
+               aes(x = .data[[x_col]], y = .data[[y_col]],
+                   color = "LLM (Gemini 3.1 Pro)"),
+               size = 2.5, inherit.aes = FALSE)
+  p
+}
+
+# Rebuild panels: strip hardcoded LLM color, add via aes for legend
+# Word count
+llm_wc_for_legend <- wc_summary |> mutate(block1 = block_num + 1)
+p_wc2 <- ggplot() +
+  geom_line(data = block_wc, aes(x = block_num + 1, y = word_count, group = group_id),
+            color = "gray70", alpha = 0.5, linewidth = 0.4) +
+  geom_ribbon(data = wc_summary, aes(x = block_num + 1, ymin = ci_lower, ymax = ci_upper),
+              fill = LLM_COLOR, alpha = 0.15) +
+  geom_line(data = llm_wc_for_legend,
+            aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+            linewidth = 1) +
+  geom_point(data = llm_wc_for_legend,
+             aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+             size = 2.5) +
+  scale_x_continuous(breaks = 1:6, labels = as.integer) +
+  labs(x = "Block", y = "Words per description", title = "Description length") +
+  legend_scale
+
+# Accuracy
+llm_acc_for_legend <- acc_summary |> mutate(block1 = block_num + 1)
+p_acc2 <- ggplot() +
+  geom_line(data = block_acc, aes(x = block_num + 1, y = accuracy, group = group_id),
+            color = "gray70", alpha = 0.5, linewidth = 0.4) +
+  geom_ribbon(data = acc_summary, aes(x = block_num + 1, ymin = ci_lower, ymax = ci_upper),
+              fill = LLM_COLOR, alpha = 0.15) +
+  geom_line(data = llm_acc_for_legend,
+            aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+            linewidth = 1) +
+  geom_point(data = llm_acc_for_legend,
+             aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+             size = 2.5) +
+  geom_hline(yintercept = 2/3, linetype = "dashed", color = "red", alpha = 0.7) +
+  geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
+  scale_x_continuous(breaks = 1:6, labels = as.integer) +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(x = "Block", y = "Proportion correct", title = "Listener accuracy") +
+  legend_scale
+
+# Similarity
+p_sim2 <- NULL
+if (has_similarity) {
+  llm_sim_for_legend <- sim_summary |> mutate(block1 = block_num + 1)
+  p_sim2 <- ggplot() +
+    geom_line(data = block_sim, aes(x = block_num + 1, y = similarity, group = group_id),
+              color = "gray70", alpha = 0.5, linewidth = 0.4) +
+    geom_ribbon(data = sim_summary, aes(x = block_num + 1, ymin = ci_lower, ymax = ci_upper),
+                fill = LLM_COLOR, alpha = 0.15) +
+    geom_line(data = llm_sim_for_legend,
+              aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+              linewidth = 1) +
+    geom_point(data = llm_sim_for_legend,
+               aes(x = block1, y = empirical_stat, color = "LLM (Gemini 3.1 Pro)"),
+               size = 2.5) +
+    scale_x_continuous(breaks = 1:6, labels = as.integer, limits = c(1, 6)) +
+    scale_y_continuous(limits = c(0, 1)) +
+    labs(x = "Block", y = "Cosine similarity", title = "Convention stability") +
+    legend_scale
+}
+
+# Add pilot overlay
 if (has_pilot) {
   p_wc2 <- p_wc2 +
     geom_ribbon(data = pilot_wc_summary,
-                aes(x = block1, y = empirical_stat, ymin = ci_lower, ymax = ci_upper),
-                fill = PILOT_COLOR, alpha = 0.08, inherit.aes = FALSE) +
+                aes(x = block1, ymin = ci_lower, ymax = ci_upper),
+                fill = PILOT_COLOR, alpha = 0.08) +
     geom_line(data = pilot_wc_summary,
-              aes(x = block1, y = empirical_stat),
-              color = PILOT_COLOR, linewidth = 1, inherit.aes = FALSE) +
+              aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+              linewidth = 1) +
     geom_point(data = pilot_wc_summary,
-               aes(x = block1, y = empirical_stat),
-               color = PILOT_COLOR, size = 2.5, inherit.aes = FALSE)
+               aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+               size = 2.5)
 
   p_acc2 <- p_acc2 +
     geom_ribbon(data = pilot_acc_summary,
-                aes(x = block1, y = empirical_stat, ymin = ci_lower, ymax = ci_upper),
-                fill = PILOT_COLOR, alpha = 0.08, inherit.aes = FALSE) +
+                aes(x = block1, ymin = ci_lower, ymax = ci_upper),
+                fill = PILOT_COLOR, alpha = 0.08) +
     geom_line(data = pilot_acc_summary,
-              aes(x = block1, y = empirical_stat),
-              color = PILOT_COLOR, linewidth = 1, inherit.aes = FALSE) +
+              aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+              linewidth = 1) +
     geom_point(data = pilot_acc_summary,
-               aes(x = block1, y = empirical_stat),
-               color = PILOT_COLOR, size = 2.5, inherit.aes = FALSE)
+               aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+               size = 2.5)
 
-  if (has_similarity && pilot_has_adjacent) {
+  if (!is.null(p_sim2) && pilot_has_adjacent) {
     p_sim2 <- p_sim2 +
       geom_ribbon(data = pilot_sim_summary,
-                  aes(x = block1, y = empirical_stat, ymin = ci_lower, ymax = ci_upper),
-                  fill = PILOT_COLOR, alpha = 0.08, inherit.aes = FALSE) +
+                  aes(x = block1, ymin = ci_lower, ymax = ci_upper),
+                  fill = PILOT_COLOR, alpha = 0.08) +
       geom_line(data = pilot_sim_summary,
-                aes(x = block1, y = empirical_stat),
-                color = PILOT_COLOR, linewidth = 1, inherit.aes = FALSE) +
+                aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+                linewidth = 1) +
       geom_point(data = pilot_sim_summary,
-                 aes(x = block1, y = empirical_stat),
-                 color = PILOT_COLOR, size = 2.5, inherit.aes = FALSE)
+                 aes(x = block1, y = empirical_stat, color = "Human (pilot)"),
+                 size = 2.5)
   }
 }
 
 if (!is.null(p_sim2)) {
   p_combined <- p_wc2 + p_acc2 + p_sim2 +
+    plot_layout(guides = "collect") +
     plot_annotation(tag_levels = "a") &
-    theme(plot.tag = element_text(face = "bold", size = 20))
+    theme(plot.tag = element_text(face = "bold", size = 20),
+          legend.position = "bottom")
 } else {
   p_combined <- p_wc2 + p_acc2 +
+    plot_layout(guides = "collect") +
     plot_annotation(tag_levels = "a") &
-    theme(plot.tag = element_text(face = "bold", size = 20))
+    theme(plot.tag = element_text(face = "bold", size = 20),
+          legend.position = "bottom")
 }
 
 p_combined
-save_fig(p_combined, "SI_llm_combined.pdf", width = 14, height = 4.5)
+save_fig(p_combined, "SI_llm_combined.pdf", width = 14, height = 5)
 ```
 
 ## Example descriptions across blocks
