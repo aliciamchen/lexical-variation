@@ -1,6 +1,39 @@
 # lexical-variation
 
-Multiplayer reference game experiment built with [Empirica](https://empirica.ly/) studying lexical variation and social signaling. 9 players in 3 groups describe tangram images to each other across two phases, with experimental conditions affecting group dynamics in Phase 2.
+In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups describe tangram images to each other across two phases, with 4 between-subjects conditions that orthogonally manipulate interaction patterns and social-signaling goals in Phase 2:
+
+- **refer + separated**: same groups throughout Phase 2 (baseline)
+- **refer + mixed**: groups reshuffled every trial in Phase 2, masked identities
+- **social + mixed**: reshuffled + social guessing task (listeners guess if speaker is from their original group)
+- **social-first + mixed**: told about social identification reward before Phase 1, then same as social + mixed
+
+## Repository structure
+
+```
+├── experiment/               # Empirica app (React client + Node server)
+│   ├── client/src/           # React components & game UI
+│   ├── server/src/           # Game logic (callbacks, constants)
+│   ├── shared/               # Shared constants (timing, scoring)
+│   ├── tests/                # Playwright end-to-end tests
+│   └── .empirica/            # Treatments, lobbies, config
+├── analysis/                 # Data processing & analysis
+│   ├── run_pipeline.py       # Main entry point for data processing
+│   ├── 00_preprocess.qmd     # Load & validate preprocessed data
+│   ├── 01_outcome_neutral.qmd # Outcome-neutral criteria (convention formation)
+│   ├── 02_primary_analysis.qmd # Primary analyses (H1 & H2)
+│   ├── 03_secondary_analysis.qmd # Secondary analyses
+│   ├── 04_exploratory.qmd    # Exploratory analyses
+│   ├── 05_exit_survey.qmd    # Exit survey responses
+│   ├── SI_pilot.qmd          # SI: pilot data analyses
+│   ├── compute_embeddings.py # SBERT embeddings & similarity metrics
+│   ├── filter_nonreferential.py # LLM-based message classifier
+│   └── llm_simulation/       # LLM Phase 1 benchmark simulation
+├── data/                     # Preprocessed datasets (committed)
+│   └── pilots/               # Pilot data (4 games, 1 per condition)
+├── paper/                    # LaTeX manuscript (gitignored; synced via Overleaf)
+│   └── stats/                # Auto-generated stats from notebooks
+└── figures/                  # Design assets (tangrams, avatars)
+```
 
 ## Setup
 
@@ -39,7 +72,6 @@ empirica
 
 - Admin: http://localhost:3000/admin
 - Players: http://localhost:3000/
-- Production: https://tangramcommunication.empirica.app/
 
 ## Testing
 
@@ -53,6 +85,16 @@ npx playwright show-report       # view report
 See [`experiment/README.md`](experiment/README.md) for details on test architecture and writing new tests.
 
 ## Analysis pipeline
+
+To reproduce the analyses from the pilot data:
+
+```bash
+uv sync                                    # install Python deps
+# In R: renv::restore()                    # install R deps
+uv run python analysis/compute_embeddings.py data/pilots/   # SBERT embeddings
+quarto render analysis/SI_pilot.qmd        # pilot analyses
+quarto render analysis/llm_simulation/SI_llm_simulation.qmd # LLM benchmark
+```
 
 `analysis/run_pipeline.py` is the single entry point for all data processing:
 
@@ -76,7 +118,14 @@ uv run python analysis/run_pipeline.py bonuses
 
 Output goes to `analysis/{datetime}/` (single run) or split across `data/pilots/` (raw + preprocessed CSVs) and `analysis/pilots/` (figures, manifest). The `analysis/processed_data` symlink points to the active dataset.
 
+### Rendering notebooks
+
 Quarto notebooks (`00_preprocess.qmd` through `05_exit_survey.qmd`) read from `analysis/processed_data/`, a symlink updated by `run_pipeline.py`.
+
+```bash
+quarto render analysis/SI_pilot.qmd
+quarto render analysis/02_primary_analysis.qmd
+```
 
 ### Stats → manuscript
 
