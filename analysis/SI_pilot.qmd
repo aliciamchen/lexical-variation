@@ -222,7 +222,7 @@ cat(sprintf("Chance level: %.4f (1/16)\n", 1/16))
 
 ```{r model-adjacent}
 if (has_adjacent) {
-  p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent))
+  p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent), blockNum > 0)
 
   m_adjacent <- lmer(
     simAdjacent ~ blockNum_c + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram),
@@ -340,13 +340,14 @@ p_accuracy <- ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2.5) +
   geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
+  geom_hline(yintercept = 2/3, linetype = "dashed", color = "red", alpha = 0.7) +
   labs(x = "Block", y = "Proportion correct", title = "Listener accuracy") +
   scale_x_continuous(breaks = 1:6, labels = as.integer) +
   scale_y_continuous(limits = c(0, 1))
 
 # Panel C: Adjacent similarity
 if (has_adjacent && exists("p1_adjacent")) {
-  p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent))
+  p1_adjacent_valid <- p1_adjacent %>% filter(!is.na(simAdjacent), blockNum > 0)
 
   sim_by_group <- p1_adjacent_valid %>%
     group_by(gameId, group, blockNum) %>%
@@ -364,7 +365,8 @@ if (has_adjacent && exists("p1_adjacent")) {
     geom_line(linewidth = 1) +
     geom_point(size = 2.5) +
     labs(x = "Block", y = "Cosine similarity", title = "Convention stability") +
-    scale_x_continuous(breaks = 1:6, labels = as.integer)
+    scale_x_continuous(breaks = 1:6, labels = as.integer, limits = c(1, 6)) +
+    scale_y_continuous(limits = c(0, 1))
 
   fig1 <- p_length + p_accuracy + p_sim +
     plot_annotation(tag_levels = "a") &
@@ -726,8 +728,10 @@ phase2_bg <- list(
            ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5),
   geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted"),
   scale_x_continuous(breaks = 1:12, limits = c(1, 12), labels = as.integer),
-  scale_color_condition(labels = function(x) format_condition(x), name = NULL),
-  scale_fill_condition(labels = function(x) format_condition(x), name = NULL)
+  scale_color_condition(labels = function(x) format_condition(x), name = NULL,
+                        limits = CONDITION_ORDER, drop = FALSE),
+  scale_fill_condition(labels = function(x) format_condition(x), name = NULL,
+                       limits = CONDITION_ORDER, drop = FALSE)
 )
 
 # --- Panel (a): Referential accuracy ---
@@ -803,9 +807,19 @@ p_stab <- ggplot(adj_block_all, aes(x = block1, y = empirical_stat,
        title = "Convention stability") +
   theme(legend.position = "none")
 
-# --- Combine ---
-fig_secondary <- (p_acc + p_len) / (p_sg + p_stab) +
-  plot_annotation(tag_levels = "a") &
+# --- Combine with shared legend at bottom ---
+# Extract legend from panel a (has all 4 conditions) as a standalone grob
+p_for_legend <- p_acc +
+  scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
+  guides(fill = "none") +
+  theme(legend.position = "bottom")
+legend_grob <- ggplotGrob(p_for_legend)$grobs[[
+  which(ggplotGrob(p_for_legend)$layout$name == "guide-box-bottom")
+]]
+
+fig_secondary <- (p_acc + p_len) / (p_sg + p_stab) / wrap_elements(legend_grob) +
+  plot_layout(heights = c(1, 1, 0.08)) +
+  plot_annotation(tag_levels = list(c("a", "b", "c", "d", ""))) &
   theme(plot.tag = element_text(face = "bold", size = 20))
 
 print(fig_secondary)
@@ -880,7 +894,7 @@ if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
     stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
     scale_fill_condition() +
     scale_x_discrete(labels = function(x) format_condition(x)) +
-    labs(x = NULL, y = "Proportion", title = "Concrete terms") +
+    labs(x = "Condition", y = "Proportion", title = "Concrete terms") +
     theme(legend.position = "none")
 
   # Panel B: Lexical uniqueness
@@ -890,7 +904,7 @@ if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
     stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
     scale_fill_condition() +
     scale_x_discrete(labels = function(x) format_condition(x)) +
-    labs(x = NULL, y = "Proportion", title = "Lexical uniqueness") +
+    labs(x = "Condition", y = "Proportion", title = "Lexical uniqueness") +
     theme(legend.position = "none")
 
   # Panel C: Word frequency
@@ -901,7 +915,7 @@ if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
     stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
     scale_fill_condition() +
     scale_x_discrete(labels = function(x) format_condition(x)) +
-    labs(x = NULL, y = "Mean Zipf frequency", title = "Word frequency") +
+    labs(x = "Condition", y = "Mean Zipf frequency", title = "Word frequency") +
     theme(legend.position = "none")
 
   fig_h3c <- p_concrete + p_unique + p_freq +

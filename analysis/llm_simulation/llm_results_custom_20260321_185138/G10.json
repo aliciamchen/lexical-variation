@@ -1,0 +1,826 @@
+{
+  "group_id": "G10",
+  "tangram_set": 0,
+  "target_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B"
+  ],
+  "all_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B",
+    "page3-121",
+    "page4-157",
+    "page7-26",
+    "page5-64",
+    "page6-149",
+    "page3-193",
+    "page5-63",
+    "page9-7",
+    "page5-142",
+    "page4-15"
+  ],
+  "model": "gemini-3.1-pro-preview",
+  "rounds": [
+    {
+      "round_num": 0,
+      "block_num": 0,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "diamond shape",
+      "word_count": 2,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-193",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 1,
+      "block_num": 0,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "square resting flat",
+      "word_count": 3,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page6-149",
+          "selection_label": "7",
+          "correct": false,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-157",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 2,
+      "block_num": 0,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "triangle pointing right",
+      "word_count": 3,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-157",
+          "selection_label": "13",
+          "correct": false,
+          "raw_response": "13",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 3,
+      "block_num": 0,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "bird facing right, tail pointing top-left",
+      "word_count": 6,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-193",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 4,
+      "block_num": 0,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "bird facing left with diamond head",
+      "word_count": 6,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-26",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 5,
+      "block_num": 0,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "sitting bird facing left, flat base",
+      "word_count": 6,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page6-149",
+          "selection_label": "7",
+          "correct": false,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-193",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 6,
+      "block_num": 1,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "parallelogram leaning right",
+      "word_count": 3,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-121",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-15",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 7,
+      "block_num": 1,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "sitting bird facing left, completely flat bottom edge, tail pointing up and to the right",
+      "word_count": 15,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 8,
+      "block_num": 1,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "bird facing right, diamond head, sharp tail pointing bottom-left, wing pointing straight up",
+      "word_count": 13,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-7",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 9,
+      "block_num": 1,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "diamond head top left, one sharp point pointing straight right, one sharp point pointing straight down",
+      "word_count": 16,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-157",
+          "selection_label": "12",
+          "correct": false,
+          "raw_response": "12",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-157",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 10,
+      "block_num": 1,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "a simple solid square balancing on its bottom point, forming a perfect diamond shape",
+      "word_count": 14,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "6",
+          "correct": true,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 11,
+      "block_num": 1,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "large triangle pointing straight right, with a flat vertical edge on the left side",
+      "word_count": 14,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-15",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 12,
+      "block_num": 2,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "sitting bird facing left, completely flat bottom edge, tail pointing up and to the right",
+      "word_count": 15,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-157",
+          "selection_label": "12",
+          "correct": false,
+          "raw_response": "12",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-7",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 13,
+      "block_num": 2,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "diamond head top left, rightward point has a flat horizontal top edge, downward point has a flat vertical right edge.",
+      "word_count": 20,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "12",
+          "correct": true,
+          "raw_response": "12",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 14,
+      "block_num": 2,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "bird flying right, diamond head at far right, top point extends up-left, bottom point extends down-left.",
+      "word_count": 16,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-142",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-7",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 15,
+      "block_num": 2,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "perfectly symmetrical solid diamond shape; a simple square rotated 45 degrees balancing on its bottom point.",
+      "word_count": 16,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "6",
+          "correct": true,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 16,
+      "block_num": 2,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "solid large isosceles triangle pointing straight right, with a perfectly flat vertical left edge.",
+      "word_count": 14,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 17,
+      "block_num": 2,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "perfect solid square, resting entirely flat on its horizontal bottom edge, with straight vertical left and right sides and 90-degree corners. Not slanted.",
+      "word_count": 23,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-63",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 18,
+      "block_num": 3,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "perfectly symmetrical solid diamond shape; a simple square rotated 45 degrees balancing on its bottom point.",
+      "word_count": 16,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-64",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-7",
+          "selection_label": "15",
+          "correct": false,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 19,
+      "block_num": 3,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "sitting bird facing left, completely flat horizontal bottom edge, perfectly vertical straight right edge, tail pointing up-right",
+      "word_count": 17,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-63",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 20,
+      "block_num": 3,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "solid large isosceles triangle pointing straight right, with a perfectly flat vertical left edge.",
+      "word_count": 14,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-7",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-64",
+          "selection_label": "13",
+          "correct": false,
+          "raw_response": "13",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 21,
+      "block_num": 3,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "diamond shape on the far right, attached to a body that splits into two sharp points extending leftward: one pointing diagonally up-left, the other pointing diagonally down-left",
+      "word_count": 27,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 22,
+      "block_num": 3,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "diamond head top left, rightward point has a flat horizontal top edge, downward point has a flat vertical right edge.",
+      "word_count": 20,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-26",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    }
+  ],
+  "summary": {
+    "overall": {
+      "accuracy": 0.304,
+      "avg_word_count": 13.0,
+      "n": 23,
+      "parse_errors": 0,
+      "listener_trials": 46
+    },
+    "per_block": {
+      "0": {
+        "accuracy": 0.083,
+        "avg_word_count": 4.33,
+        "n": 6
+      },
+      "1": {
+        "accuracy": 0.333,
+        "avg_word_count": 12.5,
+        "n": 6
+      },
+      "2": {
+        "accuracy": 0.5,
+        "avg_word_count": 17.33,
+        "n": 6
+      },
+      "3": {
+        "accuracy": 0.3,
+        "avg_word_count": 18.8,
+        "n": 5
+      }
+    },
+    "word_count_trajectory": [
+      2,
+      3,
+      3,
+      6,
+      6,
+      6,
+      3,
+      15,
+      13,
+      16,
+      14,
+      14,
+      15,
+      20,
+      16,
+      16,
+      14,
+      23,
+      16,
+      17,
+      14,
+      27,
+      20
+    ]
+  },
+  "config": {
+    "num_blocks": 6,
+    "group_size": 3,
+    "num_tangrams": 16,
+    "num_targets": 6,
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "timestamp": "2026-03-22T03:41:08.745616",
+  "status": "in_progress",
+  "player_orders": {
+    "0": [
+      "page6-149",
+      "page5-63",
+      "page3-35",
+      "page9-7",
+      "page5-64",
+      "page7-107",
+      "page9-46",
+      "page5-28",
+      "page5-142",
+      "page3-121",
+      "page-B",
+      "page4-157",
+      "page4-15",
+      "page3-193",
+      "page7-255",
+      "page7-26"
+    ],
+    "1": [
+      "page3-193",
+      "page3-35",
+      "page-B",
+      "page9-7",
+      "page5-63",
+      "page5-64",
+      "page6-149",
+      "page5-142",
+      "page5-28",
+      "page4-15",
+      "page7-107",
+      "page7-255",
+      "page4-157",
+      "page3-121",
+      "page7-26",
+      "page9-46"
+    ],
+    "2": [
+      "page7-26",
+      "page5-142",
+      "page5-28",
+      "page4-15",
+      "page4-157",
+      "page6-149",
+      "page3-35",
+      "page-B",
+      "page3-193",
+      "page5-63",
+      "page9-46",
+      "page3-121",
+      "page5-64",
+      "page7-255",
+      "page9-7",
+      "page7-107"
+    ]
+  },
+  "block_targets": [
+    [
+      "page7-107",
+      "page9-46",
+      "page3-35",
+      "page-B",
+      "page7-255",
+      "page5-28"
+    ],
+    [
+      "page9-46",
+      "page5-28",
+      "page-B",
+      "page7-255",
+      "page7-107",
+      "page3-35"
+    ],
+    [
+      "page5-28",
+      "page7-255",
+      "page-B",
+      "page7-107",
+      "page3-35",
+      "page9-46"
+    ],
+    [
+      "page7-107",
+      "page5-28",
+      "page3-35",
+      "page-B",
+      "page7-255",
+      "page9-46"
+    ],
+    [
+      "page5-28",
+      "page7-255",
+      "page7-107",
+      "page9-46",
+      "page3-35",
+      "page-B"
+    ],
+    [
+      "page9-46",
+      "page5-28",
+      "page7-255",
+      "page7-107",
+      "page-B",
+      "page3-35"
+    ]
+  ]
+}

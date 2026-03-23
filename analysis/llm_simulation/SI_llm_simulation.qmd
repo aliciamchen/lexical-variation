@@ -11,11 +11,20 @@ AI agents can form stable conventions in Phase 1. Used as an AI detection
 benchmark for the registered report.
 
 **Prerequisites:** Run `process_llm_results.py` on a results directory first
-to generate the CSVs this notebook reads.
+to generate the CSVs this notebook reads. Groups still marked `in_progress`
+are automatically excluded by the processing script.
 
 ```{r setup, message=FALSE, warning=FALSE}
 source(here::here("analysis", "config.R"))
 library(jsonlite)
+library(tidyboot)
+
+# LLM plot color — distinct from condition palette (greens/oranges)
+LLM_COLOR <- "#7B68AE"
+
+# Override figures_dir for LLM outputs
+figures_dir <- here::here("analysis", "llm_baseline_outputs")
+dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
 
 # -- Find results directory (most recent llm_results_*) --
 sim_dir <- here::here("analysis", "llm_simulation")
@@ -40,13 +49,34 @@ if (has_similarity) {
 
 # Load config
 config <- fromJSON(file.path(results_dir, "llm_config.json"))
+
+# -- Load pilot data for comparison overlay --
+pilot_data_dir <- here::here("data", "pilots")
+has_pilot <- file.exists(file.path(pilot_data_dir, "trials.csv"))
+if (has_pilot) {
+  pilot_utts_file <- if (file.exists(file.path(pilot_data_dir, "speaker_utterances_filtered.csv"))) {
+    "speaker_utterances_filtered.csv"
+  } else {
+    "speaker_utterances.csv"
+  }
+  pilot_utts <- read_csv(file.path(pilot_data_dir, pilot_utts_file), show_col_types = FALSE) %>%
+    filter(phaseNum == 1)
+  pilot_trials <- read_csv(file.path(pilot_data_dir, "trials.csv"), show_col_types = FALSE) %>%
+    filter(phaseNum == 1, role == "listener") %>%
+    mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"))
+  pilot_has_adjacent <- file.exists(file.path(pilot_data_dir, "adjacent_similarities.csv"))
+  if (pilot_has_adjacent) {
+    pilot_adjacent <- read_csv(file.path(pilot_data_dir, "adjacent_similarities.csv"), show_col_types = FALSE) %>%
+      filter(phaseNum == 1)
+  }
+}
 cat("Model:", config$model, "\n")
 cat("Temperature:", ifelse(is.null(config$temperature), "API default", config$temperature), "\n")
 cat("Groups:", config$n_groups, "\n")
 cat("Blocks:", config$n_blocks, "\n")
 ```
 
-## Exclusion Criterion
+## Exclusion criterion
 
 The paper's exclusion criterion: groups pass Phase 1 if **at least 2 of 3 players
 achieve at least 2/3 referential accuracy across the last 3 blocks**.
@@ -67,7 +97,7 @@ exclusion %>%
   knitr::kable(digits = 3)
 ```
 
-## Accuracy Trajectory
+## Accuracy trajectory
 
 ```{r accuracy-trajectory, fig.width=6, fig.height=4}
 # Per-group per-block accuracy
@@ -75,44 +105,34 @@ block_acc <- listener_trials %>%
   group_by(group_id, block_num) %>%
   summarise(accuracy = mean(correct), .groups = "drop")
 
-# Aggregate across groups
+# Bootstrap CIs across groups
 acc_summary <- block_acc %>%
   group_by(block_num) %>%
-  summarise(
-    mean_acc = mean(accuracy),
-    se = sd(accuracy) / sqrt(n()),
-    .groups = "drop"
-  )
+  tidyboot_mean(accuracy, nboot = 1000)
 
-p_acc <- ggplot(acc_summary, aes(x = block_num, y = mean_acc)) +
-  geom_line(color = "steelblue") +
-  geom_point(color = "steelblue", size = 2.5) +
-  geom_errorbar(aes(ymin = mean_acc - se, ymax = mean_acc + se),
-                width = 0.2, color = "steelblue") +
+p_acc <- ggplot(acc_summary, aes(x = block_num + 1, y = empirical_stat)) +
+  geom_line(data = block_acc, aes(x = block_num + 1, y = accuracy, group = group_id),
+            color = "gray70", alpha = 0.5, linewidth = 0.4) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper),
+              fill = LLM_COLOR, alpha = 0.15) +
+  geom_line(color = LLM_COLOR, linewidth = 1) +
+  geom_point(color = LLM_COLOR, size = 2.5) +
   geom_hline(yintercept = 2/3, linetype = "dashed", color = "red", alpha = 0.7) +
-  geom_hline(yintercept = 1/16, linetype = "dotted", color = "gray50", alpha = 0.5) +
-  annotate("text", x = config$n_blocks - 1, y = 2/3 + 0.03,
-           label = "Threshold (66.7%)", color = "red", size = 3, hjust = 1) +
-  annotate("text", x = config$n_blocks - 1, y = 1/16 + 0.03,
-           label = "Chance (6.25%)", color = "gray50", size = 3, hjust = 1) +
-  scale_y_continuous(labels = scales::percent, limits = c(0, NA)) +
-  labs(x = "Block", y = "Listener Accuracy",
-       title = paste0("Accuracy Trajectory (", config$model, ")")) +
-  theme(plot.title = element_text(size = 14))
-
-p_acc
-save_fig(p_acc, "SI_llm_accuracy_trajectory.pdf", width = 6, height = 4)
+  geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
+  scale_x_continuous(breaks = 1:6, labels = as.integer) +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(x = "Block", y = "Proportion correct",
+       title = "Listener accuracy")
 
 cat("Mean accuracy by block:\n")
 for (i in seq_len(nrow(acc_summary))) {
-  cat(sprintf("  Block %d: %.1f%% (SE=%.1f%%)\n",
-              acc_summary$block_num[i],
-              acc_summary$mean_acc[i] * 100,
-              acc_summary$se[i] * 100))
+  cat(sprintf("  Block %d: %.1f%%\n",
+              acc_summary$block_num[i] + 1,
+              acc_summary$empirical_stat[i] * 100))
 }
 ```
 
-## Word Count Trajectory
+## Word count trajectory
 
 ```{r wordcount-trajectory, fig.width=6, fig.height=4}
 # Per-group per-block word count
@@ -120,35 +140,30 @@ block_wc <- rounds %>%
   group_by(group_id, block_num) %>%
   summarise(word_count = mean(word_count), .groups = "drop")
 
+# Bootstrap CIs across groups
 wc_summary <- block_wc %>%
   group_by(block_num) %>%
-  summarise(
-    mean_wc = mean(word_count),
-    se = sd(word_count) / sqrt(n()),
-    .groups = "drop"
-  )
+  tidyboot_mean(word_count, nboot = 1000)
 
-p_wc <- ggplot(wc_summary, aes(x = block_num, y = mean_wc)) +
-  geom_line(color = "darkorange") +
-  geom_point(color = "darkorange", size = 2.5) +
-  geom_errorbar(aes(ymin = mean_wc - se, ymax = mean_wc + se),
-                width = 0.2, color = "darkorange") +
-  scale_y_continuous(limits = c(0, NA)) +
-  labs(x = "Block", y = "Mean Word Count",
-       title = paste0("Description Length (", config$model, ")")) +
-  theme(plot.title = element_text(size = 14))
-
-p_wc
-save_fig(p_wc, "SI_llm_wordcount_trajectory.pdf", width = 6, height = 4)
+p_wc <- ggplot(wc_summary, aes(x = block_num + 1, y = empirical_stat)) +
+  geom_line(data = block_wc, aes(x = block_num + 1, y = word_count, group = group_id),
+            color = "gray70", alpha = 0.5, linewidth = 0.4) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper),
+              fill = LLM_COLOR, alpha = 0.15) +
+  geom_line(color = LLM_COLOR, linewidth = 1) +
+  geom_point(color = LLM_COLOR, size = 2.5) +
+  scale_x_continuous(breaks = 1:6, labels = as.integer) +
+  labs(x = "Block", y = "Words per description",
+       title = "Description length")
 
 cat("Mean word count by block:\n")
 for (i in seq_len(nrow(wc_summary))) {
-  cat(sprintf("  Block %d: %.1f (SE=%.1f)\n",
-              wc_summary$block_num[i], wc_summary$mean_wc[i], wc_summary$se[i]))
+  cat(sprintf("  Block %d: %.1f\n",
+              wc_summary$block_num[i] + 1, wc_summary$empirical_stat[i]))
 }
 ```
 
-## Description Similarity (SBERT)
+## Description similarity (SBERT)
 
 For each group, we compute cosine similarity between descriptions of the same
 tangram across blocks. Increasing similarity indicates convergence on stable
@@ -161,31 +176,27 @@ if (has_similarity) {
     group_by(group_id, block_num) %>%
     summarise(similarity = mean(similarity), .groups = "drop")
 
+  # Bootstrap CIs across groups
   sim_summary <- block_sim %>%
     group_by(block_num) %>%
-    summarise(
-      mean_sim = mean(similarity),
-      se = sd(similarity) / sqrt(n()),
-      .groups = "drop"
-    )
+    tidyboot_mean(similarity, nboot = 1000)
 
-  p_sim <- ggplot(sim_summary, aes(x = block_num, y = mean_sim)) +
-    geom_line(color = "seagreen") +
-    geom_point(color = "seagreen", size = 2.5) +
-    geom_errorbar(aes(ymin = mean_sim - se, ymax = mean_sim + se),
-                  width = 0.2, color = "seagreen") +
+  p_sim <- ggplot(sim_summary, aes(x = block_num + 1, y = empirical_stat)) +
+    geom_line(data = block_sim, aes(x = block_num + 1, y = similarity, group = group_id),
+              color = "gray70", alpha = 0.5, linewidth = 0.4) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper),
+                fill = LLM_COLOR, alpha = 0.15) +
+    geom_line(color = LLM_COLOR, linewidth = 1) +
+    geom_point(color = LLM_COLOR, size = 2.5) +
+    scale_x_continuous(breaks = 1:6, labels = as.integer, limits = c(1, 6)) +
     scale_y_continuous(limits = c(0, 1)) +
-    labs(x = "Block", y = "Cosine Similarity (adjacent descriptions)",
-         title = paste0("Description Convergence (", config$model, ")")) +
-    theme(plot.title = element_text(size = 14))
-
-  p_sim
-  save_fig(p_sim, "SI_llm_similarity_trajectory.pdf", width = 6, height = 4)
+    labs(x = "Block", y = "Cosine similarity",
+         title = "Convention stability")
 
   cat("Mean adjacent similarity by block:\n")
   for (i in seq_len(nrow(sim_summary))) {
-    cat(sprintf("  Block %d: %.3f (SE=%.3f)\n",
-                sim_summary$block_num[i], sim_summary$mean_sim[i], sim_summary$se[i]))
+    cat(sprintf("  Block %d: %.3f\n",
+                sim_summary$block_num[i] + 1, sim_summary$empirical_stat[i]))
   }
 
   overall_sim <- mean(similarity$similarity)
@@ -201,7 +212,7 @@ if (has_similarity) {
 }
 ```
 
-## Per-Group Accuracy Heatmap
+## Per-group accuracy heatmap
 
 ```{r heatmap, fig.width=5, fig.height=max(3, n_groups * 0.5)}
 heat_data <- exclusion %>%
@@ -214,13 +225,132 @@ p_heat <- ggplot(heat_data, aes(x = player_label, y = group_id, fill = listener_
                        midpoint = 0.33, limits = c(0, 1),
                        labels = scales::percent) +
   labs(x = NULL, y = NULL, fill = "Accuracy",
-       title = paste0("Listener Accuracy (Last 3 Blocks)")) +
-  theme(plot.title = element_text(size = 14))
+       title = "Listener accuracy (last 3 blocks)")
 
 p_heat
+save_fig(p_heat, "SI_llm_exclusion_heatmap.pdf",
+         width = 5, height = max(3, n_groups * 0.5))
 ```
 
-## Draft SI Paragraph
+## Combined panel figure
+
+Three-panel figure matching the structure of the pilot outcome-neutral criteria
+plots: description length, listener accuracy, and convention stability.
+
+```{r panel-figure, fig.width=14, fig.height=4.5}
+library(patchwork)
+
+PILOT_COLOR <- "black"
+
+# Compute pilot summaries if available
+if (has_pilot) {
+  pilot_wc_summary <- pilot_utts %>%
+    group_by(blockNum) %>%
+    tidyboot_mean(uttLength, nboot = 1000) %>%
+    mutate(block1 = blockNum + 1)
+
+  pilot_acc_by_round <- pilot_trials %>%
+    group_by(gameId, roundId, blockNum, originalGroup) %>%
+    summarise(ref_accuracy = mean(correct, na.rm = TRUE), .groups = "drop")
+  pilot_acc_summary <- pilot_acc_by_round %>%
+    group_by(blockNum) %>%
+    tidyboot_mean(ref_accuracy, nboot = 1000) %>%
+    mutate(block1 = blockNum + 1)
+
+  if (pilot_has_adjacent) {
+    pilot_sim_summary <- pilot_adjacent %>%
+      filter(!is.na(simAdjacent), blockNum > 0) %>%
+      group_by(blockNum) %>%
+      tidyboot_mean(simAdjacent, nboot = 1000) %>%
+      mutate(block1 = blockNum + 1)
+  }
+}
+
+# Rebuild panels with pilot overlay
+p_wc2 <- p_wc
+p_acc2 <- p_acc
+p_sim2 <- if (has_similarity) p_sim else NULL
+
+if (has_pilot) {
+  p_wc2 <- p_wc2 +
+    geom_ribbon(data = pilot_wc_summary,
+                aes(x = block1, y = empirical_stat, ymin = ci_lower, ymax = ci_upper),
+                fill = PILOT_COLOR, alpha = 0.08, inherit.aes = FALSE) +
+    geom_line(data = pilot_wc_summary,
+              aes(x = block1, y = empirical_stat),
+              color = PILOT_COLOR, linewidth = 1, inherit.aes = FALSE) +
+    geom_point(data = pilot_wc_summary,
+               aes(x = block1, y = empirical_stat),
+               color = PILOT_COLOR, size = 2.5, inherit.aes = FALSE)
+
+  p_acc2 <- p_acc2 +
+    geom_ribbon(data = pilot_acc_summary,
+                aes(x = block1, y = empirical_stat, ymin = ci_lower, ymax = ci_upper),
+                fill = PILOT_COLOR, alpha = 0.08, inherit.aes = FALSE) +
+    geom_line(data = pilot_acc_summary,
+              aes(x = block1, y = empirical_stat),
+              color = PILOT_COLOR, linewidth = 1, inherit.aes = FALSE) +
+    geom_point(data = pilot_acc_summary,
+               aes(x = block1, y = empirical_stat),
+               color = PILOT_COLOR, size = 2.5, inherit.aes = FALSE)
+
+  if (has_similarity && pilot_has_adjacent) {
+    p_sim2 <- p_sim2 +
+      geom_ribbon(data = pilot_sim_summary,
+                  aes(x = block1, y = empirical_stat, ymin = ci_lower, ymax = ci_upper),
+                  fill = PILOT_COLOR, alpha = 0.08, inherit.aes = FALSE) +
+      geom_line(data = pilot_sim_summary,
+                aes(x = block1, y = empirical_stat),
+                color = PILOT_COLOR, linewidth = 1, inherit.aes = FALSE) +
+      geom_point(data = pilot_sim_summary,
+                 aes(x = block1, y = empirical_stat),
+                 color = PILOT_COLOR, size = 2.5, inherit.aes = FALSE)
+  }
+}
+
+if (!is.null(p_sim2)) {
+  p_combined <- p_wc2 + p_acc2 + p_sim2 +
+    plot_annotation(tag_levels = "a") &
+    theme(plot.tag = element_text(face = "bold", size = 20))
+} else {
+  p_combined <- p_wc2 + p_acc2 +
+    plot_annotation(tag_levels = "a") &
+    theme(plot.tag = element_text(face = "bold", size = 20))
+}
+
+p_combined
+save_fig(p_combined, "SI_llm_combined.pdf", width = 14, height = 4.5)
+```
+
+## Example descriptions across blocks
+
+To illustrate the lack of stable convention formation, we show how one group's
+descriptions of the same tangram evolve (or fail to converge) across blocks.
+
+```{r example-descriptions}
+# Pick the group with median accuracy and show one tangram's descriptions
+median_group <- block_acc %>%
+  group_by(group_id) %>%
+  summarise(mean_acc = mean(accuracy), .groups = "drop") %>%
+  arrange(mean_acc) %>%
+  slice(ceiling(n() / 2)) %>%
+  pull(group_id)
+
+example_tangram <- rounds %>%
+  filter(group_id == median_group) %>%
+  count(target) %>%
+  slice_max(n, n = 1) %>%
+  pull(target)
+
+rounds %>%
+  filter(group_id == median_group, target == example_tangram) %>%
+  select(block_num, speaker_id, word_count, description) %>%
+  knitr::kable(col.names = c("Block", "Speaker", "Words", "Description"),
+               caption = sprintf("Descriptions of %s by %s across blocks",
+                                 example_tangram, median_group))
+```
+
+## Draft SI paragraph
 
 ```{r draft-paragraph}
 # Final stats
@@ -234,8 +364,8 @@ sd_last3 <- exclusion %>%
   pull(m) %>%
   sd()
 
-block0_wc <- wc_summary$mean_wc[wc_summary$block_num == 0]
-block_last_wc <- wc_summary$mean_wc[wc_summary$block_num == config$n_blocks - 1]
+block0_wc <- wc_summary$empirical_stat[wc_summary$block_num == 0]
+block_last_wc <- wc_summary$empirical_stat[wc_summary$block_num == config$n_blocks - 1]
 wc_direction <- ifelse(block_last_wc >= block0_wc * 0.85, "did not show", "showed")
 
 temp_str <- ifelse(is.null(config$temperature),

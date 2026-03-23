@@ -44,15 +44,17 @@ def compute_adjacent_similarities(
     utterances: pd.DataFrame, embeddings: np.ndarray, model: SentenceTransformer
 ) -> pd.DataFrame:
     """
-    For each speaker x tangram, compute cosine similarity between successive descriptions.
+    For each group x tangram, compute cosine similarity between successive
+    descriptions across blocks (regardless of which player spoke).
+    This measures cross-speaker convention convergence within a group.
     """
     df = utterances.copy()
     df["embedding_idx"] = range(len(df))
-    df = df.sort_values(["gameId", "playerId", "target", "blockNum"]).copy()
+    df = df.sort_values(["gameId", "originalGroup", "target", "phaseNum", "blockNum"]).copy()
 
-    # Shift to get previous embedding index within each (gameId, playerId, target) group
+    # Shift to get previous embedding index within each (game, group, target, phase)
     df["prev_embedding_idx"] = df.groupby(
-        ["gameId", "playerId", "target"]
+        ["gameId", "originalGroup", "target", "phaseNum"]
     )["embedding_idx"].shift(1)
 
     def get_similarity(row):

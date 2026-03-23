@@ -1,0 +1,714 @@
+{
+  "group_id": "G18",
+  "tangram_set": 0,
+  "target_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B"
+  ],
+  "all_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B",
+    "page3-121",
+    "page4-157",
+    "page7-26",
+    "page5-64",
+    "page6-149",
+    "page3-193",
+    "page5-63",
+    "page9-7",
+    "page5-142",
+    "page4-15"
+  ],
+  "model": "gemini-3.1-pro-preview",
+  "rounds": [
+    {
+      "round_num": 0,
+      "block_num": 0,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "Dog on four legs facing left, head down sniffing, tail straight out to the right.",
+      "word_count": 15,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-35",
+          "selection_label": "11",
+          "correct": false,
+          "raw_response": "11",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 1,
+      "block_num": 0,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Person facing left, leaning backward, with an arm and a leg both pointing straight horizontally to the left.",
+      "word_count": 18,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 2,
+      "block_num": 0,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "Sitting bird with flat bottom, facing right. Neck slants up-right, beak points right, and a triangular wing points up and leans back to the left.",
+      "word_count": 25,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-7",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 3,
+      "block_num": 0,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Figure with a head tilted to the right. It has a sharp point extending horizontally to the right in the middle, and a sharp point extending horizontally to the left at the bottom.",
+      "word_count": 33,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-64",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 4,
+      "block_num": 0,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Figure leaning left with a square head at the top left. It has a sharp arm pointing straight left just below the head, and a large leg pointing diagonally down and to the right.",
+      "word_count": 34,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-26",
+          "selection_label": "7",
+          "correct": false,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page6-149",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 5,
+      "block_num": 0,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "Figure with a square head at the top left. It has two flat-bottomed legs pointing straight down, and its far right edge is a straight vertical line.",
+      "word_count": 27,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-193",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page6-149",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 6,
+      "block_num": 1,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "Flat horizontal bottom and perfectly vertical right edge forming a 90-degree bottom-right corner. It has a high peak pointing diagonally up-left, and a sharp point sticking straight out to the left in the middle.",
+      "word_count": 34,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page6-149",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 7,
+      "block_num": 1,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Figure with a diamond head. It has a large sharp point sticking straight out to the right. The very bottom of the figure is a perfectly flat horizontal edge that ends in a sharp point facing left.",
+      "word_count": 37,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page6-149",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-26",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 8,
+      "block_num": 1,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Looks like an animal sniffing the ground to the left. It has exactly four distinct, sharp downward-pointing legs at the bottom, and a sharp tail pointing perfectly horizontally out to the right.",
+      "word_count": 32,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 9,
+      "block_num": 1,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "The entire right edge is a perfectly straight vertical line. It features a diamond-shaped head at the top left. The bottom has exactly two legs pointing straight down, and both legs end with flat, horizontal bottoms.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-7",
+          "selection_label": "7",
+          "correct": false,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 10,
+      "block_num": 1,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Features a diamond head at the top left. Immediately below it is a left-pointing arm with a perfectly flat, horizontal top edge. The right side is a massive triangle pointing diagonally down-right. The figure has a short, perfectly horizontal flat foot at the bottom left.",
+      "word_count": 45,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-157",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-7",
+          "selection_label": "7",
+          "correct": false,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 11,
+      "block_num": 1,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Person leaning back to the right with a diamond head at the top right. It has exactly two sharp points extending perfectly horizontally to the left: an arm in the middle and a leg at the very bottom.",
+      "word_count": 38,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 12,
+      "block_num": 2,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Diamond head. Sharp point sticking out to the right. Perfectly flat horizontal bottom edge ending in a sharp left-pointing toe. To distinguish from similar figures: the left edge is NOT a straight diagonal line; it zig-zags inward, creating a second sharp left-facing point in the middle.",
+      "word_count": 46,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-193",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page6-149",
+          "selection_label": "15",
+          "correct": false,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 13,
+      "block_num": 2,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "Perfect 90-degree bottom-right corner formed by a perfectly flat horizontal bottom edge and a straight vertical right edge. CRUCIAL: It has NO diamond or square head. The very top is a plain, sharp triangular peak pointing straight up. The left side features exactly one sharp point sticking perfectly horizontally straight out to the left.",
+      "word_count": 54,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page6-149",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-142",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 14,
+      "block_num": 2,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Diamond head at top right. Left side has exactly two sharp points extending perfectly horizontally straight LEFT: an arm in the middle and a leg at the bottom. CRUCIAL: Unlike a similar figure, this one has a sharp point sticking out to the RIGHT in the middle of its back, and its bottom-right leg points straight DOWN, not diagonally.",
+      "word_count": 59,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-193",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-142",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 15,
+      "block_num": 2,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "Looks like an animal sniffing the ground to the left. It has exactly four distinct, sharp downward-pointing legs at the bottom, and a sharp tail pointing perfectly horizontally out to the right.",
+      "word_count": 32,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-121",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 16,
+      "block_num": 2,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Diamond head at top-left. Left-pointing arm has a perfectly HORIZONTAL top edge. CRUCIAL: It has NO right arm. The entire right side is a single, unbroken diagonal line sloping smoothly down to a sharp point at the bottom-right (which is the lowest point of the whole figure). Bottom-left has a short, flat horizontal foot.",
+      "word_count": 54,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-121",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 17,
+      "block_num": 2,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Diamond head at top-left. The entire right edge is a single, perfectly straight vertical line. It has exactly two downward-pointing legs separated by a triangular inverted-V gap. BOTH legs end in perfectly flat, horizontal bottom edges, forming a 90-degree angle at the bottom-right corner.",
+      "word_count": 44,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-63",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 18,
+      "block_num": 3,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Diamond head at top-left. Left-pointing arm has a perfectly horizontal top edge. NO right arm. The entire right side is a single, unbroken diagonal line sloping down to a sharp bottom-right point (which is the lowest point of the figure). The bottom-left leg has a flat horizontal foot and a perfectly vertical outer left edge. There is a sharp inverted-V gap between the left leg and the massive right body.",
+      "word_count": 70,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "13",
+          "correct": true,
+          "raw_response": "13",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    }
+  ],
+  "summary": {
+    "overall": {
+      "accuracy": 0.211,
+      "avg_word_count": 38.58,
+      "n": 19,
+      "parse_errors": 0,
+      "listener_trials": 38
+    },
+    "per_block": {
+      "0": {
+        "accuracy": 0.083,
+        "avg_word_count": 25.33,
+        "n": 6
+      },
+      "1": {
+        "accuracy": 0.333,
+        "avg_word_count": 37.0,
+        "n": 6
+      },
+      "2": {
+        "accuracy": 0.167,
+        "avg_word_count": 48.17,
+        "n": 6
+      },
+      "3": {
+        "accuracy": 0.5,
+        "avg_word_count": 70.0,
+        "n": 1
+      }
+    },
+    "word_count_trajectory": [
+      15,
+      18,
+      25,
+      33,
+      34,
+      27,
+      34,
+      37,
+      32,
+      36,
+      45,
+      38,
+      46,
+      54,
+      59,
+      32,
+      54,
+      44,
+      70
+    ]
+  },
+  "config": {
+    "num_blocks": 6,
+    "group_size": 3,
+    "num_tangrams": 16,
+    "num_targets": 6,
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "timestamp": "2026-03-22T19:40:19.611127",
+  "status": "in_progress",
+  "player_orders": {
+    "0": [
+      "page5-63",
+      "page7-26",
+      "page6-149",
+      "page3-193",
+      "page9-46",
+      "page3-121",
+      "page7-255",
+      "page-B",
+      "page9-7",
+      "page4-157",
+      "page7-107",
+      "page5-142",
+      "page5-28",
+      "page4-15",
+      "page3-35",
+      "page5-64"
+    ],
+    "1": [
+      "page9-46",
+      "page7-107",
+      "page4-15",
+      "page9-7",
+      "page-B",
+      "page3-193",
+      "page7-26",
+      "page5-64",
+      "page3-35",
+      "page5-142",
+      "page5-28",
+      "page3-121",
+      "page7-255",
+      "page5-63",
+      "page6-149",
+      "page4-157"
+    ],
+    "2": [
+      "page4-157",
+      "page5-63",
+      "page3-121",
+      "page5-142",
+      "page-B",
+      "page9-46",
+      "page9-7",
+      "page6-149",
+      "page7-26",
+      "page3-193",
+      "page3-35",
+      "page7-107",
+      "page4-15",
+      "page7-255",
+      "page5-28",
+      "page5-64"
+    ]
+  },
+  "block_targets": [
+    [
+      "page-B",
+      "page7-107",
+      "page9-46",
+      "page5-28",
+      "page7-255",
+      "page3-35"
+    ],
+    [
+      "page9-46",
+      "page5-28",
+      "page-B",
+      "page3-35",
+      "page7-255",
+      "page7-107"
+    ],
+    [
+      "page5-28",
+      "page9-46",
+      "page7-107",
+      "page-B",
+      "page7-255",
+      "page3-35"
+    ],
+    [
+      "page7-255",
+      "page9-46",
+      "page3-35",
+      "page7-107",
+      "page5-28",
+      "page-B"
+    ],
+    [
+      "page7-255",
+      "page-B",
+      "page7-107",
+      "page5-28",
+      "page9-46",
+      "page3-35"
+    ],
+    [
+      "page5-28",
+      "page9-46",
+      "page3-35",
+      "page-B",
+      "page7-255",
+      "page7-107"
+    ]
+  ]
+}
