@@ -78,6 +78,17 @@ Output goes to `analysis/{datetime}/` (single run) or split across `data/pilots/
 
 Quarto notebooks (`00_preprocess.qmd` through `05_exit_survey.qmd`) read from `analysis/processed_data/`, a symlink updated by `run_pipeline.py`.
 
+### Stats → manuscript
+
+Analysis notebooks write statistics as `\newcommand` definitions to `paper/stats/*.tex`, which are `\input`'d by the manuscript (`paper/main.tex`). This keeps numbers in the paper in sync with the analysis code.
+
+| Notebook | Generates |
+|----------|-----------|
+| `analysis/SI_pilot.qmd` | `paper/stats/pilot.tex` |
+| `analysis/llm_simulation/SI_llm_simulation.qmd` | `paper/stats/llm.tex` |
+
+Re-render the relevant notebook to update the stats files after any data or analysis changes.
+
 ## LLM tools
 
 Both tools use Gemini via Vertex AI. Requires `gcloud auth application-default login` and a GCP project with Vertex AI enabled.

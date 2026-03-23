@@ -91,3 +91,16 @@ uv run python analysis/animate_umap.py --data-dir data/pilots/ --output-dir anal
 uv run python analysis/compute_embeddings.py data/pilots/
 uv run pytest analysis/test_data_integrity.py -v
 ```
+
+### Stats → LaTeX pipeline
+
+Analysis notebooks write statistics as `\newcommand` definitions to `paper/stats/*.tex`, which are `\input`'d by `paper/main.tex`. This keeps numbers in sync between the analysis and the manuscript, and works with Overleaf (the generated `.tex` files are committed to git).
+
+| Notebook | Generates | Commands |
+|----------|-----------|----------|
+| `analysis/SI_pilot.qmd` | `paper/stats/pilot.tex` | `\pilotBetaLen`, `\pilotNSig`, `\pilotDuration`, etc. |
+| `analysis/llm_simulation/SI_llm_simulation.qmd` | `paper/stats/llm.tex` | `\llmNPass`, `\llmMeanAcc`, `\llmSim`, etc. |
+
+After re-rendering a notebook, commit the updated `paper/stats/*.tex` file so the paper picks up the new numbers. The generated files have a `% AUTO-GENERATED` header to discourage manual edits.
+
+**Note:** The `paper/` directory is in `.gitignore` (it's synced via Overleaf, not this repo). The stats files live inside `paper/stats/` and are managed on the Overleaf side.
