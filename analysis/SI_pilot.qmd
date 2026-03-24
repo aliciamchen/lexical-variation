@@ -506,12 +506,12 @@ if (has_block_pw) {
                labeller = labeller(condition = function(x) format_condition(x))) +
     scale_fill_brewer(name = "Pair type", palette = "Accent") +
     scale_color_brewer(name = "Pair type", palette = "Accent") +
+    scale_x_continuous(breaks = scales::breaks_width(1)) +
     labs(x = "Block", y = "Pairwise cosine similarity") +
     coord_cartesian(ylim = c(0, 1)) +
-    theme(legend.position = "bottom")
+    theme(legend.position = "bottom",
+          legend.box.margin = margin(t = -10, b = -10))
 
-  print(fig3a)
-  save_fig(fig3a, "SI_within_between_similarity.pdf", width = 10, height = 3.7)
 }
 ```
 
@@ -558,12 +558,11 @@ if (has_block_pw) {
     geom_point(size = 2) +
     scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
     scale_fill_condition(labels = function(x) format_condition(x), name = "Condition") +
+    scale_x_continuous(breaks = scales::breaks_width(1), limits = c(1, NA)) +
+    coord_cartesian(ylim = c(-0.05, 0.85)) +
     labs(x = "Block",
-         y = "Group specificity\n(within - between similarity)") +
-    theme(legend.position = "right")
-
-  print(fig3b)
-  save_fig(fig3b, "SI_specificity_trajectory.pdf", width = 9, height = 4)
+         y = "Group specificity") +
+    theme(legend.position = "none")
 }
 ```
 
@@ -580,6 +579,8 @@ Group-specificity coefficient (the same_group effect from the pairwise
 similarity model) for Phase 1 final vs Phase 2 final, by condition. Lines
 connect the same game across phases. This is the primary dependent variable
 for H1 and H2.
+
+NOTE: I couldnt figure out how to use patchwork right for the dimensions here so ive edited the output aspect stuff on illustrator
 
 ```{r si-fig-phase-comparison, fig.width=6.5, fig.height=3.5}
 if (has_pairwise) {
@@ -604,11 +605,47 @@ if (has_pairwise) {
     geom_line(aes(group = interaction(gameId, condition)), linewidth = 0.6, alpha = 0.6) +
     geom_point(size = 3) +
     scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
-    labs(x = "Phase", y = "Group-specificity coef") +
-    theme(legend.position = "right")
+    coord_cartesian(ylim = c(-0.05, 0.85)) +
+    labs(x = "Phase", y = "Group-specificity") +
+    theme(legend.position = "none")
 
-  print(fig4)
-  save_fig(fig4, "SI_phase_comparison.pdf", width = 6.5, height = 3.5)
+}
+```
+
+```{r si-fig-group-specificity-combined, fig.width=12, fig.height=7.7}
+if (exists("fig3a") && exists("fig3b") && exists("fig4")) {
+  # Extract condition legend from fig3b
+  p_for_legend <- fig3b +
+    theme(legend.position = "bottom",
+          legend.text = element_text(size = 14),
+          legend.title = element_text(size = 14),
+          legend.key.size = unit(1, "cm"),
+          legend.box.margin = margin(t = -10))
+  legend_grob <- ggplotGrob(p_for_legend)$grobs[[
+    which(ggplotGrob(p_for_legend)$layout$name == "guide-box-bottom")
+  ]]
+
+  design <- "
+    AAAAAAAAAA
+    AAAAAAAAAA
+    BBBBB#CCCC
+    BBBBB#CCCC
+    BBBBB#CCCC
+    DDDDDDDDDD
+  "
+
+  fig_specificity_combined <- fig3a + fig3b + fig4 +
+    wrap_elements(legend_grob) +
+    plot_layout(design = design,
+                heights = c(0.65, 0.65, 0.65, 0.5, 0.5, 0.16)) +
+    plot_annotation(tag_levels = list(c("a", "b", "c", "")),
+                    theme = theme(plot.margin = margin(t = 8))) &
+    theme(plot.tag = element_text(face = "bold"),
+          plot.tag.position = c(0, 1.07))
+
+  print(fig_specificity_combined)
+  save_fig(fig_specificity_combined, "SI_group_specificity.pdf",
+           width = 12, height = 7.7)
 }
 ```
 
