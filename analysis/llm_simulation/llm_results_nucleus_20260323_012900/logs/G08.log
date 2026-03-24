@@ -1,0 +1,192 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G08
+Seed: 50
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 6 in their view)... "person walking left, horizontal arm reaching straight out to the left, triangle head pointing up and right"
+    Listener 1: WRONG (picked page3-35)
+    Listener 2: WRONG (picked page3-193)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 1 (block 0): Player 0 describes target (img 11 in their view)... "flat horizontal bottom and straight vertical left edge forming a 90-degree angle at the bottom left. sharp point on the ground at the far right. head at the top points up and left."
+    Listener 1: WRONG (picked page7-26)
+    Listener 2: WRONG (picked page4-15)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 2 (block 0): Player 0 describes target (img 8 in their view)... "diamond head at the top left pointing diagonally up and left, with a large triangle on the bottom right pointing straight down."
+    Listener 1: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page3-193)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 3 (block 0): Player 0 describes target (img 4 in their view)... "flat horizontal bottom and perfectly straight vertical right edge forming a 90-degree angle at the bottom right. head at the top points diagonally up and left. a sharp point sticks out horizontally to the left."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page5-28)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 4 (block 0): Player 0 describes target (img 13 in their view)... "flat horizontal bottom meeting a straight vertical left edge at a 90-degree angle. right tip is a sharp point on the ground. pointed arm sticks straight horizontally left. head is a triangle pointing up and right."
+    Listener 1: WRONG (picked page9-7)
+    Listener 2: WRONG (picked page5-63)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 5 (block 0): Player 0 describes target (img 14 in their view)... "diamond head on the top right, large pointed arm on the left pointing perfectly straight up, two pointed legs at the bottom"
+    Listener 1: WRONG (picked page6-149)
+    Listener 2: WRONG (picked page4-15)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 4 in their view)... "Head is a triangle pointing diagonally up and right. Arm extends perfectly horizontally straight to the left. The back foot points flat to the right on the ground."
+    Listener 0: WRONG (picked page9-7)
+    Listener 2: correct
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 7 (block 1): Player 1 describes target (img 7 in their view)... "The only figure with a perfect 90-degree angle at the BOTTOM RIGHT corner, formed by a flat horizontal bottom and a straight vertical right edge. The diamond head points diagonally up-left, and a pointy arm sticks out straight horizontally to the left."
+    Listener 0: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page6-149)
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 8 (block 1): Player 1 describes target (img 11 in their view)... "Diamond head points diagonally UP-LEFT. The very lowest part of the figure is a single sharp point aiming perfectly STRAIGHT DOWN. A pointy tail sticks out to the RIGHT."
+    Listener 0: correct
+    Listener 2: WRONG (picked page4-15)
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 9 (block 1): Player 1 describes target (img 16 in their view)... "Has a perfect 90-degree angle at the BOTTOM LEFT corner formed by a flat bottom and straight vertical left edge. The diamond head points diagonally UP-LEFT. A long sharp point extends to the RIGHT, resting flat on the ground."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page5-142)
+    Listener 2: correct
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 10 (block 1): Player 1 describes target (img 5 in their view)... "Diamond head is on the RIGHT, pointing diagonally UP-RIGHT. A large arm on the LEFT points perfectly STRAIGHT VERTICALLY UP. Two distinct pointy legs at the bottom spread apart."
+    Listener 0: correct
+    Listener 2: WRONG (picked page6-149)
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 11 (block 1): Player 1 describes target (img 15 in their view)... "Has a perfect 90-degree angle at the BOTTOM LEFT corner. The head points diagonally UP-RIGHT. A pointy arm extends perfectly HORIZONTALLY straight to the LEFT. The back foot forms a sharp point resting flat on the ground to the right."
+    Listener 0: correct
+    Listener 2: WRONG (picked page7-26)
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 14 in their view)... "Perfect 90-degree right angle at the bottom left corner. Head points diagonally up-right. Pointy arm extends perfectly straight horizontally to the left."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 13 (block 2): Player 2 describes target (img 11 in their view)... "Diamond head points diagonally up-left. The very bottom is a single sharp point aiming perfectly straight down (not a flat bottom). A sharp point extends horizontally to the right."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 14 (block 2): Player 2 describes target (img 16 in their view)... "Perfect 90-degree angle at the bottom right corner. Head points diagonally up-left. Pointy arm extends perfectly straight horizontally to the left."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 15 (block 2): Player 2 describes target (img 1 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"Head points diagonally up-right. Pointy arm extends perfectly straight horizontally to the left. Has two distinct legs with a space between them on the ground (no flat bottom)."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page9-7)
+    Listener 1: WRONG (picked page5-63)
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 16 (block 2): Player 2 describes target (img 13 in their view)... "The ONLY figure where a large pointy arm on the LEFT side points perfectly STRAIGHT VERTICALLY UP. The diamond head is on the RIGHT side, pointing diagonally up-right. Two distinct pointy legs at the bottom."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 17 (block 2): Player 2 describes target (img 15 in their view)... "Perfect 90-degree right angle at the bottom left corner. Head points diagonally up-left. Long sharp point resting flat on the ground extends to the far right."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 6 in their view)... "Head clearly points diagonally UP-RIGHT. Left arm extends perfectly straight HORIZONTALLY to the LEFT. The bottom has a V-shaped gap between two distinct legs (NO flat bottom): the left leg points straight down, and the right leg rests flat on the ground pointing to the right."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 19 (block 3): Player 0 describes target (img 11 in their view)... "Perfect 90-degree right angle at the bottom left corner. Head points diagonally up-left. Long sharp point resting flat on the ground extends to the far right."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page5-64)
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 20 (block 3): Player 0 describes target (img 13 in their view)... "Perfect 90-degree right angle at the bottom left corner. Head points diagonally up-right. Pointy arm extends perfectly straight horizontally to the left."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 21 (block 3): Player 0 describes target (img 4 in their view)... "Perfect 90-degree angle at the bottom right corner. Head points diagonally up-left. Pointy arm extends perfectly straight horizontally to the left."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page5-64)
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 22 (block 3): Player 0 describes target (img 8 in their view)... "Diamond head points diagonally up-left. The very bottom is a single sharp point aiming perfectly straight down. A sharp point extends horizontally to the right."
+    Listener 1: correct
+    Listener 2: WRONG (picked page4-15)
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 23 (block 3): Player 0 describes target (img 14 in their view)... "The ONLY figure where a large pointy arm on the LEFT side points perfectly STRAIGHT VERTICALLY UP. The diamond head is on the RIGHT side, pointing diagonally up-right. Two distinct pointy legs at the bottom."
+    Listener 1: correct
+    Listener 2: WRONG (picked page4-15)
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 11 in their view)... "Diamond head points diagonally up-left. The very bottom is a single sharp point aiming perfectly straight down. A sharp point extends horizontally to the right. CRUCIALLY, there is NO arm sticking out to the left (unlike a similar figure, the left edge of the body below the head is perfectly straight and vertical)."
+    Listener 0: WRONG (picked page3-193)
+    Listener 2: correct
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 25 (block 4): Player 1 describes target (img 7 in their view)... "Perfect 90-degree angle at the bottom right corner. Head points diagonally up-left. Pointy arm extends perfectly straight horizontally to the left. CRUCIALLY, to distinguish from a similar figure: the straight vertical right edge is SHORT (only forming the lower leg, above which the back slopes diagonally inwards/up-left), and the flat horizontal bottom is SHORT (the arm extends much further to the left than the base)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 26 (block 4): Player 1 describes target (img 4 in their view)... "Head points diagonally UP-RIGHT. Left arm extends perfectly straight HORIZONTALLY to the LEFT. V-shaped gap between two distinct legs at the bottom (NO flat bottom): left leg points straight down, right leg points right along the ground."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 27 (block 4): Player 1 describes target (img 15 in their view)... "Perfect 90-degree angle at the bottom left corner. Head points diagonally up-right. Pointy arm extends perfectly straight horizontally to the left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 28 (block 4): Player 1 describes target (img 16 in their view)... "Perfect 90-degree angle at the BOTTOM LEFT corner. The left edge below the head is perfectly straight and vertical (NO arm sticking out to the left). Head points diagonally up-left. The completely flat horizontal bottom extends to the far right, ending in a sharp point resting directly ON THE GROUND (not elevated)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 29 (block 4): Player 1 describes target (img 5 in their view)... "Diamond head is on the right, pointing diagonally UP-RIGHT. Left arm extends perfectly straight VERTICALLY UP. V-shaped gap between two distinct legs at the bottom (NO flat bottom, NO continuous straight vertical edges)."
+    Listener 0: correct
+    Listener 2: WRONG (picked page3-193)
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 1 in their view)... "Head points diagonally UP-RIGHT. Left arm extends perfectly straight HORIZONTALLY to the LEFT. V-shaped gap between two distinct legs at the bottom (NO flat bottom): left leg points straight down, right leg points right along the ground."
+    Listener 0: correct
+    Listener 1: WRONG (picked page9-7)
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 31 (block 5): Player 2 describes target (img 14 in their view)... "Perfect 90-degree right angle at the bottom left corner. Head points diagonally up-right. Pointy arm extends perfectly straight horizontally to the left."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 32 (block 5): Player 2 describes target (img 15 in their view)... "Perfect 90-degree angle at the BOTTOM LEFT corner. The left edge below the head is perfectly straight and vertical (NO arm sticking out to the left). Head points diagonally up-left. The completely flat horizontal bottom extends to the far right, ending in a sharp point resting directly ON THE GROUND."
+    Listener 0: WRONG (picked page3-193)
+    Listener 1: WRONG (picked page5-64)
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 33 (block 5): Player 2 describes target (img 16 in their view)... "Perfect 90-degree angle at the bottom right corner. Head points diagonally up-left. Arm extends perfectly straight horizontally to the left. CRUCIALLY: the straight vertical right edge is SHORT, and the back slants diagonally above it (unlike a similar figure where the entire right back is vertical)."
+    Listener 0: correct
+    Listener 1: WRONG (picked page5-142)
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 34 (block 5): Player 2 describes target (img 13 in their view)... "The ONLY figure where a large pointy arm on the LEFT side points perfectly STRAIGHT VERTICALLY UP. The diamond head is on the RIGHT side, pointing diagonally up-right. Two distinct pointy legs at the bottom."
+    Listener 0: correct
+    Listener 1: WRONG (picked page4-157)
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+  Round 35 (block 5): Player 2 describes target (img 11 in their view)... "Diamond head points diagonally up-left. The left edge of the body is perfectly straight and vertical (NO arm sticking out to the left), ending at the very bottom in a single sharp point aiming straight down (NO flat bottom). A pointy tail extends horizontally to the right."
+    Listener 0: correct
+    Listener 1: WRONG (picked page7-26)
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json]
+
+========================================
+SUMMARY for group G08:
+  Overall accuracy: 51.4%
+  Overall avg words: 33.5
+  Block 0: acc=0.0%, words=27.5
+  Block 1: acc=41.7%, words=34.5
+  Block 2: acc=83.3%, words=26.8
+  Block 3: acc=50.0%, words=29.2
+  Block 4: acc=83.3%, words=43.5
+  Block 5: acc=50.0%, words=39.5
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G08.json

@@ -1,0 +1,1200 @@
+{
+  "group_id": "G11",
+  "tangram_set": 0,
+  "target_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B"
+  ],
+  "all_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B",
+    "page3-121",
+    "page4-157",
+    "page7-26",
+    "page5-64",
+    "page6-149",
+    "page3-193",
+    "page5-63",
+    "page9-7",
+    "page5-142",
+    "page4-15"
+  ],
+  "model": "gemini-3.1-pro-preview",
+  "rounds": [
+    {
+      "round_num": 0,
+      "block_num": 0,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Figure hunched over facing left, diamond head low, with a parallelogram sticking up and back to the right.",
+      "word_count": 18,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 1,
+      "block_num": 0,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "Bird facing left, long neck, both wings pointing straight up together forming a tall peak, and a small tail pointing down.",
+      "word_count": 21,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-157",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 2,
+      "block_num": 0,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Sitting figure facing left with an upright diamond head, a sharp leg sticking straight out to the left, and a parallelogram pointing diagonally up and to the right from the back.",
+      "word_count": 31,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-64",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 3,
+      "block_num": 0,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "Figure leaning far down to the left, with a single sharp leg pointing straight down, and a parallelogram sticking straight out horizontally to the right from its back.",
+      "word_count": 28,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-121",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-193",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 4,
+      "block_num": 0,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Figure facing right with a diamond head, a sharp arm pointing straight horizontally out to the right, and a piece extending diagonally down and to the left from its bottom back.",
+      "word_count": 31,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-64",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-193",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 5,
+      "block_num": 0,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "Sitting figure facing right, diamond head, with a parallelogram arm raised diagonally up and to the right, and the base pointing down to the left.",
+      "word_count": 25,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-64",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-64",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 6,
+      "block_num": 1,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Figure bowing very low to the left, diamond head at bottom left. Parallelogram sticks diagonally up and right from its upper back. Sharp foot points right.",
+      "word_count": 26,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-142",
+          "selection_label": "12",
+          "correct": false,
+          "raw_response": "12",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 7,
+      "block_num": 1,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Figure with a diamond head. A sharp triangular arm points perfectly horizontally out to the right. A long parallelogram leg points diagonally down and to the left.",
+      "word_count": 27,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "12",
+          "correct": true,
+          "raw_response": "12",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 8,
+      "block_num": 1,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "Figure facing right with a diamond head. A long parallelogram arm extends diagonally UPWARDS and to the right from its front/chest. A sharp triangular base points diagonally down and to the left.",
+      "word_count": 32,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-64",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-64",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 9,
+      "block_num": 1,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "Bird facing left. Has a very tall peak pointing straight up, with its right edge forming a perfectly straight vertical line dropping all the way down to a sharp bottom point. A diamond head is high on the left.",
+      "word_count": 39,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-193",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 10,
+      "block_num": 1,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Parallelogram extends perfectly horizontally right. The lowest leg points straight down and has a perfectly vertical LEFT edge. The leftmost part of the figure is a sharp triangular point, NOT a diamond.",
+      "word_count": 32,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-142",
+          "selection_label": "12",
+          "correct": false,
+          "raw_response": "12",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "14",
+          "correct": true,
+          "raw_response": "14",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 11,
+      "block_num": 1,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Diamond head. A sharp triangular arm points perfectly horizontally out to the LEFT. A parallelogram extends diagonally UPWARDS and to the RIGHT from its back. The base points diagonally down and left.",
+      "word_count": 32,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "16",
+          "correct": false,
+          "raw_response": "16",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 12,
+      "block_num": 2,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "Diamond head near the top. Key feature: below the head, the completely straight left edge of the body forms a long diagonal line sloping smoothly down and to the left, ending in a sharp point. A parallelogram arm points diagonally up and right from the front chest area.",
+      "word_count": 48,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-64",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 13,
+      "block_num": 2,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Diamond head at the very bottom left. The highest part of the figure is a parallelogram extending diagonally up and to the right. At the bottom right, a sharp foot points perfectly horizontally out to the right.",
+      "word_count": 37,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 14,
+      "block_num": 2,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Diamond head. Sharp arm points perfectly horizontally left. Parallelogram extends diagonally up and right. The lowest point of the base points diagonally down and left (not straight down like similar figures).",
+      "word_count": 31,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 15,
+      "block_num": 2,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "NO diamond. Parallelogram points completely horizontally to the RIGHT. Lowest point is a sharp leg aiming perfectly straight DOWN. The leftmost part is a sharp triangular point (not a diamond), and there is NO upward-pointing peak on top.",
+      "word_count": 38,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 16,
+      "block_num": 2,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Diamond head. Sharp triangular arm points perfectly horizontally out to the RIGHT. A long parallelogram leg extends diagonally DOWN and to the LEFT.",
+      "word_count": 23,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-28",
+          "selection_label": "12",
+          "correct": true,
+          "raw_response": "12",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 17,
+      "block_num": 2,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Diamond head on the left. Top is a sharp peak pointing straight UP (not flat). The entire right side is a perfectly straight vertical edge dropping all the way down to a sharp bottom point.",
+      "word_count": 35,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 18,
+      "block_num": 3,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "Diamond head on the left. Top is a sharp peak pointing straight UP (not flat). The entire right side is a perfectly straight vertical edge dropping all the way down to a sharp bottom point.",
+      "word_count": 35,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page6-149",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-35",
+          "selection_label": "13",
+          "correct": true,
+          "raw_response": "13",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 19,
+      "block_num": 3,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Diamond head. Sharp triangular arm points perfectly horizontally out to the RIGHT. A long parallelogram leg extends diagonally DOWN and to the LEFT.",
+      "word_count": 23,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "7",
+          "correct": false,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 20,
+      "block_num": 3,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Diamond head. Sharp arm points perfectly horizontally LEFT. Parallelogram points diagonally UP-RIGHT (not horizontally). The bottommost leg points diagonally DOWN-LEFT (not straight down).",
+      "word_count": 23,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "13",
+          "correct": true,
+          "raw_response": "13",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-255",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 21,
+      "block_num": 3,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "Diamond head. Parallelogram arm points diagonally UP-RIGHT. Crucially, there are NO pieces sticking out horizontally; the entire left back edge is a perfectly straight, smooth line sloping DOWN-LEFT to a sharp bottom point.",
+      "word_count": 33,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-64",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-46",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 22,
+      "block_num": 3,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "NO diamond head. Leftmost part is a sharp triangular point. A parallelogram arm points completely horizontally to the RIGHT. The lowest leg points perfectly straight DOWN.",
+      "word_count": 26,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "14",
+          "correct": true,
+          "raw_response": "14",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 23,
+      "block_num": 3,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Diamond head at the very bottom left. The highest part of the figure is a parallelogram extending diagonally up and to the right. At the bottom right, a sharp foot points perfectly horizontally out to the right.",
+      "word_count": 37,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 24,
+      "block_num": 4,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "Diamond head. A long parallelogram points towards the TOP-RIGHT corner. The entire left side is a completely flat, straight diagonal edge sloping down to a bottom-left point. It has NO parts pointing horizontally left or right.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-64",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 25,
+      "block_num": 4,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Diamond head. Sharp arm points perfectly horizontally LEFT. Parallelogram points diagonally UP-RIGHT. The bottommost leg points diagonally DOWN-LEFT (not straight down).",
+      "word_count": 21,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-255",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 26,
+      "block_num": 4,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Diamond head at the very bottom left. The highest part is a parallelogram extending diagonally up and to the right. At the bottom right, a sharp foot points perfectly horizontally right.",
+      "word_count": 31,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 27,
+      "block_num": 4,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "NO diamond head. Leftmost part is a sharp triangular point. A parallelogram arm points completely horizontally RIGHT. The lowest point is a sharp leg aiming perfectly straight DOWN.",
+      "word_count": 28,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-15",
+          "selection_label": "7",
+          "correct": false,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-193",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 28,
+      "block_num": 4,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Diamond head. Rightmost part is a sharp triangle pointing perfectly horizontally RIGHT. Lowest part is a long parallelogram leg extending diagonally DOWN and LEFT.",
+      "word_count": 24,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "12",
+          "correct": true,
+          "raw_response": "12",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 29,
+      "block_num": 4,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "Diamond head on the left. Top is a sharp triangular peak pointing straight UP. The entire right side is a perfectly straight vertical edge dropping all the way down to a sharp point at the bottom.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-35",
+          "selection_label": "13",
+          "correct": true,
+          "raw_response": "13",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 30,
+      "block_num": 5,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Diamond head. Rightmost part is a sharp triangle pointing perfectly horizontally RIGHT. Lowest part is a long parallelogram leg extending diagonally DOWN and LEFT.",
+      "word_count": 24,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-28",
+          "selection_label": "12",
+          "correct": true,
+          "raw_response": "12",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 31,
+      "block_num": 5,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Diamond head. Sharp arm points perfectly horizontally LEFT. Parallelogram points diagonally UP-RIGHT. The bottommost leg points diagonally DOWN-LEFT (not straight down).",
+      "word_count": 21,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "13",
+          "correct": true,
+          "raw_response": "13",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 32,
+      "block_num": 5,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Diamond head on the left. Top is a sharp triangular peak pointing straight UP. The entire right side is a perfectly straight vertical edge dropping all the way down to a sharp point at the bottom.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 33,
+      "block_num": 5,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "Absolutely NO diamond shape visible. Parallelogram points completely horizontally to the RIGHT. Lowest point is a sharp leg aiming perfectly straight DOWN (its left edge is perfectly vertical). The leftmost part is a sharp triangular point.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 34,
+      "block_num": 5,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "Diamond head. Target has absolutely NO horizontally pointing parts (do NOT pick figures with an arm pointing left). A long parallelogram extends diagonally UP and RIGHT. The entire left edge of the figure is a single, perfectly straight, smooth diagonal line sloping down to a sharp bottom-left point.",
+      "word_count": 48,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 35,
+      "block_num": 5,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Diamond head at the very bottom left. The highest part is a parallelogram extending diagonally up and to the right. At the bottom right, a sharp foot points perfectly horizontally right.",
+      "word_count": 31,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    }
+  ],
+  "summary": {
+    "overall": {
+      "accuracy": 0.611,
+      "avg_word_count": 30.64,
+      "n": 36,
+      "parse_errors": 0,
+      "listener_trials": 72
+    },
+    "per_block": {
+      "0": {
+        "accuracy": 0.083,
+        "avg_word_count": 25.67,
+        "n": 6
+      },
+      "1": {
+        "accuracy": 0.5,
+        "avg_word_count": 31.33,
+        "n": 6
+      },
+      "2": {
+        "accuracy": 0.833,
+        "avg_word_count": 35.33,
+        "n": 6
+      },
+      "3": {
+        "accuracy": 0.583,
+        "avg_word_count": 29.5,
+        "n": 6
+      },
+      "4": {
+        "accuracy": 0.75,
+        "avg_word_count": 29.33,
+        "n": 6
+      },
+      "5": {
+        "accuracy": 0.917,
+        "avg_word_count": 32.67,
+        "n": 6
+      }
+    },
+    "word_count_trajectory": [
+      18,
+      21,
+      31,
+      28,
+      31,
+      25,
+      26,
+      27,
+      32,
+      39,
+      32,
+      32,
+      48,
+      37,
+      31,
+      38,
+      23,
+      35,
+      35,
+      23,
+      23,
+      33,
+      26,
+      37,
+      36,
+      21,
+      31,
+      28,
+      24,
+      36,
+      24,
+      21,
+      36,
+      36,
+      48,
+      31
+    ]
+  },
+  "config": {
+    "num_blocks": 6,
+    "group_size": 3,
+    "num_tangrams": 16,
+    "num_targets": 6,
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "timestamp": "2026-03-23T01:55:05.576319",
+  "status": "complete",
+  "player_orders": {
+    "0": [
+      "page3-35",
+      "page5-64",
+      "page7-107",
+      "page5-28",
+      "page9-46",
+      "page6-149",
+      "page4-15",
+      "page7-255",
+      "page5-63",
+      "page-B",
+      "page9-7",
+      "page5-142",
+      "page3-193",
+      "page7-26",
+      "page4-157",
+      "page3-121"
+    ],
+    "1": [
+      "page6-149",
+      "page9-7",
+      "page4-15",
+      "page3-35",
+      "page5-64",
+      "page3-121",
+      "page9-46",
+      "page4-157",
+      "page7-107",
+      "page-B",
+      "page5-63",
+      "page5-28",
+      "page7-255",
+      "page3-193",
+      "page5-142",
+      "page7-26"
+    ],
+    "2": [
+      "page4-157",
+      "page3-193",
+      "page4-15",
+      "page5-142",
+      "page9-7",
+      "page6-149",
+      "page7-107",
+      "page5-64",
+      "page3-121",
+      "page7-26",
+      "page9-46",
+      "page5-28",
+      "page3-35",
+      "page-B",
+      "page7-255",
+      "page5-63"
+    ]
+  },
+  "block_targets": [
+    [
+      "page7-107",
+      "page3-35",
+      "page7-255",
+      "page-B",
+      "page5-28",
+      "page9-46"
+    ],
+    [
+      "page7-107",
+      "page5-28",
+      "page9-46",
+      "page3-35",
+      "page-B",
+      "page7-255"
+    ],
+    [
+      "page9-46",
+      "page7-107",
+      "page7-255",
+      "page-B",
+      "page5-28",
+      "page3-35"
+    ],
+    [
+      "page3-35",
+      "page5-28",
+      "page7-255",
+      "page9-46",
+      "page-B",
+      "page7-107"
+    ],
+    [
+      "page9-46",
+      "page7-255",
+      "page7-107",
+      "page-B",
+      "page5-28",
+      "page3-35"
+    ],
+    [
+      "page5-28",
+      "page7-255",
+      "page3-35",
+      "page-B",
+      "page9-46",
+      "page7-107"
+    ]
+  ]
+}

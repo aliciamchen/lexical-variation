@@ -1,0 +1,194 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G20
+Seed: 62
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 13 in their view)... "standing figure with a diamond head, a wide completely flat horizontal base, and a triangular arm pointing out to the left"
+    Listener 1: WRONG (picked page9-46)
+    Listener 2: WRONG (picked page5-142)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 1 (block 0): Player 0 describes target (img 9 in their view)... "Sitting fox or dog facing left, diamond on top of head, pointed snout pointing exactly left, large triangular tail pointing up and right."
+    Listener 1: WRONG (picked page3-35)
+    Listener 2: WRONG (picked page9-7)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 2 (block 0): Player 0 describes target (img 16 in their view)... "Figure with a diamond head on the upper left, a triangular arm pointing diagonally up and to the left, and a body extending downwards and to the right, ending in a sharp downward point at the very bottom (no flat base)."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page4-15)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 3 (block 0): Player 0 describes target (img 15 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"Figure with a diamond head and a perfectly flat horizontal bottom edge. It has a large triangular arm pointing straight out to the right, and a small sharp point sticking horizontally to the left right at the base."
+    Listener 1: WRONG (picked page5-142)
+    Listener 2: WRONG (picked page7-255)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 4 (block 0): Player 0 describes target (img 6 in their view)... "Figure with a diamond head and no flat horizontal base. The body has three distinct sharp points sticking out: one pointing diagonally up-left, a smaller one pointing diagonally down-left, and a long one pointing diagonally down-right."
+    Listener 1: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page7-107)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 5 (block 0): Player 0 describes target (img 11 in their view)... "Figure with a diamond head on the upper left. It has a long, sharp leg pointing straight vertically down. Its right side has two distinct points sticking out: a large triangular arm pointing diagonally up-right, and a smaller point sticking horizontally right. There are no arms pointing to the left."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page4-15)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 9 in their view)... "Figure with a completely flat horizontal base and a straight, perfectly vertical right edge. It has a diamond head and a single large triangular arm pointing left."
+    Listener 0: WRONG (picked page5-142)
+    Listener 2: WRONG (picked page7-26)
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 7 (block 1): Player 1 describes target (img 6 in their view)... "Diamond head, balances on a single sharp bottom point (no flat base). The body's left edge is a perfectly straight vertical line. Its right side has a large arm pointing diagonally up-right, and a small horizontal point sticking out straight right just below the arm."
+    Listener 0: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page3-121)
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 8 (block 1): Player 1 describes target (img 10 in their view)... "Sitting fox facing left. It has a diamond shape on top, a triangular snout pointing perfectly horizontally LEFT, a large triangular tail pointing diagonally UP-RIGHT, and sits on a flat horizontal base."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page5-142)
+    Listener 2: correct
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 9 (block 1): Player 1 describes target (img 13 in their view)... "Figure with a diamond head on the upper left. It has no flat base. There are three distinct sharp points extending from the body: a large triangular arm pointing diagonally up-right, a smaller point pointing diagonally down-left, and a long leg extending diagonally down-right."
+    Listener 0: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page5-64)
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 10 (block 1): Player 1 describes target (img 12 in their view)... "Diamond head. No flat base, rests on a single sharp point directed down-right. The left side features a large triangular arm pointing diagonally up-left, and a smaller sharp point sticking horizontally straight left just beneath it."
+    Listener 0: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page5-63)
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 11 (block 1): Player 1 describes target (img 8 in their view)... "MUST have a completely flat horizontal bottom edge. Diamond head on the upper left. The main, largest triangular arm points directly HORIZONTALLY RIGHT. A small sharp point sticks out to the LEFT near the ground."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page5-142)
+    Listener 2: correct
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 10 in their view)... "Diamond head, sharp bottom point (no flat base). The entire LEFT edge is perfectly straight and vertical. On the RIGHT side, there are two points: the TOP one is a large triangular arm pointing UP-RIGHT, and the BOTTOM one is a small point pointing straight horizontally RIGHT."
+    Listener 0: correct
+    Listener 1: WRONG (picked page5-63)
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 13 (block 2): Player 2 describes target (img 7 in their view)... "Figure with a completely flat horizontal base and a diamond head. A small sharp point sticks out exactly to the left at the very bottom corner. The large triangular arm on the right points strictly horizontally right, and its top edge is a perfectly flat, horizontal line."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 14 (block 2): Player 2 describes target (img 11 in their view)... "Diamond head, no flat base. EXACT directions of the 3 sharp points: right arm points UP-RIGHT, left arm points DOWN-LEFT, and the long bottom leg points DOWN-RIGHT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 15 (block 2): Player 2 describes target (img 4 in their view)... "Sitting fox facing left. Completely flat horizontal base. Diamond head. Snout points exactly horizontally LEFT. Tail points DIAGONALLY UP-RIGHT (not straight up, not straight right)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 16 (block 2): Player 2 describes target (img 14 in their view)... "Diamond head, sharp bottom point (no flat base). The entire RIGHT edge is perfectly straight and vertical. On the LEFT side, there are two points: the TOP one is a large triangular arm pointing UP-LEFT, and the BOTTOM one is a small point pointing straight horizontally LEFT."
+    Listener 0: WRONG (picked page5-64)
+    Listener 1: WRONG (picked page3-121)
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 17 (block 2): Player 2 describes target (img 2 in their view)... "Completely flat horizontal base. The entire RIGHT edge is a perfectly straight vertical line. Diamond head. ONLY ONE arm on the left, pointing EXACTLY HORIZONTALLY LEFT (the top edge of this arm is completely flat and horizontal)."
+    Listener 0: WRONG (picked page6-149)
+    Listener 1: correct
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 13 in their view)... "Flat horizontal base. Entire RIGHT edge is perfectly straight and vertical. Diamond head. Single large arm on the left pointing EXACTLY HORIZONTALLY LEFT. The top edge of this arm is a completely flat horizontal line. (Make sure the left arm does not point diagonally up or diagonally down)."
+    Listener 1: correct
+    Listener 2: WRONG (picked page3-193)
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 19 (block 3): Player 0 describes target (img 16 in their view)... "Diamond head. No flat base. The completely straight vertical edge is strictly on the RIGHT side. Both protruding points are on the LEFT side: the large main arm points explicitly DIAGONALLY UP-LEFT (angled upwards), and the smaller point below it sticks out perfectly HORIZONTALLY LEFT."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page5-63)
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 20 (block 3): Player 0 describes target (img 6 in their view)... "Diamond head, no flat base. EXACT directions of the 3 sharp points: right arm points UP-RIGHT, left arm points DOWN-LEFT, and the long bottom leg points DOWN-RIGHT."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 21 (block 3): Player 0 describes target (img 9 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"Sitting fox facing left. Completely flat horizontal base. Diamond head. Snout points exactly horizontally LEFT. Tail points DIAGONALLY UP-RIGHT (not straight up, not straight right)."
+    Listener 1: correct
+    Listener 2: WRONG (picked page3-193)
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 22 (block 3): Player 0 describes target (img 15 in their view)... "Completely flat horizontal base. Diamond head. A small sharp point sticks out exactly horizontally LEFT at the very bottom corner. The large arm on the RIGHT points strictly horizontally RIGHT, and its top edge is a perfectly flat, horizontal line."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 23 (block 3): Player 0 describes target (img 11 in their view)... "Diamond head. Sharp bottom point (no flat base). Entire LEFT edge is a perfectly straight vertical line. RIGHT side has EXACTLY TWO distinct points: a large upper arm pointing DIAGONALLY UP-RIGHT, and a smaller lower point pointing EXACTLY HORIZONTALLY RIGHT."
+    Listener 1: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page4-15)
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 13 in their view)... "Diamond head, no flat base. EXACT directions of the 3 sharp points: right arm points UP-RIGHT, left arm points DOWN-LEFT, and the long bottom leg points DOWN-RIGHT."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 25 (block 4): Player 1 describes target (img 12 in their view)... "Diamond head, rests on a single sharp bottom point (no flat base). The entire RIGHT edge is a perfectly straight vertical line. The LEFT side has exactly two points: a large upper arm pointing DIAGONALLY UP-LEFT, and a smaller lower point pointing explicitly DIAGONALLY DOWN-LEFT."
+    Listener 0: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page3-193)
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 26 (block 4): Player 1 describes target (img 8 in their view)... "Completely flat horizontal base. Diamond head. A small sharp point sticks out exactly horizontally LEFT at the very bottom corner. The large arm on the RIGHT points strictly horizontally RIGHT, and its top edge is a perfectly flat, horizontal line."
+    Listener 0: WRONG (picked page5-142)
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 27 (block 4): Player 1 describes target (img 10 in their view)... "Sitting fox facing left. Completely flat horizontal base. Diamond head. Snout points exactly horizontally LEFT. Tail points explicitly DIAGONALLY UP-RIGHT (angled, do NOT pick the figure where the tail points straight vertically up)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 28 (block 4): Player 1 describes target (img 9 in their view)... "Flat horizontal base. Diamond head. Right side of the body is a perfectly straight vertical line (NO arms on the right). Left side has one large arm pointing exactly horizontally LEFT, with a completely flat, horizontal top edge."
+    Listener 0: WRONG (picked page6-149)
+    Listener 2: correct
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 29 (block 4): Player 1 describes target (img 6 in their view)... "Diamond head. MUST NOT have a flat base (it rests on a single sharp point). The entire LEFT edge is a perfectly straight vertical line. The RIGHT side has two points: the large upper arm points DIAGONALLY UP-RIGHT, and the smaller lower point points EXACTLY HORIZONTALLY RIGHT (do NOT pick the figure where this lower right point angles downward)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 7 in their view)... "Completely flat horizontal base. Diamond head. Small point sticks exactly horizontally LEFT at the very bottom corner. Large right arm points strictly horizontally RIGHT with a perfectly flat horizontal top edge. CRUCIAL to distinguish from a similar figure: The diagonal lower edge of the right arm goes ALL THE WAY down to meet the flat base directly. There is NO vertical step or vertical line on the lower right side."
+    Listener 0: WRONG (picked page7-26)
+    Listener 1: correct
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 31 (block 5): Player 2 describes target (img 10 in their view)... "Diamond head, sharp bottom point (NO flat base). Entire LEFT edge is a perfectly straight vertical line. RIGHT side has exactly two points: the top arm MUST point DIAGONALLY UP-RIGHT (not horizontal), and the small bottom point MUST point EXACTLY HORIZONTALLY RIGHT (not diagonally down)."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: correct
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 32 (block 5): Player 2 describes target (img 2 in their view)... "Diamond head. Completely flat horizontal base. The entire RIGHT edge of the figure is a perfectly straight vertical line going straight down to the base. The LEFT side has exactly ONE large arm. This arm points EXACTLY HORIZONTALLY LEFT, and its TOP edge is completely flat and horizontal. (CRUCIAL: Do NOT pick the very similar figure where the left arm points diagonally upwards)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 33 (block 5): Player 2 describes target (img 14 in their view)... "Diamond head, rests on a sharp bottom point (NO flat base). The entire RIGHT edge is a perfectly straight vertical line. The LEFT side has exactly two points: 1) The large top arm MUST point DIAGONALLY UP-LEFT (its top edge angles upwards). 2) The small bottom point MUST point DIAGONALLY DOWN-LEFT (it angles downwards). CRUCIAL: Ensure NEITHER of these left-side points sticks out perfectly horizontally."
+    Listener 0: WRONG (picked page5-64)
+    Listener 1: WRONG (picked page5-63)
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 34 (block 5): Player 2 describes target (img 4 in their view)... "Sitting fox facing left. Completely flat horizontal base. Diamond head. Snout points exactly horizontally LEFT. Tail points explicitly DIAGONALLY UP-RIGHT (angled, do NOT pick the figure where the tail points straight vertically up)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+  Round 35 (block 5): Player 2 describes target (img 11 in their view)... "Diamond head, no flat base. EXACT directions of the 3 sharp points: right arm points UP-RIGHT, left arm points DOWN-LEFT, and the long bottom leg points DOWN-RIGHT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json]
+
+========================================
+SUMMARY for group G20:
+  Overall accuracy: 45.8%
+  Overall avg words: 39.7
+  Block 0: acc=0.0%, words=34.8
+  Block 1: acc=16.7%, words=36.5
+  Block 2: acc=66.7%, words=38.3
+  Block 3: acc=50.0%, words=37.5
+  Block 4: acc=66.7%, words=40.3
+  Block 5: acc=75.0%, words=50.5
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G20.json

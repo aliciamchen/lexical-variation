@@ -1,0 +1,192 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G06
+Seed: 48
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 1 in their view)... "Person running left, diamond head, arm pointing straight out to the left, leg extended straight back to the right."
+    Listener 1: WRONG (picked page4-15)
+    Listener 2: WRONG (picked page3-121)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 1 (block 0): Player 0 describes target (img 11 in their view)... "Person leaning right, diamond head. Front leg extends perfectly horizontally to the right. Back leg and arm both point diagonally down and to the left."
+    Listener 1: WRONG (picked page3-193)
+    Listener 2: WRONG (picked page4-157)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 2 (block 0): Player 0 describes target (img 5 in their view)... "Person kneeling and bowing to the left. Diamond head, arm pointing straight out to the left. The back slopes diagonally down to the right, ending in a perfectly flat horizontal base on the ground."
+    Listener 1: correct
+    Listener 2: WRONG (picked page5-64)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 3 (block 0): Player 0 describes target (img 7 in their view)... "Figure walking right. Arm points diagonally down and to the right. The back leg points perfectly straight down vertically to a point. The front leg is a large triangle stepping forward to the right."
+    Listener 1: WRONG (picked page4-15)
+    Listener 2: WRONG (picked page5-63)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 4 (block 0): Player 0 describes target (img 9 in their view)... "Person facing left, diamond head. Arm points perfectly horizontally to the left. Front leg points perfectly straight vertically down. Back leg extends diagonally down and to the right."
+    Listener 1: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page4-15)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 5 (block 0): Player 0 describes target (img 15 in their view)... "Figure with a diamond head facing right. Its arm points perfectly horizontally to the right. One leg points perfectly straight vertically down. The other leg extends diagonally down and to the left."
+    Listener 1: WRONG (picked page-B)
+    Listener 2: WRONG (picked page9-7)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 3 in their view)... "Diamond head. Arm points perfectly horizontally to the left. Back leg extends perfectly horizontally to the right. Front leg points perfectly straight vertically down. No diagonal limbs."
+    Listener 0: correct
+    Listener 2: WRONG (picked page4-15)
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 7 (block 1): Player 1 describes target (img 9 in their view)... "Diamond head. Arm points perfectly horizontally to the left. Front leg points perfectly straight down vertically. Back leg points diagonally down and to the right (slanted, not horizontal)."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page5-64)
+    Listener 2: correct
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 8 (block 1): Player 1 describes target (img 4 in their view)... "Diamond head. One leg points perfectly straight vertically down. The arm and the other leg both point diagonally down and to the right. No horizontal or left-pointing parts."
+    Listener 0: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page4-15)
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 9 (block 1): Player 1 describes target (img 8 in their view)... "Diamond head. Kneeling and bowing left. The entire right edge (the back) is a single, continuous straight diagonal line sloping down to the right. The bottom right rests on a perfectly flat horizontal base. Left arm points perfectly horizontally to the left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 10 (block 1): Player 1 describes target (img 11 in their view)... "Diamond head. Arm points perfectly horizontally to the right. One leg points perfectly straight vertically down. The other leg points diagonally down and to the left (slanted, not perfectly horizontal)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 11 (block 1): Player 1 describes target (img 2 in their view)... "Diamond head. One limb points perfectly horizontally to the right. Exactly two limbs point diagonally down and to the left. No vertical limbs."
+    Listener 0: correct
+    Listener 2: WRONG (picked page3-193)
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 15 in their view)... "Diamond head. Kneeling and bowing left. The entire right edge (the back) is a single, continuous straight diagonal line sloping down to the right. The bottom right rests on a perfectly flat horizontal base. Left arm points perfectly horizontally to the left."
+    Listener 0: correct
+    Listener 1: WRONG (picked page5-64)
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 13 (block 2): Player 2 describes target (img 9 in their view)... "Diamond head. The leftmost edge of the body is a perfectly straight vertical line going straight down to a point (back leg). On the right side, BOTH the arm and the front leg point diagonally down and to the right. Crucially, there are NO perfectly horizontal parts—both right-side limbs slant downwards."
+    Listener 0: WRONG (picked page4-15)
+    Listener 1: correct
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 14 (block 2): Player 2 describes target (img 8 in their view)... "Diamond head. Arm points perfectly horizontally to the LEFT. The front leg points perfectly straight vertically down to a point. The back leg points diagonally down and to the RIGHT (slanted downwards, not horizontal). Crucial: make sure the horizontal arm points LEFT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 15 (block 2): Player 2 describes target (img 11 in their view)... "Diamond head. Has exactly three limb extensions: one points perfectly horizontally LEFT, one points perfectly horizontally RIGHT, and one points perfectly straight vertically DOWN to a point. Crucially, there are NO diagonal limbs at all."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: correct
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 16 (block 2): Player 2 describes target (img 16 in their view)... "Diamond head. Has exactly three limb extensions: ONE points perfectly horizontally to the RIGHT, and the other TWO BOTH point diagonally DOWN and to the LEFT. Crucially, there are NO perfectly vertical parts going straight down, NO horizontal parts pointing left, and NO parts pointing upwards."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 17 (block 2): Player 2 describes target (img 7 in their view)... "Diamond head. Has exactly three limb extensions: ONE points perfectly horizontally to the RIGHT, ONE points perfectly straight vertically DOWN to a point, and ONE points diagonally DOWN and to the LEFT (slanted, not horizontal)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 7 in their view)... "Diamond head. The entire left edge is a perfectly straight vertical line going straight down to a sharp point. On the right side, the arm and the leg BOTH slant diagonally down and to the right. Crucial: NO horizontal parts, NO horizontal arms, NO flat bottoms."
+    Listener 1: correct
+    Listener 2: WRONG (picked page5-142)
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 19 (block 3): Player 0 describes target (img 15 in their view)... "Diamond head. Has exactly three limb extensions: ONE points perfectly horizontally to the RIGHT, ONE points perfectly straight vertically DOWN to a point, and ONE points diagonally DOWN and to the LEFT (slanted, not horizontal)."
+    Listener 1: correct
+    Listener 2: WRONG (picked page9-7)
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 20 (block 3): Player 0 describes target (img 9 in their view)... "Diamond head. Arm points perfectly horizontally to the LEFT. The front leg points perfectly straight vertically down to a point. The back leg points diagonally down and to the RIGHT (slanted downwards, not horizontal). Crucial: make sure the horizontal arm points LEFT."
+    Listener 1: WRONG (picked page3-193)
+    Listener 2: WRONG (picked page7-26)
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 21 (block 3): Player 0 describes target (img 11 in their view)... "Diamond head. Has exactly three limb extensions: ONE points perfectly horizontally to the RIGHT, and the other TWO BOTH point diagonally DOWN and to the LEFT. Crucially, there are NO perfectly vertical parts going straight down, NO horizontal parts pointing left, and NO parts pointing upwards."
+    Listener 1: WRONG (picked page4-157)
+    Listener 2: correct
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 22 (block 3): Player 0 describes target (img 5 in their view)... "Diamond head. Kneeling and facing LEFT. The arm points perfectly horizontally to the LEFT. The entire back slopes diagonally down to the right, resting on a perfectly flat horizontal base at the bottom right."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 23 (block 3): Player 0 describes target (img 1 in their view)... "Diamond head. Top arm points perfectly horizontally LEFT. Bottom back leg extends perfectly horizontally RIGHT. Front leg points perfectly straight vertically DOWN to a point. Crucially, there are NO diagonal limbs at all."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 2 in their view)... "Diamond head. Exactly three limb extensions: ONE points perfectly horizontally to the RIGHT, and the other TWO BOTH point diagonally DOWN and to the LEFT. Crucially, there are NO perfectly vertical parts going straight down, and NO horizontal parts pointing left."
+    Listener 0: correct
+    Listener 2: WRONG (picked page3-193)
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 25 (block 4): Player 1 describes target (img 8 in their view)... "Diamond head. Kneeling and facing LEFT. The arm points perfectly horizontally to the LEFT. The entire back slopes diagonally down to the right, resting on a perfectly flat horizontal base at the bottom right."
+    Listener 0: correct
+    Listener 2: WRONG (picked page5-64)
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 26 (block 4): Player 1 describes target (img 4 in their view)... "Diamond head. Left edge goes perfectly straight vertically DOWN to a sharp point. On the right side, BOTH the arm and the leg point diagonally DOWN and to the RIGHT. Crucial: NO horizontal lines anywhere—NO flat bottoms, NO horizontal arms."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 27 (block 4): Player 1 describes target (img 3 in their view)... "Diamond head. Top arm points perfectly horizontally LEFT. Bottom back leg extends perfectly horizontally RIGHT. Front leg points perfectly straight vertically DOWN to a point. Crucially, there are NO diagonal limbs at all."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 2: correct
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 28 (block 4): Player 1 describes target (img 9 in their view)... "Diamond head. Exactly three limb extensions: ONE arm points perfectly horizontally to the LEFT. ONE leg points perfectly straight vertically DOWN to a sharp point. ONE leg points diagonally DOWN and to the RIGHT. Crucial: check directions carefully (horizontal is LEFT, diagonal is RIGHT)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 29 (block 4): Player 1 describes target (img 11 in their view)... "Diamond head. Exactly three limb extensions: ONE arm points perfectly horizontally to the RIGHT. ONE leg points perfectly straight vertically DOWN to a sharp point. ONE leg points diagonally DOWN and to the LEFT (slanted downwards, NOT horizontal). Crucial: check directions carefully (horizontal is RIGHT, diagonal is LEFT)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 11 in their view)... "Diamond head. Top arm points perfectly horizontally LEFT. Bottom back leg extends perfectly horizontally RIGHT. Front leg points perfectly straight vertically DOWN to a point. Crucially, there are NO diagonal limbs at all."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 31 (block 5): Player 2 describes target (img 16 in their view)... "Diamond head. Exactly three limb extensions: ONE points perfectly horizontally to the RIGHT. The other TWO limbs BOTH point diagonally DOWN and to the LEFT (they are parallel). Crucial: NO perfectly vertical limbs going straight down, NO horizontal limbs pointing left, and NO limbs pointing upwards."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: correct
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 32 (block 5): Player 2 describes target (img 9 in their view)... "Diamond head. Left edge goes perfectly straight vertically DOWN to a sharp point. On the right side, BOTH the arm and the leg point diagonally DOWN and to the RIGHT. Crucial: NO horizontal lines anywhere—NO flat bottoms, NO horizontal arms."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 33 (block 5): Player 2 describes target (img 8 in their view)... "Diamond head. Exactly three limb extensions: ONE arm points perfectly horizontally to the LEFT. ONE leg points perfectly straight vertically DOWN to a sharp point. ONE leg points diagonally DOWN and to the RIGHT. Crucial: check directions carefully (horizontal is LEFT, diagonal is RIGHT)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 34 (block 5): Player 2 describes target (img 7 in their view)... "Diamond head. Exactly three limb extensions: ONE arm points perfectly horizontally to the RIGHT. ONE leg points perfectly straight vertically DOWN to a sharp point. ONE leg points diagonally DOWN and to the LEFT (slanted downwards, NOT horizontal). Crucial: check directions carefully (horizontal is RIGHT, diagonal is LEFT)."
+    Listener 0: WRONG (picked page5-63)
+    Listener 1: correct
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+  Round 35 (block 5): Player 2 describes target (img 15 in their view)... "Diamond head. Arm points perfectly horizontally to the LEFT. The front leg points diagonally DOWN and to the LEFT (crucial: it does NOT point straight vertically down). The entire back is a single straight diagonal line sloping down to the right, ending in a flat horizontal base at the bottom right."
+    Listener 0: WRONG (picked page6-149)
+    Listener 1: correct
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json]
+
+========================================
+SUMMARY for group G06:
+  Overall accuracy: 62.5%
+  Overall avg words: 37.2
+  Block 0: acc=8.3%, words=28.7
+  Block 1: acc=58.3%, words=29.7
+  Block 2: acc=83.3%, words=41.8
+  Block 3: acc=58.3%, words=39.3
+  Block 4: acc=83.3%, words=40.0
+  Block 5: acc=83.3%, words=43.7
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G06.json

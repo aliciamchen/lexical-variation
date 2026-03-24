@@ -1,0 +1,1200 @@
+{
+  "group_id": "G17",
+  "tangram_set": 0,
+  "target_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B"
+  ],
+  "all_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B",
+    "page3-121",
+    "page4-157",
+    "page7-26",
+    "page5-64",
+    "page6-149",
+    "page3-193",
+    "page5-63",
+    "page9-7",
+    "page5-142",
+    "page4-15"
+  ],
+  "model": "gemini-3.1-pro-preview",
+  "rounds": [
+    {
+      "round_num": 0,
+      "block_num": 0,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Figure leaning backwards to the left, with a square head and one arm pointing straight out horizontally to the right.",
+      "word_count": 20,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-121",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 1,
+      "block_num": 0,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "Figure running to the right, leaning forward. Square head, legs wide apart in mid-stride, no arms sticking out.",
+      "word_count": 18,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-26",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 2,
+      "block_num": 0,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "Person with a large diamond-shaped torso, square head, one arm pointing straight out to the left, standing with legs spread apart.",
+      "word_count": 21,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page6-149",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 3,
+      "block_num": 0,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Figure leaning far forward to the left, as if lunging. It has a square head, one arm pointing straight out horizontally to the left, and legs wide apart in mid-stride.",
+      "word_count": 30,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-157",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-157",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 4,
+      "block_num": 0,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Person hunched forward to the right, carrying a giant triangular backpack pointing top-right. Square head is on the left, one arm points down-right.",
+      "word_count": 23,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-63",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 5,
+      "block_num": 0,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "Figure with a square head on the far right edge and a small pointy arm sticking straight out to the right just below it. A large triangular shape points diagonally up and to the left from its back.",
+      "word_count": 38,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-7",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 6,
+      "block_num": 1,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Wide figure. Square head on the left. One small arm points perfectly horizontally to the left. One leg extends completely horizontally to the right. The other leg points straight vertically down.",
+      "word_count": 31,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-15",
+          "selection_label": "13",
+          "correct": false,
+          "raw_response": "13",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-157",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 7,
+      "block_num": 1,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Square head on the right. Arm directly below it points straight horizontally right (3 o'clock). Large triangular backpack points diagonally up-left (10 o'clock). One leg points straight down (6 o'clock).",
+      "word_count": 30,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-7",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "6",
+          "correct": true,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 8,
+      "block_num": 1,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Square head at top-left (10 o'clock). Large triangular backpack points diagonally up-right (2 o'clock). Small arm points down-right (4 o'clock).",
+      "word_count": 20,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "6",
+          "correct": true,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 9,
+      "block_num": 1,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "X-shaped figure. Square head at top-right (2 o'clock). Large pointed triangle points up-left (10 o'clock). Two legs point diagonally down-left (7 o'clock) and down-right (5 o'clock). No horizontal or vertical parts.",
+      "word_count": 31,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-63",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 10,
+      "block_num": 1,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "Square head perfectly at the top. Left arm points strictly horizontal left (9 o'clock). Torso is a large vertical diamond. Legs point diagonally down-left (7 o'clock) and down-right (5 o'clock). There are NO parts pointing horizontally right (3 o'clock).",
+      "word_count": 39,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-35",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 11,
+      "block_num": 1,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Square head at top-left (10 o'clock). Large arm points strictly horizontal right (3 o'clock). One leg points strictly vertical down (6 o'clock). Another leg points diagonally down-left (7 o'clock).",
+      "word_count": 29,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-193",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 12,
+      "block_num": 2,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Square head perfectly at the top. Left arm points strictly horizontal left (9 o'clock). Torso is a large vertical diamond. Legs point diagonally down-left (7 o'clock) and down-right (5 o'clock). There are NO parts pointing horizontally right (3 o'clock).",
+      "word_count": 39,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 13,
+      "block_num": 2,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Square head at top-LEFT. Large pointy triangular shape points diagonally up-RIGHT. Two lower legs: one points straight down, the other points diagonally down-right. There are no perfectly horizontal parts.",
+      "word_count": 29,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "6",
+          "correct": true,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "13",
+          "correct": false,
+          "raw_response": "13",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 14,
+      "block_num": 2,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Square head is at 10 o'clock (top-LEFT). Small arm points straight to 9 o'clock (strictly horizontal LEFT). Long leg points straight to 3 o'clock (strictly horizontal RIGHT). Bottom leg points straight to 6 o'clock (strictly vertical DOWN).",
+      "word_count": 37,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "12",
+          "correct": true,
+          "raw_response": "12",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 15,
+      "block_num": 2,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "X-shaped figure. Crucially, the HIGHEST point is a sharp tip pointing diagonally up-LEFT (10 o'clock). The square head is at the top-RIGHT (2 o'clock), noticeably LOWER than the up-left tip. The center is pinched thin. Two legs point diagonally down-left (7 o'clock) and down-right (5 o'clock). There are NO perfectly horizontal or vertical limbs.",
+      "word_count": 54,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 16,
+      "block_num": 2,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Square head is the HIGHEST point at top-LEFT (10 o'clock). Three sharp points extend from the body: one strictly horizontal RIGHT (3 o'clock), one strictly vertical DOWN (6 o'clock), and one diagonally DOWN-LEFT (7-8 o'clock). Crucially, there is NO part pointing straight up, NO part pointing down-right, and NO part pointing horizontal left.",
+      "word_count": 53,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-121",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 17,
+      "block_num": 2,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "Square head is on the RIGHT side, noticeably LOWER than the HIGHEST point, which is a large sharp tip pointing diagonally UP-LEFT (10 o'clock). Just below the head, a small arm points STRICTLY HORIZONTAL RIGHT (3 o'clock). Of the two legs, one points STRICTLY VERTICAL DOWN (6 o'clock), and the other points diagonally DOWN-LEFT.",
+      "word_count": 54,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 18,
+      "block_num": 3,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Square head is at 10 o'clock (top-LEFT). Small arm points straight to 9 o'clock (strictly horizontal LEFT). Long leg points straight to 3 o'clock (strictly horizontal RIGHT). Bottom leg points straight to 6 o'clock (strictly vertical DOWN).",
+      "word_count": 37,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-157",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-15",
+          "selection_label": "13",
+          "correct": false,
+          "raw_response": "13",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 19,
+      "block_num": 3,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "X-shaped figure. Square head at top-RIGHT. Highest point is a sharp tip pointing up-LEFT. Crucially, the bottom-LEFT leg has a sharp point, while the bottom-RIGHT leg has a flat, blunt end. No vertical or horizontal parts.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-63",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-26",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 20,
+      "block_num": 3,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "Target has its square head on the far RIGHT edge. The highest part of the figure is a large sharp point aiming diagonally UP-LEFT. Directly below the square head, a small arm points perfectly straight RIGHT (horizontal). It has one leg pointing perfectly straight DOWN (vertical) and another pointing diagonally DOWN-LEFT.",
+      "word_count": 51,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-7",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "6",
+          "correct": true,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 21,
+      "block_num": 3,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Square head is on the LEFT. A long arm points strictly HORIZONTALLY to the RIGHT (3 o'clock). Two pointy legs: one points perfectly VERTICAL DOWN (6 o'clock), the other points diagonally DOWN-LEFT. (Crucially: Head on LEFT, horizontal arm on RIGHT, do not pick the mirrored image).",
+      "word_count": 46,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-28",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 22,
+      "block_num": 3,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Square head is at the top-LEFT. A large triangular shape points diagonally UP-RIGHT. One leg points perfectly straight VERTICAL DOWN (6 o'clock), and another limb points diagonally DOWN-RIGHT. Crucially, there are NO strictly horizontal parts. (Ensure head is on the left, not the right).",
+      "word_count": 44,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-63",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 23,
+      "block_num": 3,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "Square head perfectly at the top. Left arm points strictly horizontal LEFT (9 o'clock). Torso is a large vertical diamond. Two legs point diagonally down-left (7 o'clock) and down-right (5 o'clock). Crucially, NO leg points straight down, and NO part points horizontally right.",
+      "word_count": 43,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-35",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 24,
+      "block_num": 4,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Square head is on the RIGHT. Highest point aims UP-LEFT (10 o'clock). Small arm directly below the head points STRICTLY HORIZONTAL RIGHT (3 o'clock, NOT down-right). Legs point STRICTLY VERTICAL DOWN (6 o'clock) and diagonally DOWN-LEFT. Crucially, NO part points horizontally left (9 o'clock).",
+      "word_count": 44,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "6",
+          "correct": true,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 25,
+      "block_num": 4,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Square head is on the top-LEFT. High arm right next to the head points STRICTLY HORIZONTAL LEFT (9 o'clock). A lower leg points STRICTLY HORIZONTAL RIGHT (3 o'clock). Bottom leg points STRICTLY VERTICAL DOWN (6 o'clock). CRUCIALLY: Double-check that the head is on the LEFT and the high arm points LEFT (do NOT pick images where the head is on the right or high arm points right).",
+      "word_count": 67,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "12",
+          "correct": true,
+          "raw_response": "12",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-255",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 26,
+      "block_num": 4,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Square head is on the top-LEFT (10 o'clock). A large, sharp triangular shape points diagonally UP-RIGHT (2 o'clock). Two lower limbs: one points STRICTLY VERTICAL DOWN (6 o'clock), the other diagonally DOWN-RIGHT. CRUCIALLY: Head is on the LEFT, triangle points RIGHT. There are NO strictly horizontal parts (do NOT pick the mirror image with head on the right).",
+      "word_count": 58,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "6",
+          "correct": true,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 27,
+      "block_num": 4,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "Square head perfectly at the top center. Left arm points STRICTLY HORIZONTAL LEFT (9 o'clock). Torso is a large vertical diamond. Two legs point diagonally down-left and down-right. CRUCIALLY: NO leg points straight vertical down, and NO part points horizontally right (do NOT pick the mirror image).",
+      "word_count": 47,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-35",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 28,
+      "block_num": 4,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "X-shaped figure. Square head is on the top-RIGHT (2 o'clock), LOWER than the HIGHEST point, which is a sharp tip pointing diagonally UP-LEFT (10 o'clock). Two legs point diagonally DOWN-LEFT and DOWN-RIGHT. CRUCIALLY: NO parts point strictly horizontal or vertical. Ensure head is on the RIGHT (do NOT pick the mirror image).",
+      "word_count": 52,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-142",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 29,
+      "block_num": 4,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Square head is on the top-LEFT (10 o'clock). A long arm points STRICTLY HORIZONTAL RIGHT (3 o'clock). One leg points STRICTLY VERTICAL DOWN (6 o'clock). Another leg points diagonally DOWN-LEFT (7 o'clock). CRUCIALLY: Ensure head is on the LEFT and the horizontal arm points RIGHT (do NOT pick the mirrored image).",
+      "word_count": 51,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-7",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 30,
+      "block_num": 5,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Square head is on the top-LEFT. High arm right next to the head points STRICTLY HORIZONTAL LEFT (9 o'clock). A lower, long leg points STRICTLY HORIZONTAL RIGHT (3 o'clock). Bottom leg points STRICTLY VERTICAL DOWN (6 o'clock). CRUCIALLY: Double-check that the head is on the LEFT and the high arm points LEFT (do NOT pick the mirror image where the head is on the right).",
+      "word_count": 65,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-26",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page4-157",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 31,
+      "block_num": 5,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Square head perfectly at the top center. Left arm points STRICTLY HORIZONTAL LEFT (9 o'clock). Torso is a large vertical diamond. Two legs point diagonally down-left and down-right. CRUCIALLY: NO leg points straight vertical down, and NO part points horizontally right (do NOT pick the mirror image).",
+      "word_count": 47,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 32,
+      "block_num": 5,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Square head is on the top-LEFT. Arm points STRICTLY HORIZONTAL RIGHT (3 o'clock). One leg points STRICTLY VERTICAL DOWN (6 o'clock). The other leg points diagonally DOWN-LEFT (7 o'clock). CRUCIALLY: The diagonal leg points LEFT, NOT right! Look very closely: NO part points down-right. Ensure the head is on the LEFT (do NOT pick the mirror image).",
+      "word_count": 57,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-121",
+          "selection_label": "7",
+          "correct": false,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-28",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 33,
+      "block_num": 5,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "Square head is on the RIGHT side. Highest point is a large sharp tip aiming diagonally UP-LEFT (10 o'clock). Just below the head, a small arm points STRICTLY HORIZONTAL RIGHT (3 o'clock, NOT down-right). One leg points STRICTLY VERTICAL DOWN (6 o'clock) and another diagonally DOWN-LEFT. CRUCIALLY: Head is on the RIGHT! Do NOT pick images with the head on the left.",
+      "word_count": 62,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-7",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 34,
+      "block_num": 5,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Square head is on the top-LEFT. A large, sharp triangular shape points diagonally UP-RIGHT. Of the two bottom limbs, one points perfectly straight VERTICAL DOWN (6 o'clock) and the other points diagonally DOWN-RIGHT. CRUCIALLY: The head is on the LEFT and the big triangle points RIGHT. There are NO horizontal parts.",
+      "word_count": 51,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "6",
+          "correct": true,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 35,
+      "block_num": 5,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "Square head is on the RIGHT. The HIGHEST point is a sharp tip aiming diagonally UP-LEFT. It has two legs: one points diagonally DOWN-LEFT, the other diagonally DOWN-RIGHT. CRUCIALLY: BOTH legs are DIAGONAL. Absolutely NO leg points perfectly straight vertical down (6 o'clock), and there are NO horizontal parts. Ensure the head is on the RIGHT.",
+      "word_count": 56,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-142",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    }
+  ],
+  "summary": {
+    "overall": {
+      "accuracy": 0.5,
+      "avg_word_count": 41.94,
+      "n": 36,
+      "parse_errors": 0,
+      "listener_trials": 72
+    },
+    "per_block": {
+      "0": {
+        "accuracy": 0.083,
+        "avg_word_count": 25.0,
+        "n": 6
+      },
+      "1": {
+        "accuracy": 0.333,
+        "avg_word_count": 30.0,
+        "n": 6
+      },
+      "2": {
+        "accuracy": 0.75,
+        "avg_word_count": 44.33,
+        "n": 6
+      },
+      "3": {
+        "accuracy": 0.5,
+        "avg_word_count": 42.83,
+        "n": 6
+      },
+      "4": {
+        "accuracy": 0.75,
+        "avg_word_count": 53.17,
+        "n": 6
+      },
+      "5": {
+        "accuracy": 0.583,
+        "avg_word_count": 56.33,
+        "n": 6
+      }
+    },
+    "word_count_trajectory": [
+      20,
+      18,
+      21,
+      30,
+      23,
+      38,
+      31,
+      30,
+      20,
+      31,
+      39,
+      29,
+      39,
+      29,
+      37,
+      54,
+      53,
+      54,
+      37,
+      36,
+      51,
+      46,
+      44,
+      43,
+      44,
+      67,
+      58,
+      47,
+      52,
+      51,
+      65,
+      47,
+      57,
+      62,
+      51,
+      56
+    ]
+  },
+  "config": {
+    "num_blocks": 6,
+    "group_size": 3,
+    "num_tangrams": 16,
+    "num_targets": 6,
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "timestamp": "2026-03-23T02:07:37.666766",
+  "status": "complete",
+  "player_orders": {
+    "0": [
+      "page5-63",
+      "page5-142",
+      "page9-7",
+      "page5-64",
+      "page-B",
+      "page7-107",
+      "page3-121",
+      "page7-26",
+      "page3-193",
+      "page3-35",
+      "page5-28",
+      "page7-255",
+      "page4-15",
+      "page6-149",
+      "page9-46",
+      "page4-157"
+    ],
+    "1": [
+      "page7-107",
+      "page3-35",
+      "page4-157",
+      "page3-121",
+      "page7-255",
+      "page5-63",
+      "page5-142",
+      "page9-7",
+      "page9-46",
+      "page7-26",
+      "page5-28",
+      "page6-149",
+      "page4-15",
+      "page5-64",
+      "page3-193",
+      "page-B"
+    ],
+    "2": [
+      "page5-28",
+      "page5-142",
+      "page6-149",
+      "page3-121",
+      "page4-157",
+      "page-B",
+      "page7-255",
+      "page7-26",
+      "page3-35",
+      "page5-63",
+      "page9-7",
+      "page5-64",
+      "page4-15",
+      "page3-193",
+      "page7-107",
+      "page9-46"
+    ]
+  },
+  "block_targets": [
+    [
+      "page5-28",
+      "page9-46",
+      "page3-35",
+      "page7-255",
+      "page7-107",
+      "page-B"
+    ],
+    [
+      "page7-255",
+      "page-B",
+      "page7-107",
+      "page9-46",
+      "page3-35",
+      "page5-28"
+    ],
+    [
+      "page3-35",
+      "page7-107",
+      "page7-255",
+      "page9-46",
+      "page5-28",
+      "page-B"
+    ],
+    [
+      "page7-255",
+      "page9-46",
+      "page-B",
+      "page5-28",
+      "page7-107",
+      "page3-35"
+    ],
+    [
+      "page-B",
+      "page7-255",
+      "page7-107",
+      "page3-35",
+      "page9-46",
+      "page5-28"
+    ],
+    [
+      "page7-255",
+      "page3-35",
+      "page5-28",
+      "page-B",
+      "page7-107",
+      "page9-46"
+    ]
+  ]
+}

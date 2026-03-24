@@ -1,0 +1,1200 @@
+{
+  "group_id": "G06",
+  "tangram_set": 0,
+  "target_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B"
+  ],
+  "all_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B",
+    "page3-121",
+    "page4-157",
+    "page7-26",
+    "page5-64",
+    "page6-149",
+    "page3-193",
+    "page5-63",
+    "page9-7",
+    "page5-142",
+    "page4-15"
+  ],
+  "model": "gemini-3.1-pro-preview",
+  "rounds": [
+    {
+      "round_num": 0,
+      "block_num": 0,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "Person running left, diamond head, arm pointing straight out to the left, leg extended straight back to the right.",
+      "word_count": 19,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 1,
+      "block_num": 0,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "Person leaning right, diamond head. Front leg extends perfectly horizontally to the right. Back leg and arm both point diagonally down and to the left.",
+      "word_count": 25,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-193",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-157",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 2,
+      "block_num": 0,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Person kneeling and bowing to the left. Diamond head, arm pointing straight out to the left. The back slopes diagonally down to the right, ending in a perfectly flat horizontal base on the ground.",
+      "word_count": 34,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-64",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 3,
+      "block_num": 0,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "Figure walking right. Arm points diagonally down and to the right. The back leg points perfectly straight down vertically to a point. The front leg is a large triangle stepping forward to the right.",
+      "word_count": 34,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 4,
+      "block_num": 0,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Person facing left, diamond head. Arm points perfectly horizontally to the left. Front leg points perfectly straight vertically down. Back leg extends diagonally down and to the right.",
+      "word_count": 28,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-157",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-15",
+          "selection_label": "12",
+          "correct": false,
+          "raw_response": "12",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 5,
+      "block_num": 0,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Figure with a diamond head facing right. Its arm points perfectly horizontally to the right. One leg points perfectly straight vertically down. The other leg extends diagonally down and to the left.",
+      "word_count": 32,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-7",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 6,
+      "block_num": 1,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Diamond head. Arm points perfectly horizontally to the left. Back leg extends perfectly horizontally to the right. Front leg points perfectly straight vertically down. No diagonal limbs.",
+      "word_count": 27,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-15",
+          "selection_label": "12",
+          "correct": false,
+          "raw_response": "12",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 7,
+      "block_num": 1,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Diamond head. Arm points perfectly horizontally to the left. Front leg points perfectly straight down vertically. Back leg points diagonally down and to the right (slanted, not horizontal).",
+      "word_count": 28,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-64",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 8,
+      "block_num": 1,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "Diamond head. One leg points perfectly straight vertically down. The arm and the other leg both point diagonally down and to the right. No horizontal or left-pointing parts.",
+      "word_count": 28,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-63",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-15",
+          "selection_label": "12",
+          "correct": false,
+          "raw_response": "12",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 9,
+      "block_num": 1,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Diamond head. Kneeling and bowing left. The entire right edge (the back) is a single, continuous straight diagonal line sloping down to the right. The bottom right rests on a perfectly flat horizontal base. Left arm points perfectly horizontally to the left.",
+      "word_count": 42,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-255",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 10,
+      "block_num": 1,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Diamond head. Arm points perfectly horizontally to the right. One leg points perfectly straight vertically down. The other leg points diagonally down and to the left (slanted, not perfectly horizontal).",
+      "word_count": 30,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 11,
+      "block_num": 1,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "Diamond head. One limb points perfectly horizontally to the right. Exactly two limbs point diagonally down and to the left. No vertical limbs.",
+      "word_count": 23,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-193",
+          "selection_label": "14",
+          "correct": false,
+          "raw_response": "14",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 12,
+      "block_num": 2,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Diamond head. Kneeling and bowing left. The entire right edge (the back) is a single, continuous straight diagonal line sloping down to the right. The bottom right rests on a perfectly flat horizontal base. Left arm points perfectly horizontally to the left.",
+      "word_count": 42,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-64",
+          "selection_label": "7",
+          "correct": false,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 13,
+      "block_num": 2,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "Diamond head. The leftmost edge of the body is a perfectly straight vertical line going straight down to a point (back leg). On the right side, BOTH the arm and the front leg point diagonally down and to the right. Crucially, there are NO perfectly horizontal parts\u2014both right-side limbs slant downwards.",
+      "word_count": 51,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-15",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 14,
+      "block_num": 2,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Diamond head. Arm points perfectly horizontally to the LEFT. The front leg points perfectly straight vertically down to a point. The back leg points diagonally down and to the RIGHT (slanted downwards, not horizontal). Crucial: make sure the horizontal arm points LEFT.",
+      "word_count": 42,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 15,
+      "block_num": 2,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "Diamond head. Has exactly three limb extensions: one points perfectly horizontally LEFT, one points perfectly horizontally RIGHT, and one points perfectly straight vertically DOWN to a point. Crucially, there are NO diagonal limbs at all.",
+      "word_count": 35,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 16,
+      "block_num": 2,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Diamond head. Has exactly three limb extensions: ONE points perfectly horizontally to the RIGHT, and the other TWO BOTH point diagonally DOWN and to the LEFT. Crucially, there are NO perfectly vertical parts going straight down, NO horizontal parts pointing left, and NO parts pointing upwards.",
+      "word_count": 46,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 17,
+      "block_num": 2,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Diamond head. Has exactly three limb extensions: ONE points perfectly horizontally to the RIGHT, ONE points perfectly straight vertically DOWN to a point, and ONE points diagonally DOWN and to the LEFT (slanted, not horizontal).",
+      "word_count": 35,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-28",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 18,
+      "block_num": 3,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "Diamond head. The entire left edge is a perfectly straight vertical line going straight down to a sharp point. On the right side, the arm and the leg BOTH slant diagonally down and to the right. Crucial: NO horizontal parts, NO horizontal arms, NO flat bottoms.",
+      "word_count": 46,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 19,
+      "block_num": 3,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Diamond head. Has exactly three limb extensions: ONE points perfectly horizontally to the RIGHT, ONE points perfectly straight vertically DOWN to a point, and ONE points diagonally DOWN and to the LEFT (slanted, not horizontal).",
+      "word_count": 35,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-28",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-7",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 20,
+      "block_num": 3,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Diamond head. Arm points perfectly horizontally to the LEFT. The front leg points perfectly straight vertically down to a point. The back leg points diagonally down and to the RIGHT (slanted downwards, not horizontal). Crucial: make sure the horizontal arm points LEFT.",
+      "word_count": 42,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-193",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-26",
+          "selection_label": "13",
+          "correct": false,
+          "raw_response": "13",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 21,
+      "block_num": 3,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "Diamond head. Has exactly three limb extensions: ONE points perfectly horizontally to the RIGHT, and the other TWO BOTH point diagonally DOWN and to the LEFT. Crucially, there are NO perfectly vertical parts going straight down, NO horizontal parts pointing left, and NO parts pointing upwards.",
+      "word_count": 46,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-157",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-35",
+          "selection_label": "16",
+          "correct": true,
+          "raw_response": "16",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 22,
+      "block_num": 3,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Diamond head. Kneeling and facing LEFT. The arm points perfectly horizontally to the LEFT. The entire back slopes diagonally down to the right, resting on a perfectly flat horizontal base at the bottom right.",
+      "word_count": 34,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-255",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 23,
+      "block_num": 3,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "Diamond head. Top arm points perfectly horizontally LEFT. Bottom back leg extends perfectly horizontally RIGHT. Front leg points perfectly straight vertically DOWN to a point. Crucially, there are NO diagonal limbs at all.",
+      "word_count": 33,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 24,
+      "block_num": 4,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "Diamond head. Exactly three limb extensions: ONE points perfectly horizontally to the RIGHT, and the other TWO BOTH point diagonally DOWN and to the LEFT. Crucially, there are NO perfectly vertical parts going straight down, and NO horizontal parts pointing left.",
+      "word_count": 41,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-193",
+          "selection_label": "14",
+          "correct": false,
+          "raw_response": "14",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 25,
+      "block_num": 4,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Diamond head. Kneeling and facing LEFT. The arm points perfectly horizontally to the LEFT. The entire back slopes diagonally down to the right, resting on a perfectly flat horizontal base at the bottom right.",
+      "word_count": 34,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-64",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 26,
+      "block_num": 4,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "Diamond head. Left edge goes perfectly straight vertically DOWN to a sharp point. On the right side, BOTH the arm and the leg point diagonally DOWN and to the RIGHT. Crucial: NO horizontal lines anywhere\u2014NO flat bottoms, NO horizontal arms.",
+      "word_count": 40,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-46",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 27,
+      "block_num": 4,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Diamond head. Top arm points perfectly horizontally LEFT. Bottom back leg extends perfectly horizontally RIGHT. Front leg points perfectly straight vertically DOWN to a point. Crucially, there are NO diagonal limbs at all.",
+      "word_count": 33,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 28,
+      "block_num": 4,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Diamond head. Exactly three limb extensions: ONE arm points perfectly horizontally to the LEFT. ONE leg points perfectly straight vertically DOWN to a sharp point. ONE leg points diagonally DOWN and to the RIGHT. Crucial: check directions carefully (horizontal is LEFT, diagonal is RIGHT).",
+      "word_count": 44,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 29,
+      "block_num": 4,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Diamond head. Exactly three limb extensions: ONE arm points perfectly horizontally to the RIGHT. ONE leg points perfectly straight vertically DOWN to a sharp point. ONE leg points diagonally DOWN and to the LEFT (slanted downwards, NOT horizontal). Crucial: check directions carefully (horizontal is RIGHT, diagonal is LEFT).",
+      "word_count": 48,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 30,
+      "block_num": 5,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "Diamond head. Top arm points perfectly horizontally LEFT. Bottom back leg extends perfectly horizontally RIGHT. Front leg points perfectly straight vertically DOWN to a point. Crucially, there are NO diagonal limbs at all.",
+      "word_count": 33,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 31,
+      "block_num": 5,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Diamond head. Exactly three limb extensions: ONE points perfectly horizontally to the RIGHT. The other TWO limbs BOTH point diagonally DOWN and to the LEFT (they are parallel). Crucial: NO perfectly vertical limbs going straight down, NO horizontal limbs pointing left, and NO limbs pointing upwards.",
+      "word_count": 46,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 32,
+      "block_num": 5,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "Diamond head. Left edge goes perfectly straight vertically DOWN to a sharp point. On the right side, BOTH the arm and the leg point diagonally DOWN and to the RIGHT. Crucial: NO horizontal lines anywhere\u2014NO flat bottoms, NO horizontal arms.",
+      "word_count": 40,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 33,
+      "block_num": 5,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Diamond head. Exactly three limb extensions: ONE arm points perfectly horizontally to the LEFT. ONE leg points perfectly straight vertically DOWN to a sharp point. ONE leg points diagonally DOWN and to the RIGHT. Crucial: check directions carefully (horizontal is LEFT, diagonal is RIGHT).",
+      "word_count": 44,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 34,
+      "block_num": 5,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Diamond head. Exactly three limb extensions: ONE arm points perfectly horizontally to the RIGHT. ONE leg points perfectly straight vertically DOWN to a sharp point. ONE leg points diagonally DOWN and to the LEFT (slanted downwards, NOT horizontal). Crucial: check directions carefully (horizontal is RIGHT, diagonal is LEFT).",
+      "word_count": 48,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-63",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-28",
+          "selection_label": "11",
+          "correct": true,
+          "raw_response": "11",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 35,
+      "block_num": 5,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Diamond head. Arm points perfectly horizontally to the LEFT. The front leg points diagonally DOWN and to the LEFT (crucial: it does NOT point straight vertically down). The entire back is a single straight diagonal line sloping down to the right, ending in a flat horizontal base at the bottom right.",
+      "word_count": 51,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page6-149",
+          "selection_label": "16",
+          "correct": false,
+          "raw_response": "16",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    }
+  ],
+  "summary": {
+    "overall": {
+      "accuracy": 0.625,
+      "avg_word_count": 37.19,
+      "n": 36,
+      "parse_errors": 0,
+      "listener_trials": 72
+    },
+    "per_block": {
+      "0": {
+        "accuracy": 0.083,
+        "avg_word_count": 28.67,
+        "n": 6
+      },
+      "1": {
+        "accuracy": 0.583,
+        "avg_word_count": 29.67,
+        "n": 6
+      },
+      "2": {
+        "accuracy": 0.833,
+        "avg_word_count": 41.83,
+        "n": 6
+      },
+      "3": {
+        "accuracy": 0.583,
+        "avg_word_count": 39.33,
+        "n": 6
+      },
+      "4": {
+        "accuracy": 0.833,
+        "avg_word_count": 40.0,
+        "n": 6
+      },
+      "5": {
+        "accuracy": 0.833,
+        "avg_word_count": 43.67,
+        "n": 6
+      }
+    },
+    "word_count_trajectory": [
+      19,
+      25,
+      34,
+      34,
+      28,
+      32,
+      27,
+      28,
+      28,
+      42,
+      30,
+      23,
+      42,
+      51,
+      42,
+      35,
+      46,
+      35,
+      46,
+      35,
+      42,
+      46,
+      34,
+      33,
+      41,
+      34,
+      40,
+      33,
+      44,
+      48,
+      33,
+      46,
+      40,
+      44,
+      48,
+      51
+    ]
+  },
+  "config": {
+    "num_blocks": 6,
+    "group_size": 3,
+    "num_tangrams": 16,
+    "num_targets": 6,
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "timestamp": "2026-03-23T02:07:25.863325",
+  "status": "complete",
+  "player_orders": {
+    "0": [
+      "page-B",
+      "page4-15",
+      "page5-142",
+      "page5-64",
+      "page7-255",
+      "page4-157",
+      "page9-46",
+      "page3-121",
+      "page7-107",
+      "page5-63",
+      "page3-35",
+      "page9-7",
+      "page3-193",
+      "page7-26",
+      "page5-28",
+      "page6-149"
+    ],
+    "1": [
+      "page6-149",
+      "page3-35",
+      "page-B",
+      "page9-46",
+      "page4-15",
+      "page3-193",
+      "page5-64",
+      "page7-255",
+      "page7-107",
+      "page4-157",
+      "page5-28",
+      "page5-142",
+      "page9-7",
+      "page7-26",
+      "page5-63",
+      "page3-121"
+    ],
+    "2": [
+      "page5-63",
+      "page9-7",
+      "page4-157",
+      "page5-64",
+      "page5-142",
+      "page3-121",
+      "page5-28",
+      "page7-107",
+      "page9-46",
+      "page6-149",
+      "page-B",
+      "page4-15",
+      "page7-26",
+      "page3-193",
+      "page7-255",
+      "page3-35"
+    ]
+  },
+  "block_targets": [
+    [
+      "page-B",
+      "page3-35",
+      "page7-255",
+      "page9-46",
+      "page7-107",
+      "page5-28"
+    ],
+    [
+      "page-B",
+      "page7-107",
+      "page9-46",
+      "page7-255",
+      "page5-28",
+      "page3-35"
+    ],
+    [
+      "page7-255",
+      "page9-46",
+      "page7-107",
+      "page-B",
+      "page3-35",
+      "page5-28"
+    ],
+    [
+      "page9-46",
+      "page5-28",
+      "page7-107",
+      "page3-35",
+      "page7-255",
+      "page-B"
+    ],
+    [
+      "page3-35",
+      "page7-255",
+      "page9-46",
+      "page-B",
+      "page7-107",
+      "page5-28"
+    ],
+    [
+      "page-B",
+      "page3-35",
+      "page9-46",
+      "page7-107",
+      "page5-28",
+      "page7-255"
+    ]
+  ]
+}

@@ -1,0 +1,281 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G03
+Seed: 45
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 4 in their view)... "Sitting person facing right, arm pointing straight out to the right."
+    Listener 1: WRONG (picked page7-255)
+    Listener 2: WRONG (picked page6-149)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 1 (block 0): Player 0 describes target (img 10 in their view)... "Sitting person facing right, hands resting in lap. The entire left edge (their back) is a perfectly straight vertical line. No arms sticking out."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page6-149)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 2 (block 0): Player 0 describes target (img 12 in their view)... "Sitting person facing left. Right edge (back) is a perfectly straight vertical line. Arm is pointing out to the left. Head is a symmetrical diamond shape (pointing straight up, not leaning left or right)."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page3-121)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 3 (block 0): Player 0 describes target (img 7 in their view)... "Facing left. Right edge (back) is perfectly straight vertical. Bottom is flat horizontal. Head is a diamond pointing EXACTLY STRAIGHT UP at the ceiling (not leaning forward). The front sticks out diagonally down-left. NO horizontal arm."
+    Listener 1: correct
+    Listener 2: WRONG (picked page3-121)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 4 (block 0): Player 0 describes target (img 9 in their view)... "Sitting facing right. Entire left edge (back) is a perfectly straight vertical line. Flat bottom. Has one arm pointing exactly horizontally straight out to the right (parallel to the ground, not pointing up)."
+    Listener 1: WRONG (picked page6-149)
+    Listener 2: WRONG (picked page4-15)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 5 (block 0): Player 0 describes target (img 13 in their view)... "Sitting person facing left. Entire right edge (back) is a perfectly straight vertical line. Flat bottom. One arm points EXACTLY horizontally straight out to the left (parallel to the ground). Head is a slanted parallelogram leaning forward with a perfectly FLAT horizontal top edge (not a pointy diamond)."
+    Listener 1: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page3-121)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 1 in their view)... "Facing right. Left edge (back) is perfectly straight vertical. Bottom is flat horizontal. NO arms sticking out. Head has a perfectly FLAT horizontal top edge (not a pointy diamond). On the front, below the slanted chest, the outline drops vertically DOWN first, then steps horizontally RIGHT near the bottom floor. (Do NOT pick the similar figure where the horizontal lap sticks out higher up)."
+    Listener 0: WRONG (picked page6-149)
+    Listener 2: WRONG (picked page3-193)
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 7 (block 1): Player 1 describes target (img 11 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"Facing left. Right back is perfectly straight vertical. Head has a FLAT HORIZONTAL TOP EDGE (not a pointy diamond). Arm points EXACTLY HORIZONTAL straight out left. Below the arm, the front edge drops straight down vertically, ending with a pointy toe sticking out left EXACTLY ALONG THE BOTTOM GROUND LINE. (Do NOT pick the figure with a 'lap' sticking out mid-way down)."
+    Listener 0: correct
+    Listener 2: WRONG (picked page7-26)
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 8 (block 1): Player 1 describes target (img 9 in their view)... "Facing left. Right back is perfectly straight vertical. Head is a symmetrical diamond (top point facing EXACTLY straight up). NO horizontal arm sticking out. The front edge slopes to a pointy knee, then cuts INWARD diagonally (down-right), ending in a pointy foot that sticks out horizontally left flush with the ground line. (Do NOT pick the figure where the edge drops straight down vertically below the knee)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 9 (block 1): Player 1 describes target (img 7 in their view)... "Facing right. Left back is perfectly straight vertical. Head is a pointy DIAMOND (top vertex points exactly straight up, NOT a flat horizontal edge). Has an arm pointing EXACTLY HORIZONTAL straight out right. Below this arm, the front edge drops straight down vertically, ending with a foot sticking out right exactly ALONG THE BOTTOM GROUND LINE. (Do NOT pick the figure with a 'lap' sticking out mid-way down)."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 2: WRONG (picked page7-26)
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 10 (block 1): Player 1 describes target (img 16 in their view)... "Facing left (the perfectly straight vertical back is on the RIGHT side of the image).
+- Head is a POINTY DIAMOND (top vertex straight up).
+- Has an arm pointing EXACTLY HORIZONTALLY straight out to the left.
+- CRITICAL: Below this arm, the front edge DOES NOT drop straight down vertically; instead, it cuts INWARD diagonally (down-right) towards the back, creating a slanted gap before the foot sticks out left along the ground.
+(Do NOT pick the similar figure with a straight vertical drop under the arm)."
+    Listener 0: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page5-63)
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 11 (block 1): Player 1 describes target (img 12 in their view)... "- Straight vertical back is on the ENTIRE LEFT SIDE of the image (figure points RIGHT).
+- Head has a FLAT HORIZONTAL TOP EDGE (parallelogram, not a pointy diamond).
+- Has an arm pointing EXACTLY HORIZONTALLY straight out to the RIGHT.
+- CRITICAL: The edge directly UNDER the horizontal arm drops STRAIGHT VERTICALLY DOWN to the foot. 
+(Do NOT pick the similar figure where the space under the arm slants inward diagonally towards the back)."
+    Listener 0: WRONG (picked page3-121)
+    Listener 2: WRONG (picked page3-193)
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 15 in their view)... "Facing RIGHT (the perfectly straight vertical back is on the LEFT edge).
+Head has a FLAT horizontal top edge (not a pointy diamond).
+Has an arm pointing horizontally straight to the RIGHT.
+CRITICAL: Directly under the arm, the front edge drops STRAIGHT VERTICALLY DOWN. The empty space tucked under the arm has a vertical/square corner. (Do NOT pick the similar figure where the edge under the arm slants diagonally inward)."
+    Listener 0: WRONG (picked page3-193)
+    Listener 1: correct
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 13 (block 2): Player 2 describes target (img 7 in their view)... "Facing RIGHT (perfectly straight vertical back on the LEFT edge).
+Head is a POINTY DIAMOND (top vertex points straight up, NOT a flat edge).
+Has an arm pointing horizontally straight to the RIGHT.
+CRITICAL: Directly under the arm, the front edge drops STRAIGHT VERTICALLY DOWN to the foot. The empty space tucked under the arm has a square right-angle corner. (Do NOT pick the figure where the edge under the arm slants diagonally inward)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 14 (block 2): Player 2 describes target (img 16 in their view)... "Facing LEFT (straight vertical back on the RIGHT edge).
+Head has a FLAT horizontal top edge (parallelogram, NOT a pointy diamond).
+Has an arm pointing horizontally straight to the LEFT.
+CRITICAL: Directly under the arm, the front edge SLANTS DIAGONALLY INWARD (down-right). The empty space tucked under the arm is wedge-shaped. (Do NOT pick the similar figure where the edge drops straight vertically down under the arm)."
+    Listener 0: WRONG (picked page9-7)
+    Listener 1: WRONG (picked page3-121)
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 15 (block 2): Player 2 describes target (img 4 in their view)... "Facing LEFT (perfectly straight vertical back on the RIGHT edge).
+Head is a POINTY DIAMOND (top vertex points exactly straight up).
+NO horizontal arm sticking out. The front edge slopes down to a pointy knee.
+CRITICAL: Below the knee, the front edge cuts INWARD DIAGONALLY (down-right), creating a wedge-shaped empty gap before the foot. 
+(Do NOT pick the similar figure where the edge drops straight vertically down below the knee)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 16 (block 2): Player 2 describes target (img 13 in their view)... "Facing LEFT (perfectly straight vertical back on the RIGHT edge).
+Head has a FLAT horizontal top edge (parallelogram, NOT a pointy diamond).
+Has an arm pointing horizontally straight to the LEFT.
+CRITICAL: Directly under the arm, the front edge drops STRAIGHT VERTICALLY DOWN to the foot. The empty space tucked under the arm has a square right-angle corner. (Do NOT pick the similar figure where the edge under the arm slants diagonally inward)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 17 (block 2): Player 2 describes target (img 14 in their view)... "Facing RIGHT (perfectly straight vertical back on the LEFT edge).
+Head has a FLAT horizontal top edge (parallelogram, NOT a pointy diamond).
+NO horizontal arm sticking out (just a slanted chest ending in a pointy knee).
+CRITICAL: Below the knee, the front edge drops STRAIGHT VERTICALLY DOWN to the foot. The empty space tucked under the knee has a square right-angle corner. (Do NOT pick the similar figure where the edge below the knee slants diagonally inward)."
+    Listener 0: correct
+    Listener 1: WRONG (picked page5-142)
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 4 in their view)... "Faces RIGHT (perfectly straight vertical back on the LEFT edge).
+Head has a FLAT horizontal top edge (parallelogram, NOT pointy).
+HAS an arm pointing horizontally straight out to the right.
+CRITICAL: Below the arm, the front edge of the leg drops PERFECTLY VERTICAL to the ground, parallel to the straight back edge. This creates a square 90-degree corner in the empty space tucked under the arm. Do NOT pick the similar figure where the leg slants diagonally inward toward the back."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 19 (block 3): Player 0 describes target (img 12 in their view)... "Faces LEFT (perfectly straight vertical back on the RIGHT edge).
+Head is a POINTY DIAMOND (top vertex points exactly straight up).
+HAS an arm pointing horizontally straight out to the left.
+CRITICAL: Below the arm, the front edge of the leg SLANTS DIAGONALLY INWARD (down-right) towards the back, creating a wedge-shaped gap. Do NOT pick the similar figure where the leg drops perfectly straight vertically down under the arm."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: correct
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 20 (block 3): Player 0 describes target (img 9 in their view)... "Faces RIGHT (perfectly straight vertical back on the LEFT edge).
+Head is a POINTY DIAMOND (top vertex points exactly straight up, NOT flat).
+HAS an arm pointing horizontally straight out to the RIGHT.
+CRITICAL: Below the arm, the front edge of the leg drops PERFECTLY VERTICAL to the ground, parallel to the straight back edge. This creates a square 90-degree corner in the empty space tucked under the arm. Do NOT pick the similar figure where the leg slants diagonally inward toward the back."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 21 (block 3): Player 0 describes target (img 13 in their view)... "Faces LEFT (perfectly straight vertical back on the RIGHT edge).
+Head has a FLAT horizontal top edge (parallelogram, NOT pointy).
+HAS an arm pointing horizontally straight out to the LEFT.
+CRITICAL: Below the arm, the front edge of the leg drops PERFECTLY VERTICAL to the ground, parallel to the straight back edge. This creates a square 90-degree corner in the empty space tucked under the arm. Do NOT pick the similar figure where the leg slants diagonally inward toward the back."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 22 (block 3): Player 0 describes target (img 10 in their view)... "Faces RIGHT (perfectly straight vertical back on the LEFT edge).
+Head has a FLAT horizontal top edge (parallelogram, NOT pointy).
+NO ARM pointing out. The front is just a slanted chest sloping down to a pointy knee.
+CRITICAL: Below the knee, the leg drops PERFECTLY VERTICAL straight down to the ground, parallel to the straight back edge. This creates a square 90-degree right angle in the empty space tucked under the knee. Do NOT pick the similar figure where the leg slants diagonally inward towards the back."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 23 (block 3): Player 0 describes target (img 7 in their view)... "Faces LEFT (perfectly straight vertical back on the RIGHT edge).
+Head is a POINTY DIAMOND (top vertex points exactly straight up, NOT flat).
+NO ARM pointing out. The front is just a slanted chest sloping down to a pointy knee.
+CRITICAL: Below the knee, the leg SLANTS DIAGONALLY INWARD (down-right) towards the back, creating a wedge-shaped gap. Do NOT pick the similar figure where the leg drops perfectly straight vertically down under the knee."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 16 in their view)... "Faces LEFT (perfectly straight vertical back on the RIGHT edge).
+Head is a POINTY DIAMOND (top vertex points exactly straight up).
+Has a HIGH ARM pointing horizontally straight out to the LEFT (located upper body, just below the head).
+CRITICAL: Below this high arm, the leg SLANTS DIAGONALLY INWARD (down-right) towards the back, creating a wedge-shaped gap.
+Do NOT pick the figure where the horizontal protrusion is lower down mid-body like a lap."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 25 (block 4): Player 1 describes target (img 12 in their view)... "Faces RIGHT (perfectly straight vertical back on the LEFT edge).
+Head has a FLAT horizontal top edge (parallelogram).
+Has a HIGH ARM pointing horizontally straight out to the RIGHT (located upper body, just below the head).
+CRITICAL: Below this arm, the leg drops PERFECTLY VERTICAL straight down to the ground, parallel to the back edge, creating a square 90-degree corner under the arm.
+Do NOT pick the similar figure where the leg slants diagonally inward toward the back, or where the horizontal part is lower down mid-body like a lap."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 26 (block 4): Player 1 describes target (img 1 in their view)... "Faces RIGHT (perfectly straight vertical back on the LEFT edge).
+Head has a FLAT horizontal top edge (parallelogram).
+NO horizontal protrusions (no arm, no lap). The front is just a single slanted chest sloping down to a pointy knee.
+CRITICAL: Below the knee, the front edge drops PERFECTLY VERTICAL straight down to the ground, creating a square 90-degree corner tucked under the knee.
+Do NOT pick the similar figure where the leg slants diagonally inward toward the back."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 27 (block 4): Player 1 describes target (img 9 in their view)... "Faces LEFT (perfectly straight vertical back on the RIGHT edge).
+Head is a POINTY DIAMOND (top vertex points exactly straight up).
+NO horizontal protrusions (no arm, no lap). The front is just a single slanted chest sloping down to a pointy knee.
+CRITICAL: Below the knee, the front edge SLANTS DIAGONALLY INWARD (down-right) towards the back, creating a wedge-shaped gap.
+Do NOT pick the similar figure where the leg drops perfectly vertical straight down under the knee."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 28 (block 4): Player 1 describes target (img 7 in their view)... "Faces RIGHT (perfectly straight vertical back on the LEFT edge).
+Head is a POINTY DIAMOND (top vertex points exactly straight up).
+Has a HIGH ARM pointing horizontally straight out to the RIGHT (located upper body).
+CRITICAL: Below this arm, the leg drops PERFECTLY VERTICAL straight down to the ground, parallel to the back edge, creating a square 90-degree corner under the arm.
+Do NOT pick the similar figure where the leg slants diagonally inward toward the back."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 29 (block 4): Player 1 describes target (img 11 in their view)... "Faces LEFT (perfectly straight vertical back on the RIGHT edge).
+Head has a FLAT horizontal top edge (parallelogram).
+Has a HIGH ARM pointing horizontally straight out to the LEFT (located upper body).
+CRITICAL: Below this arm, the leg drops PERFECTLY VERTICAL straight down to the ground, parallel to the back edge, creating a square 90-degree corner under the arm.
+Do NOT pick the similar figure where the leg slants diagonally inward toward the back."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 7 in their view)... "Faces RIGHT (perfectly straight vertical back on the LEFT edge).
+Head is a POINTY DIAMOND (top vertex points exactly straight up).
+Has a HIGH ARM pointing horizontally straight out to the RIGHT (located upper body).
+CRITICAL: Below this arm, the leg drops PERFECTLY VERTICAL straight down to the ground, parallel to the back edge, creating a square 90-degree corner under the arm.
+Do NOT pick the similar figure where the leg slants diagonally inward toward the back."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 31 (block 5): Player 2 describes target (img 4 in their view)... "Faces LEFT (perfectly straight vertical back on the RIGHT edge).
+Head is a POINTY DIAMOND (top vertex points exactly straight up).
+NO horizontal protrusions (no arm, no lap). The front is just a single slanted chest sloping down to a pointy knee.
+CRITICAL: Below the knee, the front edge SLANTS DIAGONALLY INWARD (down-right) towards the back, creating a wedge-shaped gap.
+Do NOT pick the similar figure where the leg drops perfectly vertical straight down under the knee."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 32 (block 5): Player 2 describes target (img 16 in their view)... "Faces LEFT (perfectly straight vertical back on the RIGHT edge).
+Head is a POINTY DIAMOND (top vertex points exactly straight up).
+Has a HIGH ARM pointing horizontally straight out to the LEFT (located upper body, just below the head).
+CRITICAL: Below this high arm, the leg SLANTS DIAGONALLY INWARD (down-right) towards the back, creating a wedge-shaped gap.
+Do NOT pick the figure where the horizontal protrusion is lower down mid-body like a lap."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 33 (block 5): Player 2 describes target (img 15 in their view)... "Faces RIGHT (perfectly straight vertical back on the LEFT edge).
+Head has a FLAT horizontal top edge (parallelogram).
+Has a HIGH ARM pointing horizontally straight out to the RIGHT (located upper body, just below the head).
+CRITICAL: Below this arm, the leg drops PERFECTLY VERTICAL straight down to the ground, parallel to the back edge, creating a square 90-degree corner under the arm.
+Do NOT pick the similar figure where the leg slants diagonally inward toward the back, or where the horizontal part is lower down mid-body like a lap."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 34 (block 5): Player 2 describes target (img 14 in their view)... "Faces RIGHT (perfectly straight vertical back on the LEFT edge).
+Head has a FLAT horizontal top edge (parallelogram).
+NO horizontal protrusions (no arm, no lap). The front is just a single slanted chest sloping down to a pointy knee.
+CRITICAL: Below the knee, the front edge drops PERFECTLY VERTICAL straight down to the ground, creating a square 90-degree corner tucked under the knee.
+Do NOT pick the similar figure where the leg slants diagonally inward toward the back."
+    Listener 0: correct
+    Listener 1: WRONG (picked page6-149)
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+  Round 35 (block 5): Player 2 describes target (img 13 in their view)... "Faces LEFT (perfectly straight vertical back on the RIGHT edge).
+Head has a FLAT horizontal top edge (parallelogram).
+Has a HIGH ARM pointing horizontally straight out to the LEFT (located upper body, just below the head).
+CRITICAL: Below this high arm, the leg drops PERFECTLY VERTICAL straight down to the ground, parallel to the back edge, creating a square 90-degree corner under the arm.
+Do NOT pick the similar figure where the leg slants diagonally inward toward the back, or where the horizontal part is lower down mid-body like a lap."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json]
+
+========================================
+SUMMARY for group G03:
+  Overall accuracy: 65.3%
+  Overall avg words: 68.6
+  Block 0: acc=8.3%, words=31.0
+  Block 1: acc=33.3%, words=70.5
+  Block 2: acc=66.7%, words=71.8
+  Block 3: acc=91.7%, words=79.3
+  Block 4: acc=100.0%, words=78.2
+  Block 5: acc=91.7%, words=81.0
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G03.json

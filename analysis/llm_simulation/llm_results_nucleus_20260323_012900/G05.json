@@ -1,0 +1,1200 @@
+{
+  "group_id": "G05",
+  "tangram_set": 0,
+  "target_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B"
+  ],
+  "all_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B",
+    "page3-121",
+    "page4-157",
+    "page7-26",
+    "page5-64",
+    "page6-149",
+    "page3-193",
+    "page5-63",
+    "page9-7",
+    "page5-142",
+    "page4-15"
+  ],
+  "model": "gemini-3.1-pro-preview",
+  "rounds": [
+    {
+      "round_num": 0,
+      "block_num": 0,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "swan facing right",
+      "word_count": 3,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-157",
+          "selection_label": "12",
+          "correct": false,
+          "raw_response": "12",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "14",
+          "correct": false,
+          "raw_response": "14",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 1,
+      "block_num": 0,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "bird facing left, pointed horizontal beak pointing left, pointed horizontal tail pointing right, two separate distinct legs at bottom",
+      "word_count": 19,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-26",
+          "selection_label": "11",
+          "correct": false,
+          "raw_response": "11",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 2,
+      "block_num": 0,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "diamond on far left, square on top, massive triangle on right pointing down and right",
+      "word_count": 15,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page6-149",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-64",
+          "selection_label": "10",
+          "correct": false,
+          "raw_response": "10",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 3,
+      "block_num": 0,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "person kneeling facing right, arm extended straight horizontally to the right holding a diamond",
+      "word_count": 14,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-28",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page6-149",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 4,
+      "block_num": 0,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "diamond head at top right, body slants down and to the left. Base is a large flat-bottomed triangle pointing horizontally to the right.",
+      "word_count": 23,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page6-149",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 5,
+      "block_num": 0,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "person with diamond head, horizontal arm pointing right, sharp point sticking horizontally left from the middle of the back, flat bottom",
+      "word_count": 21,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-193",
+          "selection_label": "13",
+          "correct": false,
+          "raw_response": "13",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 6,
+      "block_num": 1,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Diamond head. Horizontal right arm ends in a second diamond. Bottom rests on a single sharp downward point, NOT a flat base. A sharp triangle sticks straight out to the left.",
+      "word_count": 31,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-63",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 7,
+      "block_num": 1,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "Diamond head top right. Bottom base is a flat-bottomed triangle pointing horizontally to the right (90-degree vertical edge at bottom-left, sharp point at bottom-right). Left side of body has a spike pointing diagonally up-left. NO horizontal arm pointing right.",
+      "word_count": 39,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 8,
+      "block_num": 1,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Diamond head. Balances entirely on a single sharp downward point at the very bottom. Has a distinct arm sticking straight out to the LEFT. NO right arm; the right edge is a long, continuous, steep diagonal slope from the neck all the way down to the bottom point.",
+      "word_count": 48,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-63",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "12",
+          "correct": false,
+          "raw_response": "12",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 9,
+      "block_num": 1,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Diamond head. Rests on a completely flat horizontal bottom edge. Right arm points straight horizontally right, ending in a sharp triangle point (NOT a diamond). Left side has a spike pointing straight horizontally left.",
+      "word_count": 34,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 10,
+      "block_num": 1,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "Bird facing left. Stands on TWO distinct, clearly separated pointy legs (front leg points straight down, back leg points down-right). Beak points straight left, tail points straight horizontally right. Does NOT have a flat bottom edge.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-15",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-46",
+          "selection_label": "16",
+          "correct": true,
+          "raw_response": "16",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 11,
+      "block_num": 1,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Looks like a swan swimming facing LEFT (Player 0 previously said 'right' by mistake). Rests on a completely flat horizontal bottom edge. Bottom-right corner ends in a long, sharp tail pointing horizontally right on the ground. Middle has a tall triangular wing pointing straight UP. Head is a diamond at the top-LEFT. The diamond is the furthest left point; there are NO extra spikes sticking out the left side of the chest/body.",
+      "word_count": 72,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-15",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-157",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 12,
+      "block_num": 2,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Diamond head top right. Bottom base is a flat-bottomed triangle pointing horizontally to the right (vertical edge at bottom-left, sharp point at bottom-right). Left side of body has a spike pointing diagonally up-left. No horizontal arm.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "14",
+          "correct": true,
+          "raw_response": "14",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 13,
+      "block_num": 2,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "Bird facing left. Bottom is two separate pointed legs with a gap between them, not a flat line. Beak points straight left, tail points straight right.",
+      "word_count": 26,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 14,
+      "block_num": 2,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Diamond head. Flat horizontal bottom edge. Right arm points straight horizontally right, ending in a sharp point. Left side has a spike pointing straight horizontally left.",
+      "word_count": 26,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 15,
+      "block_num": 2,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Diamond head. Right arm points horizontally right, ending in a second diamond. Left side has a spike pointing straight horizontally left. Balances entirely on a single sharp downward point at the bottom (not a flat base).",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "16",
+          "correct": true,
+          "raw_response": "16",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 16,
+      "block_num": 2,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Swan facing left. Diamond head at top-left is the furthest left point. Long, completely flat horizontal bottom edge ending in a right-pointing tail. Crucially, the left side of the body below the head has NO sharp spikes sticking out (it is smooth).",
+      "word_count": 42,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-64",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 17,
+      "block_num": 2,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "Abstract shape, NOT a person or animal. Highest point is a square. Leftmost part sticks out straight horizontally left. The entire right side is a massive triangle pointing diagonally down-and-right. The lowest point of the whole figure is the sharp bottom-right tip of this massive triangle. No flat base.",
+      "word_count": 49,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 18,
+      "block_num": 3,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Flat bottom resting on the ground, ending in a right-pointing tail. Tall triangle points straight up in the middle. Top-left is a diamond. The diamond is the absolute leftmost point of the whole image. The left edge below the diamond slopes diagonally down-and-right. Crucially, there are ZERO spikes or triangles sticking out to the left anywhere.",
+      "word_count": 56,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-255",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 19,
+      "block_num": 3,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Diamond head. Right arm points horizontally right, ending in a second diamond. Left side has a spike pointing straight horizontally left. Balances entirely on a single sharp downward point at the bottom (not a flat base).",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-7",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 20,
+      "block_num": 3,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "Diamond head top right. Bottom base is a flat-bottomed triangle pointing horizontally to the right (vertical edge at bottom-left, sharp point at bottom-right). Left side of body has a spike pointing diagonally up-left. No horizontal arm.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 21,
+      "block_num": 3,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "Bird facing left. Bottom is two separate pointed legs with a gap between them, not a flat line. Beak points straight horizontally left, tail points straight horizontally right. The front leg points straight vertically down.",
+      "word_count": 35,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-46",
+          "selection_label": "16",
+          "correct": true,
+          "raw_response": "16",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 22,
+      "block_num": 3,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Diamond head. Flat horizontal bottom base. Right arm points straight horizontally right. Left side has a sharp spike pointing EXACTLY HORIZONTALLY left (parallel to the bottom base, NOT pointing diagonally up or down). The arms end in sharp points, there are no diamonds on the arms.",
+      "word_count": 46,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-28",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 23,
+      "block_num": 3,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "Abstract shape. Highest point is a square. Leftmost part sticks out straight horizontally left. The entire right side is a massive triangle pointing diagonally down-and-right. The lowest point of the whole figure is the sharp bottom-right tip of this massive triangle. No flat base.",
+      "word_count": 44,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "14",
+          "correct": true,
+          "raw_response": "14",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 24,
+      "block_num": 4,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Figure with EXACTLY TWO DIAMONDS: one is the head, the other is at the far right end of the horizontal right arm. Balances entirely on a single sharp downward point at the very bottom (NOT a flat base). Left side has a sharp spike pointing straight horizontally left.",
+      "word_count": 48,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-142",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 25,
+      "block_num": 4,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Abstract shape. Highest point is a square with a flat horizontal top edge. Leftmost part points straight horizontally left. The entire right side is a massive triangle pointing diagonally down-and-right. The absolute lowest point of the figure is the single sharp tip of this massive triangle (it does NOT have a flat bottom base).",
+      "word_count": 54,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "14",
+          "correct": true,
+          "raw_response": "14",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 26,
+      "block_num": 4,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "Bird facing left. Bottom has two separate pointed legs with a gap between them, not a flat base. Beak points straight horizontally left, tail points straight horizontally right. The front leg points straight vertically down.",
+      "word_count": 35,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 27,
+      "block_num": 4,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Flat bottom resting on the ground, ending in a right-pointing tail. Tall triangle points straight up in the middle. Top-left is a diamond, which is the absolute leftmost point of the whole image. The left edge below the diamond slopes diagonally down-and-right. Crucially, there are ZERO spikes or triangles sticking out to the left anywhere.",
+      "word_count": 55,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-15",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-157",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 28,
+      "block_num": 4,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "Diamond head is at the TOP-RIGHT. Bottom base rests on a completely flat horizontal line, ending in a sharp point to the far RIGHT. The bottom-LEFT corner of the base is a perfectly vertical straight edge. A sharp spike points diagonally UP-LEFT from the body. NO horizontal arms anywhere.",
+      "word_count": 49,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page3-35",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-35",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 29,
+      "block_num": 4,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Diamond head. Rests on a completely flat horizontal bottom base. Right arm points straight horizontally right. Left side has a sharp spike pointing exactly horizontally left (parallel to the base). The arms end in sharp points, NOT diamonds.",
+      "word_count": 38,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 30,
+      "block_num": 5,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "Bird facing left. Beak points strictly horizontally left. Tail points strictly horizontally right. Balances on exactly two sharp downward points (NO flat base anywhere). The front leg points straight vertically down, while the back leg points diagonally down-right.",
+      "word_count": 38,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "15",
+          "correct": true,
+          "raw_response": "15",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 31,
+      "block_num": 5,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Swan shape. Flat horizontal bottom edge resting entirely on the ground, ending in a sharp point on the far right. Diamond head is top-left. A tall triangle in the middle points straight vertically UP. Crucially, the neck below the diamond head is a straight, smooth diagonal line sloping DOWN-AND-RIGHT. The diamond is the absolute leftmost point of the entire figure; there are ZERO spikes sticking out the left side.",
+      "word_count": 69,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page4-15",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 32,
+      "block_num": 5,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "Abstract shape. Highest point is a square. Leftmost part sticks out straight horizontally left. The entire right side is a massive triangle pointing diagonally down-and-right. The absolute lowest point of the figure is the single sharp tip of this massive triangle (it does NOT have a flat base).",
+      "word_count": 48,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-64",
+          "selection_label": "11",
+          "correct": false,
+          "raw_response": "11",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-64",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 33,
+      "block_num": 5,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Diamond head. Rests entirely on a completely flat horizontal bottom base. Has TWO perfectly horizontal arms: left spike points strictly horizontally left, and right arm points strictly horizontally right. The right arm ends in a sharp triangle point, NOT a diamond.",
+      "word_count": 41,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-28",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 34,
+      "block_num": 5,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Figure with exactly two diamonds: one is the head, the other is at the end of the straight horizontal right arm. Left side has a sharp spike pointing STRICTLY horizontally left (not up-left). Balances entirely on a single sharp downward point at the very bottom (NO flat base anywhere).",
+      "word_count": 49,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "16",
+          "correct": true,
+          "raw_response": "16",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 35,
+      "block_num": 5,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Diamond head at the TOP-RIGHT. Bottom base is a flat-bottomed triangle with a perfectly vertical left edge and a right-pointing tip. A sharp spike on the left side points diagonally UP-LEFT. NO horizontal arms.",
+      "word_count": 34,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "14",
+          "correct": true,
+          "raw_response": "14",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    }
+  ],
+  "summary": {
+    "overall": {
+      "accuracy": 0.569,
+      "avg_word_count": 38.36,
+      "n": 36,
+      "parse_errors": 0,
+      "listener_trials": 72
+    },
+    "per_block": {
+      "0": {
+        "accuracy": 0.0,
+        "avg_word_count": 15.83,
+        "n": 6
+      },
+      "1": {
+        "accuracy": 0.417,
+        "avg_word_count": 43.33,
+        "n": 6
+      },
+      "2": {
+        "accuracy": 0.833,
+        "avg_word_count": 35.83,
+        "n": 6
+      },
+      "3": {
+        "accuracy": 0.833,
+        "avg_word_count": 42.17,
+        "n": 6
+      },
+      "4": {
+        "accuracy": 0.667,
+        "avg_word_count": 46.5,
+        "n": 6
+      },
+      "5": {
+        "accuracy": 0.667,
+        "avg_word_count": 46.5,
+        "n": 6
+      }
+    },
+    "word_count_trajectory": [
+      3,
+      19,
+      15,
+      14,
+      23,
+      21,
+      31,
+      39,
+      48,
+      34,
+      36,
+      72,
+      36,
+      26,
+      26,
+      36,
+      42,
+      49,
+      56,
+      36,
+      36,
+      35,
+      46,
+      44,
+      48,
+      54,
+      35,
+      55,
+      49,
+      38,
+      38,
+      69,
+      48,
+      41,
+      49,
+      34
+    ]
+  },
+  "config": {
+    "num_blocks": 6,
+    "group_size": 3,
+    "num_tangrams": 16,
+    "num_targets": 6,
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "timestamp": "2026-03-23T02:01:26.945733",
+  "status": "complete",
+  "player_orders": {
+    "0": [
+      "page5-142",
+      "page6-149",
+      "page5-28",
+      "page4-15",
+      "page7-255",
+      "page5-63",
+      "page7-107",
+      "page9-7",
+      "page3-35",
+      "page-B",
+      "page5-64",
+      "page4-157",
+      "page7-26",
+      "page3-121",
+      "page9-46",
+      "page3-193"
+    ],
+    "1": [
+      "page4-15",
+      "page5-64",
+      "page6-149",
+      "page5-28",
+      "page9-7",
+      "page3-193",
+      "page9-46",
+      "page3-121",
+      "page-B",
+      "page5-142",
+      "page7-26",
+      "page4-157",
+      "page5-63",
+      "page3-35",
+      "page7-255",
+      "page7-107"
+    ],
+    "2": [
+      "page5-28",
+      "page3-35",
+      "page4-157",
+      "page3-121",
+      "page7-255",
+      "page5-142",
+      "page4-15",
+      "page7-107",
+      "page6-149",
+      "page5-64",
+      "page9-7",
+      "page5-63",
+      "page3-193",
+      "page-B",
+      "page7-26",
+      "page9-46"
+    ]
+  },
+  "block_targets": [
+    [
+      "page7-255",
+      "page9-46",
+      "page-B",
+      "page7-107",
+      "page3-35",
+      "page5-28"
+    ],
+    [
+      "page7-107",
+      "page3-35",
+      "page-B",
+      "page5-28",
+      "page9-46",
+      "page7-255"
+    ],
+    [
+      "page3-35",
+      "page9-46",
+      "page5-28",
+      "page7-107",
+      "page7-255",
+      "page-B"
+    ],
+    [
+      "page7-255",
+      "page7-107",
+      "page3-35",
+      "page9-46",
+      "page5-28",
+      "page-B"
+    ],
+    [
+      "page7-107",
+      "page-B",
+      "page9-46",
+      "page7-255",
+      "page3-35",
+      "page5-28"
+    ],
+    [
+      "page9-46",
+      "page7-255",
+      "page-B",
+      "page5-28",
+      "page7-107",
+      "page3-35"
+    ]
+  ]
+}

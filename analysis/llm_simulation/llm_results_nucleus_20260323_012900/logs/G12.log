@@ -1,0 +1,202 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G12
+Seed: 54
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 16 in their view)... "Person facing left with a straight arm reaching diagonally up and to the left."
+    Listener 1: WRONG (picked page7-107)
+    Listener 2: WRONG (picked page7-26)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 1 (block 0): Player 0 describes target (img 7 in their view)... "Bird facing left with a large triangular wing pointing straight up that has a flat, vertical right edge. A small triangular beak points left, and a tail points down and to the right."
+    Listener 1: WRONG (picked page7-255)
+    Listener 2: WRONG (picked page9-7)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 2 (block 0): Player 0 describes target (img 2 in their view)... "Figure with a large diamond shape leaning to the left, and a long horizontal piece extending straight out to the right."
+    Listener 1: WRONG (picked page5-142)
+    Listener 2: WRONG (picked page-B)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 3 (block 0): Player 0 describes target (img 9 in their view)... "Figure with a diamond head on top, a long piece extending diagonally down and to the left, and a small triangle pointing directly right."
+    Listener 1: WRONG (picked page-B)
+    Listener 2: WRONG (picked page-B)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 4 (block 0): Player 0 describes target (img 1 in their view)... "Figure with a diamond head on the top right, leaning far over to the left like a person bowing deeply. It rests on a completely flat, horizontal bottom edge and has a sharp point extending to the far left."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 1: WRONG (picked page9-46)
+    Listener 2: WRONG (picked page7-26)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 5 (block 0): Player 0 describes target (img 4 in their view)... "Figure with a tall, perfectly straight vertical right edge that meets a flat horizontal bottom edge to form a sharp 90-degree corner at the bottom right. On the far left side, it has a small triangle pointing straight out to the left."
+    Listener 1: WRONG (picked page6-149)
+    Listener 2: WRONG (picked page5-63)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 6 in their view)... "Top is a large triangle pointing straight up, with its right edge forming a perfectly vertical straight line. On the left side, a small triangle points perfectly horizontally to the left. The bottom-most piece points diagonally down and to the right (it does not have a flat horizontal bottom edge)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 7 (block 1): Player 1 describes target (img 2 in their view)... "Diamond-shaped head on the far top left. The thick main body leans diagonally up and to the left. From the bottom, a long, sharp point extends straight out to the far right, with the entire bottom edge of this rightward-pointing section being perfectly flat and horizontal."
+    Listener 0: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page4-157)
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 8 (block 1): Player 1 describes target (img 7 in their view)... "Diamond head on the right side. A long straight arm extends diagonally UP and to the LEFT, making its tip the highest point of the entire figure. The lowest point is a triangle pointing perfectly straight DOWN."
+    Listener 0: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page3-121)
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 9 (block 1): Player 1 describes target (img 5 in their view)... "Diamond head at the very top. A distinct small triangle points perfectly horizontally straight to the RIGHT. The lowest part is a single sharp tip pointing diagonally DOWN and to the LEFT. No flat bottom edge."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 10 (block 1): Player 1 describes target (img 16 in their view)... "Perfect 90-degree corner at the bottom right (tall vertical right edge, completely flat bottom). The highest part is a diamond shape. The piece furthest to the LEFT is a small triangle pointing perfectly horizontally STRAIGHT LEFT like an arrowhead (its tip points straight left, NOT diagonally down)."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 2: correct
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 11 (block 1): Player 1 describes target (img 8 in their view)... "Completely flat horizontal bottom edge. Diamond head on the top RIGHT. The leftmost tip of the entire figure rests exactly ON this flat bottom edge, forming a sharp point that aims perfectly horizontally straight left along the ground."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 20s (attempt 2/5)]
+    Listener 0: correct
+    Listener 2: WRONG (picked page4-15)
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 3 in their view)... "Completely flat horizontal bottom edge and straight vertical right edge. The entire left side is one long, continuous, perfectly straight diagonal line sloping down to a sharp point on the far left of the ground (like a ramp). The very topmost piece is a distinct DIAMOND shape sitting on the top right."
+    Listener 0: WRONG (picked page6-149)
+    Listener 1: WRONG (picked page3-193)
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 13 (block 2): Player 2 describes target (img 10 in their view)... "Diamond head on the far top left. The absolute lowest point of the entire figure is a sharp tip pointing perfectly straight DOWN. The rightmost piece extends perfectly horizontally to the RIGHT, and the TOP edge of this right-pointing piece is completely flat and horizontal."
+    Listener 0: WRONG (picked page6-149)
+    Listener 1: WRONG (picked page4-157)
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 14 (block 2): Player 2 describes target (img 7 in their view)... "Top is a large triangle pointing straight up, with its right edge forming a perfectly vertical straight line. On the left side, a small triangle points perfectly horizontally to the left. The bottom-most piece points diagonally down and to the right (it does not have a flat horizontal bottom edge)."
+    Listener 0: correct
+    Listener 1: WRONG (picked page7-255)
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 15 (block 2): Player 2 describes target (img 14 in their view)... "Highest point is the tip of a long arm reaching diagonally UP-LEFT. The piece furthest to the RIGHT is a diamond shape. The absolute lowest point is a sharp tip aiming perfectly straight DOWN."
+    Listener 0: WRONG (picked page7-26)
+    Listener 1: correct
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 16 (block 2): Player 2 describes target (img 4 in their view)... "Perfect 90-degree corner at the bottom right (tall vertical right edge, completely flat bottom). The highest part is a diamond shape. The piece furthest to the left is a small triangle pointing perfectly horizontally straight left like an arrowhead."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 17 (block 2): Player 2 describes target (img 16 in their view)... "Diamond head at the very top. A distinct small triangle points perfectly horizontally straight to the RIGHT. The lowest part is a single sharp tip pointing diagonally DOWN and to the LEFT. No flat bottom edge."
+    Listener 0: correct
+    Listener 1: WRONG (picked page7-26)
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 2 in their view)... "Diamond head on the top LEFT. The lowest point aims exactly straight DOWN. A long pointed tail extends horizontally to the RIGHT. The completely flat, horizontal edge of this right-pointing tail is on its TOP side."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 19 (block 3): Player 0 describes target (img 7 in their view)... "Bird facing left. The highest part is a large triangle pointing straight up with a completely straight, vertical RIGHT edge. A small triangular beak points horizontally to the LEFT. The lowest part is a tail pointing diagonally down and right."
+    Listener 1: WRONG (picked page9-7)
+    Listener 2: correct
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 20 (block 3): Player 0 describes target (img 16 in their view)... "The rightmost piece is a diamond shape. The highest point of the entire figure is a long, straight arm reaching diagonally UP and LEFT. The absolute lowest point is a sharp tip pointing perfectly straight DOWN."
+    Listener 1: WRONG (picked page3-121)
+    Listener 2: WRONG (picked page9-7)
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 21 (block 3): Player 0 describes target (img 4 in their view)... "Perfect 90-degree corner at the bottom right (tall vertical right edge, completely flat bottom). The highest part is a diamond shape. The piece furthest to the left is a small triangle pointing perfectly horizontally straight left like an arrowhead."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: correct
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 22 (block 3): Player 0 describes target (img 9 in their view)... "Diamond head at the very top. A distinct small triangle points perfectly horizontally straight RIGHT. The lowest part is a single sharp tip pointing diagonally DOWN-LEFT. (Ensure it is not the mirrored figure: the small triangle MUST point RIGHT, and the long leg MUST point LEFT)."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 23 (block 3): Player 0 describes target (img 1 in their view)... "Perfect 90-degree corner at the bottom RIGHT (flat bottom edge meets completely straight vertical right edge). The entire left side is ONE continuous, perfectly straight diagonal line (a smooth ramp) sloping down to a sharp tip resting directly on the ground at the far LEFT. A diamond head sits at the top RIGHT."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 6 in their view)... "Highest piece is a large triangle pointing up with a perfectly vertical RIGHT edge. A small triangular beak points horizontally LEFT. The bottom piece is a tail pointing diagonally DOWN-RIGHT. Crucially, the absolute lowest tip of the figure points diagonally down-right, NOT perfectly straight down. (Do not choose the similar figure with the straight downward-pointing tail)."
+    Listener 0: WRONG (picked page6-149)
+    Listener 2: correct
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 25 (block 4): Player 1 describes target (img 2 in their view)... "Diamond head on the top LEFT. The lowest point aims exactly straight DOWN. A long pointed tail extends horizontally to the RIGHT. The completely flat, horizontal edge of this right-pointing tail is on its TOP side."
+    Listener 0: correct
+    Listener 2: WRONG (picked page4-15)
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 26 (block 4): Player 1 describes target (img 16 in their view)... "Perfect 90-degree corner at the bottom RIGHT (flat bottom edge meets a tall, straight vertical right edge). The highest part is a diamond shape. The piece furthest to the LEFT is a distinct small triangle suspended above the ground, pointing perfectly horizontally STRAIGHT LEFT like an arrowhead."
+    Listener 0: correct
+    Listener 2: WRONG (picked page5-63)
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 27 (block 4): Player 1 describes target (img 7 in their view)... "Highest point is a long arm pointing diagonally UP-LEFT. Rightmost piece is a distinctly DIAMOND-shaped head (not a triangle). The bottom has exactly TWO legs: the left leg points diagonally DOWN-LEFT, and the right leg points perfectly straight DOWN (forming the absolute lowest tip of the figure)."
+    Listener 0: WRONG (picked page9-7)
+    Listener 2: correct
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 28 (block 4): Player 1 describes target (img 8 in their view)... "Perfect 90-degree corner at the bottom RIGHT (flat bottom edge meets completely straight vertical right edge). The entire left side is ONE continuous, perfectly straight diagonal line (a smooth ramp) sloping down to a sharp tip resting directly on the ground at the far LEFT. A diamond head sits at the top RIGHT."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 29 (block 4): Player 1 describes target (img 5 in their view)... "Diamond head at the very top. A distinct small triangle points perfectly horizontally straight RIGHT. The lowest part is a single long leg pointing diagonally DOWN-LEFT."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 14 in their view)... "Highest point is a long arm pointing diagonally UP-LEFT. The piece furthest to the RIGHT is a DIAMOND head. The bottom has exactly TWO legs: the left leg points diagonally DOWN-LEFT, and the right leg points perfectly straight DOWN (forming the absolute lowest tip)."
+    Listener 0: WRONG (picked page9-7)
+    Listener 1: correct
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 31 (block 5): Player 2 describes target (img 4 in their view)... "Perfect 90-degree corner at the bottom right (tall vertical right edge, completely flat bottom). The highest part is a diamond shape. The piece furthest to the left is a small triangle suspended above the ground, pointing perfectly horizontally straight left like an arrowhead."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 32 (block 5): Player 2 describes target (img 10 in their view)... "Diamond head on the top LEFT. The lowest point aims exactly straight DOWN. A long pointed tail extends horizontally to the RIGHT. The completely flat, horizontal edge of this right-pointing tail is on its TOP side."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 33 (block 5): Player 2 describes target (img 7 in their view)... "Highest part is a large triangle pointing straight UP (not a diamond), with a perfectly vertical straight RIGHT edge. A small triangular beak points perfectly horizontally LEFT. The bottom-most piece is a tail pointing diagonally DOWN and RIGHT. Ensure the absolute lowest tip points diagonally down-right, NOT perfectly straight down."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 34 (block 5): Player 2 describes target (img 3 in their view)... "Perfect 90-degree corner at the bottom RIGHT (flat bottom edge meets completely straight vertical right edge). The entire left side is ONE continuous, perfectly straight diagonal line (a smooth ramp) sloping down to a sharp tip resting directly on the ground at the far LEFT. A diamond head sits at the top RIGHT."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 20s (attempt 2/5)]
+    Listener 0: correct
+    Listener 1: WRONG (picked page3-193)
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+  Round 35 (block 5): Player 2 describes target (img 16 in their view)... "Diamond head at the very top. A distinct small triangle points perfectly horizontally straight RIGHT. The lowest part is a single sharp tip pointing diagonally DOWN-LEFT. (Ensure it is not the mirrored figure: the small triangle MUST point RIGHT, and the long leg MUST point LEFT)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json]
+
+========================================
+SUMMARY for group G12:
+  Overall accuracy: 52.8%
+  Overall avg words: 40.8
+  Block 0: acc=0.0%, words=28.8
+  Block 1: acc=58.3%, words=42.3
+  Block 2: acc=41.7%, words=42.7
+  Block 3: acc=66.7%, words=41.7
+  Block 4: acc=66.7%, words=44.2
+  Block 5: acc=83.3%, words=45.3
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G12.json

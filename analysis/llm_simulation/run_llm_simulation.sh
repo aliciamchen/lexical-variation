@@ -11,13 +11,14 @@
 set -uo pipefail
 
 NUM_GROUPS=20
-MODEL="gemini-2.0-flash"
+MODEL="gemini-3.1-pro-preview"
 TANGRAM_SET=0
 BLOCKS=6
 TEMPERATURE=""
 TOP_P=""
 BOTH=false
 OUTPUT_DIR=""
+PARALLEL=1
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -29,11 +30,13 @@ while [[ $# -gt 0 ]]; do
         --top-p) TOP_P="$2"; shift 2 ;;
         --both) BOTH=true; shift ;;
         --output-dir) OUTPUT_DIR="$2"; shift 2 ;;
+        --parallel|-j) PARALLEL="$2"; shift 2 ;;
         --help)
-            echo "Usage: $0 [--num-groups N] [--model MODEL] [--tangram-set 0|1] [--blocks N] [--temperature T] [--top-p P] [--both] [--output-dir DIR]"
+            echo "Usage: $0 [--num-groups N] [--model MODEL] [--tangram-set 0|1] [--blocks N] [--temperature T] [--top-p P] [--both] [--output-dir DIR] [--parallel N]"
             echo ""
             echo "  --both        Run two conditions: nucleus (temp=1.0, top_p=0.95) and greedy (temp=0)"
             echo "  --output-dir  Reuse an existing results directory (for retrying failed groups)"
+            echo "  --parallel N  Run N groups concurrently (default: 1, sequential)"
             exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
@@ -73,6 +76,7 @@ EOF
     echo "Blocks: $BLOCKS"
     echo "Temperature: ${TEMP:-API default}"
     echo "Top-p: ${TP:-API default}"
+    echo "Parallel: $PARALLEL"
     echo "Output: $OUTPUT_DIR"
     echo "============================================"
 
@@ -82,6 +86,10 @@ EOF
 
     local FAILED=()
     local COMPLETED=0
+    local PIDS=()
+    local PID_GROUP=()
+    local LOG_DIR="$OUTPUT_DIR/logs"
+    mkdir -p "$LOG_DIR"
 
     for i in $(seq 1 "$NUM_GROUPS"); do
         GROUP_ID=$(printf "G%02d" "$i")
@@ -90,27 +98,97 @@ EOF
 
         # Skip groups that already completed (supports re-running after partial failure)
         if [[ -f "$OUTPUT_FILE" ]] && grep -q '"status": "complete"' "$OUTPUT_FILE" 2>/dev/null; then
-            echo ""
             echo ">>> [$COND_NAME] Group $GROUP_ID already complete, skipping."
             COMPLETED=$((COMPLETED + 1))
             continue
         fi
 
-        echo ""
         echo ">>> [$COND_NAME] Group $GROUP_ID (seed=$SEED) ..."
-        if uv run python analysis/llm_simulation/llm_simulation.py \
-            --tangram-set "$TANGRAM_SET" \
-            --blocks "$BLOCKS" \
-            --model "$MODEL" \
-            --group-id "$GROUP_ID" \
-            --output "$OUTPUT_FILE" \
-            --seed "$SEED" \
-            $FLAGS; then
-            echo ">>> Group $GROUP_ID done: $OUTPUT_FILE"
+
+        if [[ "$PARALLEL" -gt 1 ]]; then
+            # Run in background, log to file
+            uv run python analysis/llm_simulation/llm_simulation.py \
+                --tangram-set "$TANGRAM_SET" \
+                --blocks "$BLOCKS" \
+                --model "$MODEL" \
+                --group-id "$GROUP_ID" \
+                --output "$OUTPUT_FILE" \
+                --seed "$SEED" \
+                $FLAGS \
+                > "$LOG_DIR/${GROUP_ID}.log" 2>&1 &
+            PIDS+=($!)
+            PID_GROUP+=("$GROUP_ID")
+
+            # Wait if we've hit the concurrency limit
+            if [[ ${#PIDS[@]} -ge $PARALLEL ]]; then
+                # Wait for any one process to finish
+                for idx in "${!PIDS[@]}"; do
+                    if ! kill -0 "${PIDS[$idx]}" 2>/dev/null; then
+                        wait "${PIDS[$idx]}" 2>/dev/null
+                        if [[ $? -eq 0 ]]; then
+                            echo ">>> Group ${PID_GROUP[$idx]} done."
+                            COMPLETED=$((COMPLETED + 1))
+                        else
+                            echo ">>> ERROR: Group ${PID_GROUP[$idx]} failed. See $LOG_DIR/${PID_GROUP[$idx]}.log"
+                            FAILED+=("${PID_GROUP[$idx]}")
+                        fi
+                        unset 'PIDS[$idx]'
+                        unset 'PID_GROUP[$idx]'
+                        PIDS=("${PIDS[@]}")
+                        PID_GROUP=("${PID_GROUP[@]}")
+                        break
+                    fi
+                done
+                # If none finished yet, wait for the first one
+                if [[ ${#PIDS[@]} -ge $PARALLEL ]]; then
+                    wait -n 2>/dev/null || true
+                    for idx in "${!PIDS[@]}"; do
+                        if ! kill -0 "${PIDS[$idx]}" 2>/dev/null; then
+                            wait "${PIDS[$idx]}" 2>/dev/null
+                            if [[ $? -eq 0 ]]; then
+                                echo ">>> Group ${PID_GROUP[$idx]} done."
+                                COMPLETED=$((COMPLETED + 1))
+                            else
+                                echo ">>> ERROR: Group ${PID_GROUP[$idx]} failed. See $LOG_DIR/${PID_GROUP[$idx]}.log"
+                                FAILED+=("${PID_GROUP[$idx]}")
+                            fi
+                            unset 'PIDS[$idx]'
+                            unset 'PID_GROUP[$idx]'
+                            PIDS=("${PIDS[@]}")
+                            PID_GROUP=("${PID_GROUP[@]}")
+                            break
+                        fi
+                    done
+                fi
+            fi
+        else
+            # Sequential (original behavior)
+            if uv run python analysis/llm_simulation/llm_simulation.py \
+                --tangram-set "$TANGRAM_SET" \
+                --blocks "$BLOCKS" \
+                --model "$MODEL" \
+                --group-id "$GROUP_ID" \
+                --output "$OUTPUT_FILE" \
+                --seed "$SEED" \
+                $FLAGS; then
+                echo ">>> Group $GROUP_ID done: $OUTPUT_FILE"
+                COMPLETED=$((COMPLETED + 1))
+            else
+                echo ">>> ERROR: Group $GROUP_ID failed (exit code $?). Continuing..."
+                FAILED+=("$GROUP_ID")
+            fi
+        fi
+    done
+
+    # Wait for remaining background processes
+    for idx in "${!PIDS[@]}"; do
+        wait "${PIDS[$idx]}" 2>/dev/null
+        if [[ $? -eq 0 ]]; then
+            echo ">>> Group ${PID_GROUP[$idx]} done."
             COMPLETED=$((COMPLETED + 1))
         else
-            echo ">>> ERROR: Group $GROUP_ID failed (exit code $?). Continuing..."
-            FAILED+=("$GROUP_ID")
+            echo ">>> ERROR: Group ${PID_GROUP[$idx]} failed. See $LOG_DIR/${PID_GROUP[$idx]}.log"
+            FAILED+=("${PID_GROUP[$idx]}")
         fi
     done
 

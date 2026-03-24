@@ -1,0 +1,194 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G13
+Seed: 55
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 6 in their view)... "Solid black square."
+    Listener 1: WRONG (picked page7-26)
+    Listener 2: correct
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 1 (block 0): Player 0 describes target (img 1 in their view)... "Person running to the left, front arm reaching diagonally up and left."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page5-142)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 2 (block 0): Player 0 describes target (img 11 in their view)... "Person sprinting to the right, arms bent at elbows, front knee lifted."
+    Listener 1: WRONG (picked page5-142)
+    Listener 2: WRONG (picked page5-28)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 3 (block 0): Player 0 describes target (img 12 in their view)... "Person doing a high kick up and to the left, with an arm extending horizontally straight out to the right."
+    Listener 1: WRONG (picked page9-7)
+    Listener 2: WRONG (picked page5-142)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 4 (block 0): Player 0 describes target (img 16 in their view)... "Person kneeling facing right, arm extended forward and bent pointing straight down."
+    Listener 1: WRONG (picked page3-121)
+    Listener 2: WRONG (picked page3-193)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 5 (block 0): Player 0 describes target (img 15 in their view)... "Person kneeling or lunging to the left, with one arm extending perfectly horizontal straight backward to the right."
+    Listener 1: WRONG (picked page3-193)
+    Listener 2: WRONG (picked page3-121)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 10 in their view)... "Person standing on one leg that points straight down vertically, with the other leg kicking high up to the left. One arm is a flat rectangle pointing perfectly horizontally to the right. Below this arm is a large triangle pointing diagonally down and right."
+    Listener 0: WRONG (picked page9-7)
+    Listener 2: correct
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 7 (block 1): Player 1 describes target (img 2 in their view)... "Figure facing right. The front arm extends horizontally to the right, then drops into a perfectly vertical rectangle pointing straight down. The back leg extends to the left, ending in a triangle pointing diagonally down-left."
+    Listener 0: WRONG (picked page3-121)
+    Listener 2: correct
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 8 (block 1): Player 1 describes target (img 11 in their view)... "Figure running left. The front arm reaches diagonally up and left. The lowest part is a foot resting completely flat horizontally and pointing right."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 9 (block 1): Player 1 describes target (img 6 in their view)... "A completely solid, perfect square tilted on its corner to form a large diamond shape. It is a single solid shape with no limbs or protruding parts."
+    Listener 0: WRONG (picked page4-157)
+    Listener 2: correct
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 10 (block 1): Player 1 describes target (img 8 in their view)... "Figure with a flat rectangular arm extending perfectly horizontally straight out to the RIGHT. The very lowest part of the entire image is a sharp point aiming diagonally down and to the left."
+    Listener 0: WRONG (picked page4-15)
+    Listener 2: WRONG (picked page5-64)
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 11 (block 1): Player 1 describes target (img 1 in their view)... "Running figure leaning forward to the right. The back leg extends straight diagonally down and left to a sharp point on the ground. The front leg is bent with the knee lifted high up into the air. Both arms are bent at sharp angles."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 1 in their view)... "A completely solid, perfect diamond shape (a square tilted on its corner). It has exactly four smooth, straight edges and four sharp points, with absolutely no limbs, head, or extra pieces sticking out anywhere."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 13 (block 2): Player 2 describes target (img 3 in their view)... "Figure running left. The front arm reaches diagonally up and left. The lowest part is a foot resting completely flat horizontally and pointing right."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 14 (block 2): Player 2 describes target (img 15 in their view)... "Figure leaning left with one flat arm pointing straight horizontally to the RIGHT. The legs form a wide inverted 'V' shape: the left leg points diagonally down-left ending in a sharp point, and the right leg points diagonally down-right ending in a blocky, square foot."
+    Listener 0: WRONG (picked page5-64)
+    Listener 1: WRONG (picked page4-15)
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 15 (block 2): Player 2 describes target (img 14 in their view)... "Running figure leaning forward to the right. The back leg extends straight diagonally down and left to a sharp point on the ground. The front leg is bent with the knee lifted high up into the air. Both arms are bent at sharp angles."
+    Listener 0: WRONG (picked page6-149)
+    Listener 1: correct
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 16 (block 2): Player 2 describes target (img 4 in their view)... "Figure standing on one straight vertical leg with its foot pointing LEFT. The other leg kicks high up and to the left. One arm extends perfectly horizontally to the RIGHT. Below this arm is a large triangle pointing diagonally down-right."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page6-149)
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 17 (block 2): Player 2 describes target (img 5 in their view)... "Figure facing right. One arm extends perfectly horizontally right, then bends 90 degrees to drop straight down as a vertical rectangle. The front leg rests completely flat horizontally on the ground pointing right. The back leg points diagonally down-left, ending in a large triangle."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: WRONG (picked page5-64)
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 6 in their view)... "A completely solid, perfect diamond shape (a square tilted on its corner). It has exactly four smooth, straight edges and four sharp points, with absolutely no limbs, head, or extra pieces sticking out anywhere."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 19 (block 3): Player 0 describes target (img 1 in their view)... "Figure running left. The front arm reaches diagonally up and left. The lowest part is a foot resting completely flat horizontally and pointing right."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 20 (block 3): Player 0 describes target (img 12 in their view)... "Figure standing on one straight vertical leg with its foot pointing LEFT. The other leg kicks high up to the left. One arm extends perfectly horizontally RIGHT. Below this arm is a large triangle pointing diagonally down-right."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 21 (block 3): Player 0 describes target (img 15 in their view)... "Diamond head. A perfectly straight rectangular arm points horizontally to the RIGHT, ending in a flat vertical edge. The left side has two sharp points: a small arm pointing diagonally up-left, and a large triangular leg pointing diagonally down-left. The lowest part of the whole image is that sharp bottom-left tip."
+    Listener 1: WRONG (picked page4-15)
+    Listener 2: correct
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 22 (block 3): Player 0 describes target (img 11 in their view)... "Running figure leaning forward to the right. The back leg extends straight diagonally down and left ending in a single sharp point on the ground. The front knee is lifted high up into the air to the right. Both arms are bent at sharp angles."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 23 (block 3): Player 0 describes target (img 16 in their view)... "Figure facing right. The front arm extends horizontally to the RIGHT, then bends 90 degrees to point straight DOWN vertically. The entire front foot rests perfectly flat and horizontally on the ground. The back leg points diagonally down-left."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 6 in their view)... "A completely solid, perfect diamond shape (a square tilted on its corner). It has exactly four smooth, straight edges and four sharp points, with absolutely no limbs, head, or extra pieces sticking out anywhere."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 25 (block 4): Player 1 describes target (img 1 in their view)... "Running figure leaning forward to the right. The back leg extends straight diagonally down and left ending in a single sharp point on the ground. The front knee is lifted high up into the air to the right. Both arms are bent at sharp angles."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 26 (block 4): Player 1 describes target (img 10 in their view)... "Figure standing on one straight vertical leg with its foot pointing LEFT. The other leg kicks high up to the left. One arm extends perfectly horizontally RIGHT. Below this arm is a large triangle pointing diagonally down-right."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 27 (block 4): Player 1 describes target (img 2 in their view)... "Figure facing right. The front arm extends horizontally to the RIGHT, then bends 90 degrees to point straight DOWN vertically. The entire front foot rests perfectly flat and horizontally on the ground. The back leg points diagonally down-left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 28 (block 4): Player 1 describes target (img 11 in their view)... "Figure running left. The front arm reaches diagonally up and left. The lowest part is a foot resting completely flat horizontally and pointing right."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 29 (block 4): Player 1 describes target (img 8 in their view)... "Figure with a flat arm pointing perfectly horizontally RIGHT. The legs form an inverted V. Look closely to distinguish from a similar shape: the LEFT leg is a sharp triangle pointing down-left (the lowest point of the image), and the RIGHT leg is a blocky square pointing down-right. Be sure the square foot is on the right side!"
+    Listener 0: correct
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 14 in their view)... "Running figure leaning forward to the right. The back leg extends straight diagonally down and left ending in a single sharp point on the ground. The front knee is lifted high up into the air to the right. Both arms are bent at sharp angles."
+    Listener 0: WRONG (picked page6-149)
+    Listener 1: correct
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 31 (block 5): Player 2 describes target (img 15 in their view)... "Figure with a flat arm pointing perfectly horizontally RIGHT. The legs form an inverted V. To distinguish from a very similar shape, look closely at the legs: the LEFT leg is a sharp triangle pointing down-left (lowest point of the whole image), and the RIGHT leg is a blocky square. Ensure the square foot is on the right!"
+    Listener 0: correct
+    Listener 1: correct
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 32 (block 5): Player 2 describes target (img 3 in their view)... "Figure running left. The front arm reaches diagonally up and left. The lowest part is a foot resting completely flat horizontally and pointing right."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 33 (block 5): Player 2 describes target (img 4 in their view)... "Figure standing on one straight vertical leg with foot pointing LEFT. Leg kicks high up to the left. The arm extending perfectly horizontally RIGHT is a flat RECTANGLE. Below this rectangular arm is a large triangle pointing diagonally down-right."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 20s (attempt 2/5)]
+    Listener 0: WRONG (picked page5-142)
+    Listener 1: correct
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 34 (block 5): Player 2 describes target (img 1 in their view)... "A completely solid, perfect diamond shape (a square tilted on its corner). It has exactly four smooth, straight edges and four sharp points, with absolutely no limbs, head, or extra pieces sticking out anywhere."
+    Listener 0: correct
+    Listener 1: WRONG (picked page4-157)
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+  Round 35 (block 5): Player 2 describes target (img 5 in their view)... "Figure facing right with diamond head. The arm extends horizontally RIGHT, then bends 90 degrees to point straight DOWN vertically. Look closely at the shapes to distinguish from a similar figure: the front leg resting completely flat horizontally on the ground is a LARGE TRIANGLE, and the back leg pointing diagonally down-left is a PARALLELOGRAM."
+    Listener 0: correct
+    Listener 1: WRONG (picked page3-121)
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json]
+
+========================================
+SUMMARY for group G13:
+  Overall accuracy: 63.9%
+  Overall avg words: 34.3
+  Block 0: acc=8.3%, words=12.8
+  Block 1: acc=58.3%, words=34.5
+  Block 2: acc=58.3%, words=38.5
+  Block 3: acc=91.7%, words=38.2
+  Block 4: acc=100.0%, words=39.3
+  Block 5: acc=66.7%, words=42.5
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G13.json

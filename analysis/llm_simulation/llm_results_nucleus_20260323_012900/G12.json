@@ -1,0 +1,1200 @@
+{
+  "group_id": "G12",
+  "tangram_set": 0,
+  "target_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B"
+  ],
+  "all_tangrams": [
+    "page7-255",
+    "page9-46",
+    "page5-28",
+    "page7-107",
+    "page3-35",
+    "page-B",
+    "page3-121",
+    "page4-157",
+    "page7-26",
+    "page5-64",
+    "page6-149",
+    "page3-193",
+    "page5-63",
+    "page9-7",
+    "page5-142",
+    "page4-15"
+  ],
+  "model": "gemini-3.1-pro-preview",
+  "rounds": [
+    {
+      "round_num": 0,
+      "block_num": 0,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "Person facing left with a straight arm reaching diagonally up and to the left.",
+      "word_count": 14,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-26",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 1,
+      "block_num": 0,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Bird facing left with a large triangular wing pointing straight up that has a flat, vertical right edge. A small triangular beak points left, and a tail points down and to the right.",
+      "word_count": 33,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-7",
+          "selection_label": "13",
+          "correct": false,
+          "raw_response": "13",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 2,
+      "block_num": 0,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Figure with a large diamond shape leaning to the left, and a long horizontal piece extending straight out to the right.",
+      "word_count": 21,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-142",
+          "selection_label": "12",
+          "correct": false,
+          "raw_response": "12",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 3,
+      "block_num": 0,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Figure with a diamond head on top, a long piece extending diagonally down and to the left, and a small triangle pointing directly right.",
+      "word_count": 24,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 4,
+      "block_num": 0,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "Figure with a diamond head on the top right, leaning far over to the left like a person bowing deeply. It rests on a completely flat, horizontal bottom edge and has a sharp point extending to the far left.",
+      "word_count": 39,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "16",
+          "correct": false,
+          "raw_response": "16",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-26",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 5,
+      "block_num": 0,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "Figure with a tall, perfectly straight vertical right edge that meets a flat horizontal bottom edge to form a sharp 90-degree corner at the bottom right. On the far left side, it has a small triangle pointing straight out to the left.",
+      "word_count": 42,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page6-149",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 6,
+      "block_num": 1,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Top is a large triangle pointing straight up, with its right edge forming a perfectly vertical straight line. On the left side, a small triangle points perfectly horizontally to the left. The bottom-most piece points diagonally down and to the right (it does not have a flat horizontal bottom edge).",
+      "word_count": 50,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 7,
+      "block_num": 1,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Diamond-shaped head on the far top left. The thick main body leans diagonally up and to the left. From the bottom, a long, sharp point extends straight out to the far right, with the entire bottom edge of this rightward-pointing section being perfectly flat and horizontal.",
+      "word_count": 46,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page4-157",
+          "selection_label": "15",
+          "correct": false,
+          "raw_response": "15",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-157",
+          "selection_label": "12",
+          "correct": false,
+          "raw_response": "12",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 8,
+      "block_num": 1,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "Diamond head on the right side. A long straight arm extends diagonally UP and to the LEFT, making its tip the highest point of the entire figure. The lowest point is a triangle pointing perfectly straight DOWN.",
+      "word_count": 37,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-63",
+          "selection_label": "6",
+          "correct": false,
+          "raw_response": "6",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-121",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 9,
+      "block_num": 1,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Diamond head at the very top. A distinct small triangle points perfectly horizontally straight to the RIGHT. The lowest part is a single sharp tip pointing diagonally DOWN and to the LEFT. No flat bottom edge.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "16",
+          "correct": true,
+          "raw_response": "16",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 10,
+      "block_num": 1,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "Perfect 90-degree corner at the bottom right (tall vertical right edge, completely flat bottom). The highest part is a diamond shape. The piece furthest to the LEFT is a small triangle pointing perfectly horizontally STRAIGHT LEFT like an arrowhead (its tip points straight left, NOT diagonally down).",
+      "word_count": 47,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-46",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 11,
+      "block_num": 1,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Completely flat horizontal bottom edge. Diamond head on the top RIGHT. The leftmost tip of the entire figure rests exactly ON this flat bottom edge, forming a sharp point that aims perfectly horizontally straight left along the ground.",
+      "word_count": 38,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-15",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 12,
+      "block_num": 2,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "Completely flat horizontal bottom edge and straight vertical right edge. The entire left side is one long, continuous, perfectly straight diagonal line sloping down to a sharp point on the far left of the ground (like a ramp). The very topmost piece is a distinct DIAMOND shape sitting on the top right.",
+      "word_count": 52,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page6-149",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-193",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 13,
+      "block_num": 2,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Diamond head on the far top left. The absolute lowest point of the entire figure is a sharp tip pointing perfectly straight DOWN. The rightmost piece extends perfectly horizontally to the RIGHT, and the TOP edge of this right-pointing piece is completely flat and horizontal.",
+      "word_count": 45,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page6-149",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page4-157",
+          "selection_label": "15",
+          "correct": false,
+          "raw_response": "15",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 14,
+      "block_num": 2,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Top is a large triangle pointing straight up, with its right edge forming a perfectly vertical straight line. On the left side, a small triangle points perfectly horizontally to the left. The bottom-most piece points diagonally down and to the right (it does not have a flat horizontal bottom edge).",
+      "word_count": 50,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 15,
+      "block_num": 2,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Highest point is the tip of a long arm reaching diagonally UP-LEFT. The piece furthest to the RIGHT is a diamond shape. The absolute lowest point is a sharp tip aiming perfectly straight DOWN.",
+      "word_count": 34,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-26",
+          "selection_label": "14",
+          "correct": false,
+          "raw_response": "14",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 16,
+      "block_num": 2,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "Perfect 90-degree corner at the bottom right (tall vertical right edge, completely flat bottom). The highest part is a diamond shape. The piece furthest to the left is a small triangle pointing perfectly horizontally straight left like an arrowhead.",
+      "word_count": 39,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "16",
+          "correct": true,
+          "raw_response": "16",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 17,
+      "block_num": 2,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Diamond head at the very top. A distinct small triangle points perfectly horizontally straight to the RIGHT. The lowest part is a single sharp tip pointing diagonally DOWN and to the LEFT. No flat bottom edge.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-26",
+          "selection_label": "13",
+          "correct": false,
+          "raw_response": "13",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 18,
+      "block_num": 3,
+      "target": "page7-255",
+      "speaker_id": 0,
+      "description": "Diamond head on the top LEFT. The lowest point aims exactly straight DOWN. A long pointed tail extends horizontally to the RIGHT. The completely flat, horizontal edge of this right-pointing tail is on its TOP side.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-255",
+          "selection_label": "10",
+          "correct": true,
+          "raw_response": "10",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 19,
+      "block_num": 3,
+      "target": "page5-28",
+      "speaker_id": 0,
+      "description": "Bird facing left. The highest part is a large triangle pointing straight up with a completely straight, vertical RIGHT edge. A small triangular beak points horizontally to the LEFT. The lowest part is a tail pointing diagonally down and right.",
+      "word_count": 40,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page9-7",
+          "selection_label": "9",
+          "correct": false,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 20,
+      "block_num": 3,
+      "target": "page3-35",
+      "speaker_id": 0,
+      "description": "The rightmost piece is a diamond shape. The highest point of the entire figure is a long, straight arm reaching diagonally UP and LEFT. The absolute lowest point is a sharp tip pointing perfectly straight DOWN.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page3-121",
+          "selection_label": "3",
+          "correct": false,
+          "raw_response": "3",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-7",
+          "selection_label": "13",
+          "correct": false,
+          "raw_response": "13",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.0
+    },
+    {
+      "round_num": 21,
+      "block_num": 3,
+      "target": "page9-46",
+      "speaker_id": 0,
+      "description": "Perfect 90-degree corner at the bottom right (tall vertical right edge, completely flat bottom). The highest part is a diamond shape. The piece furthest to the left is a small triangle pointing perfectly horizontally straight left like an arrowhead.",
+      "word_count": 39,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page5-64",
+          "selection_label": "11",
+          "correct": false,
+          "raw_response": "11",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page9-46",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 22,
+      "block_num": 3,
+      "target": "page7-107",
+      "speaker_id": 0,
+      "description": "Diamond head at the very top. A distinct small triangle points perfectly horizontally straight RIGHT. The lowest part is a single sharp tip pointing diagonally DOWN-LEFT. (Ensure it is not the mirrored figure: the small triangle MUST point RIGHT, and the long leg MUST point LEFT).",
+      "word_count": 46,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "16",
+          "correct": true,
+          "raw_response": "16",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 23,
+      "block_num": 3,
+      "target": "page-B",
+      "speaker_id": 0,
+      "description": "Perfect 90-degree corner at the bottom RIGHT (flat bottom edge meets completely straight vertical right edge). The entire left side is ONE continuous, perfectly straight diagonal line (a smooth ramp) sloping down to a sharp tip resting directly on the ground at the far LEFT. A diamond head sits at the top RIGHT.",
+      "word_count": 53,
+      "listener_results": [
+        {
+          "listener_id": 1,
+          "selection": "page-B",
+          "selection_label": "8",
+          "correct": true,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 24,
+      "block_num": 4,
+      "target": "page5-28",
+      "speaker_id": 1,
+      "description": "Highest piece is a large triangle pointing up with a perfectly vertical RIGHT edge. A small triangular beak points horizontally LEFT. The bottom piece is a tail pointing diagonally DOWN-RIGHT. Crucially, the absolute lowest tip of the figure points diagonally down-right, NOT perfectly straight down. (Do not choose the similar figure with the straight downward-pointing tail).",
+      "word_count": 56,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page6-149",
+          "selection_label": "8",
+          "correct": false,
+          "raw_response": "8",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-28",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 25,
+      "block_num": 4,
+      "target": "page7-255",
+      "speaker_id": 1,
+      "description": "Diamond head on the top LEFT. The lowest point aims exactly straight DOWN. A long pointed tail extends horizontally to the RIGHT. The completely flat, horizontal edge of this right-pointing tail is on its TOP side.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page4-15",
+          "selection_label": "1",
+          "correct": false,
+          "raw_response": "1",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 26,
+      "block_num": 4,
+      "target": "page9-46",
+      "speaker_id": 1,
+      "description": "Perfect 90-degree corner at the bottom RIGHT (flat bottom edge meets a tall, straight vertical right edge). The highest part is a diamond shape. The piece furthest to the LEFT is a distinct small triangle suspended above the ground, pointing perfectly horizontally STRAIGHT LEFT like an arrowhead.",
+      "word_count": 47,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page5-63",
+          "selection_label": "2",
+          "correct": false,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 27,
+      "block_num": 4,
+      "target": "page3-35",
+      "speaker_id": 1,
+      "description": "Highest point is a long arm pointing diagonally UP-LEFT. Rightmost piece is a distinctly DIAMOND-shaped head (not a triangle). The bottom has exactly TWO legs: the left leg points diagonally DOWN-LEFT, and the right leg points perfectly straight DOWN (forming the absolute lowest tip of the figure).",
+      "word_count": 47,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-7",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page3-35",
+          "selection_label": "14",
+          "correct": true,
+          "raw_response": "14",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 28,
+      "block_num": 4,
+      "target": "page-B",
+      "speaker_id": 1,
+      "description": "Perfect 90-degree corner at the bottom RIGHT (flat bottom edge meets completely straight vertical right edge). The entire left side is ONE continuous, perfectly straight diagonal line (a smooth ramp) sloping down to a sharp tip resting directly on the ground at the far LEFT. A diamond head sits at the top RIGHT.",
+      "word_count": 53,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page-B",
+          "selection_label": "3",
+          "correct": true,
+          "raw_response": "3",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 29,
+      "block_num": 4,
+      "target": "page7-107",
+      "speaker_id": 1,
+      "description": "Diamond head at the very top. A distinct small triangle points perfectly horizontally straight RIGHT. The lowest part is a single long leg pointing diagonally DOWN-LEFT.",
+      "word_count": 26,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 2,
+          "selection": "page7-107",
+          "selection_label": "16",
+          "correct": true,
+          "raw_response": "16",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 30,
+      "block_num": 5,
+      "target": "page3-35",
+      "speaker_id": 2,
+      "description": "Highest point is a long arm pointing diagonally UP-LEFT. The piece furthest to the RIGHT is a DIAMOND head. The bottom has exactly TWO legs: the left leg points diagonally DOWN-LEFT, and the right leg points perfectly straight DOWN (forming the absolute lowest tip).",
+      "word_count": 44,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-7",
+          "selection_label": "5",
+          "correct": false,
+          "raw_response": "5",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-35",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 31,
+      "block_num": 5,
+      "target": "page9-46",
+      "speaker_id": 2,
+      "description": "Perfect 90-degree corner at the bottom right (tall vertical right edge, completely flat bottom). The highest part is a diamond shape. The piece furthest to the left is a small triangle suspended above the ground, pointing perfectly horizontally straight left like an arrowhead.",
+      "word_count": 43,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page9-46",
+          "selection_label": "4",
+          "correct": true,
+          "raw_response": "4",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page9-46",
+          "selection_label": "16",
+          "correct": true,
+          "raw_response": "16",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 32,
+      "block_num": 5,
+      "target": "page7-255",
+      "speaker_id": 2,
+      "description": "Diamond head on the top LEFT. The lowest point aims exactly straight DOWN. A long pointed tail extends horizontally to the RIGHT. The completely flat, horizontal edge of this right-pointing tail is on its TOP side.",
+      "word_count": 36,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-255",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-255",
+          "selection_label": "2",
+          "correct": true,
+          "raw_response": "2",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 33,
+      "block_num": 5,
+      "target": "page5-28",
+      "speaker_id": 2,
+      "description": "Highest part is a large triangle pointing straight UP (not a diamond), with a perfectly vertical straight RIGHT edge. A small triangular beak points perfectly horizontally LEFT. The bottom-most piece is a tail pointing diagonally DOWN and RIGHT. Ensure the absolute lowest tip points diagonally down-right, NOT perfectly straight down.",
+      "word_count": 50,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page5-28",
+          "selection_label": "7",
+          "correct": true,
+          "raw_response": "7",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page5-28",
+          "selection_label": "6",
+          "correct": true,
+          "raw_response": "6",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    },
+    {
+      "round_num": 34,
+      "block_num": 5,
+      "target": "page-B",
+      "speaker_id": 2,
+      "description": "Perfect 90-degree corner at the bottom RIGHT (flat bottom edge meets completely straight vertical right edge). The entire left side is ONE continuous, perfectly straight diagonal line (a smooth ramp) sloping down to a sharp tip resting directly on the ground at the far LEFT. A diamond head sits at the top RIGHT.",
+      "word_count": 53,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page-B",
+          "selection_label": "1",
+          "correct": true,
+          "raw_response": "1",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page3-193",
+          "selection_label": "4",
+          "correct": false,
+          "raw_response": "4",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 0.5
+    },
+    {
+      "round_num": 35,
+      "block_num": 5,
+      "target": "page7-107",
+      "speaker_id": 2,
+      "description": "Diamond head at the very top. A distinct small triangle points perfectly horizontally straight RIGHT. The lowest part is a single sharp tip pointing diagonally DOWN-LEFT. (Ensure it is not the mirrored figure: the small triangle MUST point RIGHT, and the long leg MUST point LEFT).",
+      "word_count": 46,
+      "listener_results": [
+        {
+          "listener_id": 0,
+          "selection": "page7-107",
+          "selection_label": "9",
+          "correct": true,
+          "raw_response": "9",
+          "parse_error": null
+        },
+        {
+          "listener_id": 1,
+          "selection": "page7-107",
+          "selection_label": "5",
+          "correct": true,
+          "raw_response": "5",
+          "parse_error": null
+        }
+      ],
+      "accuracy": 1.0
+    }
+  ],
+  "summary": {
+    "overall": {
+      "accuracy": 0.528,
+      "avg_word_count": 40.83,
+      "n": 36,
+      "parse_errors": 0,
+      "listener_trials": 72
+    },
+    "per_block": {
+      "0": {
+        "accuracy": 0.0,
+        "avg_word_count": 28.83,
+        "n": 6
+      },
+      "1": {
+        "accuracy": 0.583,
+        "avg_word_count": 42.33,
+        "n": 6
+      },
+      "2": {
+        "accuracy": 0.417,
+        "avg_word_count": 42.67,
+        "n": 6
+      },
+      "3": {
+        "accuracy": 0.667,
+        "avg_word_count": 41.67,
+        "n": 6
+      },
+      "4": {
+        "accuracy": 0.667,
+        "avg_word_count": 44.17,
+        "n": 6
+      },
+      "5": {
+        "accuracy": 0.833,
+        "avg_word_count": 45.33,
+        "n": 6
+      }
+    },
+    "word_count_trajectory": [
+      14,
+      33,
+      21,
+      24,
+      39,
+      42,
+      50,
+      46,
+      37,
+      36,
+      47,
+      38,
+      52,
+      45,
+      50,
+      34,
+      39,
+      36,
+      36,
+      40,
+      36,
+      39,
+      46,
+      53,
+      56,
+      36,
+      47,
+      47,
+      53,
+      26,
+      44,
+      43,
+      36,
+      50,
+      53,
+      46
+    ]
+  },
+  "config": {
+    "num_blocks": 6,
+    "group_size": 3,
+    "num_tangrams": 16,
+    "num_targets": 6,
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "timestamp": "2026-03-23T02:06:05.433897",
+  "status": "complete",
+  "player_orders": {
+    "0": [
+      "page-B",
+      "page7-255",
+      "page5-64",
+      "page9-46",
+      "page9-7",
+      "page5-63",
+      "page5-28",
+      "page6-149",
+      "page7-107",
+      "page3-121",
+      "page3-193",
+      "page5-142",
+      "page4-15",
+      "page7-26",
+      "page4-157",
+      "page3-35"
+    ],
+    "1": [
+      "page6-149",
+      "page7-255",
+      "page3-121",
+      "page3-193",
+      "page7-107",
+      "page5-28",
+      "page3-35",
+      "page-B",
+      "page9-7",
+      "page4-15",
+      "page5-64",
+      "page5-142",
+      "page7-26",
+      "page5-63",
+      "page4-157",
+      "page9-46"
+    ],
+    "2": [
+      "page4-15",
+      "page5-63",
+      "page-B",
+      "page9-46",
+      "page3-193",
+      "page7-26",
+      "page5-28",
+      "page5-142",
+      "page3-121",
+      "page7-255",
+      "page5-64",
+      "page4-157",
+      "page9-7",
+      "page3-35",
+      "page6-149",
+      "page7-107"
+    ]
+  },
+  "block_targets": [
+    [
+      "page3-35",
+      "page5-28",
+      "page7-255",
+      "page7-107",
+      "page-B",
+      "page9-46"
+    ],
+    [
+      "page5-28",
+      "page7-255",
+      "page3-35",
+      "page7-107",
+      "page9-46",
+      "page-B"
+    ],
+    [
+      "page-B",
+      "page7-255",
+      "page5-28",
+      "page3-35",
+      "page9-46",
+      "page7-107"
+    ],
+    [
+      "page7-255",
+      "page5-28",
+      "page3-35",
+      "page9-46",
+      "page7-107",
+      "page-B"
+    ],
+    [
+      "page5-28",
+      "page7-255",
+      "page9-46",
+      "page3-35",
+      "page-B",
+      "page7-107"
+    ],
+    [
+      "page3-35",
+      "page9-46",
+      "page7-255",
+      "page5-28",
+      "page-B",
+      "page7-107"
+    ]
+  ]
+}

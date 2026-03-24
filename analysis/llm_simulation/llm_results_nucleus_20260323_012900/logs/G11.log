@@ -1,0 +1,200 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G11
+Seed: 53
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 3 in their view)... "Figure hunched over facing left, diamond head low, with a parallelogram sticking up and back to the right."
+    Listener 1: WRONG (picked page3-35)
+    Listener 2: WRONG (picked page3-121)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 1 (block 0): Player 0 describes target (img 1 in their view)... "Bird facing left, long neck, both wings pointing straight up together forming a tall peak, and a small tail pointing down."
+    Listener 1: correct
+    Listener 2: WRONG (picked page4-157)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 2 (block 0): Player 0 describes target (img 8 in their view)... "Sitting figure facing left with an upright diamond head, a sharp leg sticking straight out to the left, and a parallelogram pointing diagonally up and to the right from the back."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page5-142)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 3 (block 0): Player 0 describes target (img 10 in their view)... "Figure leaning far down to the left, with a single sharp leg pointing straight down, and a parallelogram sticking straight out horizontally to the right from its back."
+    Listener 1: WRONG (picked page3-121)
+    Listener 2: WRONG (picked page3-193)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 4 (block 0): Player 0 describes target (img 4 in their view)... "Figure facing right with a diamond head, a sharp arm pointing straight horizontally out to the right, and a piece extending diagonally down and to the left from its bottom back."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page3-193)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 5 (block 0): Player 0 describes target (img 5 in their view)... "Sitting figure facing right, diamond head, with a parallelogram arm raised diagonally up and to the right, and the base pointing down to the left."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page5-64)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 9 in their view)... "Figure bowing very low to the left, diamond head at bottom left. Parallelogram sticks diagonally up and right from its upper back. Sharp foot points right."
+    Listener 0: WRONG (picked page5-142)
+    Listener 2: correct
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 7 (block 1): Player 1 describes target (img 12 in their view)... "Figure with a diamond head. A sharp triangular arm points perfectly horizontally out to the right. A long parallelogram leg points diagonally down and to the left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 8 (block 1): Player 1 describes target (img 7 in their view)... "Figure facing right with a diamond head. A long parallelogram arm extends diagonally UPWARDS and to the right from its front/chest. A sharp triangular base points diagonally down and to the left."
+    Listener 0: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page5-64)
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 9 (block 1): Player 1 describes target (img 4 in their view)... "Bird facing left. Has a very tall peak pointing straight up, with its right edge forming a perfectly straight vertical line dropping all the way down to a sharp bottom point. A diamond head is high on the left."
+    Listener 0: correct
+    Listener 2: WRONG (picked page3-193)
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 10 (block 1): Player 1 describes target (img 10 in their view)... "Parallelogram extends perfectly horizontally right. The lowest leg points straight down and has a perfectly vertical LEFT edge. The leftmost part of the figure is a sharp triangular point, NOT a diamond."
+    Listener 0: WRONG (picked page5-142)
+    Listener 2: correct
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 11 (block 1): Player 1 describes target (img 13 in their view)... "Diamond head. A sharp triangular arm points perfectly horizontally out to the LEFT. A parallelogram extends diagonally UPWARDS and to the RIGHT from its back. The base points diagonally down and left."
+    Listener 0: correct
+    Listener 2: WRONG (picked page5-63)
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 11 in their view)... "Diamond head near the top. Key feature: below the head, the completely straight left edge of the body forms a long diagonal line sloping smoothly down and to the left, ending in a sharp point. A parallelogram arm points diagonally up and right from the front chest area."
+    Listener 0: correct
+    Listener 1: WRONG (picked page5-64)
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 13 (block 2): Player 2 describes target (img 7 in their view)... "Diamond head at the very bottom left. The highest part of the figure is a parallelogram extending diagonally up and to the right. At the bottom right, a sharp foot points perfectly horizontally out to the right."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 14 (block 2): Player 2 describes target (img 15 in their view)... "Diamond head. Sharp arm points perfectly horizontally left. Parallelogram extends diagonally up and right. The lowest point of the base points diagonally down and left (not straight down like similar figures)."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: WRONG (picked page4-15)
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 15 (block 2): Player 2 describes target (img 14 in their view)... "NO diamond. Parallelogram points completely horizontally to the RIGHT. Lowest point is a sharp leg aiming perfectly straight DOWN. The leftmost part is a sharp triangular point (not a diamond), and there is NO upward-pointing peak on top."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 16 (block 2): Player 2 describes target (img 12 in their view)... "Diamond head. Sharp triangular arm points perfectly horizontally out to the RIGHT. A long parallelogram leg extends diagonally DOWN and to the LEFT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 17 (block 2): Player 2 describes target (img 13 in their view)... "Diamond head on the left. Top is a sharp peak pointing straight UP (not flat). The entire right side is a perfectly straight vertical edge dropping all the way down to a sharp bottom point."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: correct
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 1 in their view)... "Diamond head on the left. Top is a sharp peak pointing straight UP (not flat). The entire right side is a perfectly straight vertical edge dropping all the way down to a sharp bottom point."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 1: WRONG (picked page6-149)
+    Listener 2: correct
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 19 (block 3): Player 0 describes target (img 4 in their view)... "Diamond head. Sharp triangular arm points perfectly horizontally out to the RIGHT. A long parallelogram leg extends diagonally DOWN and to the LEFT."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 1: WRONG (picked page9-46)
+    Listener 2: WRONG (picked page3-121)
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 20 (block 3): Player 0 describes target (img 8 in their view)... "Diamond head. Sharp arm points perfectly horizontally LEFT. Parallelogram points diagonally UP-RIGHT (not horizontally). The bottommost leg points diagonally DOWN-LEFT (not straight down)."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 21 (block 3): Player 0 describes target (img 5 in their view)... "Diamond head. Parallelogram arm points diagonally UP-RIGHT. Crucially, there are NO pieces sticking out horizontally; the entire left back edge is a perfectly straight, smooth line sloping DOWN-LEFT to a sharp bottom point."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: correct
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 22 (block 3): Player 0 describes target (img 10 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"NO diamond head. Leftmost part is a sharp triangular point. A parallelogram arm points completely horizontally to the RIGHT. The lowest leg points perfectly straight DOWN."
+    Listener 1: WRONG (picked page4-15)
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 23 (block 3): Player 0 describes target (img 3 in their view)... "Diamond head at the very bottom left. The highest part of the figure is a parallelogram extending diagonally up and to the right. At the bottom right, a sharp foot points perfectly horizontally out to the right."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 7 in their view)... "Diamond head. A long parallelogram points towards the TOP-RIGHT corner. The entire left side is a completely flat, straight diagonal edge sloping down to a bottom-left point. It has NO parts pointing horizontally left or right."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 2: WRONG (picked page5-64)
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 25 (block 4): Player 1 describes target (img 13 in their view)... "Diamond head. Sharp arm points perfectly horizontally LEFT. Parallelogram points diagonally UP-RIGHT. The bottommost leg points diagonally DOWN-LEFT (not straight down)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 26 (block 4): Player 1 describes target (img 9 in their view)... "Diamond head at the very bottom left. The highest part is a parallelogram extending diagonally up and to the right. At the bottom right, a sharp foot points perfectly horizontally right."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 27 (block 4): Player 1 describes target (img 10 in their view)... "NO diamond head. Leftmost part is a sharp triangular point. A parallelogram arm points completely horizontally RIGHT. The lowest point is a sharp leg aiming perfectly straight DOWN."
+    Listener 0: WRONG (picked page4-15)
+    Listener 2: WRONG (picked page3-193)
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 28 (block 4): Player 1 describes target (img 12 in their view)... "Diamond head. Rightmost part is a sharp triangle pointing perfectly horizontally RIGHT. Lowest part is a long parallelogram leg extending diagonally DOWN and LEFT."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 29 (block 4): Player 1 describes target (img 4 in their view)... "Diamond head on the left. Top is a sharp triangular peak pointing straight UP. The entire right side is a perfectly straight vertical edge dropping all the way down to a sharp point at the bottom."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 12 in their view)... "Diamond head. Rightmost part is a sharp triangle pointing perfectly horizontally RIGHT. Lowest part is a long parallelogram leg extending diagonally DOWN and LEFT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 31 (block 5): Player 2 describes target (img 15 in their view)... "Diamond head. Sharp arm points perfectly horizontally LEFT. Parallelogram points diagonally UP-RIGHT. The bottommost leg points diagonally DOWN-LEFT (not straight down)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 32 (block 5): Player 2 describes target (img 13 in their view)... "Diamond head on the left. Top is a sharp triangular peak pointing straight UP. The entire right side is a perfectly straight vertical edge dropping all the way down to a sharp point at the bottom."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 33 (block 5): Player 2 describes target (img 14 in their view)... "Absolutely NO diamond shape visible. Parallelogram points completely horizontally to the RIGHT. Lowest point is a sharp leg aiming perfectly straight DOWN (its left edge is perfectly vertical). The leftmost part is a sharp triangular point."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 34 (block 5): Player 2 describes target (img 11 in their view)... "Diamond head. Target has absolutely NO horizontally pointing parts (do NOT pick figures with an arm pointing left). A long parallelogram extends diagonally UP and RIGHT. The entire left edge of the figure is a single, perfectly straight, smooth diagonal line sloping down to a sharp bottom-left point."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+  Round 35 (block 5): Player 2 describes target (img 7 in their view)... "Diamond head at the very bottom left. The highest part is a parallelogram extending diagonally up and to the right. At the bottom right, a sharp foot points perfectly horizontally right."
+    Listener 0: correct
+    Listener 1: WRONG (picked page4-15)
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json]
+
+========================================
+SUMMARY for group G11:
+  Overall accuracy: 61.1%
+  Overall avg words: 30.6
+  Block 0: acc=8.3%, words=25.7
+  Block 1: acc=50.0%, words=31.3
+  Block 2: acc=83.3%, words=35.3
+  Block 3: acc=58.3%, words=29.5
+  Block 4: acc=75.0%, words=29.3
+  Block 5: acc=91.7%, words=32.7
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G11.json

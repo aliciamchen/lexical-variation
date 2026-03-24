@@ -1,0 +1,192 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G09
+Seed: 51
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 12 in their view)... "solid diamond shape"
+    Listener 1: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page5-64)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 1 (block 0): Player 0 describes target (img 4 in their view)... "figure leaning far backward to the right, top part pointing up and to the left"
+    Listener 1: WRONG (picked page7-107)
+    Listener 2: WRONG (picked page7-255)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 2 (block 0): Player 0 describes target (img 1 in their view)... "Figure leaning backwards to the right, with an arm in the middle pointing straight horizontally to the left."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page5-142)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 3 (block 0): Player 0 describes target (img 11 in their view)... "Diamond head top right, figure bending forward almost horizontally to the left ending in a sharp point, with two legs pointing straight down."
+    Listener 1: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page4-15)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 4 (block 0): Player 0 describes target (img 8 in their view)... "Figure with a diamond head. Large left point angles down and to the left. Right arm and bottom foot both point straight horizontally to the right. One leg points straight down."
+    Listener 1: WRONG (picked page3-121)
+    Listener 2: WRONG (picked page9-46)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 5 (block 0): Player 0 describes target (img 2 in their view)... "Diamond head, right arm points straight horizontal right, left side of body points diagonally down-left, bottom foot points straight horizontal left."
+    Listener 1: WRONG (picked page-B)
+    Listener 2: correct
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 3 in their view)... "Figure leaning far back to the right with a diamond head. A large sharp point sticks diagonally up and left from the middle. The bottom point angles down and left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 7 (block 1): Player 1 describes target (img 14 in their view)... "Diamond head. Arm and bottom foot BOTH point straight horizontally to the RIGHT. A large sharp point angles diagonally down-left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 8 (block 1): Player 1 describes target (img 11 in their view)... "Diamond head. Left arm points straight horizontally LEFT. Bottom leg points straight DOWN to a single sharp point (not a flat horizontal bottom). Right side of the body has a sharp outward elbow (not a straight vertical edge)."
+    Listener 0: WRONG (picked page3-193)
+    Listener 2: WRONG (picked page5-142)
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 9 (block 1): Player 1 describes target (img 4 in their view)... "A plain, solid perfect diamond shape. It is exactly a square rotated 45 degrees so it balances on a sharp bottom point, with corners pointing straight up, down, left, and right. No arms or limbs."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 10 (block 1): Player 1 describes target (img 10 in their view)... "Diamond head. Right arm points perfectly horizontally RIGHT. Bottom foot points perfectly horizontally LEFT. A large sharp point on the left side angles diagonally DOWN-LEFT."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 11 (block 1): Player 1 describes target (img 6 in their view)... "Diamond head top right. The right edge is perfectly straight vertical. The top edge is perfectly straight horizontal, ending in a sharp point that points straight horizontally LEFT. The bottom has exactly TWO distinct sharp legs pointing straight vertically DOWN."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 10 in their view)... "Diamond head. Left arm points straight horizontally LEFT. Right side has a point sticking out to the RIGHT. Look right below the left arm: the left edge of the bottom section drops perfectly straight VERTICALLY DOWN to a single sharp bottom point."
+    Listener 0: WRONG (picked page7-26)
+    Listener 1: correct
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 13 (block 2): Player 2 describes target (img 11 in their view)... "Diamond head top right. The right edge is perfectly straight vertical. The top edge is perfectly straight horizontal, ending in a sharp point that points straight horizontally LEFT. The bottom has exactly TWO distinct sharp legs pointing straight vertically DOWN."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page7-255)
+    Listener 1: WRONG (picked page5-63)
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 14 (block 2): Player 2 describes target (img 5 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"Figure leaning far back to the right with a diamond head. A large sharp point sticks diagonally up and left from the middle. The bottom point angles down and left."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 15 (block 2): Player 2 describes target (img 8 in their view)... "A plain, solid perfect diamond shape. It is exactly a square rotated 45 degrees so it balances on a sharp bottom point, with corners pointing straight up, down, left, and right. No arms or limbs."
+    Listener 0: WRONG (picked page5-64)
+    Listener 1: correct
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 16 (block 2): Player 2 describes target (img 1 in their view)... "Diamond head. Right arm points perfectly horizontally RIGHT. Bottom foot points perfectly horizontally LEFT. A large sharp point on the left side angles diagonally DOWN-LEFT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 17 (block 2): Player 2 describes target (img 4 in their view)... "Diamond head. Right arm and bottom foot BOTH point straight horizontally RIGHT. Large sharp point on left angles diagonally DOWN-LEFT."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: WRONG (picked page5-63)
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 2 in their view)... "Diamond head. Right arm points perfectly horizontally RIGHT. Bottom foot points perfectly horizontally LEFT. A large sharp point on the left side angles diagonally DOWN-LEFT."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 19 (block 3): Player 0 describes target (img 4 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"Figure leaning far back to the right with a diamond head. A large sharp point sticks diagonally up and left from the middle. The bottom point angles down and left."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 20 (block 3): Player 0 describes target (img 12 in their view)... "A plain, solid perfect diamond shape. It is exactly a square rotated 45 degrees so it balances on a sharp bottom point, with corners pointing straight up, down, left, and right. No arms or limbs."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 21 (block 3): Player 0 describes target (img 11 in their view)... "Diamond head top right. Main body has a perfectly straight horizontal top edge pointing left, and a perfectly straight vertical right edge. The bottom has exactly two distinct sharp legs pointing straight vertically down."
+    Listener 1: correct
+    Listener 2: WRONG (picked page4-15)
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 22 (block 3): Player 0 describes target (img 8 in their view)... "Diamond head. Right arm and bottom foot BOTH point perfectly horizontally RIGHT. Left side has ONLY ONE large point, which angles diagonally DOWN-LEFT. The top-left edge slopes smoothly down to this point without any arm pointing up-left."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 23 (block 3): Player 0 describes target (img 1 in their view)... "Diamond head. Left arm points perfectly horizontally LEFT. Right side has a sharp point sticking perfectly horizontally RIGHT. The edge directly below the left arm drops perfectly straight VERTICALLY DOWN to a single sharp bottom point."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 4 in their view)... "A plain, solid perfect diamond shape. It is exactly a square rotated 45 degrees so it balances on a sharp bottom point, with corners pointing straight up, down, left, and right. No arms or limbs."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 25 (block 4): Player 1 describes target (img 3 in their view)... "Figure leaning far back to the right with a diamond head. A large sharp point sticks diagonally up and left from the middle. The bottom point angles down and left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 26 (block 4): Player 1 describes target (img 10 in their view)... "Diamond head. Right arm points perfectly horizontally RIGHT. Bottom foot points perfectly horizontally LEFT. A large sharp point on the left side angles diagonally DOWN-LEFT."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 27 (block 4): Player 1 describes target (img 11 in their view)... "Diamond head. Left arm points perfectly horizontally LEFT. Right side has a sharp point sticking perfectly horizontally RIGHT. The edge directly below the left arm drops perfectly straight VERTICALLY DOWN to a single sharp bottom point."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 28 (block 4): Player 1 describes target (img 14 in their view)... "Diamond head. Right arm and bottom foot BOTH point perfectly horizontally RIGHT. Left side has ONLY ONE large point, which angles diagonally DOWN-LEFT. The top-left edge slopes smoothly down to this point without any arm pointing up-left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 29 (block 4): Player 1 describes target (img 6 in their view)... "Diamond head top right. The right edge is perfectly straight vertical. The top edge is perfectly straight horizontal, ending in a sharp point that points straight horizontally LEFT. The bottom has exactly TWO distinct sharp legs pointing straight vertically DOWN."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 1 in their view)... "Diamond head. Right arm points perfectly horizontally RIGHT. Bottom foot points perfectly horizontally LEFT. A large sharp point on the left side angles diagonally DOWN-LEFT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 31 (block 5): Player 2 describes target (img 10 in their view)... "Diamond head. Left arm points perfectly horizontally LEFT. Right side has a sharp point sticking perfectly horizontally RIGHT. The edge directly below the left arm drops perfectly straight VERTICALLY DOWN to a single sharp bottom point."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 32 (block 5): Player 2 describes target (img 5 in their view)... "Figure leaning far back to the right with a diamond head. A large sharp point sticks diagonally up and left from the middle. The bottom point angles down and left."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 33 (block 5): Player 2 describes target (img 11 in their view)... "Diamond head top right. The right edge is perfectly straight vertical. The top edge is perfectly straight horizontal, ending in a sharp point that points straight horizontally LEFT. The bottom has exactly TWO distinct sharp legs pointing straight vertically DOWN."
+    Listener 0: correct
+    Listener 1: WRONG (picked page4-157)
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 34 (block 5): Player 2 describes target (img 8 in their view)... "A plain, solid perfect diamond shape. It is exactly a square rotated 45 degrees so it balances on a sharp bottom point, with corners pointing straight up, down, left, and right. No arms or limbs."
+    Listener 0: WRONG (picked page5-64)
+    Listener 1: correct
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+  Round 35 (block 5): Player 2 describes target (img 4 in their view)... "Diamond head. Right arm and bottom foot BOTH point perfectly horizontally RIGHT. Left side has ONLY ONE large point, which angles diagonally DOWN-LEFT. The top-left edge slopes smoothly down to this point without any arm pointing up-left."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json]
+
+========================================
+SUMMARY for group G09:
+  Overall accuracy: 70.8%
+  Overall avg words: 30.4
+  Block 0: acc=8.3%, words=18.5
+  Block 1: acc=83.3%, words=31.3
+  Block 2: acc=58.3%, words=32.0
+  Block 3: acc=91.7%, words=32.8
+  Block 4: acc=100.0%, words=33.8
+  Block 5: acc=83.3%, words=33.8
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G09.json

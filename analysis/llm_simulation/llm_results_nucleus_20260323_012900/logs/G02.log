@@ -1,0 +1,194 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G02
+Seed: 44
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 1 in their view)... "Person leaning far forward to the right, looks like a runner or speed skater."
+    Listener 1: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page9-46)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 1 (block 0): Player 0 describes target (img 8 in their view)... "Person kneeling and bowing down to the right, like they are praying."
+    Listener 1: WRONG (picked page9-7)
+    Listener 2: WRONG (picked page7-255)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 2 (block 0): Player 0 describes target (img 9 in their view)... "Person facing left, hunched over carrying a large diamond-shaped backpack."
+    Listener 1: WRONG (picked page6-149)
+    Listener 2: WRONG (picked page5-28)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 3 (block 0): Player 0 describes target (img 7 in their view)... "Figure sitting down facing left, with a long pointy leg extending flat to the left and a solid square shape on the top right."
+    Listener 1: WRONG (picked page4-15)
+    Listener 2: WRONG (picked page5-142)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 4 (block 0): Player 0 describes target (img 12 in their view)... "Figure balancing on the single bottom point of a downward-facing triangle, with a straight rectangular leg extending horizontally to the left, and the upper body leaning to the top-right."
+    Listener 1: WRONG (picked page7-26)
+    Listener 2: WRONG (picked page5-63)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 5 (block 0): Player 0 describes target (img 11 in their view)... "Figure facing right, square head at the top left, looks like someone kneeling with arms stretching straight out to form a sharp horizontal point on the right."
+    Listener 1: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page4-15)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 5 in their view)... "Diamond head on the top left. The right side of the figure is a large, sharp triangle pointing horizontally to the right. Directly below the head, a smaller sharp point extends down and to the left."
+    Listener 0: WRONG (picked page4-15)
+    Listener 2: WRONG (picked page5-63)
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 7 (block 1): Player 1 describes target (img 1 in their view)... "Large diamond shape forming the entire top right section, making it the highest point. A small square head is positioned lower down on the middle left. A sharp triangular arm points horizontally out to the far left."
+    Listener 0: WRONG (picked page-B)
+    Listener 2: WRONG (picked page5-142)
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 8 (block 1): Player 1 describes target (img 8 in their view)... "Square head at the top right. The entire figure balances on a single downward-facing sharp point at the bottom. A straight limb extends horizontally to the far left."
+    Listener 0: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page4-15)
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 9 (block 1): Player 1 describes target (img 7 in their view)... "Diamond head (tilted square) at top-left. A sharp arm extends perfectly horizontally to the far right. The lowest part is a single sharp point aiming straight down. The left tip of the diamond is the leftmost point of the entire image; nothing sticks out to the left below the head."
+    Listener 0: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page3-35)
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 10 (block 1): Player 1 describes target (img 3 in their view)... "The entire bottom edge rests perfectly flat horizontally on the ground, extending far out into a sharp horizontal point on the far left. The highest point of the whole image is a distinctly separate, small diamond-shaped head at the top-right."
+    Listener 0: WRONG (picked page6-149)
+    Listener 2: WRONG (picked page4-157)
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 11 (block 1): Player 1 describes target (img 10 in their view)... "Diamond head top-left. Balances entirely on a single sharp downward-pointing tip at the very bottom. The entire upper back is a long, perfectly straight diagonal edge sloping down to a sharp point on the far right."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page4-15)
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 2 in their view)... "Touches the ground only with a single sharp downward point (no flat base). The head is a diamond at the top-left. A sharp arm extends perfectly horizontally to the right. The left corner of the head is the absolute leftmost point of the entire figure; absolutely nothing sticks out to the left below the head."
+    Listener 0: WRONG (picked page6-149)
+    Listener 1: WRONG (picked page9-7)
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 13 (block 2): Player 2 describes target (img 15 in their view)... "Diamond head at the top-left. A large sharp point sticks out straight horizontally to the far right. A separate smaller sharp point sticks out diagonally down-and-left from the base. Resembles someone kneeling and bowing forward to the right."
+    Listener 0: WRONG (picked page7-255)
+    Listener 1: correct
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 14 (block 2): Player 2 describes target (img 10 in their view)... "Looks like a person sitting facing left with straight legs. Perfectly flat horizontal bottom edge ending in a sharp point on the far left. The absolute highest point is a tilted DIAMOND head at the top right. Unlike similar figures, it has NO sharp arm pointing to the right."
+    Listener 0: WRONG (picked page4-157)
+    Listener 1: WRONG (picked page7-26)
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 15 (block 2): Player 2 describes target (img 13 in their view)... "Balances entirely on a single sharp bottom point. Has a diamond head at the top-right. A thick, straight limb extends perfectly horizontally to the far left, ending in a blunt, flat vertical edge (not a point)."
+    Listener 0: WRONG (picked page5-64)
+    Listener 1: WRONG (picked page4-157)
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 16 (block 2): Player 2 describes target (img 16 in their view)... "Perfectly flat horizontal bottom edge. The absolute highest part of the figure is a large diamond shape on the top right. On the middle left side, there is a small unrotated square sticking out, with a sharp point extending horizontally to the far left directly below it."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page6-149)
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 17 (block 2): Player 2 describes target (img 14 in their view)... "Head is a DIAMOND at the top-left. Balances entirely on a single sharp downward point (no flat base). The entire upper-right edge is a long, perfectly straight diagonal line sloping down to a sharp point on the far right. It also has a smaller sharp point sticking out diagonally down-and-left."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 8 in their view)... "Head is a diamond at the top-left. Rests on a perfectly FLAT horizontal base. A large sharp point extends straight horizontally to the far right. A smaller sharp point sticks out diagonally down-and-left from the lower-left side."
+    Listener 1: WRONG (picked page9-7)
+    Listener 2: WRONG (picked page5-63)
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 19 (block 3): Player 0 describes target (img 1 in their view)... "Head is a DIAMOND at the top-left. Balances entirely on a single sharp downward point (no flat base). The entire upper-right edge is a long, perfectly straight diagonal line sloping down to a sharp point on the far right. It also has a smaller sharp point sticking out diagonally down-and-left."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 1: correct
+    Listener 2: correct
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 20 (block 3): Player 0 describes target (img 12 in their view)... "Head is an unrotated SQUARE at the top-right. Balances entirely on a single sharp downward point (no flat base). The limb extending horizontally to the far left ends in a blunt, flat vertical edge, NOT a sharp point."
+    Listener 1: WRONG (picked page9-7)
+    Listener 2: WRONG (picked page4-157)
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 21 (block 3): Player 0 describes target (img 7 in their view)... "Head is an unrotated SQUARE at the top-right. Rests entirely on a perfectly FLAT horizontal base. The far left side extends into a sharp horizontal point resting flat on the ground."
+    Listener 1: correct
+    Listener 2: WRONG (picked page6-149)
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 22 (block 3): Player 0 describes target (img 11 in their view)... "Head is a DIAMOND at the top-left. Balances entirely on a SINGLE SHARP DOWNWARD POINT at the bottom (NO flat base). A sharp arm points horizontally to the right. Crucially, UNLIKE similar figures, NO points stick out to the left anywhere below the head."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 23 (block 3): Player 0 describes target (img 9 in their view)... "Rests on a perfectly FLAT horizontal base. The ABSOLUTE HIGHEST part of the entire figure is a large DIAMOND shape on the top-right. Sticking out on the middle-left is a small unrotated SQUARE, with a sharp horizontal point extending to the far left directly below it."
+    Listener 1: correct
+    Listener 2: WRONG (picked page5-63)
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 1 in their view)... "Rests on a perfectly flat horizontal base. The absolute highest part is a large diamond shape on the top-right. The key difference from similar figures: sticking out on the middle-left is a small UNROTATED SQUARE (it has a flat top, flat bottom, and vertical sides, NOT a tilted diamond). A sharp point extends to the far left directly below this square."
+    Listener 0: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page7-26)
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 25 (block 4): Player 1 describes target (img 5 in their view)... "Head is a DIAMOND at top-LEFT. Rests on a perfectly FLAT horizontal base. CRUCIAL DETAILS: the large horizontal right-pointing tip is RAISED above the ground (does not touch the bottom line), AND a distinct small sharp point sticks out diagonally DOWN-AND-LEFT from the lower-left body. Resembles someone kneeling and bowing right."
+    Listener 0: WRONG (picked page9-7)
+    Listener 2: WRONG (picked page5-63)
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 26 (block 4): Player 1 describes target (img 7 in their view)... "Head is a DIAMOND at the top-left. Balances entirely on a SINGLE SHARP DOWNWARD POINT at the bottom (NO flat base). A sharp arm points horizontally to the right. Crucially, UNLIKE similar figures, NO points stick out to the left anywhere below the head."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 27 (block 4): Player 1 describes target (img 10 in their view)... "Head is a DIAMOND at the top-left. Balances entirely on a single sharp downward point (no flat base). The entire upper-right edge is a long, perfectly straight diagonal line sloping down to a sharp point on the far right. It also has a smaller sharp point sticking out diagonally down-and-left."
+    Listener 0: WRONG (picked page6-149)
+    Listener 2: correct
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 28 (block 4): Player 1 describes target (img 8 in their view)... "Head is an UNROTATED SQUARE (flat top) at the top-right. Balances entirely on ONE SINGLE SHARP DOWNWARD POINT at the very bottom (no flat base). The thick arm pointing horizontally to the far left ends in a blunt, FLAT VERTICAL EDGE (not a sharp point)."
+    Listener 0: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page4-157)
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 29 (block 4): Player 1 describes target (img 3 in their view)... "Head at the very top-right is strictly a small UNROTATED SQUARE with flat horizontal top and bottom edges (NOT a tilted diamond). Rests entirely on a perfectly FLAT horizontal base that extends into a sharp point on the far left, touching the ground."
+    Listener 0: correct
+    Listener 2: WRONG (picked page4-157)
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 14 in their view)... "Head is a DIAMOND at the top-left. Balances entirely on a single sharp downward point (no flat base). The entire upper-right edge is a long, perfectly straight diagonal line sloping down to a sharp point on the far right. It also has a smaller sharp point sticking out diagonally down-and-left."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 31 (block 5): Player 2 describes target (img 10 in their view)... "Head at the top-right is a small UNROTATED SQUARE (flat top and bottom, NOT a tilted diamond). Rests entirely on a perfectly FLAT horizontal base that extends far to the left, ending in a sharp horizontal point that touches the ground."
+    Listener 0: WRONG (picked page4-15)
+    Listener 1: correct
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 32 (block 5): Player 2 describes target (img 16 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"Rests on a perfectly FLAT horizontal base. The large DIAMOND is at the top-RIGHT. Crucially, there are NO arms pointing to the right. On the LEFT side of the figure, there is a small UNROTATED SQUARE, and directly below it, a sharp point extends horizontally to the far LEFT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 33 (block 5): Player 2 describes target (img 13 in their view)... "Head at the top-right is a SQUARE with a flat horizontal top edge (NOT a diamond). Balances entirely on a SINGLE SHARP DOWNWARD POINT at the bottom (it does NOT rest flat on the ground). The arm pointing horizontally to the far LEFT ends in a perfectly FLAT VERTICAL EDGE, NOT a sharp point."
+    Listener 0: WRONG (picked page6-149)
+    Listener 1: correct
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 34 (block 5): Player 2 describes target (img 15 in their view)... "Head is a DIAMOND at the top-LEFT. Rests entirely on a perfectly FLAT horizontal base. Crucially, the far LEFT end of this flat base forms a sharp point aiming straight LEFT along the ground. A large sharp arm points horizontally to the RIGHT."
+    Listener 0: WRONG (picked page9-7)
+    Listener 1: WRONG (picked page4-157)
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+  Round 35 (block 5): Player 2 describes target (img 2 in their view)... "Diamond head at the top-left. Balances entirely on a single sharp downward point at the very bottom (no flat base). A sharp arm points horizontally to the right. Crucially, absolutely NO points stick out to the left anywhere below the head."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json]
+
+========================================
+SUMMARY for group G02:
+  Overall accuracy: 30.6%
+  Overall avg words: 39.9
+  Block 0: acc=0.0%, words=19.3
+  Block 1: acc=0.0%, words=37.8
+  Block 2: acc=33.3%, words=45.8
+  Block 3: acc=50.0%, words=41.0
+  Block 4: acc=33.3%, words=49.0
+  Block 5: acc=66.7%, words=46.3
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G02.json

@@ -1,0 +1,196 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G16
+Seed: 58
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 15 in their view)... "Kneeling person facing left with a diamond-shaped torso."
+    Listener 1: WRONG (picked page5-28)
+    Listener 2: WRONG (picked page-B)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 1 (block 0): Player 0 describes target (img 7 in their view)... "Diamond torso. Head on top-left edge, arm on top-right pointing straight right. Flat leg extends horizontally straight to the left."
+    Listener 1: WRONG (picked page-B)
+    Listener 2: WRONG (picked page9-7)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 2 (block 0): Player 0 describes target (img 3 in their view)... "Figure bending far left. Square head top-left. Back right side has two sharp points: one pointing straight right, and one above it pointing up-right. Left side has a leg slanting down-left."
+    Listener 1: WRONG (picked page7-26)
+    Listener 2: WRONG (picked page9-7)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 3 (block 0): Player 0 describes target (img 11 in their view)... "Figure with a square head. Features a small arm pointing perfectly horizontally to the left, and a large triangular shape pointing perfectly horizontally to the right. Has a single leg pointing diagonally down-left."
+    Listener 1: WRONG (picked page3-121)
+    Listener 2: WRONG (picked page4-15)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 4 (block 0): Player 0 describes target (img 2 in their view)... "Figure with a square head at the top-left. The right side has two small limbs: one pointing diagonally up-right and one pointing diagonally down-right. The left side has a large, thick leg pointing diagonally down-left."
+    Listener 1: WRONG (picked page5-142)
+    Listener 2: WRONG (picked page9-7)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 5 (block 0): Player 0 describes target (img 5 in their view)... "Figure with a head at the very top, two small arms pointing perfectly horizontally outward to the left and right, and a single thick leg pointing diagonally down-left."
+    Listener 1: WRONG (picked page3-121)
+    Listener 2: WRONG (picked page3-121)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 6 in their view)... "Head top-left. Left side has a point sticking perfectly horizontally left, and a leg pointing diagonally down-left. Right side has a point angling diagonally up-right, and another point below it sticking perfectly horizontally right."
+    Listener 0: WRONG (picked page9-7)
+    Listener 2: WRONG (picked page5-142)
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 7 (block 1): Player 1 describes target (img 13 in their view)... "Square head top-left. Right side has two points forming an open beak facing right (one points up-right, the other down-right). Left side has NO horizontal arms, only a thick leg slanting diagonally down-left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 8 (block 1): Player 1 describes target (img 4 in their view)... "Central diamond. Square head on top-left sloped edge. Left point of diamond has a thick leg pointing perfectly horizontally left. Right point has a small arm pointing perfectly horizontally right. Bottom point is empty and points straight down."
+    Listener 0: correct
+    Listener 2: WRONG (picked page4-157)
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 9 (block 1): Player 1 describes target (img 10 in their view)... "Flat horizontal bottom edge. Entire right side is a long, straight diagonal edge slanting up-left. Square head at top-left. Left profile has two sharp points sticking out left. Looks like a person kneeling facing left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 10 (block 1): Player 1 describes target (img 12 in their view)... "Square head top-left. Left side has a small point sticking perfectly straight left, and a thick leg slanting diagonally down-left. Right side forms a single large thick point sticking perfectly straight right."
+    Listener 0: correct
+    Listener 2: WRONG (picked page5-63)
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 11 (block 1): Player 1 describes target (img 2 in their view)... "Head at very top. Two small arms point perfectly horizontally left and right. Single thick leg slants diagonally down-left. Key difference: below the right arm, the right edge of the torso drops perfectly straight down vertically, forming a square blocky right hip (it does not slant inwards)."
+    Listener 0: WRONG (picked page3-121)
+    Listener 2: WRONG (picked page3-121)
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 4 in their view)... "Head at top. Left side has a point sticking straight left, and a thick leg slanting down-left. Right side has a point sticking straight right. KEY DIFFERENCE: The right edge drops perfectly straight down vertically from that rightmost point. Unlike similar figures, it does NOT slant back inward underneath the right point."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 13 (block 2): Player 2 describes target (img 8 in their view)... "Square head top-left. Right side has two points forming an open beak facing right (one points up-right, the other down-right). Left side has NO horizontal arms, only a thick leg slanting diagonally down-left."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 20s (attempt 2/5)]
+    Listener 0: correct
+    Listener 1: WRONG (picked page4-157)
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 14 (block 2): Player 2 describes target (img 14 in their view)... "Head top-left. Right side is a single GIANT point sticking perfectly horizontally right. CRUCIAL: The edge from the neck down to that far-right tip is one continuous, straight diagonal slope (no shoulder). Left side has a small horizontal arm pointing straight left, and a thick leg slanting down-left."
+    Listener 0: WRONG (picked page7-26)
+    Listener 1: correct
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 15 (block 2): Player 2 describes target (img 9 in their view)... "Flat horizontal bottom edge. Entire right side is a long, straight diagonal edge slanting up-left. Square head at top-left. Left profile has two sharp points sticking out left. Looks like a person kneeling facing left."
+    Listener 0: WRONG (picked page4-157)
+    Listener 1: WRONG (picked page5-142)
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 16 (block 2): Player 2 describes target (img 13 in their view)... "Central diamond body. The very bottom is a sharp point aiming straight down (it has NO diagonal legs slanting downwards at all). Square head is on the top-left sloped edge. A thick leg points perfectly horizontally left. A small arm points perfectly horizontally right."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 17 (block 2): Player 2 describes target (img 16 in their view)... "Square head top-left. Left side: one straight horizontal LEFT arm, one slanting DOWN-LEFT leg. Right side: exactly TWO points - an UP-RIGHT arm, and below it, a straight HORIZONTAL RIGHT arm. CRUCIAL: It has NO down-right pointing limb. The lower right arm points perfectly horizontally right. The absolute lowest point of the whole figure is the tip of the down-left leg."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: correct
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 3 in their view)... "Square head top-left. Left side: one straight horizontal LEFT arm, one slanting DOWN-LEFT leg. Right side: exactly TWO points - an UP-RIGHT arm, and below it, a straight HORIZONTAL RIGHT arm. CRUCIAL: It has NO down-right pointing limb. The lower right arm points perfectly horizontally right. Lowest point is tip of down-left leg."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 19 (block 3): Player 0 describes target (img 5 in their view)... "Head at top. Left side has a point sticking straight left, and a thick leg slanting down-left. Right side has a point sticking straight right. KEY DIFFERENCE: The right edge drops perfectly straight down vertically from that rightmost point. It does NOT slant back inward."
+    Listener 1: correct
+    Listener 2: WRONG (picked page6-149)
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 20 (block 3): Player 0 describes target (img 11 in their view)... "Square head top-left. Left side has a small perfectly horizontal left-pointing arm and a down-left slanting leg. Right side is one large point sticking perfectly straight right. CRUCIAL: The top edge of this right side is a single continuous diagonal downward slope straight from the neck to the far right tip (NO flat horizontal shoulder). The bottom edge of this right point is a perfectly flat horizontal line."
+    Listener 1: correct
+    Listener 2: WRONG (picked page5-63)
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 21 (block 3): Player 0 describes target (img 15 in their view)... "CRUCIAL: This figure has NO parts sticking out to the right. The entire right edge is a single continuous perfectly straight diagonal line sloping up-left. The bottom edge is a perfectly flat horizontal straight line. Square head at top-left. Left side has two points sticking out left."
+    Listener 1: correct
+    Listener 2: WRONG (picked page6-149)
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 22 (block 3): Player 0 describes target (img 2 in their view)... "Square head top-left. CRUCIAL: This figure has ZERO parts pointing perfectly horizontally straight left or right. The left side has ONLY a thick leg slanting diagonally down-left. The right side has EXACTLY TWO points: one aiming diagonally UP-RIGHT, and one below it aiming diagonally DOWN-RIGHT."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 23 (block 3): Player 0 describes target (img 7 in their view)... "Central diamond body. The very bottom is a sharp point aiming straight down (it has NO diagonal legs slanting downwards). Square head is on the top-left sloped edge. A thick limb points perfectly horizontally straight left. A small arm points perfectly horizontally straight right."
+    Listener 1: correct
+    Listener 2: WRONG (picked page5-64)
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 13 in their view)... "Square head top-left. CRUCIAL: This figure has ZERO parts pointing perfectly horizontally straight left or right. The left side has ONLY a thick leg slanting diagonally down-left. The right side has EXACTLY TWO points: one aiming diagonally UP-RIGHT, and one below it aiming diagonally DOWN-RIGHT."
+    Listener 0: correct
+    Listener 2: WRONG (picked page5-64)
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 25 (block 4): Player 1 describes target (img 4 in their view)... "Central diamond body. CRUCIAL: It has NO diagonal limbs. The right side has EXACTLY ONE small arm pointing perfectly horizontally right. The left side has EXACTLY ONE thick limb pointing perfectly horizontally left. The very bottom is a sharp tip aiming perfectly straight down. Square head is on the top-left edge."
+    Listener 0: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page5-142)
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 26 (block 4): Player 1 describes target (img 2 in their view)... "Head at the very top. Left side has a perfectly horizontal left-pointing arm and a thick diagonally down-left slanting leg. Right side has a perfectly horizontal right-pointing arm. CRUCIAL: Below this right arm, the right outline drops PERFECTLY VERTICALLY STRAIGHT DOWN (forming a flat vertical wall). It has NO right leg and does NOT slant inward."
+    Listener 0: WRONG (picked page7-26)
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 27 (block 4): Player 1 describes target (img 12 in their view)... "Square head top-left. Left side has a small perfectly horizontal left-pointing arm, and a thick diagonally down-left slanting leg. Right side is exactly one large point aiming perfectly horizontally right. CRUCIAL DIFFERENCE: The right side is shaped like a triangle. Its top edge SLANTS DIAGONALLY down straight from the neck to the far right tip (it has NO flat horizontal top edge). Its bottom edge is perfectly flat and horizontal."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 28 (block 4): Player 1 describes target (img 6 in their view)... "Square head top-left. Left side: one straight horizontal LEFT arm, one slanting DOWN-LEFT leg. Right side: exactly TWO points - an UP-RIGHT arm, and below it, a straight HORIZONTAL RIGHT arm. CRUCIAL: It has NO down-right pointing limb. The lower right arm points perfectly horizontally right. Lowest point is tip of down-left leg."
+    Listener 0: correct
+    Listener 2: WRONG (picked page9-7)
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 29 (block 4): Player 1 describes target (img 10 in their view)... "Base is perfectly flat and horizontal. The bottom-right corner is a sharp acute point. The entire right side is one continuous, uninterrupted diagonal line sloping straight up-left from that corner (like a ramp). Square head top-left. Left side has two jagged points. NO parts stick out right."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 14 in their view)... "Square head top-left. Left side has a small perfectly horizontal left-pointing arm, and a thick diagonally down-left slanting leg. Right side is exactly one large point aiming perfectly horizontally right. CRUCIAL: The top edge of this right side SLANTS DIAGONALLY down straight from the neck to the far right tip (NO flat horizontal top edge). Its bottom edge is perfectly flat and horizontal."
+    Listener 0: correct
+    Listener 1: WRONG (picked page3-193)
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 31 (block 5): Player 2 describes target (img 8 in their view)... "Square head top-left. CRUCIAL: This figure has ZERO perfectly horizontal arms. The left side has NO straight left-pointing arm, ONLY a thick leg slanting diagonally down-left. The right side has EXACTLY TWO points: one aiming diagonally UP-RIGHT, and one below it aiming diagonally DOWN-RIGHT."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page4-15)
+    Listener 1: WRONG (picked page5-142)
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 32 (block 5): Player 2 describes target (img 4 in their view)... "Head at very top. Left side: perfectly horizontal left arm, and a thick diagonally down-left slanting leg. Right side: one perfectly horizontal right arm (its top edge is completely flat, NOT slanting up). CRUCIAL DIFFERENCE: From the far right tip of this right arm, the outer edge drops PERFECTLY VERTICALLY straight down, forming a flat vertical wall. It does NOT slant back inward below the arm."
+    Listener 0: WRONG (picked page5-64)
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 33 (block 5): Player 2 describes target (img 16 in their view)... "Square head top-left. Left side: one perfectly straight horizontal LEFT arm, and one slanting DOWN-LEFT leg. Right side: exactly TWO points - an UP-RIGHT arm, and below it, a straight HORIZONTAL RIGHT arm. CRUCIAL: It has NO down-right pointing limb. The lower right arm points perfectly horizontally right (its bottom edge is completely flat). The absolute lowest point of the whole figure is the tip of the down-left leg."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 34 (block 5): Player 2 describes target (img 13 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"Central body is a large tilted square (diamond). Square head is on its top-left slanted edge. From the left corner, a thick limb points perfectly horizontally straight left. From the right corner, a small triangular arm points perfectly horizontally straight right. The absolute lowest point is the diamond's bottom sharp corner pointing straight down. CRUCIAL: It has ZERO legs extending downwards anywhere."
+    Listener 0: WRONG (picked page3-35)
+    Listener 1: correct
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+  Round 35 (block 5): Player 2 describes target (img 9 in their view)... "Base is perfectly flat and horizontal. The bottom-right corner is a sharp acute point. The entire right side is one continuous, uninterrupted diagonal line sloping straight up-left from that corner (like a ramp). CRUCIAL: NO parts stick out right. Square head top-left. Left side has two jagged points."
+    Listener 0: WRONG (picked page9-46)
+    Listener 1: correct
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json]
+
+========================================
+SUMMARY for group G16:
+  Overall accuracy: 48.6%
+  Overall avg words: 45.1
+  Block 0: acc=0.0%, words=25.8
+  Block 1: acc=50.0%, words=36.5
+  Block 2: acc=66.7%, words=45.5
+  Block 3: acc=66.7%, words=50.3
+  Block 4: acc=58.3%, words=53.7
+  Block 5: acc=50.0%, words=58.7
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G16.json

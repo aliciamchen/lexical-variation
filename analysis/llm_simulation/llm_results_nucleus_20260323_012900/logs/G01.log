@@ -1,0 +1,190 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G01
+Seed: 43
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 10 in their view)... "Animal facing left with a diamond-shaped chest, a flat horizontal base, and a pointy tail extending to the right."
+    Listener 1: WRONG (picked page7-107)
+    Listener 2: WRONG (picked page9-7)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 1 (block 0): Player 0 describes target (img 6 in their view)... "Figure with a diamond chest, a very large pointy triangular arm reaching high up and to the left, and a straight leg extending down and to the right."
+    Listener 1: WRONG (picked page9-46)
+    Listener 2: WRONG (picked page4-157)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 2 (block 0): Player 0 describes target (img 4 in their view)... "Figure leaning over to the right with a square head at the top right, a sharp point extending horizontally to the far left, and a bottom point facing straight down."
+    Listener 1: WRONG (picked page7-107)
+    Listener 2: correct
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 3 (block 0): Player 0 describes target (img 15 in their view)... "Figure with a diamond head on the far right side, a sharp triangle pointing straight up in the middle, and a single pointed base extending diagonally down and to the left."
+    Listener 1: WRONG (picked page5-28)
+    Listener 2: correct
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 4 (block 0): Player 0 describes target (img 12 in their view)... "Figure with a diamond head at the top right, an arm pointing up and left, and two legs spread apart forming an inverted V at the bottom."
+    Listener 1: WRONG (picked page9-7)
+    Listener 2: WRONG (picked page3-121)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 5 (block 0): Player 0 describes target (img 16 in their view)... "Figure with a square head, a sharp point extending horizontally to the left, a lowest point facing straight down, and a short point extending horizontally to the right."
+    Listener 1: WRONG (picked page7-255)
+    Listener 2: WRONG (picked page7-255)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 5 in their view)... "Highest point is a large sharp triangle pointing up and to the left. Features a diamond in the center, a small point sticking straight out to the left, and a single thick leg extending diagonally down and to the right."
+    Listener 0: correct
+    Listener 2: WRONG (picked page4-157)
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 7 (block 1): Player 1 describes target (img 8 in their view)... "Square head at the top right. Has a large horizontal point extending to the left, and a leg pointing straight down. Look closely for its unique feature: a small, sharp point sticking out horizontally to the right, just below the head."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 8 (block 1): Player 1 describes target (img 10 in their view)... "Diamond head at top right, large arm pointing up-left. Look for a small point sticking horizontally to the right just below the head, and a base with two distinct downward-pointing legs."
+    Listener 0: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page6-149)
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 9 (block 1): Player 1 describes target (img 3 in their view)... "Sits completely flat on a horizontal base. Has a diamond center, a large sharp point aiming straight to the left, and a pointy tail extending perfectly horizontally to the right (make sure the tail is parallel to the ground, not angled upwards)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 10 (block 1): Player 1 describes target (img 9 in their view)... "Square head at top right. Large arm extending to the far left with a perfectly horizontal TOP edge. Single lowest leg pointing straight down with a perfectly vertical LEFT edge. Looks like a figure we did before, but this one has NO small point sticking out horizontally to the right side."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 11 (block 1): Player 1 describes target (img 1 in their view)... "Diamond on the far right side. The highest point is a large sharp triangle pointing perfectly straight UP. The base is a single thick piece extending diagonally down and to the far left. Crucially, there are NO other legs at the bottom (nothing pointing straight down or to the lower-right)."
+    Listener 0: WRONG (picked page9-7)
+    Listener 2: correct
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 7 in their view)... "Square head at top right. Large arm extending to the far left with a perfectly horizontal top edge. Single lowest leg pointing straight down with a perfectly vertical left edge. No small point sticking out on the right side."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 13 (block 2): Player 2 describes target (img 1 in their view)... "Square head at top right. Large arm extending to the far left with a perfectly horizontal top edge. Single lowest leg pointing straight down with a perfectly vertical left edge. Has a small point sticking out horizontally on the right side."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 14 (block 2): Player 2 describes target (img 3 in their view)... "Diamond in center. Highest point is a large sharp triangle pointing up and to the left. Just below that is a small point sticking perfectly horizontally to the left. Has exactly ONE thick leg at the bottom extending down and to the right, and NO legs on the bottom left."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 15 (block 2): Player 2 describes target (img 10 in their view)... "Figure with exactly three parts sticking out: a sharp triangle pointing perfectly straight up, a diamond on the far right, and exactly ONE thick leg pointing diagonally down and to the left. No other legs."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 16 (block 2): Player 2 describes target (img 15 in their view)... "Diamond head at top right. Large arm pointing diagonally up and to the left. Crucially, it has a small point sticking perfectly horizontally to the RIGHT side just below the head. Base has exactly TWO distinct legs pointing down."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 17 (block 2): Player 2 describes target (img 4 in their view)... "Sits completely flat on a horizontal base. Top piece points diagonally up and to the left. Large sharp point on the left aims perfectly straight horizontally. Pointy tail on the right extends perfectly horizontally, not angled."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 12 in their view)... "Diamond head at top right. Large arm pointing diagonally up and to the left. Crucially, it has a small point sticking perfectly horizontally to the RIGHT side just below the head. Base has exactly TWO distinct legs pointing down."
+    Listener 1: correct
+    Listener 2: WRONG (picked page6-149)
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 19 (block 3): Player 0 describes target (img 6 in their view)... "Diamond in center. Highest point is a large sharp triangle pointing up and to the left. Just below that is a small point sticking perfectly horizontally to the left. Has exactly ONE thick leg at the bottom extending down and to the right, and NO legs on the bottom left."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 1: correct
+    Listener 2: correct
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 20 (block 3): Player 0 describes target (img 15 in their view)... "Figure with exactly three parts sticking out: a sharp triangle pointing perfectly straight up, a diamond on the far right, and exactly ONE thick leg pointing diagonally down and to the left. No other legs."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 21 (block 3): Player 0 describes target (img 4 in their view)... "Square head at top right. Large arm extending to the far left with a perfectly horizontal top edge. Single lowest leg pointing straight down with a perfectly vertical left edge. No small point sticking out on the right side."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 22 (block 3): Player 0 describes target (img 10 in their view)... "Sits completely flat on a horizontal base. Top piece points diagonally up and to the left. Large sharp point on the left aims perfectly straight horizontally. Pointy tail on the right extends perfectly horizontally, not angled."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 23 (block 3): Player 0 describes target (img 16 in their view)... "Square head at top right. Large arm extending to the far left with a perfectly horizontal top edge. Single lowest leg pointing straight down with a perfectly vertical left edge. Has a small point sticking out horizontally on the right side."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 8 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"Square head at top right. Large arm extending to the far left with a perfectly horizontal top edge. Single lowest leg pointing straight down with a perfectly vertical left edge. Has a small point sticking out horizontally on the right side."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 25 (block 4): Player 1 describes target (img 9 in their view)... "Square head at top right. Large arm extending to the far left with a perfectly horizontal top edge. Single lowest leg pointing straight down with a perfectly vertical left edge. No small point sticking out on the right side."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 26 (block 4): Player 1 describes target (img 5 in their view)... "Diamond in center. Highest point is a large sharp triangle pointing up and to the left. Just below that is a small point sticking perfectly horizontally to the left. Has exactly ONE thick leg at the bottom extending down and to the right, and NO legs on the bottom left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 27 (block 4): Player 1 describes target (img 3 in their view)... "Sits completely flat on a horizontal base. Top piece points diagonally up and to the left. Large sharp point on the left aims perfectly straight horizontally. Pointy tail on the right extends perfectly horizontally, not angled."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 2: correct
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 28 (block 4): Player 1 describes target (img 10 in their view)... "Diamond head at top right. Large arm points diagonally up-left. Middle has a LARGE point extending horizontally to the LEFT, and a SMALL point extending horizontally to the RIGHT. Base has exactly TWO distinct downward legs."
+    Listener 0: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page7-26)
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 29 (block 4): Player 1 describes target (img 1 in their view)... "Figure with exactly three parts sticking out: a sharp triangle pointing perfectly straight up, a diamond on the far right, and exactly ONE thick leg pointing diagonally down and to the left. No other legs."
+    Listener 0: WRONG (picked page9-7)
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 1 in their view)... "Square head at top right. Large arm extending to the far left with a perfectly horizontal top edge. Single lowest leg pointing straight down with a perfectly vertical left edge. Has a small point sticking out horizontally on the right side."
+    Listener 0: correct
+    Listener 1: WRONG (picked page-B)
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 31 (block 5): Player 2 describes target (img 3 in their view)... "Diamond in center. Highest point is a large sharp triangle pointing up and to the left. Just below that is a small point sticking perfectly horizontally to the left. Has exactly ONE thick leg at the bottom extending down and to the right, and NO legs on the bottom left."
+    Listener 0: correct
+    Listener 1: WRONG (picked page9-7)
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 32 (block 5): Player 2 describes target (img 15 in their view)... "Check 3 things: 1) Head at top right is a DIAMOND (pointy top, not a flat horizontal edge). 2) Look closely: it HAS a small point sticking out horizontally on the RIGHT side. 3) Bottom has exactly TWO downward legs forming an inverted V (does not sit completely flat)."
+    Listener 0: WRONG (picked page5-63)
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 33 (block 5): Player 2 describes target (img 7 in their view)... "Square head at top right (flat top edge). Large arm extending to the far left with a perfectly horizontal top edge. Single lowest leg pointing straight down with a perfectly vertical left edge. Crucially, there is NO small point sticking out horizontally on the right side."
+    Listener 0: correct
+    Listener 1: WRONG (picked page4-157)
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 34 (block 5): Player 2 describes target (img 10 in their view)... "Exactly three parts sticking out: 1) A sharp triangle pointing perfectly straight up. 2) A diamond on the far right. 3) Exactly ONE thick leg pointing diagonally down and to the left. Crucially, there is NO part pointing straight down."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+  Round 35 (block 5): Player 2 describes target (img 4 in their view)... "Sits completely flat on a horizontal base. Top piece points diagonally up and to the left. Large sharp point on the left aims perfectly straight horizontally. Pointy tail on the right extends perfectly horizontally, not angled."
+    Listener 0: WRONG (picked page5-142)
+    Listener 1: correct
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json]
+
+========================================
+SUMMARY for group G01:
+  Overall accuracy: 68.1%
+  Overall avg words: 38.8
+  Block 0: acc=16.7%, words=27.2
+  Block 1: acc=66.7%, words=42.5
+  Block 2: acc=100.0%, words=40.0
+  Block 3: acc=91.7%, words=40.0
+  Block 4: acc=75.0%, words=39.5
+  Block 5: acc=58.3%, words=43.7
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G01.json

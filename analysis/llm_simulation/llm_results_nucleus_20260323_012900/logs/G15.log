@@ -1,0 +1,194 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G15
+Seed: 57
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 7 in their view)... "simple house with a large pointed triangular roof"
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 1: correct
+    Listener 2: WRONG (picked page7-255)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 1 (block 0): Player 0 describes target (img 12 in their view)... "house with a chimney on the left side of the roof"
+    Listener 1: WRONG (picked page4-15)
+    Listener 2: WRONG (picked page-B)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 2 (block 0): Player 0 describes target (img 2 in their view)... "person sitting down facing left with legs pointing straight out horizontally to the left"
+    Listener 1: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page5-142)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 3 (block 0): Player 0 describes target (img 15 in their view)... "person with a diamond head, an arm pointing left, and a tall vertical shape sticking straight up"
+    Listener 1: WRONG (picked page7-107)
+    Listener 2: WRONG (picked page9-7)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 4 (block 0): Player 0 describes target (img 16 in their view)... "house with a large triangular roof, a chimney on the right side of the roof, and a small triangle pointing left from the bottom left of the base"
+    Listener 1: WRONG (picked page9-7)
+    Listener 2: WRONG (picked page4-15)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 5 (block 0): Player 0 describes target (img 11 in their view)... "person with a diamond head, an arm pointing diagonally down-left, and a flat leg extending straight horizontally to the left along the bottom base"
+    Listener 1: WRONG (picked page7-26)
+    Listener 2: WRONG (picked page4-157)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 3 in their view)... "house with NO chimney, completely flat vertical left wall, and a triangular point sticking out to the right at the bottom right corner"
+    Listener 0: WRONG (picked page5-64)
+    Listener 2: WRONG (picked page3-193)
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 7 (block 1): Player 1 describes target (img 13 in their view)... "house shape with a chimney on the right side of the roof. the right wall is completely flat and straight vertical, while the bottom left corner has a small triangle pointing left."
+    Listener 0: WRONG (picked page3-193)
+    Listener 2: correct
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 8 (block 1): Player 1 describes target (img 2 in their view)... "house shape with a chimney on the left side of the roof. the left wall is completely flat and straight vertical, while the bottom right corner has a small triangle pointing right."
+    Listener 0: WRONG (picked page4-15)
+    Listener 2: WRONG (picked page3-193)
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 9 (block 1): Player 1 describes target (img 8 in their view)... "diamond head, perfectly straight vertical back on the right, flat horizontal base extending to the left, and an arm pointing perfectly horizontally to the left."
+    Listener 0: correct
+    Listener 2: WRONG (picked page5-142)
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 10 (block 1): Player 1 describes target (img 1 in their view)... "diamond head, perfectly straight vertical back on the right, flat horizontal base extending to the left, and an arm pointing diagonally down to the left."
+    Listener 0: correct
+    Listener 2: WRONG (picked page3-121)
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 11 (block 1): Player 1 describes target (img 6 in their view)... "diamond head, perfectly straight vertical back on the right, flat horizontal base. arm points diagonally up-left. the far left edge is a tall, perfectly straight vertical line extending straight up from the base."
+    Listener 0: correct
+    Listener 2: WRONG (picked page7-26)
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 2 in their view)... "diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left. A triangular arm in the middle points diagonally DOWN-LEFT towards the base."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 13 (block 2): Player 2 describes target (img 5 in their view)... "diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left. The far left end of the base has a tall, straight vertical line pointing UP. The triangular arm in the middle points diagonally UP-LEFT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 14 (block 2): Player 2 describes target (img 4 in their view)... "house shape. Chimney is on the RIGHT side of the roof. The RIGHT wall is a perfectly straight vertical line. The bottom LEFT corner of the base has a small sharp triangle pointing LEFT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 15 (block 2): Player 2 describes target (img 13 in their view)... "house shape with NO chimney. The LEFT wall is a perfectly straight vertical line. The bottom RIGHT corner of the base has a small sharp triangle pointing RIGHT."
+    Listener 0: WRONG (picked page5-63)
+    Listener 1: correct
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 16 (block 2): Player 2 describes target (img 16 in their view)... "diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left with NO vertical line at the far left end. The triangular arm in the middle points perfectly HORIZONTALLY to the LEFT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 17 (block 2): Player 2 describes target (img 3 in their view)... "house shape. Chimney is on the LEFT side of the roof. The LEFT wall is a perfectly straight vertical line. The bottom RIGHT corner of the base has a small sharp triangle pointing RIGHT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 7 in their view)... "house shape with NO chimney. The completely straight vertical wall is on the LEFT side. The bottom RIGHT corner of the base has a small triangle pointing out to the RIGHT."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 19 (block 3): Player 0 describes target (img 2 in their view)... "diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left with NO vertical line at the far left end. The triangular arm in the middle points perfectly HORIZONTALLY to the LEFT."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 1: correct
+    Listener 2: correct
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 20 (block 3): Player 0 describes target (img 16 in their view)... "house shape. Chimney is on the RIGHT side of the roof. The RIGHT wall is a perfectly straight vertical line. The bottom LEFT corner of the base has a small sharp triangle pointing LEFT."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 21 (block 3): Player 0 describes target (img 12 in their view)... "house shape. Chimney is on the LEFT side of the roof. The LEFT wall is a perfectly straight vertical line. The bottom RIGHT corner of the base has a small sharp triangle pointing RIGHT."
+    Listener 1: correct
+    Listener 2: WRONG (picked page4-157)
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 22 (block 3): Player 0 describes target (img 11 in their view)... "diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left. A triangular arm in the middle points diagonally DOWN-LEFT towards the base."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 23 (block 3): Player 0 describes target (img 15 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left. The far left end of the base has a tall, straight vertical line pointing UP. The triangular arm in the middle points diagonally UP-LEFT."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 2 in their view)... "house shape. Chimney on the LEFT side of the roof. The LEFT wall is a perfectly straight vertical line. The entire bottom edge is perfectly flat horizontally, ending on the far right in a sharp point sticking straight out horizontally to the RIGHT."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 25 (block 4): Player 1 describes target (img 1 in their view)... "diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left. A triangular arm in the middle points diagonally DOWN-LEFT towards the base."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 26 (block 4): Player 1 describes target (img 13 in their view)... "house shape. Chimney is on the RIGHT side of the roof. The RIGHT wall is a perfectly straight vertical line. The bottom LEFT corner of the base has a small sharp triangle pointing LEFT."
+    Listener 0: WRONG (picked page9-7)
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 27 (block 4): Player 1 describes target (img 8 in their view)... "diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left with NO vertical line at the far left end. The triangular arm in the middle points perfectly HORIZONTALLY to the LEFT."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 28 (block 4): Player 1 describes target (img 6 in their view)... "diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left. The far left end of the base has a tall, straight vertical line pointing UP. The triangular arm in the middle points diagonally UP-LEFT."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 29 (block 4): Player 1 describes target (img 3 in their view)... "house shape with NO chimney. The LEFT wall is a perfectly straight vertical line. The entire bottom edge is perfectly flat horizontally, ending on the far right in a sharp point sticking straight out horizontally to the RIGHT."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 16 in their view)... "diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left with NO vertical line at the far left end. The triangular arm in the middle points perfectly HORIZONTALLY to the LEFT."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: correct
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 31 (block 5): Player 2 describes target (img 13 in their view)... "house shape with NO chimney. The LEFT wall is a perfectly straight vertical line. The entire bottom edge is perfectly flat horizontally, ending on the far right in a sharp point sticking straight out horizontally to the RIGHT."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: correct
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 32 (block 5): Player 2 describes target (img 5 in their view)... "diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left. The far left end of the base has a tall, straight vertical line pointing UP. The triangular arm in the middle points diagonally UP-LEFT."
+    Listener 0: WRONG (picked page7-107)
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 33 (block 5): Player 2 describes target (img 4 in their view)... "house shape. Chimney on the RIGHT side of the roof. The RIGHT wall is a perfectly straight vertical line. The entire bottom edge is perfectly flat horizontally, ending on the far left in a sharp point sticking straight out horizontally to the LEFT."
+    Listener 0: WRONG (picked page3-193)
+    Listener 1: correct
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 34 (block 5): Player 2 describes target (img 2 in their view)... "diamond head, perfectly straight vertical right edge, flat horizontal bottom base extending left. A triangular arm in the middle points diagonally DOWN-LEFT towards the base."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+  Round 35 (block 5): Player 2 describes target (img 3 in their view)... "house shape. Chimney on the LEFT side of the roof. The LEFT wall is a perfectly straight vertical line. The entire bottom edge is perfectly flat horizontally, ending on the far right in a sharp point sticking straight out horizontally to the RIGHT."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json]
+
+========================================
+SUMMARY for group G15:
+  Overall accuracy: 66.7%
+  Overall avg words: 30.3
+  Block 0: acc=8.3%, words=17.0
+  Block 1: acc=33.3%, words=28.3
+  Block 2: acc=91.7%, words=32.0
+  Block 3: acc=91.7%, words=32.5
+  Block 4: acc=91.7%, words=35.2
+  Block 5: acc=83.3%, words=36.7
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G15.json

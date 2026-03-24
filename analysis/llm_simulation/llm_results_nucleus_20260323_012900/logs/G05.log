@@ -1,0 +1,194 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G05
+Seed: 47
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 5 in their view)... "swan facing right"
+    Listener 1: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page-B)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 1 (block 0): Player 0 describes target (img 15 in their view)... "bird facing left, pointed horizontal beak pointing left, pointed horizontal tail pointing right, two separate distinct legs at bottom"
+    Listener 1: WRONG (picked page7-26)
+    Listener 2: WRONG (picked page3-121)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 2 (block 0): Player 0 describes target (img 10 in their view)... "diamond on far left, square on top, massive triangle on right pointing down and right"
+    Listener 1: WRONG (picked page6-149)
+    Listener 2: WRONG (picked page5-64)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 3 (block 0): Player 0 describes target (img 7 in their view)... "person kneeling facing right, arm extended straight horizontally to the right holding a diamond"
+    Listener 1: WRONG (picked page5-28)
+    Listener 2: WRONG (picked page6-149)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 4 (block 0): Player 0 describes target (img 9 in their view)... "diamond head at top right, body slants down and to the left. Base is a large flat-bottomed triangle pointing horizontally to the right."
+    Listener 1: WRONG (picked page6-149)
+    Listener 2: WRONG (picked page5-28)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 5 (block 0): Player 0 describes target (img 3 in their view)... "person with diamond head, horizontal arm pointing right, sharp point sticking horizontally left from the middle of the back, flat bottom"
+    Listener 1: WRONG (picked page4-15)
+    Listener 2: WRONG (picked page3-193)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 16 in their view)... "Diamond head. Horizontal right arm ends in a second diamond. Bottom rests on a single sharp downward point, NOT a flat base. A sharp triangle sticks straight out to the left."
+    Listener 0: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page5-142)
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 7 (block 1): Player 1 describes target (img 14 in their view)... "Diamond head top right. Bottom base is a flat-bottomed triangle pointing horizontally to the right (90-degree vertical edge at bottom-left, sharp point at bottom-right). Left side of body has a spike pointing diagonally up-left. NO horizontal arm pointing right."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 8 (block 1): Player 1 describes target (img 9 in their view)... "Diamond head. Balances entirely on a single sharp downward point at the very bottom. Has a distinct arm sticking straight out to the LEFT. NO right arm; the right edge is a long, continuous, steep diagonal slope from the neck all the way down to the bottom point."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page5-63)
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 9 (block 1): Player 1 describes target (img 4 in their view)... "Diamond head. Rests on a completely flat horizontal bottom edge. Right arm points straight horizontally right, ending in a sharp triangle point (NOT a diamond). Left side has a spike pointing straight horizontally left."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 10 (block 1): Player 1 describes target (img 7 in their view)... "Bird facing left. Stands on TWO distinct, clearly separated pointy legs (front leg points straight down, back leg points down-right). Beak points straight left, tail points straight horizontally right. Does NOT have a flat bottom edge."
+    Listener 0: WRONG (picked page4-15)
+    Listener 2: correct
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 11 (block 1): Player 1 describes target (img 15 in their view)... "Looks like a swan swimming facing LEFT (Player 0 previously said 'right' by mistake). Rests on a completely flat horizontal bottom edge. Bottom-right corner ends in a long, sharp tail pointing horizontally right on the ground. Middle has a tall triangular wing pointing straight UP. Head is a diamond at the top-LEFT. The diamond is the furthest left point; there are NO extra spikes sticking out the left side of the chest/body."
+    Listener 0: WRONG (picked page4-15)
+    Listener 2: WRONG (picked page4-157)
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 2 in their view)... "Diamond head top right. Bottom base is a flat-bottomed triangle pointing horizontally to the right (vertical edge at bottom-left, sharp point at bottom-right). Left side of body has a spike pointing diagonally up-left. No horizontal arm."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 13 (block 2): Player 2 describes target (img 16 in their view)... "Bird facing left. Bottom is two separate pointed legs with a gap between them, not a flat line. Beak points straight left, tail points straight right."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 14 (block 2): Player 2 describes target (img 1 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"Diamond head. Flat horizontal bottom edge. Right arm points straight horizontally right, ending in a sharp point. Left side has a spike pointing straight horizontally left."
+    Listener 0: correct
+    Listener 1: WRONG (picked page4-15)
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 15 (block 2): Player 2 describes target (img 8 in their view)... "Diamond head. Right arm points horizontally right, ending in a second diamond. Left side has a spike pointing straight horizontally left. Balances entirely on a single sharp downward point at the bottom (not a flat base)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 16 (block 2): Player 2 describes target (img 5 in their view)... "Swan facing left. Diamond head at top-left is the furthest left point. Long, completely flat horizontal bottom edge ending in a right-pointing tail. Crucially, the left side of the body below the head has NO sharp spikes sticking out (it is smooth)."
+    Listener 0: correct
+    Listener 1: WRONG (picked page5-64)
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 17 (block 2): Player 2 describes target (img 14 in their view)... "Abstract shape, NOT a person or animal. Highest point is a square. Leftmost part sticks out straight horizontally left. The entire right side is a massive triangle pointing diagonally down-and-right. The lowest point of the whole figure is the sharp bottom-right tip of this massive triangle. No flat base."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: correct
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 5 in their view)... "Flat bottom resting on the ground, ending in a right-pointing tail. Tall triangle points straight up in the middle. Top-left is a diamond. The diamond is the absolute leftmost point of the whole image. The left edge below the diamond slopes diagonally down-and-right. Crucially, there are ZERO spikes or triangles sticking out to the left anywhere."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 19 (block 3): Player 0 describes target (img 7 in their view)... "Diamond head. Right arm points horizontally right, ending in a second diamond. Left side has a spike pointing straight horizontally left. Balances entirely on a single sharp downward point at the bottom (not a flat base)."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 1: WRONG (picked page9-7)
+    Listener 2: correct
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 20 (block 3): Player 0 describes target (img 9 in their view)... "Diamond head top right. Bottom base is a flat-bottomed triangle pointing horizontally to the right (vertical edge at bottom-left, sharp point at bottom-right). Left side of body has a spike pointing diagonally up-left. No horizontal arm."
+    Listener 1: WRONG (picked page4-15)
+    Listener 2: correct
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 21 (block 3): Player 0 describes target (img 15 in their view)... "Bird facing left. Bottom is two separate pointed legs with a gap between them, not a flat line. Beak points straight horizontally left, tail points straight horizontally right. The front leg points straight vertically down."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 22 (block 3): Player 0 describes target (img 3 in their view)... "Diamond head. Flat horizontal bottom base. Right arm points straight horizontally right. Left side has a sharp spike pointing EXACTLY HORIZONTALLY left (parallel to the bottom base, NOT pointing diagonally up or down). The arms end in sharp points, there are no diamonds on the arms."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 23 (block 3): Player 0 describes target (img 10 in their view)... "Abstract shape. Highest point is a square. Leftmost part sticks out straight horizontally left. The entire right side is a massive triangle pointing diagonally down-and-right. The lowest point of the whole figure is the sharp bottom-right tip of this massive triangle. No flat base."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 16 in their view)... "Figure with EXACTLY TWO DIAMONDS: one is the head, the other is at the far right end of the horizontal right arm. Balances entirely on a single sharp downward point at the very bottom (NOT a flat base). Left side has a sharp spike pointing straight horizontally left."
+    Listener 0: correct
+    Listener 2: WRONG (picked page5-142)
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 25 (block 4): Player 1 describes target (img 9 in their view)... "Abstract shape. Highest point is a square with a flat horizontal top edge. Leftmost part points straight horizontally left. The entire right side is a massive triangle pointing diagonally down-and-right. The absolute lowest point of the figure is the single sharp tip of this massive triangle (it does NOT have a flat bottom base)."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 26 (block 4): Player 1 describes target (img 7 in their view)... "Bird facing left. Bottom has two separate pointed legs with a gap between them, not a flat base. Beak points straight horizontally left, tail points straight horizontally right. The front leg points straight vertically down."
+    Listener 0: correct
+    Listener 2: WRONG (picked page3-121)
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 27 (block 4): Player 1 describes target (img 15 in their view)... "Flat bottom resting on the ground, ending in a right-pointing tail. Tall triangle points straight up in the middle. Top-left is a diamond, which is the absolute leftmost point of the whole image. The left edge below the diamond slopes diagonally down-and-right. Crucially, there are ZERO spikes or triangles sticking out to the left anywhere."
+    Listener 0: WRONG (picked page4-15)
+    Listener 2: WRONG (picked page4-157)
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 28 (block 4): Player 1 describes target (img 14 in their view)... "Diamond head is at the TOP-RIGHT. Bottom base rests on a completely flat horizontal line, ending in a sharp point to the far RIGHT. The bottom-LEFT corner of the base is a perfectly vertical straight edge. A sharp spike points diagonally UP-LEFT from the body. NO horizontal arms anywhere."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 29 (block 4): Player 1 describes target (img 4 in their view)... "Diamond head. Rests on a completely flat horizontal bottom base. Right arm points straight horizontally right. Left side has a sharp spike pointing exactly horizontally left (parallel to the base). The arms end in sharp points, NOT diamonds."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 16 in their view)... "Bird facing left. Beak points strictly horizontally left. Tail points strictly horizontally right. Balances on exactly two sharp downward points (NO flat base anywhere). The front leg points straight vertically down, while the back leg points diagonally down-right."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 31 (block 5): Player 2 describes target (img 5 in their view)... "Swan shape. Flat horizontal bottom edge resting entirely on the ground, ending in a sharp point on the far right. Diamond head is top-left. A tall triangle in the middle points straight vertically UP. Crucially, the neck below the diamond head is a straight, smooth diagonal line sloping DOWN-AND-RIGHT. The diamond is the absolute leftmost point of the entire figure; there are ZERO spikes sticking out the left side."
+    Listener 0: correct
+    Listener 1: WRONG (picked page4-15)
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 32 (block 5): Player 2 describes target (img 14 in their view)... "Abstract shape. Highest point is a square. Leftmost part sticks out straight horizontally left. The entire right side is a massive triangle pointing diagonally down-and-right. The absolute lowest point of the figure is the single sharp tip of this massive triangle (it does NOT have a flat base)."
+    Listener 0: WRONG (picked page5-64)
+    Listener 1: WRONG (picked page5-64)
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 33 (block 5): Player 2 describes target (img 1 in their view)... "Diamond head. Rests entirely on a completely flat horizontal bottom base. Has TWO perfectly horizontal arms: left spike points strictly horizontally left, and right arm points strictly horizontally right. The right arm ends in a sharp triangle point, NOT a diamond."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 34 (block 5): Player 2 describes target (img 8 in their view)... "Figure with exactly two diamonds: one is the head, the other is at the end of the straight horizontal right arm. Left side has a sharp spike pointing STRICTLY horizontally left (not up-left). Balances entirely on a single sharp downward point at the very bottom (NO flat base anywhere)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+  Round 35 (block 5): Player 2 describes target (img 2 in their view)... "Diamond head at the TOP-RIGHT. Bottom base is a flat-bottomed triangle with a perfectly vertical left edge and a right-pointing tip. A sharp spike on the left side points diagonally UP-LEFT. NO horizontal arms."
+    Listener 0: WRONG (picked page7-255)
+    Listener 1: correct
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json]
+
+========================================
+SUMMARY for group G05:
+  Overall accuracy: 56.9%
+  Overall avg words: 38.4
+  Block 0: acc=0.0%, words=15.8
+  Block 1: acc=41.7%, words=43.3
+  Block 2: acc=83.3%, words=35.8
+  Block 3: acc=83.3%, words=42.2
+  Block 4: acc=66.7%, words=46.5
+  Block 5: acc=66.7%, words=46.5
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G05.json

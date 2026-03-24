@@ -11,6 +11,7 @@ with 16-tangram grids.
 """
 
 import argparse
+import concurrent.futures
 import json
 import os
 import random
@@ -144,12 +145,18 @@ def build_speaker_prompt(
                 role_prefix = "You described"
             else:
                 role_prefix = f"Player {h['speaker_id']} described"
-            l_results = ", ".join(
-                "correct" if lr["correct"] else "wrong" for lr in h["listener_results"]
-            )
+            l_parts = []
+            for lr in h["listener_results"]:
+                sel = lr["selection"]
+                if lr["correct"]:
+                    l_parts.append(f"Listener {lr['listener_id']}: image {target_in_my_view} (correct)")
+                elif sel != "?" and sel in player_labels:
+                    l_parts.append(f"Listener {lr['listener_id']}: image {player_labels[sel]} (wrong)")
+                else:
+                    l_parts.append(f"Listener {lr['listener_id']}: no valid response (wrong)")
             lines.append(
                 f'- {role_prefix} image {target_in_my_view}: '
-                f'"{h["description"]}" → listeners: {l_results}'
+                f'"{h["description"]}" → {", ".join(l_parts)}'
             )
         parts.append("\n\nGame history:\n" + "\n".join(lines))
 
@@ -181,12 +188,18 @@ def build_listener_prompt(
                 role_prefix = "You described"
             else:
                 role_prefix = f"Player {h['speaker_id']} described"
-            l_results = ", ".join(
-                "correct" if lr["correct"] else "wrong" for lr in h["listener_results"]
-            )
+            l_parts = []
+            for lr in h["listener_results"]:
+                sel = lr["selection"]
+                if lr["correct"]:
+                    l_parts.append(f"Listener {lr['listener_id']}: image {target_in_my_view} (correct)")
+                elif sel != "?" and sel in player_labels:
+                    l_parts.append(f"Listener {lr['listener_id']}: image {player_labels[sel]} (wrong)")
+                else:
+                    l_parts.append(f"Listener {lr['listener_id']}: no valid response (wrong)")
             lines.append(
                 f'- {role_prefix} image {target_in_my_view}: '
-                f'"{h["description"]}" → listeners: {l_results}'
+                f'"{h["description"]}" → {", ".join(l_parts)}'
             )
         parts.append("\n\nGame history:\n" + "\n".join(lines))
 
@@ -309,16 +322,26 @@ def run_round(
     if verbose:
         print(f'"{description}"')
 
-    # --- Listener turns ---
-    listener_results = []
-    for lid in listener_ids:
+    # --- Listener turns (parallel) ---
+    def _listener_call(lid):
         listener_labels, listener_reverse = get_labels(lid)
-
         listener_prompt = build_listener_prompt(
             description, game_history, lid, listener_labels, prompts
         )
         listener_images = get_images_for_player(lid)
         raw = call_gemini(client, model_name, listener_images, listener_prompt, temperature, top_p)
+        return lid, listener_reverse, raw
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(listener_ids)) as pool:
+        futures = {pool.submit(_listener_call, lid): lid for lid in listener_ids}
+        raw_responses = {}
+        for future in concurrent.futures.as_completed(futures):
+            lid, listener_reverse, raw = future.result()
+            raw_responses[lid] = (listener_reverse, raw)
+
+    listener_results = []
+    for lid in listener_ids:
+        listener_reverse, raw = raw_responses[lid]
 
         # Parse selection — must be a number 1-16
         sel_label = "?"
@@ -682,8 +705,8 @@ def main():
         "--output", "-o", help="Output JSON file path (default: stdout)",
     )
     parser.add_argument(
-        "--model", "-m", default="gemini-2.0-flash",
-        help="Gemini model (default: gemini-2.0-flash)",
+        "--model", "-m", default="gemini-3.1-pro-preview",
+        help="Gemini model (default: gemini-3.1-pro-preview)",
     )
     parser.add_argument(
         "--group-id", "-g", default="G1",

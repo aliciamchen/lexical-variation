@@ -1,0 +1,194 @@
+LLM Reference Game Simulation (Phase 1)
+=============================================
+Project: hs-social-interaction-lab (global)
+Model: gemini-3.1-pro-preview
+Tangram set: 0
+Blocks: 6
+Group ID: G14
+Seed: 56
+Temperature: 1.0
+Top-p: 0.95
+
+Loading tangram images...
+  Loaded 16 tangrams as PNG
+
+Starting simulation...
+
+--- Block 0 (speaker: player 0) ---
+  Round 0 (block 0): Player 0 describes target (img 16 in their view)... "person kneeling and bowing down to the left, arms touching the ground"
+    Listener 1: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page3-121)
+    [saved 1/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 1 (block 0): Player 0 describes target (img 9 in their view)... "duck facing left, beak pointing up at an angle, flat bottom"
+    Listener 1: WRONG (picked page9-46)
+    Listener 2: WRONG (picked page5-64)
+    [saved 2/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 2 (block 0): Player 0 describes target (img 7 in their view)... "flat bottom, straight vertical right edge, looks like a person sitting and facing left with an arm sticking out left"
+    Listener 1: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page5-63)
+    [saved 3/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 3 (block 0): Player 0 describes target (img 12 in their view)... "90-degree top-left corner formed by a flat horizontal top edge and straight vertical left edge. Looks like a blocky person sitting facing right with legs extended straight out horizontally to the right."
+    Listener 1: WRONG (picked page3-193)
+    Listener 2: WRONG (picked page3-193)
+    [saved 4/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 4 (block 0): Player 0 describes target (img 1 in their view)... "looks like a person running left: diamond head pointing up, sharp arm extending perfectly horizontally to the left, and a leg trailing diagonally down to the bottom-right"
+    Listener 1: WRONG (picked page4-157)
+    Listener 2: WRONG (picked page9-7)
+    [saved 5/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 5 (block 0): Player 0 describes target (img 8 in their view)... "diamond head at top left. body angles down to the right, ending in two sharp points at the bottom right: one pointing straight down and one pointing perfectly horizontal to the right."
+    Listener 1: WRONG (picked page7-26)
+    Listener 2: WRONG (picked page3-121)
+    [saved 6/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+
+--- Block 1 (speaker: player 1) ---
+  Round 6 (block 1): Player 1 describes target (img 4 in their view)... 
+    [Rate limited, retrying in 10s (attempt 1/5)]
+"Diamond head at top left. Body's left edge is a long, straight diagonal going down-right. At the bottom right, there is a perfect 90-degree inward right-angle notch, creating two sharp tips: one pointing straight down with a vertical inner edge, and one pointing straight right with a horizontal inner edge."
+    Listener 0: correct
+    Listener 2: WRONG (picked page9-7)
+    [saved 7/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 7 (block 1): Player 1 describes target (img 12 in their view)... "Perfectly flat horizontal bottom edge. From this base, the left side extends into a long neck pointing diagonally up and left, and the right side ends in a sharp pointed tail pointing diagonally up and right. Looks like a swan or duck floating on water."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: WRONG (picked page5-63)
+    Listener 2: WRONG (picked page5-64)
+    [saved 8/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 8 (block 1): Player 1 describes target (img 2 in their view)... "Entire left side is a single unbroken straight vertical line. Top edge is perfectly horizontal, creating a 90-degree top-left corner. In the LOWER half, a 'leg' extends completely horizontally to the right, with perfectly flat horizontal top and bottom edges and a flat vertical right tip."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 9/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 9 (block 1): Player 1 describes target (img 15 in their view)... "Looks like a person bowing deeply to the left. The "head" is a diamond shape located at the very bottom-left, pointing diagonally down to the ground. The highest point is a sharp peak at the top, and the rightmost point is a sharp tip pointing horizontally right. The figure has no flat horizontal bottom edge."
+    Listener 0: WRONG (picked page5-64)
+    Listener 2: correct
+    [saved 10/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 10 (block 1): Player 1 describes target (img 8 in their view)... "Perfect 90-degree bottom-right corner formed by a completely flat horizontal bottom edge meeting a perfectly straight vertical right edge. It looks like a person sitting facing left, with a sharp triangular "arm" sticking straight out horizontally to the left, and a diamond-shaped "head" at the top."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 11/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 11 (block 1): Player 1 describes target (img 6 in their view)... "Diamond head at the very top. Leftmost feature is a sharp 'arm' pointing straight out horizontally to the left, with a perfectly flat horizontal bottom edge. The top-right boundary is one long, straight diagonal edge sloping down to the far-right tip. The lowest point is a sharp tip pointing straight down. Has no perfectly vertical edges."
+    Listener 0: WRONG (picked page7-26)
+    Listener 2: WRONG (picked page3-193)
+    [saved 12/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+
+--- Block 2 (speaker: player 2) ---
+  Round 12 (block 2): Player 2 describes target (img 15 in their view)... "Diamond head at top-left. The entire bottom-left boundary is one single, unbroken straight diagonal line sloping down-right. At the bottom-right is a 90-degree inward L-shaped step: from the lowest point, the edge goes straight vertically UP, then turns perfectly horizontally RIGHT. This creates a sharp downward-pointing tip and a sharp right-pointing tip."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 13/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 13 (block 2): Player 2 describes target (img 13 in their view)... "Swan-like figure facing left with a diamond head. Perfectly flat horizontal bottom base. To distinguish from similar figures: the neck leans diagonally up-left (it has NO perfectly vertical edges), and the tail points diagonally up-right. Crucially, the bottom base is the ONLY horizontal edge in the entire figure (it does not have a flat horizontal back or a flat-topped head)."
+    Listener 0: WRONG (picked page5-64)
+    Listener 1: correct
+    [saved 14/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 14 (block 2): Player 2 describes target (img 16 in their view)... "Diamond head at the top. Left arm points left, and its bottom edge is a perfectly flat horizontal line. The ENTIRE right boundary is one unbroken straight diagonal line sloping down from the neck to the far-right tip. Crucially: the bottom has a sharp inverted-V notch between the lowest sharp foot and the far-right tip. The ONLY perfectly horizontal line in the entire figure is the bottom edge of the left arm (it has NO flat-bottomed feet)."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 15/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 15 (block 2): Player 2 describes target (img 5 in their view)... "Looks like a person bowing deeply to the LEFT. Crucially, the diamond 'head' is at the VERY BOTTOM-LEFT corner of the entire figure, pointing down to touch the ground. The highest point is a sharp peak pointing straight UP. The rightmost point is a sharp tip pointing horizontally RIGHT. It has NO flat horizontal bottom edge."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 16/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 16 (block 2): Player 2 describes target (img 9 in their view)... "Perfect 90-degree bottom-right corner formed by a flat horizontal bottom edge meeting a perfectly straight vertical right edge. Looks like a person sitting facing left, with a diamond head at the top and a sharp triangular arm sticking straight horizontally to the left."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 17/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 17 (block 2): Player 2 describes target (img 2 in their view)... "Perfect 90-degree top-left corner formed by a completely flat horizontal top edge meeting a single unbroken straight vertical left edge. In the lower half, a thick blocky 'leg' extends perfectly horizontally to the right, ending in a flat vertical tip."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: correct
+    [saved 18/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+
+--- Block 3 (speaker: player 0) ---
+  Round 18 (block 3): Player 0 describes target (img 9 in their view)... "Swan facing left. Perfectly flat horizontal bottom base. The entire left front edge slopes straight diagonally up-left to a diamond head. The right back edge slopes diagonally up-right to a sharp tail tip. The ENTIRE FIGURE has absolutely NO vertical edges, and the bottom base is its ONLY horizontal edge."
+    Listener 1: correct
+    Listener 2: WRONG (picked page6-149)
+    [saved 19/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 19 (block 3): Player 0 describes target (img 8 in their view)... "Diamond head at top-left. The entire bottom-left boundary is one single, unbroken straight diagonal line sloping down-right. At the bottom-right is a 90-degree inward L-shaped step: from the lowest point, the edge goes straight vertically UP, then turns perfectly horizontally RIGHT. This creates a sharp downward-pointing tip and a sharp right-pointing tip."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 20/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 20 (block 3): Player 0 describes target (img 7 in their view)... "Perfect 90-degree bottom-right corner formed by a flat horizontal bottom edge meeting a perfectly straight vertical right edge. Looks like a person sitting facing left, with a diamond head at the top and a sharp triangular arm sticking straight horizontally to the left."
+    Listener 1: correct
+    Listener 2: WRONG (picked page3-193)
+    [saved 21/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 21 (block 3): Player 0 describes target (img 16 in their view)... "Looks like a person bowing deeply to the LEFT. Crucially, the diamond 'head' is at the VERY BOTTOM-LEFT corner of the entire figure, pointing down to touch the ground. The highest point is a sharp peak pointing straight UP. The rightmost point is a sharp tip pointing horizontally RIGHT. It has NO flat horizontal bottom edge."
+    Listener 1: correct
+    Listener 2: WRONG (picked page9-7)
+    [saved 22/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 22 (block 3): Player 0 describes target (img 1 in their view)... "Diamond head at the top. Left arm points left, and its bottom edge is a perfectly flat horizontal line. The ENTIRE right boundary is one unbroken straight diagonal line sloping down from the neck to the far-right tip. Crucially: the bottom has a sharp inverted-V notch between the lowest sharp foot and the far-right tip. The ONLY perfectly horizontal line in the entire figure is the bottom edge of the left arm."
+    Listener 1: correct
+    Listener 2: correct
+    [saved 23/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 23 (block 3): Player 0 describes target (img 12 in their view)... "Perfect 90-degree top-left corner formed by a completely flat horizontal top edge meeting a single unbroken straight vertical left edge. In the lower half, a thick blocky 'leg' extends perfectly horizontally to the right, ending in a flat vertical tip."
+    Listener 1: correct
+    Listener 2: WRONG (picked page5-142)
+    [saved 24/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+
+--- Block 4 (speaker: player 1) ---
+  Round 24 (block 4): Player 1 describes target (img 2 in their view)... "The ENTIRE left side is a single straight vertical line. Crucially, it has BOTH a completely flat horizontal TOP edge AND a completely flat horizontal BOTTOM edge, forming perfect 90-degree corners at both top-left and bottom-left. Looks like a blocky person sitting facing right: the bottom right is a thick rectangular leg ending in a vertical tip, and the middle right is a sharp triangular arm pointing right."
+    Listener 0: WRONG (picked page5-142)
+    Listener 2: WRONG (picked page5-142)
+    [saved 25/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 25 (block 4): Player 1 describes target (img 15 in their view)... "Person bowing deeply to the left. The diamond shape is at the VERY BOTTOM-LEFT, its lowest point touching the ground. The highest point is a sharp peak pointing straight UP. The rightmost point is a sharp tip pointing perfectly horizontally RIGHT. Crucially, to distinguish from similar figures: this rightmost tip is ELEVATED in the air (the right side does NOT touch the ground). The figure rests only on two sharp downward points located near the bottom-left."
+    Listener 0: correct
+    Listener 2: WRONG (picked page9-7)
+    [saved 26/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 26 (block 4): Player 1 describes target (img 4 in their view)... "Diamond head at top-left. The entire bottom-left boundary is one single, unbroken straight diagonal line sloping down-right. At the bottom-right is a 90-degree inward L-shaped step: from the lowest point, the edge goes straight vertically UP, then turns perfectly horizontally RIGHT. This creates a sharp downward-pointing tip and a sharp right-pointing tip."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 27/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 27 (block 4): Player 1 describes target (img 6 in their view)... "Diamond head at the top. Left arm points left, and its bottom edge is a perfectly flat horizontal line. The ENTIRE right boundary is one unbroken straight diagonal line sloping down from the neck to the far-right tip. Crucially: the bottom has a sharp inverted-V notch between the lowest sharp downward-pointing foot and the far-right tip. The ONLY perfectly horizontal line in the entire figure is the bottom edge of the left arm."
+    Listener 0: correct
+    Listener 2: WRONG (picked page3-193)
+    [saved 28/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 28 (block 4): Player 1 describes target (img 8 in their view)... "Perfect 90-degree BOTTOM-RIGHT corner formed by a completely flat horizontal bottom edge meeting a perfectly straight vertical RIGHT edge. It looks like a person sitting facing LEFT, with a sharp triangular 'arm' sticking straight out horizontally to the LEFT, and a diamond-shaped 'head' at the top."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 29/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 29 (block 4): Player 1 describes target (img 12 in their view)... "Swan facing left. Completely flat horizontal bottom base. The front-left boundary slopes diagonally up-left to a diamond head. The back-right boundary slopes diagonally up-right to a sharp tail tip. CRUCIALLY: it has ZERO perfectly vertical lines anywhere (no vertical front or back). The flat bottom is the ONLY horizontal line in the entire figure."
+    Listener 0: correct
+    Listener 2: correct
+    [saved 30/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+
+--- Block 5 (speaker: player 2) ---
+  Round 30 (block 5): Player 2 describes target (img 15 in their view)... "Diamond head at top-left. The entire bottom-left boundary is one single, unbroken straight diagonal line sloping down-right. At the bottom-right is a 90-degree inward L-shaped step: from the lowest point, the edge goes straight vertically UP, then turns perfectly horizontally RIGHT, creating a sharp downward-pointing tip and a sharp right-pointing tip."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 31/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 31 (block 5): Player 2 describes target (img 5 in their view)... "Look for a figure with NO flat horizontal bottom edge (it balances entirely on sharp downward points). Crucially, its diamond shape is located at the VERY BOTTOM-LEFT, touching the floor. The absolute highest point is a sharp peak pointing straight UP (its left edge is perfectly straight and vertical). The extreme rightmost point is a sharp tip pointing straight RIGHT (its bottom edge is perfectly straight and horizontal)."
+    Listener 0: WRONG (picked page7-26)
+    Listener 1: correct
+    [saved 32/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 32 (block 5): Player 2 describes target (img 9 in their view)... "Perfect 90-degree bottom-right corner formed by a completely flat horizontal bottom edge meeting a perfectly straight vertical right edge. It looks like a person sitting facing left, with a sharp triangular arm sticking straight out horizontally to the left, and a diamond-shaped head at the top."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: correct
+    [saved 33/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 33 (block 5): Player 2 describes target (img 16 in their view)... "Diamond head at the top. Left arm points left, and its bottom edge is a perfectly flat horizontal line. The ENTIRE right boundary is one unbroken straight diagonal line sloping down from the neck to the far-right tip. Crucially: the bottom has a sharp inverted-V notch between the lowest sharp foot and the far-right tip. The ONLY perfectly horizontal line in the entire figure is the bottom edge of the left arm (it has NO flat-bottomed feet)."
+
+    [Rate limited, retrying in 10s (attempt 1/5)]
+    Listener 0: correct
+    Listener 1: correct
+    [saved 34/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 34 (block 5): Player 2 describes target (img 13 in their view)... "Swan facing left. Perfectly flat horizontal bottom base. The neck slopes diagonally up-left to a diamond head. The back tail slopes diagonally up-right to a sharp tip. CRUCIALLY: it has ZERO perfectly vertical edges anywhere, and the flat bottom base is the ONLY horizontal line in the entire figure."
+    Listener 0: correct
+    Listener 1: correct
+    [saved 35/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+  Round 35 (block 5): Player 2 describes target (img 2 in their view)... "Entire left boundary is a single unbroken straight vertical line, forming perfect 90-degree corners at both top-left and bottom-left. CRUCIALLY to distinguish from similar figures: the top 'head' is a large triangle, NOT a square block. Its flat horizontal top edge ends in a SHARP POINT at the top-right, then the edge cuts diagonally DOWN-LEFT (inward) to a narrow neck. Middle-right is a sharp triangular arm pointing right. Bottom-right is a thick rectangular leg extending perfectly horizontally right, ending in a flat vertical tip."
+    Listener 0: WRONG (picked page5-142)
+    Listener 1: WRONG (picked page5-142)
+    [saved 36/36 rounds to analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json]
+
+========================================
+SUMMARY for group G14:
+  Overall accuracy: 58.3%
+  Overall avg words: 50.5
+  Block 0: acc=0.0%, words=22.3
+  Block 1: acc=50.0%, words=49.7
+  Block 2: acc=91.7%, words=54.7
+  Block 3: acc=66.7%, words=52.2
+  Block 4: acc=66.7%, words=61.5
+  Block 5: acc=75.0%, words=62.5
+
+Results saved to: analysis/llm_simulation/llm_results_nucleus_20260323_012900/G14.json
