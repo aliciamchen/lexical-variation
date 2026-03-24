@@ -402,33 +402,37 @@ def compute_lexical_uniqueness(
     """
     Compute lexical uniqueness per utterance: proportion of content words
     NOT appearing in any other group's descriptions for the same tangram
-    in the same game.
+    across all games.
 
     Uses the same tokenization as compute_description_properties().
     """
+    # Build word sets per (gameId, originalGroup, target) across all games
+    group_words: dict[tuple[str, str, str], set[str]] = {}
+    for (game_id, grp, target), grp_df in utterances.groupby(
+        ["gameId", "originalGroup", "target"]
+    ):
+        all_words: set[str] = set()
+        for text in grp_df["utterance"]:
+            all_words.update(extract_content_word_tokens(text))
+        group_words[(game_id, grp, target)] = all_words
+
     rows = []
-    for (game_id, target), group_df in utterances.groupby(["gameId", "target"]):
-        # Build word sets per group
-        group_words: dict[str, set[str]] = {}
-        for grp, grp_df in group_df.groupby("originalGroup"):
-            all_words: set[str] = set()
-            for text in grp_df["utterance"]:
-                all_words.update(extract_content_word_tokens(text))
-            group_words[grp] = all_words
+    for _, row in utterances.iterrows():
+        tokens = extract_content_word_tokens(row["utterance"])
+        if not tokens:
+            rows.append({**row, "uniqueness": float("nan")})
+            continue
 
-        for _, row in group_df.iterrows():
-            tokens = extract_content_word_tokens(row["utterance"])
-            if not tokens:
-                rows.append({**row, "uniqueness": float("nan")})
-                continue
+        # Collect words from all other groups (across all games) for the same tangram
+        other_words: set[str] = set()
+        for (g_id, grp, tgt), words in group_words.items():
+            if tgt == row["target"] and not (
+                g_id == row["gameId"] and grp == row["originalGroup"]
+            ):
+                other_words.update(words)
 
-            other_words: set[str] = set()
-            for grp, words in group_words.items():
-                if grp != row["originalGroup"]:
-                    other_words.update(words)
-
-            uniqueness = sum(1 for w in tokens if w not in other_words) / len(tokens)
-            rows.append({**row, "uniqueness": uniqueness})
+        uniqueness = sum(1 for w in tokens if w not in other_words) / len(tokens)
+        rows.append({**row, "uniqueness": uniqueness})
 
     return pd.DataFrame(rows)
 
