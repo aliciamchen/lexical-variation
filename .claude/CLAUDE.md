@@ -24,6 +24,10 @@ We plan to submit the registered report to Nature Human Behavior. The submission
 
 `README.md` in the project root is the public-facing documentation — reviewers and the public read it to understand the repo and how to run the code. When you add or change a workflow, script, or tool that a user would need to know about, update the README too (not just CLAUDE.md or rules files).
 
+## Documentation lookup
+
+Use the Context7 MCP server (`resolve-library-id` → `query-docs`) to fetch current documentation for any library or framework instead of relying on training data. This applies to R packages (ggplot2, patchwork, lme4, etc.), Python libraries, JS frameworks, and any other dependency.
+
 ## Rules reference
 
 Path-scoped rules are in `.claude/rules/`. Read the relevant file when the topic comes up but the rule isn't auto-loaded:
