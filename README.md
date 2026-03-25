@@ -1,5 +1,12 @@
 # lexical-variation
 
+- [Repository structure](#repository-structure)
+- [Setup](#setup)
+- [Running the experiment](#running-the-experiment)
+- [Testing](#testing)
+- [Analysis pipeline](#analysis-pipeline)
+- [LLM tools](#llm-tools)
+
 In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups describe tangram images to each other across two phases, with 4 between-subjects conditions that orthogonally manipulate interaction patterns and social-signaling goals in Phase 2:
 
 - **refer + separated**: same groups throughout Phase 2 (baseline)
