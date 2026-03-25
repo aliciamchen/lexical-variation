@@ -31,7 +31,7 @@ paths:
 |--------|---------|
 | `run_pipeline.py` | Entry point — process zips, combine runs, browse metadata |
 | `preprocessing.py` | Raw Empirica CSVs → analysis-ready CSVs (called by run_pipeline) |
-| `compute_embeddings.py` | Speaker utterances → SBERT embeddings, similarity metrics, H3c description properties (concreteness, lexical uniqueness, word frequency), UMAP |
+| `compute_embeddings.py` | Speaker utterances → SBERT embeddings, similarity metrics, H3c description properties (concreteness, lexical uniqueness, word frequency), UMAP. Outputs go to `analysis/pilot_derived/` (separate from source data in `data/pilots/`) |
 | `animate_umap.py` | UMAP projections → animated videos of embedding trajectories |
 | `plot_style.py` | Shared plotting constants and helpers (imported, not run directly) |
 | `test_data_integrity.py` | Pytest validation of preprocessed CSV structure and content |
@@ -73,7 +73,7 @@ uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147
 uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147 --skip-embeddings --skip-visualize
 ```
 
-Stacks raw CSVs, filters failed games (lobby timeouts), runs preprocessing, writes `manifest.json`. Raw and preprocessed data go to `data/pilots/` (`raw/` subdirectory + CSVs); figures and manifest stay in `analysis/pilots/`. Each run must already be processed (i.e. `analysis/{timestamp}/raw/` must exist).
+Stacks raw CSVs, filters failed games (lobby timeouts), runs preprocessing, writes `manifest.json`. Raw and preprocessed data go to `data/pilots/` (`raw/` subdirectory + CSVs); computed outputs (embeddings, similarities, etc.) go to `analysis/pilot_derived/`; figures and manifest stay in `analysis/pilots/`. Each run must already be processed (i.e. `analysis/{timestamp}/raw/` must exist).
 
 ### Browsing runs and metadata
 
@@ -87,8 +87,8 @@ uv run python analysis/run_pipeline.py bonuses --run 20260225_210047      # spec
 ### Running individual scripts standalone
 
 ```bash
-uv run python analysis/animate_umap.py --data-dir data/pilots/ --output-dir analysis/pilots/figures/
-uv run python analysis/compute_embeddings.py data/pilots/
+uv run python analysis/animate_umap.py --data-dir data/pilots/ --umap-dir analysis/pilot_derived/ --output-dir analysis/pilots/figures/
+uv run python analysis/compute_embeddings.py data/pilots/ --output analysis/pilot_derived/
 uv run pytest analysis/test_data_integrity.py -v
 ```
 

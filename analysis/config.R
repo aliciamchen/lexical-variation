@@ -12,7 +12,9 @@ library(here)
 # ── Paths ────────────────────────────────────────────────────
 
 data_dir <- here("analysis", "processed_data")
+derived_dir <- here("analysis", "pilot_derived")
 figures_dir <- here("analysis", "figures")
+dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
 dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
 
 # Prefer filtered utterances when available

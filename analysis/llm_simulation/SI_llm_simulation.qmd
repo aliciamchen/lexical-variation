@@ -52,6 +52,7 @@ config <- fromJSON(file.path(results_dir, "llm_config.json"))
 
 # -- Load pilot data for comparison overlay --
 pilot_data_dir <- here::here("data", "pilots")
+pilot_derived_dir <- here::here("analysis", "pilot_derived")
 has_pilot <- file.exists(file.path(pilot_data_dir, "trials.csv"))
 if (has_pilot) {
   pilot_utts_file <- if (file.exists(file.path(pilot_data_dir, "speaker_utterances_filtered.csv"))) {
@@ -64,9 +65,9 @@ if (has_pilot) {
   pilot_trials <- read_csv(file.path(pilot_data_dir, "trials.csv"), show_col_types = FALSE) |>
     filter(phaseNum == 1, role == "listener") |>
     mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"))
-  pilot_has_adjacent <- file.exists(file.path(pilot_data_dir, "adjacent_similarities.csv"))
+  pilot_has_adjacent <- file.exists(file.path(pilot_derived_dir, "adjacent_similarities.csv"))
   if (pilot_has_adjacent) {
-    pilot_adjacent <- read_csv(file.path(pilot_data_dir, "adjacent_similarities.csv"), show_col_types = FALSE) |>
+    pilot_adjacent <- read_csv(file.path(pilot_derived_dir, "adjacent_similarities.csv"), show_col_types = FALSE) |>
       filter(phaseNum == 1)
   }
 }

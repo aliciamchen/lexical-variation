@@ -17,8 +17,8 @@ games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
 trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
 
-has_adjacent <- file.exists(file.path(data_dir, "adjacent_similarities.csv"))
-adjacent_sim <- if (has_adjacent) read_csv(file.path(data_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
+has_adjacent <- file.exists(file.path(derived_dir, "adjacent_similarities.csv"))
+adjacent_sim <- if (has_adjacent) read_csv(file.path(derived_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
 ```
 
 ```{r prep-data}
@@ -176,7 +176,7 @@ if (exists("p_sim")) {
 
 ```{r plot-umap, fig.width=12, fig.height=8}
 # Plot 17: UMAP embedding space
-umap_file <- file.path(data_dir, "umap_projections.csv")
+umap_file <- file.path(derived_dir, "umap_projections.csv")
 has_umap <- file.exists(umap_file)
 
 if (has_umap) {

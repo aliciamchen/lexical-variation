@@ -11,6 +11,7 @@ library(lme4)
 library(lmerTest)
 library(emmeans)
 library(tidyboot)
+library(patchwork)
 source(here::here("analysis", "config.R"))
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
@@ -18,18 +19,18 @@ trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
 speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
 social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
 
-has_pairwise <- file.exists(file.path(data_dir, "pairwise_similarities.csv"))
+has_pairwise <- file.exists(file.path(derived_dir, "pairwise_similarities.csv"))
 if (!has_pairwise) {
   cat("WARNING: pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
   cat("Most analyses in this notebook will be skipped.\n")
   pairwise_sim <- tibble()
 } else {
-  pairwise_sim <- read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE)
+  pairwise_sim <- read_csv(file.path(derived_dir, "pairwise_similarities.csv"), show_col_types = FALSE)
 }
 
-has_block_pairwise <- file.exists(file.path(data_dir, "block_pairwise_similarities.csv"))
+has_block_pairwise <- file.exists(file.path(derived_dir, "block_pairwise_similarities.csv"))
 block_pairwise_sim <- if (has_block_pairwise) {
-  read_csv(file.path(data_dir, "block_pairwise_similarities.csv"), show_col_types = FALSE)
+  read_csv(file.path(derived_dir, "block_pairwise_similarities.csv"), show_col_types = FALSE)
 } else {
   tibble()
 }
@@ -472,14 +473,14 @@ length > 1 are retained as *content words*.
   Common words score higher (e.g., "the" ≈ 7.7); rare words score lower.
 
 ```{r h3c-description-properties}
-has_desc_props <- file.exists(file.path(data_dir, "description_properties.csv"))
-has_lex_uniq <- file.exists(file.path(data_dir, "lexical_uniqueness.csv"))
+has_desc_props <- file.exists(file.path(derived_dir, "description_properties.csv"))
+has_lex_uniq <- file.exists(file.path(derived_dir, "lexical_uniqueness.csv"))
 
 if (!has_desc_props || !has_lex_uniq) {
   cat("Missing H3c data files. Run compute_description_properties() and compute_lexical_uniqueness() first.\n")
 } else {
-  desc_props <- read_csv(file.path(data_dir, "description_properties.csv"), show_col_types = FALSE)
-  lex_uniq <- read_csv(file.path(data_dir, "lexical_uniqueness.csv"), show_col_types = FALSE)
+  desc_props <- read_csv(file.path(derived_dir, "description_properties.csv"), show_col_types = FALSE)
+  lex_uniq <- read_csv(file.path(derived_dir, "lexical_uniqueness.csv"), show_col_types = FALSE)
 
   # Merge, filter to final Phase 1 block, social conditions only
   p1_final_social <- desc_props |>
@@ -597,7 +598,7 @@ if (exists("p1_final_social") && "concreteness" %in% names(p1_final_social)) {
     labs(x = NULL, y = "Mean Zipf frequency", title = "Word frequency") +
     theme(legend.position = "none")
 
-  fig_h3c <- p_concrete + p_unique + p_freq +
+  fig_h3c <- patchwork::wrap_plots(p_concrete, p_unique, p_freq) +
     plot_annotation(
       title = "H3c: Description properties in final Phase 1 utterances",
       tag_levels = "a"

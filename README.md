@@ -91,7 +91,7 @@ To reproduce the analyses from the pilot data:
 ```bash
 uv sync                                    # install Python deps
 # In R: renv::restore()                    # install R deps
-uv run python analysis/compute_embeddings.py data/pilots/   # SBERT embeddings
+uv run python analysis/compute_embeddings.py data/pilots/ -o analysis/pilot_derived/  # SBERT embeddings
 quarto render analysis/SI_pilot.qmd        # pilot analyses
 quarto render analysis/llm_simulation/SI_llm_simulation.qmd # LLM benchmark
 ```
@@ -116,11 +116,11 @@ uv run python analysis/run_pipeline.py list
 uv run python analysis/run_pipeline.py bonuses
 ```
 
-Output goes to `analysis/{datetime}/` (single run) or split across `data/pilots/` (raw + preprocessed CSVs) and `analysis/pilots/` (figures, manifest). The `analysis/processed_data` symlink points to the active dataset.
+Output goes to `analysis/{datetime}/` (single run) or split across `data/pilots/` (raw + preprocessed CSVs), `analysis/pilot_derived/` (computed outputs: embeddings, similarities, etc.), and `analysis/pilots/` (figures, manifest). The `analysis/processed_data` symlink points to the active dataset.
 
 ### Rendering notebooks
 
-Quarto notebooks (`00_preprocess.qmd` through `05_exit_survey.qmd`) read from `analysis/processed_data/`, a symlink updated by `run_pipeline.py`.
+Quarto notebooks (`00_preprocess.qmd` through `05_exit_survey.qmd`) read source data from `analysis/processed_data/` (a symlink updated by `run_pipeline.py`) and computed outputs from `analysis/pilot_derived/`.
 
 ```bash
 quarto render analysis/SI_pilot.qmd

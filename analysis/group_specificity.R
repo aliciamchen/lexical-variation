@@ -6,7 +6,7 @@
 #
 # Usage:
 #   source(here::here("analysis", "group_specificity.R"))
-#   results <- compute_group_specificity(pairwise_df, data_dir, n_perm = 1000)
+#   results <- compute_group_specificity(pairwise_df, derived_dir, n_perm = 1000)
 #   # returns list(gs_results, perm_results) — loaded from cache if available
 
 library(lme4)

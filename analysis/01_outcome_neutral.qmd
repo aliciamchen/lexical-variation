@@ -19,11 +19,11 @@ games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
 trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
 
-has_adjacent <- file.exists(file.path(data_dir, "adjacent_similarities.csv"))
-has_pairwise <- file.exists(file.path(data_dir, "pairwise_similarities.csv"))
+has_adjacent <- file.exists(file.path(derived_dir, "adjacent_similarities.csv"))
+has_pairwise <- file.exists(file.path(derived_dir, "pairwise_similarities.csv"))
 
-adjacent_sim <- if (has_adjacent) read_csv(file.path(data_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
-pairwise_sim <- if (has_pairwise) read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
+adjacent_sim <- if (has_adjacent) read_csv(file.path(derived_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
+pairwise_sim <- if (has_pairwise) read_csv(file.path(derived_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
 ```
 
 ```{r prep-data}
@@ -219,7 +219,7 @@ p1_pairwise <- pairwise_sim |> filter(window == "phase1_final")
 
 if (nrow(p1_pairwise) > 0) {
   # Uses cached RDS if available; pass force = TRUE to recompute
-  gs_cached <- compute_group_specificity(p1_pairwise, data_dir)
+  gs_cached <- compute_group_specificity(p1_pairwise, derived_dir)
   gs_results <- gs_cached$gs_results
   perm_results <- gs_cached$perm_results
 

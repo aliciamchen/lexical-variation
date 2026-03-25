@@ -187,19 +187,25 @@ def step_filter_messages(data_dir: Path) -> None:
     subprocess.run(cmd, check=True)
 
 
-def step_embeddings(data_dir: Path, utterances_file: str = "speaker_utterances.csv") -> None:
+def step_embeddings(data_dir: Path, output_dir: Path | None = None,
+                    utterances_file: str = "speaker_utterances.csv") -> None:
     """Step 5: Run compute_embeddings.py."""
     print(f"\n{'=' * 60}")
     print("Step 5: Computing embeddings")
     print(f"{'=' * 60}")
 
+    if output_dir is None:
+        output_dir = data_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     script = ANALYSIS_DIR / "compute_embeddings.py"
-    cmd = [sys.executable, str(script), str(data_dir), "--output", str(data_dir),
+    cmd = [sys.executable, str(script), str(data_dir), "--output", str(output_dir),
            "--utterances-file", utterances_file]
     subprocess.run(cmd, check=True)
 
 
-def step_visualize(data_dir: Path, figures_dir: Path) -> None:
+def step_visualize(data_dir: Path, figures_dir: Path,
+                   derived_dir: Path | None = None) -> None:
     """Step 6: Run animate_umap.py for all conditions."""
     print(f"\n{'=' * 60}")
     print("Step 6: Generating visualizations")
@@ -207,13 +213,17 @@ def step_visualize(data_dir: Path, figures_dir: Path) -> None:
 
     figures_dir.mkdir(parents=True, exist_ok=True)
 
-    # animate_umap.py
+    # animate_umap.py reads games.csv from data_dir and umap_projections.csv
+    # from derived_dir (or data_dir if not split)
+    umap_dir = derived_dir if derived_dir else data_dir
     anim_script = ANALYSIS_DIR / "animate_umap.py"
     cmd = [
         sys.executable,
         str(anim_script),
         "--data-dir",
         str(data_dir),
+        "--umap-dir",
+        str(umap_dir),
         "--output-dir",
         str(figures_dir),
     ]
@@ -523,6 +533,7 @@ def cmd_combine(argv: list[str]):
     data_base = DATA_DIR / "pilots"
     output_raw = data_base / "raw"
     output_data = data_base
+    output_derived = ANALYSIS_DIR / "pilot_derived"
     output_figures = output_dir / "figures"
 
     print("Validating runs...")
@@ -540,10 +551,10 @@ def cmd_combine(argv: list[str]):
     step_preprocess(output_raw, output_data)
 
     if not args.skip_embeddings:
-        step_embeddings(output_data)
+        step_embeddings(output_data, output_derived)
 
     if not args.skip_visualize:
-        step_visualize(output_data, output_figures)
+        step_visualize(output_data, output_figures, output_derived)
 
     write_manifest(output_dir, args.runs, combined)
 
@@ -645,6 +656,7 @@ def main():
     output_dir = ANALYSIS_DIR / datetime_str
     raw_dir = output_dir / "raw"
     data_dir = output_dir / "data"
+    derived_dir = output_dir / "derived"
     figures_dir = output_dir / "outputs"
 
     print(f"Zip: {zip_path}")
@@ -675,7 +687,7 @@ def main():
             print("Step 5: Skipping embeddings (--skip-embeddings)")
             print(f"{'=' * 60}")
         else:
-            step_embeddings(data_dir, utterances_file)
+            step_embeddings(data_dir, derived_dir, utterances_file)
 
         # Step 6: Visualizations
         if args.skip_visualize:
@@ -683,7 +695,7 @@ def main():
             print("Step 6: Skipping visualizations (--skip-visualize)")
             print(f"{'=' * 60}")
         else:
-            step_visualize(data_dir, figures_dir)
+            step_visualize(data_dir, figures_dir, derived_dir)
 
         # Update symlink
         update_data_symlink(data_dir)

@@ -17,6 +17,7 @@ source(here::here("analysis", "config.R"))
 
 # Override paths: pilot notebook reads from pilot data, saves to pilot figures
 data_dir <- here("data", "pilots")
+derived_dir <- here("analysis", "pilot_derived")
 figures_dir <- here("analysis", "pilot_outputs")
 dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -34,11 +35,11 @@ messages <- read_csv(file.path(data_dir, "messages.csv"), show_col_types = FALSE
 speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
 social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
 
-has_adjacent <- file.exists(file.path(data_dir, "adjacent_similarities.csv"))
-has_pairwise <- file.exists(file.path(data_dir, "pairwise_similarities.csv"))
+has_adjacent <- file.exists(file.path(derived_dir, "adjacent_similarities.csv"))
+has_pairwise <- file.exists(file.path(derived_dir, "pairwise_similarities.csv"))
 
-adjacent_sim <- if (has_adjacent) read_csv(file.path(data_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
-pairwise_sim <- if (has_pairwise) read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
+adjacent_sim <- if (has_adjacent) read_csv(file.path(derived_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
+pairwise_sim <- if (has_pairwise) read_csv(file.path(derived_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
 ```
 
 # 1. Sample description
@@ -327,7 +328,7 @@ if (!has_pairwise) {
 
   if (nrow(p1_pairwise) > 0) {
     # Uses cached RDS if available; pass force = TRUE to recompute
-    gs_cached <- compute_group_specificity(p1_pairwise, data_dir)
+    gs_cached <- compute_group_specificity(p1_pairwise, derived_dir)
     gs_results <- gs_cached$gs_results
     perm_results <- gs_cached$perm_results
 
@@ -535,9 +536,9 @@ pairs, not between-game uncertainty. The individual points provide the
 underlying spread.
 
 ```{r load-block-pairwise}
-has_block_pw <- file.exists(file.path(data_dir, "block_pairwise_similarities.csv"))
+has_block_pw <- file.exists(file.path(derived_dir, "block_pairwise_similarities.csv"))
 if (has_block_pw) {
-  block_pw <- read_csv(file.path(data_dir, "block_pairwise_similarities.csv"),
+  block_pw <- read_csv(file.path(derived_dir, "block_pairwise_similarities.csv"),
                        show_col_types = FALSE) |>
     left_join(games |> select(gameId, condition), by = "gameId") |>
     continuous_block() |>
@@ -981,14 +982,14 @@ to verify the H3c analysis pipeline and give a qualitative sense of the patterns
 ```{r si-prep-h3c-data}
 # All three H3c measures are precomputed in Python with consistent tokenization
 # (same stopwords and content-word extraction). See compute_embeddings.py.
-has_desc_props <- file.exists(file.path(data_dir, "description_properties.csv"))
-has_lex_uniq <- file.exists(file.path(data_dir, "lexical_uniqueness.csv"))
+has_desc_props <- file.exists(file.path(derived_dir, "description_properties.csv"))
+has_lex_uniq <- file.exists(file.path(derived_dir, "lexical_uniqueness.csv"))
 
 if (!has_desc_props || !has_lex_uniq) {
   cat("Missing H3c data files. Run compute_description_properties() and compute_lexical_uniqueness() first.\n")
 } else {
-  desc_props <- read_csv(file.path(data_dir, "description_properties.csv"), show_col_types = FALSE)
-  lex_uniq <- read_csv(file.path(data_dir, "lexical_uniqueness.csv"), show_col_types = FALSE)
+  desc_props <- read_csv(file.path(derived_dir, "description_properties.csv"), show_col_types = FALSE)
+  lex_uniq <- read_csv(file.path(derived_dir, "lexical_uniqueness.csv"), show_col_types = FALSE)
 
   # Merge properties + uniqueness, filter to final Phase 1 block, social conditions
   p1_final_social <- desc_props |>

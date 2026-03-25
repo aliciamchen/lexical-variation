@@ -59,8 +59,8 @@ def format_condition(condition):
     return condition.replace("_", " ")
 
 
-def load_data(data_dir: Path, game_ids: list[str]):
-    df = pd.read_csv(data_dir / "umap_projections.csv")
+def load_data(umap_dir: Path, game_ids: list[str]):
+    df = pd.read_csv(umap_dir / "umap_projections.csv")
     df = df[df["gameId"].isin(game_ids)].copy()
     # Continuous block 0-11
     df["block"] = df["blockNum"].astype(int) + (df["phaseNum"] == 2).astype(int) * 6
@@ -393,6 +393,11 @@ def main():
         help="Path to directory containing preprocessed CSVs (default: analysis/processed_data/)",
     )
     parser.add_argument(
+        "--umap-dir",
+        default=None,
+        help="Path to directory containing umap_projections.csv (default: same as --data-dir)",
+    )
+    parser.add_argument(
         "--output-dir",
         default="analysis/outputs/",
         help="Path to write output videos (default: analysis/outputs/)",
@@ -400,6 +405,7 @@ def main():
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
+    umap_dir = Path(args.umap_dir) if args.umap_dir else data_dir
     output_dir = Path(args.output_dir)
 
     if not (data_dir / "games.csv").exists():
@@ -420,7 +426,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for condition, game_ids in conditions.items():
-        df = load_data(data_dir, game_ids)
+        df = load_data(umap_dir, game_ids)
         print(f"\nCondition: {condition}")
         print(f"  Loaded {len(df)} utterances, blocks 0-{df['block'].max()}")
 

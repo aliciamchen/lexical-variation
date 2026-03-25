@@ -17,11 +17,11 @@ trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
 speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
 social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
 
-has_phase_change <- file.exists(file.path(data_dir, "phase_change_similarities.csv"))
-has_pairwise <- file.exists(file.path(data_dir, "pairwise_similarities.csv"))
+has_phase_change <- file.exists(file.path(derived_dir, "phase_change_similarities.csv"))
+has_pairwise <- file.exists(file.path(derived_dir, "pairwise_similarities.csv"))
 
-phase_change <- if (has_phase_change) read_csv(file.path(data_dir, "phase_change_similarities.csv"), show_col_types = FALSE) else tibble()
-pairwise_sim <- if (has_pairwise) read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
+phase_change <- if (has_phase_change) read_csv(file.path(derived_dir, "phase_change_similarities.csv"), show_col_types = FALSE) else tibble()
+pairwise_sim <- if (has_pairwise) read_csv(file.path(derived_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
 
 n_conditions <- n_distinct(games$condition)
 ```
