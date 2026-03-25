@@ -61,8 +61,8 @@ uv run python analysis/filter_nonreferential.py validate --data-dir data/pilots/
 # Apply filter -> produce speaker_utterances_filtered.csv
 uv run python analysis/filter_nonreferential.py apply --data-dir data/pilots/
 
-# Full pipeline with filtering (combines classify + apply + embeddings on filtered data)
-uv run python analysis/run_pipeline.py --filter-messages
+# Full pipeline (filtering is on by default; skip with --skip-filter)
+uv run python analysis/process_data.py
 ```
 
 Output: `messages_classified.csv` (with `is_referential` column) and `speaker_utterances_filtered.csv` (non-referential messages removed before concatenation).

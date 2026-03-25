@@ -46,7 +46,7 @@ uv run python analysis/extract_run.py <zip>           → data/pilot_runs/{times
 uv run python analysis/combine_runs.py <runs> → data/pilots/raw/
 
 # 3. Run the analysis pipeline (preprocess → filter → derived metrics)
-uv run python analysis/run_pipeline.py                → data/pilots/, analysis/pilot_derived/
+uv run python analysis/process_data.py                → data/pilots/, analysis/pilot_derived/
 ```
 
 Step 3 runs these sub-steps in order:
@@ -81,8 +81,8 @@ uv run python analysis/extract_run.py experiment/data/20260301_214147/empirica-e
 uv run python analysis/combine_runs.py 20260301_132907 20260301_214147
 
 # 3. Run the pipeline (preprocess → filter → derived metrics)
-uv run python analysis/run_pipeline.py                  # full pipeline
-uv run python analysis/run_pipeline.py --skip-filter    # if no Vertex AI
+uv run python analysis/process_data.py                  # full pipeline
+uv run python analysis/process_data.py --skip-filter    # if no Vertex AI
 
 # 4. Render notebooks (separate step)
 quarto render analysis/SI_pilot.qmd

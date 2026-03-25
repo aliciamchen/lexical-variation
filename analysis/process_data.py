@@ -5,9 +5,9 @@ Operates on data/pilots/. The raw CSVs in data/pilots/raw/ must already exist
 (either committed, or produced by extract_run.py + combine_runs.py).
 
 Usage:
-    uv run python analysis/run_pipeline.py                          # run full pipeline
-    uv run python analysis/run_pipeline.py --skip-filter            # skip Vertex AI step
-    uv run python analysis/run_pipeline.py --skip-derived           # skip SBERT step
+    uv run python analysis/process_data.py                          # run full pipeline
+    uv run python analysis/process_data.py --skip-filter            # skip Vertex AI step
+    uv run python analysis/process_data.py --skip-derived           # skip SBERT step
 """
 
 import argparse
