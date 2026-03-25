@@ -5,7 +5,7 @@
 - [Running the experiment](#running-the-experiment)
 - [Testing](#testing)
 - [Analysis pipeline](#analysis-pipeline)
-- [LLM tools](#llm-tools)
+- [LLM simulation](#llm-simulation)
 
 In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups describe tangram images to each other across two phases, with 4 between-subjects conditions that orthogonally manipulate interaction patterns and social-signaling goals in Phase 2:
 
@@ -100,13 +100,14 @@ See [`experiment/README.md`](experiment/README.md) for details on test architect
 
 ### Reproducing pilot results
 
-The preprocessed pilot data (including filtered utterances) is committed in `data/pilots/`. After installing dependencies (see [Setup](#setup)), two commands reproduce all analyses:
+The preprocessed pilot data (including filtered utterances) is committed in `data/pilots/`. After installing dependencies (see [Setup](#setup)):
 
 ```bash
-uv run python analysis/compute_derived.py data/pilots/ \
-  -o analysis/pilot_derived/                                        # embeddings + derived metrics
-quarto render analysis/SI_pilot.qmd                                 # pilot analyses → figures + stats
+uv run python analysis/process_data.py --skip-filter    # preprocess + derived metrics
+quarto render analysis/SI_pilot.qmd                     # pilot analyses → figures + stats
 ```
+
+The filter step requires Vertex AI (see [LLM simulation](#llm-simulation)) and can be skipped since the filtered data is already committed.
 
 ### Pipeline steps
 
@@ -136,14 +137,7 @@ uv run python analysis/extract_run.py experiment/data/20260301_214147/empirica-e
 uv run python analysis/combine_runs.py 20260301_132907 20260301_214147
 
 # 3. Run the pipeline (preprocess → filter → derived metrics)
-uv run python analysis/process_data.py --skip-filter    # if no Vertex AI
-
-# 4. Render notebooks (separate step)
-quarto render analysis/SI_pilot.qmd
-
-# Browse extracted runs
-uv run python analysis/extract_run.py list
-uv run python analysis/extract_run.py bonuses
+uv run python analysis/process_data.py
 ```
 
 ### Notebooks for the registered report
@@ -179,13 +173,9 @@ These will run the pre-registered analyses on the full dataset. Currently they r
 | `04_exploratory.qmd` | Exploratory analyses |
 | `05_exit_survey.qmd` | Exit survey responses |
 
-## LLM tools
+## LLM simulation
 
-Both tools use Gemini via Vertex AI. Requires `gcloud auth application-default login` and a GCP project with Vertex AI enabled.
-
-### LLM simulation (Phase 1 benchmark)
-
-All simulation code lives in `analysis/llm_simulation/`. Simulates groups of 3 LLM agents playing the reference game to benchmark whether AI can form stable conventions (paper, AI detection section).
+All simulation code lives in `analysis/llm_simulation/`. Simulates groups of 3 LLM agents playing the reference game to benchmark whether AI can form stable conventions (paper, AI detection section). Uses Gemini via Vertex AI (`gcloud auth application-default login`).
 
 ```bash
 # Run simulation (quick test)
