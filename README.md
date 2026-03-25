@@ -103,11 +103,18 @@ See [`experiment/README.md`](experiment/README.md) for details on test architect
 The preprocessed pilot data (including filtered utterances) is committed in `data/pilots/`. After installing dependencies (see [Setup](#setup)):
 
 ```bash
-uv run python analysis/process_data.py --skip-filter    # preprocess + derived metrics
-quarto render analysis/SI_pilot.qmd                     # pilot analyses → figures + stats
+make pilot    # derive metrics + render notebooks (no Vertex AI needed)
 ```
 
-The filter step requires Vertex AI (see [LLM simulation](#llm-simulation)) and can be skipped since the filtered data is already committed.
+Or step by step:
+
+```bash
+uv run python analysis/process_data.py --skip-filter    # preprocess + derived metrics
+quarto render analysis/SI_pilot.qmd                     # pilot analyses → figures + stats
+quarto render analysis/llm_simulation/SI_llm_simulation.qmd  # LLM benchmark
+```
+
+The filter step requires Vertex AI (see [LLM simulation](#llm-simulation)) and can be skipped since the filtered data is already committed. Run `make help` to see all available targets.
 
 ### Pipeline steps
 
@@ -127,6 +134,12 @@ Quarto notebooks are run separately (see [Notebooks for the registered report](#
 ### Processing new data
 
 Raw Empirica exports land in `experiment/data/` via `empirica export` or the backup script.
+
+```bash
+make all    # extract zips → combine → process → render
+```
+
+Or step by step:
 
 ```bash
 # 1. Extract each zip (unzip, anonymize, extract bonuses)
