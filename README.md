@@ -27,7 +27,7 @@ In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups
 │   ├── pilots/               # Canonical pilot dataset (committed)
 │   │   ├── raw/              #   Anonymized Empirica CSVs
 │   │   └── *.csv             #   Preprocessed analysis-ready CSVs
-│   └── pilot_runs/           # Per-run outputs from process_data.py (gitignored)
+│   └── pilot_runs/           # Per-run outputs from extract_run.py (gitignored)
 ├── analysis/                 # Analysis code & outputs
 │   ├── extract_run.py        # Extract Empirica export zip → data/pilot_runs/
 │   ├── combine_runs.py       # Stack raw CSVs from multiple runs → data/pilots/raw/
@@ -100,11 +100,9 @@ See [`experiment/README.md`](experiment/README.md) for details on test architect
 
 ### Reproducing pilot results
 
-The preprocessed pilot data (including filtered utterances) is committed in `data/pilots/`. Two commands reproduce all analyses:
+The preprocessed pilot data (including filtered utterances) is committed in `data/pilots/`. After installing dependencies (see [Setup](#setup)), two commands reproduce all analyses:
 
 ```bash
-uv sync                                                             # Python deps
-# In R: renv::restore()                                             # R deps
 uv run python analysis/compute_derived.py data/pilots/ \
   -o analysis/pilot_derived/                                        # embeddings + derived metrics
 quarto render analysis/SI_pilot.qmd                                 # pilot analyses → figures + stats
@@ -115,9 +113,9 @@ quarto render analysis/SI_pilot.qmd                                 # pilot anal
 Three scripts, run in order:
 
 ```
-1. extract_run.py <zip>           → data/pilot_runs/{timestamp}/raw/   (anonymized CSVs + bonuses)
-2. combine_runs.py <runs> → data/pilots/raw/                   (stack multiple runs)
-3. process_data.py                → data/pilots/*.csv                  (preprocess)
+1. extract_run.py <zip>       → data/pilot_runs/{timestamp}/raw/  (anonymized CSVs + bonuses)
+2. combine_runs.py <runs>     → data/pilots/raw/                  (stack multiple runs)
+3. process_data.py            → data/pilots/*.csv                 (preprocess)
                                   → data/pilots/*_filtered.csv         (filter non-referential)
                                   → analysis/pilot_derived/            (embeddings, similarities, UMAP)
 ```
@@ -130,7 +128,7 @@ Step 3 (`process_data.py`) runs these sub-steps in order:
 | Filter | `filter_nonreferential.py` | `data/pilots/speaker_utterances_filtered.csv` (requires Vertex AI; skip with `--skip-filter`) |
 | Derived metrics | `compute_derived.py` | `analysis/pilot_derived/` (skip with `--skip-derived`) |
 
-Quarto notebooks and animations are run separately (see [Notebooks](#notebooks) below).
+Quarto notebooks and animations are run separately (see [Notebooks for the registered report](#notebooks-for-the-registered-report) below).
 
 ### Directory layout
 
