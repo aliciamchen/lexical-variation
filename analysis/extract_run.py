@@ -46,6 +46,12 @@ RAW_CSV_FILES = [
 SENSITIVE_COLUMNS = [
     "participantIdentifier",
     "participantIdentifierLastChangedAt",
+    "prolificPid",
+    "prolificPidLastChangedAt",
+    "studyId",
+    "studyIdLastChangedAt",
+    "sessionId",
+    "sessionIdLastChangedAt",
     "urlParams",
     "urlParamsLastChangedAt",
 ]

@@ -129,7 +129,7 @@ There are three scripts that should be run in order. Each reads the previous scr
 
 | Script | Reads from | Writes to |
 |--------|-----------|-----------|
-| `extract_run.py <zip>` | Empirica export zip in `experiment/data/` | `data/pilot_runs/{timestamp}/raw/` + `bonuses.csv` |
+| `extract_run.py <zip>` | Empirica export zip in `experiment/data/` | `data/pilot_runs/{timestamp}/raw/` + `bonuses.csv`. Strips Prolific IDs and other PII from player.csv. |
 | `combine_runs.py <runs>` | `data/pilot_runs/*/raw/` | `data/pilots/raw/` + `manifest.json` |
 | `process_data.py` | `data/pilots/raw/` | `data/pilots/*.csv` + `analysis/pilot_derived/` |
 | ↳ `preprocessing.py` | `data/pilots/raw/` | `data/pilots/*.csv` |
@@ -209,7 +209,7 @@ cd analysis/llm_simulation && quarto render SI_llm_simulation.qmd
 
 ## Power analysis
 
-Sample size justification using simulated data from Boyce et al. (2023). Lives in `analysis/power_analysis/`.
+Sample size justification using simulated data from Boyce et al. (2023). This is in `analysis/power_analysis/`.
 
 ```bash
 quarto render analysis/power_analysis/power_analysis_setup.Qmd    # generate simulated data
