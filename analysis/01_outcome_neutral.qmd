@@ -173,7 +173,7 @@ if (has_adjacent) {
   summary(m_adjacent)
   report_effect_sizes(m_adjacent)
 } else {
-  cat("Skipping: adjacent_similarities.csv not found. Run compute_embeddings.py first.\n")
+  cat("Skipping: adjacent_similarities.csv not found. Run compute_derived.py first.\n")
 }
 ```
 
@@ -212,7 +212,7 @@ if (has_adjacent && exists("p1_adjacent_valid")) {
 source(here::here("analysis", "group_specificity.R"))
 
 if (!has_pairwise) {
-  cat("Skipping: pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
+  cat("Skipping: pairwise_similarities.csv not found. Run compute_derived.py first.\n")
 } else {
 # Use Phase 1 final pairwise similarities
 p1_pairwise <- pairwise_sim |> filter(window == "phase1_final")

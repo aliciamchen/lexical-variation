@@ -15,11 +15,7 @@ library(lmerTest)
 library(tidyboot)
 source(here::here("analysis", "config.R"))
 
-# Override paths: pilot notebook reads from pilot data, saves to pilot figures
-data_dir <- here("data", "pilots")
-derived_dir <- here("analysis", "pilot_derived")
-figures_dir <- here("analysis", "pilot_outputs")
-dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
+# config.R already points data_dir at data/pilots and derived_dir at pilot_derived
 
 # Re-resolve utterances file for the pilot data dir
 utterances_file <- if (file.exists(file.path(data_dir, "speaker_utterances_filtered.csv"))) {
@@ -959,7 +955,7 @@ Descriptive preview of the H3c measures comparing `social_mixed` vs
 task leads to descriptions that are less concrete, more lexically unique, and
 use lower-frequency vocabulary.
 
-All three measures are precomputed in Python (`compute_embeddings.py`) with
+All three measures are precomputed in Python (`compute_derived.py`) with
 consistent tokenization: each utterance is lowercased, split into alphabetic
 sequences, filtered for standard English stopwords, and only tokens with
 length > 1 are retained as *content words*.
@@ -981,7 +977,7 @@ to verify the H3c analysis pipeline and give a qualitative sense of the patterns
 
 ```{r si-prep-h3c-data}
 # All three H3c measures are precomputed in Python with consistent tokenization
-# (same stopwords and content-word extraction). See compute_embeddings.py.
+# (same stopwords and content-word extraction). See compute_derived.py.
 has_desc_props <- file.exists(file.path(derived_dir, "description_properties.csv"))
 has_lex_uniq <- file.exists(file.path(derived_dir, "lexical_uniqueness.csv"))
 

@@ -23,7 +23,7 @@ library(tidyboot)
 LLM_COLOR <- "#7B68AE"
 
 # Override figures_dir for LLM outputs
-figures_dir <- here::here("analysis", "llm_baseline_outputs")
+figures_dir <- here::here("analysis", "llm_plots")
 dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
 
 # -- Find results directory (most recent llm_results_*) --

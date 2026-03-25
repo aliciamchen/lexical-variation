@@ -35,7 +35,7 @@ Higher similarity = less semantic change.
 
 ```{r model-semantic-change}
 if (!has_phase_change || nrow(phase_change) == 0) {
-  cat("Skipping: phase_change_similarities.csv not found. Run compute_embeddings.py first.\n")
+  cat("Skipping: phase_change_similarities.csv not found. Run compute_derived.py first.\n")
 } else {
 phase_change <- phase_change |>
   mutate(condition = factor(condition, levels = CONDITION_ORDER))
@@ -304,7 +304,7 @@ Does maintaining group-specific language correlate with social identification ac
 
 ```{r model-gs-social}
 if (!has_pairwise || nrow(pairwise_sim) == 0) {
-  cat("Skipping: pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
+  cat("Skipping: pairwise_similarities.csv not found. Run compute_derived.py first.\n")
 } else if (nrow(social_guesses) > 0) {
   # Compute mean social accuracy per game
   social_acc_by_game <- social_guesses |>

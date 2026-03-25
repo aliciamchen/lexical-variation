@@ -11,11 +11,10 @@ library(here)
 
 # ── Paths ────────────────────────────────────────────────────
 
-data_dir <- here("analysis", "processed_data")
+data_dir <- here("data", "pilots")
 derived_dir <- here("analysis", "pilot_derived")
-figures_dir <- here("analysis", "figures")
+figures_dir <- here("analysis", "pilot_plots")
 dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
-dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
 
 # Prefer filtered utterances when available
 utterances_file <- if (file.exists(file.path(data_dir, "speaker_utterances_filtered.csv"))) {
@@ -127,6 +126,7 @@ report_effect_sizes <- function(model) {
 }
 
 save_fig <- function(p, filename, width = 8, height = 5, dpi = 150) {
+  dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
   path <- file.path(figures_dir, filename)
   if (grepl("\\.pdf$", filename)) {
     ggsave(path, p, width = width, height = height, device = cairo_pdf)

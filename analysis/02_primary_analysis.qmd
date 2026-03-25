@@ -21,7 +21,7 @@ social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_t
 
 has_pairwise <- file.exists(file.path(derived_dir, "pairwise_similarities.csv"))
 if (!has_pairwise) {
-  cat("WARNING: pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
+  cat("WARNING: pairwise_similarities.csv not found. Run compute_derived.py first.\n")
   cat("Most analyses in this notebook will be skipped.\n")
   pairwise_sim <- tibble()
 } else {
@@ -378,7 +378,7 @@ restricted to Phase 1, within-group pairs, social conditions only.
 
 ```{r h3b-convergence}
 if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
-  cat("Skipping H3b: block_pairwise_similarities.csv not found. Run compute_embeddings.py first.\n")
+  cat("Skipping H3b: block_pairwise_similarities.csv not found. Run compute_derived.py first.\n")
 } else {
   # Filter to Phase 1, within-group pairs, social conditions
   p1_within_social <- block_pairwise_sim |>
@@ -454,7 +454,7 @@ if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
 Compare concreteness, lexical uniqueness, and word frequency of final Phase 1
 descriptions between `social_mixed` and `social_first`.
 
-All three measures are precomputed in Python (`compute_embeddings.py`) with
+All three measures are precomputed in Python (`compute_derived.py`) with
 consistent tokenization: each utterance is lowercased, split into alphabetic
 sequences, filtered for standard English stopwords, and only tokens with
 length > 1 are retained as *content words*.

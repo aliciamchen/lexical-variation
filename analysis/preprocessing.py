@@ -55,6 +55,9 @@ def build_games(game_df: pd.DataFrame) -> pd.DataFrame:
         "phase2Blocks",
     ]
 
+    # Normalize condition names
+    games["condition"] = games["condition"].replace({"exp2_social_goal": "social_first"})
+
     # Parse activeGroups from JSON list string
     games["activeGroups"] = games["activeGroups"].apply(
         lambda x: len(parse_json_field(x)) if parse_json_field(x) else None

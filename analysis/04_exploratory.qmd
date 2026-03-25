@@ -206,7 +206,7 @@ if (has_umap) {
     scale_color_group() +
     theme(legend.position = "bottom")
 } else {
-  cat("No UMAP projections file found. Run compute_embeddings.py first.\n")
+  cat("No UMAP projections file found. Run compute_derived.py first.\n")
 }
 ```
 

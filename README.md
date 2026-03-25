@@ -16,20 +16,23 @@ In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups
 │   ├── shared/               # Shared constants (timing, scoring)
 │   ├── tests/                # Playwright end-to-end tests
 │   └── .empirica/            # Treatments, lobbies, config
-├── analysis/                 # Data processing & analysis
-│   ├── run_pipeline.py       # Main entry point for data processing
-│   ├── 00_preprocess.qmd     # Load & validate preprocessed data
-│   ├── 01_outcome_neutral.qmd # Outcome-neutral criteria (convention formation)
-│   ├── 02_primary_analysis.qmd # Primary analyses (H1 & H2)
-│   ├── 03_secondary_analysis.qmd # Secondary analyses
-│   ├── 04_exploratory.qmd    # Exploratory analyses
-│   ├── 05_exit_survey.qmd    # Exit survey responses
-│   ├── SI_pilot.qmd          # SI: pilot data analyses
-│   ├── compute_embeddings.py # SBERT embeddings & similarity metrics
+├── data/
+│   ├── pilots/               # Canonical pilot dataset (committed)
+│   │   ├── raw/              #   Anonymized Empirica CSVs
+│   │   └── *.csv             #   Preprocessed analysis-ready CSVs
+│   └── pilot_runs/           # Per-run outputs from run_pipeline.py (gitignored)
+├── analysis/                 # Analysis code & outputs
+│   ├── extract_run.py        # Extract Empirica export zip → data/pilot_runs/
+│   ├── run_pipeline.py       # Combine runs + run pipeline (preprocess → filter → derive)
+│   ├── preprocessing.py      # Raw Empirica CSVs → analysis-ready CSVs
+│   ├── compute_derived.py    # SBERT embeddings, similarities, UMAP, description properties
 │   ├── filter_nonreferential.py # LLM-based message classifier
-│   └── llm_simulation/       # LLM Phase 1 benchmark simulation
-├── data/                     # Preprocessed datasets (committed)
-│   └── pilots/               # Pilot data (4 games, 1 per condition)
+│   ├── 00–05_*.qmd           # Pre-registered analysis notebooks
+│   ├── SI_pilot.qmd          # SI: pilot data analyses
+│   ├── pilot_derived/        # Computed outputs (similarities, embeddings, UMAP)
+│   ├── pilot_plots/          # SI figures from SI_pilot.qmd
+│   ├── llm_simulation/       # LLM Phase 1 benchmark simulation
+│   └── llm_plots/            # SI figures from SI_llm_simulation.qmd
 ├── paper/                    # LaTeX manuscript (gitignored; synced via Overleaf)
 │   └── stats/                # Auto-generated stats from notebooks
 └── figures/                  # Design assets (tangrams, avatars)
@@ -86,67 +89,100 @@ See [`experiment/README.md`](experiment/README.md) for details on test architect
 
 ## Analysis pipeline
 
-To reproduce the analyses from the pilot data:
+### Reproducing pilot results
+
+The preprocessed pilot data (including filtered utterances) is committed in `data/pilots/`. Two commands reproduce all analyses:
 
 ```bash
-uv sync                                    # install Python deps
-# In R: renv::restore()                    # install R deps
-uv run python analysis/compute_embeddings.py data/pilots/ -o analysis/pilot_derived/  # SBERT embeddings
-quarto render analysis/SI_pilot.qmd        # pilot analyses
-quarto render analysis/llm_simulation/SI_llm_simulation.qmd # LLM benchmark
+uv sync                                                             # Python deps
+# In R: renv::restore()                                             # R deps
+uv run python analysis/compute_derived.py data/pilots/ \
+  -o analysis/pilot_derived/                                        # embeddings + derived metrics
+quarto render analysis/SI_pilot.qmd                                 # pilot analyses → figures + stats
 ```
 
-`analysis/run_pipeline.py` is the single entry point for all data processing:
+### Pipeline steps
+
+Three scripts, run in order:
+
+```
+1. extract_run.py <zip>           → data/pilot_runs/{timestamp}/raw/   (anonymized CSVs + bonuses)
+2. run_pipeline.py combine <runs> → data/pilots/raw/                   (stack multiple runs)
+3. run_pipeline.py                → data/pilots/*.csv                  (preprocess)
+                                  → data/pilots/*_filtered.csv         (filter non-referential)
+                                  → analysis/pilot_derived/            (embeddings, similarities, UMAP)
+```
+
+Step 3 (`run_pipeline.py`) runs these sub-steps in order:
+
+| Step | Script | Output |
+|------|--------|--------|
+| Preprocess | `preprocessing.py` | `data/pilots/*.csv` |
+| Filter | `filter_nonreferential.py` | `data/pilots/speaker_utterances_filtered.csv` (requires Vertex AI; skip with `--skip-filter`) |
+| Derived metrics | `compute_derived.py` | `analysis/pilot_derived/` (skip with `--skip-derived`) |
+
+Quarto notebooks and animations are run separately (see [Notebooks](#notebooks) below).
+
+### Directory layout
+
+| Directory | Contents | Committed? |
+|-----------|----------|------------|
+| `data/pilots/raw/` | Anonymized raw Empirica CSVs (10 files) | Yes |
+| `data/pilots/` | Preprocessed analysis-ready CSVs (games, players, trials, messages, etc.) | Yes |
+| `data/pilot_runs/` | Per-run extracted outputs (raw CSVs, bonuses) | No (gitignored) |
+| `analysis/pilot_derived/` | Computed outputs: embeddings, pairwise similarities, UMAP, RDS caches | Yes |
+| `analysis/pilot_plots/` | SI PDF figures from `SI_pilot.qmd` | Yes |
+| `analysis/llm_plots/` | SI PDF figures from `SI_llm_simulation.qmd` | Yes |
+
+### Processing new data
+
+Raw Empirica exports land in `experiment/data/` via `empirica export` or the backup script.
 
 ```bash
-# Back up production data
-cd experiment && bash copy_tajriba.sh --once
+# 1. Extract each zip (unzip, anonymize, extract bonuses)
+uv run python analysis/extract_run.py experiment/data/20260301_132907/empirica-export-20260301_132907.zip
+uv run python analysis/extract_run.py experiment/data/20260301_214147/empirica-export-20260301_214147.zip
 
-# Process a single export zip (most recent)
-uv run python analysis/run_pipeline.py
-
-# Combine multiple runs into one dataset
+# 2. Combine runs (stack raw CSVs into data/pilots/raw/)
 uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147
 
-# Skip slow steps
-uv run python analysis/run_pipeline.py --skip-embeddings --skip-visualize --skip-render
+# 3. Run the pipeline (preprocess → filter → derived metrics)
+uv run python analysis/run_pipeline.py --skip-filter    # if no Vertex AI
 
-# Browse past runs
+# 4. Render notebooks (separate step)
+quarto render analysis/SI_pilot.qmd
+
+# Browse extracted runs
 uv run python analysis/run_pipeline.py list
 uv run python analysis/run_pipeline.py bonuses
 ```
 
-Output goes to `analysis/{datetime}/` (single run) or split across `data/pilots/` (raw + preprocessed CSVs), `analysis/pilot_derived/` (computed outputs: embeddings, similarities, etc.), and `analysis/pilots/` (figures, manifest). The `analysis/processed_data` symlink points to the active dataset.
+### Notebooks
 
-### Rendering notebooks
+| Notebook | Purpose | Reads from |
+|----------|---------|------------|
+| `00_preprocess.qmd` | Load & validate data | `data/pilots/` |
+| `01_outcome_neutral.qmd` | Convention formation criteria | `data/pilots/` + `pilot_derived/` |
+| `02_primary_analysis.qmd` | H1 & H2 hypotheses | `data/pilots/` + `pilot_derived/` |
+| `03_secondary_analysis.qmd` | Secondary analyses | `data/pilots/` + `pilot_derived/` |
+| `04_exploratory.qmd` | Exploratory analyses | `data/pilots/` + `pilot_derived/` |
+| `05_exit_survey.qmd` | Exit survey responses | `data/pilots/` |
+| `SI_pilot.qmd` | SI pilot data (figures + stats) | `data/pilots/` + `pilot_derived/` |
 
-Quarto notebooks (`00_preprocess.qmd` through `05_exit_survey.qmd`) read source data from `analysis/processed_data/` (a symlink updated by `run_pipeline.py`) and computed outputs from `analysis/pilot_derived/`.
+### Stats and figures → manuscript
 
-```bash
-quarto render analysis/SI_pilot.qmd
-quarto render analysis/02_primary_analysis.qmd
-```
-
-### Stats → manuscript
-
-Analysis notebooks write statistics as `\newcommand` definitions to `paper/stats/*.tex`, which are `\input`'d by the manuscript (`paper/main.tex`). This keeps numbers in the paper in sync with the analysis code.
+Notebooks write `\newcommand` definitions to `paper/stats/*.tex`, which the manuscript `\input`s to keep numbers in sync.
 
 | Notebook | Generates |
 |----------|-----------|
-| `analysis/SI_pilot.qmd` | `paper/stats/pilot.tex` |
-| `analysis/llm_simulation/SI_llm_simulation.qmd` | `paper/stats/llm.tex` |
+| `SI_pilot.qmd` | `paper/stats/pilot.tex` |
+| `llm_simulation/SI_llm_simulation.qmd` | `paper/stats/llm.tex` |
 
-Re-render the relevant notebook to update the stats files after any data or analysis changes.
-
-### Figures → manuscript
-
-Analysis notebooks save plots to `analysis/pilot_outputs/` and `analysis/llm_baseline_outputs/`. The manuscript references these from `paper/figures/`. To sync before pushing to Overleaf:
+Figures are saved to `analysis/pilot_plots/` and `analysis/llm_plots/`. Sync to the paper before pushing to Overleaf:
 
 ```bash
-bash paper/sync_figures.sh
+bash paper/sync_figures.sh   # copies SI_*.pdf into paper/figures/
 ```
-
-This copies all `SI_*.pdf` files into `paper/figures/` so Overleaf can find them (Overleaf doesn't support paths outside the project root).
 
 ## LLM tools
 
@@ -168,22 +204,3 @@ uv run python analysis/llm_simulation/process_llm_results.py
 cd analysis/llm_simulation && quarto render SI_llm_simulation.qmd
 ```
 
-### Non-referential message filter
-
-Classifies speaker messages as referential vs non-referential (e.g., "thanks", "good job") for filtering before SBERT analysis. Target: 95% agreement with human labels.
-
-```bash
-# Classify + filter
-uv run python analysis/filter_nonreferential.py classify --data-dir data/pilots/
-uv run python analysis/filter_nonreferential.py apply --data-dir data/pilots/
-
-# Or as part of the full pipeline
-uv run python analysis/run_pipeline.py --filter-messages
-
-# Validation workflow
-uv run python analysis/filter_nonreferential.py sample --data-dir data/pilots/ --n 200
-# ... manually label annotation_sample.csv -> human_labels.csv ...
-uv run python analysis/filter_nonreferential.py validate --data-dir data/pilots/ --labels data/pilots/human_labels.csv
-```
-
-Once `speaker_utterances_filtered.csv` exists in the data directory, all downstream analysis (embeddings, Quarto notebooks, plots) automatically uses it instead of the unfiltered version.

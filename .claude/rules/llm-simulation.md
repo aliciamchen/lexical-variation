@@ -68,7 +68,7 @@ uv run python analysis/run_pipeline.py --filter-messages
 Output: `messages_classified.csv` (with `is_referential` column) and `speaker_utterances_filtered.csv` (non-referential messages removed before concatenation).
 
 **Filtered data is used by default.** When `speaker_utterances_filtered.csv` exists in the data directory, all downstream analysis automatically uses it:
-- `compute_embeddings.py` prefers filtered file (override with `--utterances-file speaker_utterances.csv`)
+- `compute_derived.py` prefers filtered file (override with `--utterances-file speaker_utterances.csv`)
 - `pilot_analysis.py` prefers filtered file
 - All Quarto notebooks (`00`–`04`, `SI_pilot`) use the `utterances_file` variable from `config.R`, which resolves to filtered when present
 - The `config.R` variable `utterances_file` controls which file the R notebooks load

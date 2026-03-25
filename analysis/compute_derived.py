@@ -1,11 +1,12 @@
 """
-Compute SBERT embeddings and similarity metrics for speaker utterances.
+Compute derived metrics from speaker utterances.
 
-Loads speaker_utterances.csv, computes sentence embeddings using
-paraphrase-MiniLM-L12-v2, and produces similarity CSVs.
+Produces SBERT embeddings, similarity metrics (adjacent, pairwise, block,
+phase-change), term retention/dominance, description properties, lexical
+uniqueness, UMAP projections, and other derived CSVs.
 
 Usage:
-    uv run python analysis/compute_embeddings.py analysis/processed_data/ --output analysis/processed_data/
+    uv run python analysis/compute_derived.py data/pilots/ --output analysis/pilot_derived/
 """
 
 import argparse
