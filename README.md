@@ -3,7 +3,6 @@
 - [Repository structure](#repository-structure)
 - [Setup](#setup)
 - [Running the experiment](#running-the-experiment)
-- [Testing](#testing)
 - [Analysis pipeline](#analysis-pipeline)
 - [LLM simulation](#llm-simulation)
 
@@ -43,7 +42,7 @@ In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups
 │   ├── pilot_plots/          # SI figures from SI_pilot.qmd
 │   ├── llm_plots/            # SI figures from SI_llm_simulation.qmd
 │   └── ...                   # Tangrams, avatars, etc.
-├── paper/                    # LaTeX manuscript (gitignored; synced via Overleaf)
+├── paper/                    # Manuscript (gitignored; synced via Overleaf)
 │   └── stats/                # Auto-generated stats from notebooks
 ```
 
@@ -85,7 +84,7 @@ empirica
 - Admin: http://localhost:3000/admin
 - Players: http://localhost:3000/
 
-## Testing
+### Testing
 
 ```bash
 cd experiment
@@ -116,9 +115,9 @@ quarto render analysis/llm_simulation/SI_llm_simulation.qmd  # LLM benchmark
 
 The filter step requires Vertex AI (see [LLM simulation](#llm-simulation)) and can be skipped since the filtered data is already committed. Run `make help` to see all available targets.
 
-### Pipeline steps
+### Data processing scripts
 
-Three scripts, run in order. Each reads the previous script's output:
+There are three scripts that should be run in order. Each reads the previous script's output:
 
 | Script | Reads from | Writes to |
 |--------|-----------|-----------|
@@ -129,14 +128,12 @@ Three scripts, run in order. Each reads the previous script's output:
 | ↳ `filter_nonreferential.py` | `data/pilots/messages.csv` | `data/pilots/speaker_utterances_filtered.csv` (requires Vertex AI; `--skip-filter`) |
 | ↳ `compute_derived.py` | `data/pilots/*.csv` | `analysis/pilot_derived/` (`--skip-derived`) |
 
-Quarto notebooks are run separately (see [Notebooks for the registered report](#notebooks-for-the-registered-report) below).
-
 ### Processing new data
 
 Raw Empirica exports land in `experiment/data/` via `empirica export` or the backup script.
 
 ```bash
-make all    # extract zips → combine → process → render
+make all    # extract zips → combine → process → render notebooks
 ```
 
 Or step by step:
