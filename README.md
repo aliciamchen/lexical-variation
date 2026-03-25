@@ -155,7 +155,7 @@ uv run python analysis/process_data.py
 
 ### Notebooks for the registered report
 
-These produce the figures and stats for the manuscript. Run after the pipeline:
+These produce the figures and stats for the manuscript. Run after the process data pipeline:
 
 ```bash
 quarto render analysis/SI_pilot.qmd                              # pilot analyses
@@ -201,4 +201,3 @@ bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 20 --temperature
 uv run python analysis/llm_simulation/process_llm_results.py
 cd analysis/llm_simulation && quarto render SI_llm_simulation.qmd
 ```
-

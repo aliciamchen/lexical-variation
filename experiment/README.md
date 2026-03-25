@@ -19,7 +19,9 @@ empirica
 - Admin: http://localhost:3000/admin
 - Players: http://localhost:3000/
 
-Click "New Batch" in admin, select a treatment, then open 9 player tabs and click "New Player" in each.
+Click "New Batch" in admin, select a treatment, then open 9 player tabs. Each player goes through consent → identifier → instructions → quiz before entering the lobby.
+
+Treatments (4 between-subjects conditions): `refer_separated`, `refer_mixed`, `social_mixed`, `social_first`.
 
 ## Production deployment
 
@@ -69,7 +71,7 @@ bash experiment/open_players.sh clean  # remove temp profiles
 
 ## Copying data locally
 
-The `copy_tajriba.sh` script SSHs into the production server, runs `empirica export` to produce a CSV zip, and copies it into `data/<timestamp>/`. Safe to run while the experiment is live.
+The `copy_tajriba.sh` script SSHs into the production server, runs `empirica export` to produce a CSV zip, and copies it into `experiment/data/<timestamp>/`. Safe to run while the experiment is live. To process the exported zip, run `analysis/extract_run.py`.
 
 ```bash
 cd experiment
@@ -93,7 +95,7 @@ During pilot sessions, keep the Sentry dashboard open to watch for client errors
 
 ## Playwright tests
 
-46 spec files across 12 categories covering all 3 conditions, idle detection, group viability, UI, timing, and more. The Empirica server is managed automatically by the test framework.
+48 spec files across 12 categories covering all 4 conditions, idle detection, group viability, UI, timing, and more. The Empirica server is managed automatically by the test framework.
 
 ### Setup
 
