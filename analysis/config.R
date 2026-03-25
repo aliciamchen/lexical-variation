@@ -13,7 +13,7 @@ library(here)
 
 data_dir <- here("data", "pilots")
 derived_dir <- here("analysis", "pilot_derived")
-figures_dir <- here("analysis", "pilot_plots")
+figures_dir <- here("figures", "pilot_plots")
 dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
 
 # Prefer filtered utterances when available

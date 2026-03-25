@@ -34,15 +34,16 @@ In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups
 │   ├── preprocessing.py      # Raw Empirica CSVs → analysis-ready CSVs
 │   ├── compute_derived.py    # SBERT embeddings, similarities, UMAP, description properties
 │   ├── filter_nonreferential.py # LLM-based message classifier
-│   ├── 00–05_*.qmd           # Pre-registered analysis notebooks
+│   ├── 00–05_*.qmd           # Pre-registered analysis notebooks (full sample)
 │   ├── SI_pilot.qmd          # SI: pilot data analyses
 │   ├── pilot_derived/        # Computed outputs (similarities, embeddings, UMAP)
+│   └── llm_simulation/       # LLM Phase 1 benchmark simulation
+├── figures/                  # Generated & design assets
 │   ├── pilot_plots/          # SI figures from SI_pilot.qmd
-│   ├── llm_simulation/       # LLM Phase 1 benchmark simulation
-│   └── llm_plots/            # SI figures from SI_llm_simulation.qmd
+│   ├── llm_plots/            # SI figures from SI_llm_simulation.qmd
+│   └── ...                   # Tangrams, avatars, etc.
 ├── paper/                    # LaTeX manuscript (gitignored; synced via Overleaf)
 │   └── stats/                # Auto-generated stats from notebooks
-└── figures/                  # Design assets (tangrams, avatars)
 ```
 
 ## Setup
@@ -138,8 +139,8 @@ Quarto notebooks and animations are run separately (see [Notebooks](#notebooks) 
 | `data/pilots/` | Preprocessed analysis-ready CSVs (games, players, trials, messages, etc.) | Yes |
 | `data/pilot_runs/` | Per-run extracted outputs (raw CSVs, bonuses) | No (gitignored) |
 | `analysis/pilot_derived/` | Computed outputs: embeddings, pairwise similarities, UMAP, RDS caches | Yes |
-| `analysis/pilot_plots/` | SI PDF figures from `SI_pilot.qmd` | Yes |
-| `analysis/llm_plots/` | SI PDF figures from `SI_llm_simulation.qmd` | Yes |
+| `figures/pilot_plots/` | SI PDF figures from `SI_pilot.qmd` | Yes |
+| `figures/llm_plots/` | SI PDF figures from `SI_llm_simulation.qmd` | Yes |
 
 ### Processing new data
 
@@ -175,8 +176,8 @@ quarto render analysis/llm_simulation/SI_llm_simulation.qmd      # LLM benchmark
 
 | Notebook | Generates | Output |
 |----------|-----------|--------|
-| `SI_pilot.qmd` | Pilot data analyses | `analysis/pilot_plots/` + `paper/stats/pilot.tex` |
-| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark | `analysis/llm_plots/` + `paper/stats/llm.tex` |
+| `SI_pilot.qmd` | Pilot data analyses | `figures/pilot_plots/` + `paper/stats/pilot.tex` |
+| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark | `figures/llm_plots/` + `paper/stats/llm.tex` |
 
 Stats are written as `\newcommand` definitions to `paper/stats/*.tex`, which the manuscript `\input`s. Sync figures to the paper before pushing to Overleaf:
 

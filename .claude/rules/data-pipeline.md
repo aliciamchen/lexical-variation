@@ -18,8 +18,8 @@ paths:
 | `data/pilots/manifest.json` | Provenance: which runs were combined | Yes |
 | `data/pilot_runs/{timestamp}/` | Per-run pipeline outputs (raw/, data/, derived/, bonuses.csv) | No (gitignored) |
 | `analysis/pilot_derived/` | Computed outputs from `compute_derived.py`: embeddings, similarities, UMAP, RDS caches | Yes |
-| `analysis/pilot_plots/` | SI PDF figures from `SI_pilot.qmd` | Yes |
-| `analysis/llm_plots/` | SI PDF figures from `SI_llm_simulation.qmd` | Yes |
+| `figures/pilot_plots/` | SI PDF figures from `SI_pilot.qmd` | Yes |
+| `figures/llm_plots/` | SI PDF figures from `SI_llm_simulation.qmd` | Yes |
 
 ## Data
 
@@ -100,7 +100,7 @@ uv run python analysis/run_pipeline.py bonuses --run 20260225_210047      # spec
 
 ```bash
 uv run python analysis/compute_derived.py data/pilots/ --output analysis/pilot_derived/
-uv run python analysis/animate_umap.py --data-dir data/pilots/ --umap-dir analysis/pilot_derived/ --output-dir analysis/pilot_plots/
+uv run python analysis/animate_umap.py --data-dir data/pilots/ --umap-dir analysis/pilot_derived/ --output-dir figures/pilot_plots/
 uv run pytest analysis/test_data_integrity.py -v
 ```
 
@@ -112,8 +112,8 @@ All notebooks read source data from `data/pilots/` and computed outputs from `an
 
 | Notebook | Generates |
 |----------|-----------|
-| `SI_pilot.qmd` | Pilot data analyses → `analysis/pilot_plots/` + `paper/stats/pilot.tex` |
-| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark → `analysis/llm_plots/` + `paper/stats/llm.tex` |
+| `SI_pilot.qmd` | Pilot data analyses → `figures/pilot_plots/` + `paper/stats/pilot.tex` |
+| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark → `figures/llm_plots/` + `paper/stats/llm.tex` |
 
 **For the full sample** (not yet active — paths in `config.R` will need to point at full sample data):
 
@@ -136,7 +136,7 @@ After re-rendering a notebook, commit the updated `paper/stats/*.tex` file so th
 
 ## Figures → manuscript
 
-Figures are generated in `analysis/pilot_plots/` and `analysis/llm_plots/`. The manuscript references them from `figures/` (relative to `paper/`). Run the sync script to copy them:
+Figures are generated in `figures/pilot_plots/` and `figures/llm_plots/`. The manuscript references them from `figures/` (relative to `paper/`). Run the sync script to copy them:
 
 ```bash
 bash paper/sync_figures.sh
