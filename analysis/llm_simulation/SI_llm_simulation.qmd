@@ -392,18 +392,16 @@ if (!is.null(p_sim2)) {
   p_combined <- p_wc2 + p_acc2 + p_sim2 +
     plot_layout(guides = "collect") +
     plot_annotation(tag_levels = "a") &
-    theme(plot.tag = element_text(face = "bold", size = 20),
-          legend.position = "bottom",
-          legend.text = element_text(size = 16),
-          legend.key.size = unit(1.2, "cm"))
+    (TAG_THEME + theme(legend.position = "bottom",
+                       legend.text = element_text(size = 16),
+                       legend.key.size = unit(1.2, "cm")))
 } else {
   p_combined <- p_wc2 + p_acc2 +
     plot_layout(guides = "collect") +
     plot_annotation(tag_levels = "a") &
-    theme(plot.tag = element_text(face = "bold", size = 20),
-          legend.position = "bottom",
-          legend.text = element_text(size = 16),
-          legend.key.size = unit(1.2, "cm"))
+    (TAG_THEME + theme(legend.position = "bottom",
+                       legend.text = element_text(size = 16),
+                       legend.key.size = unit(1.2, "cm")))
 }
 
 p_combined

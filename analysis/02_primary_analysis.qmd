@@ -602,7 +602,7 @@ if (exists("p1_final_social") && "concreteness" %in% names(p1_final_social)) {
       title = "H3c: Description properties in final Phase 1 utterances",
       tag_levels = "a"
     ) &
-    theme(plot.tag = element_text(face = "bold", size = 20))
+    TAG_THEME
 
   print(fig_h3c)
 }

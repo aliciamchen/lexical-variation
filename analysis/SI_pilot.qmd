@@ -41,7 +41,7 @@ adjacent_sim <- if (has_adjacent) read_csv(file.path(data_dir, "adjacent_similar
 pairwise_sim <- if (has_pairwise) read_csv(file.path(data_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
 ```
 
-# 1. Sample Description
+# 1. Sample description
 
 ```{r sample-description}
 n_games <- nrow(games)
@@ -182,9 +182,9 @@ if (nrow(idle_players) > 0) {
 }
 ```
 
-# 2. Outcome-Neutral Criteria
+# 2. Outcome-neutral criteria
 
-## Prep data
+## Data preparation
 
 ```{r prep-data}
 # Phase 1 speaker utterances
@@ -230,7 +230,7 @@ if (has_adjacent) {
 }
 ```
 
-## 2a. Description Length Decreases
+## 2a. Description length decreases
 
 ```{r model-length}
 m_length <- lmer(
@@ -260,7 +260,7 @@ cat(sprintf("Last block: M = %.1f words (SD = %.1f)\n",
             mean(length_last), sd(length_last)))
 ```
 
-## 2b. Listener Accuracy Increases
+## 2b. Listener accuracy increases
 
 ```{r model-accuracy}
 m_accuracy <- lmer(
@@ -290,7 +290,7 @@ cat(sprintf("Last block accuracy: M = %.2f (SD = %.2f)\n",
 cat(sprintf("Chance level: %.4f (1/16)\n", 1/16))
 ```
 
-## 2c. Convention Stability Increases
+## 2c. Convention stability increases
 
 ```{r model-adjacent}
 if (has_adjacent) {
@@ -315,7 +315,7 @@ if (has_adjacent) {
 }
 ```
 
-## 2d. Group-Specificity Exceeds Chance
+## 2d. Group-specificity exceeds chance
 
 ```{r compute-group-specificity, warning=FALSE}
 source(here::here("analysis", "group_specificity.R"))
@@ -355,7 +355,9 @@ if (!has_pairwise) {
 }
 ```
 
-# 3. Combined Figure: Convention Formation (SI Figure 1)
+# 3. Figures
+
+## 3a. Convention formation (SI Figure 1)
 
 Three-panel figure showing description length, listener accuracy, and convention
 stability over Phase 1 blocks. Thin gray lines show per-group trajectories
@@ -369,7 +371,7 @@ the true game-level uncertainty. They are intended to show directional trends,
 not for inference. The per-group lines provide a more honest picture of
 variability across independent units.
 
-```{r si-fig-convention, fig.width=14, fig.height=4.5}
+```{r si-fig-convention-formation, fig.width=14, fig.height=4.5}
 library(patchwork)
 
 # Per-group means for spaghetti lines
@@ -382,7 +384,7 @@ length_by_block <- p1_utts |>
   group_by(blockNum) |>
   tidyboot_mean(uttLength, nboot = 1000)
 
-p_length <- ggplot(length_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
+p_conv_length <- ggplot(length_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
   geom_line(data = length_by_group,
             aes(x = blockNum + 1, y = mean_length, group = interaction(gameId, group)),
             color = "gray70", alpha = 0.5, linewidth = 0.4) +
@@ -404,7 +406,7 @@ acc_by_block <- p1_ref_accuracy |>
   group_by(blockNum) |>
   tidyboot_mean(ref_accuracy, nboot = 1000)
 
-p_accuracy <- ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
+p_conv_accuracy <- ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
   geom_line(data = acc_by_group,
             aes(x = blockNum + 1, y = mean_acc, group = interaction(gameId, group)),
             color = "gray70", alpha = 0.5, linewidth = 0.4) +
@@ -429,7 +431,7 @@ if (has_adjacent && exists("p1_adjacent")) {
     group_by(blockNum) |>
     tidyboot_mean(simAdjacent, nboot = 1000)
 
-  p_sim <- ggplot(sim_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
+  p_conv_stability <- ggplot(sim_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
     geom_line(data = sim_by_group,
               aes(x = blockNum + 1, y = mean_sim, group = interaction(gameId, group)),
               color = "gray70", alpha = 0.5, linewidth = 0.4) +
@@ -440,21 +442,21 @@ if (has_adjacent && exists("p1_adjacent")) {
     scale_x_continuous(breaks = 1:6, labels = as.integer, limits = c(1, 6)) +
     scale_y_continuous(limits = c(0, 1))
 
-  fig1 <- p_length + p_accuracy + p_sim +
+  fig_convention <- p_conv_length + p_conv_accuracy + p_conv_stability +
     plot_annotation(tag_levels = "a") &
-    theme(plot.tag = element_text(face = "bold", size = 20))
+    TAG_THEME
 } else {
-  fig1 <- p_length + p_accuracy +
+  fig_convention <- p_conv_length + p_conv_accuracy +
     plot_annotation(tag_levels = "a") &
-    theme(plot.tag = element_text(face = "bold", size = 20))
+    TAG_THEME
 }
 
-fig1
+fig_convention
 
-save_fig(fig1, "SI_convention_formation.pdf", width = 14, height = 4.5)
+save_fig(fig_convention, "SI_convention_formation.pdf", width = 14, height = 4.5)
 ```
 
-# 4. Permutation Test Figure (SI Figure 2)
+## 3b. Permutation test (SI Figure 2)
 
 For each pilot game, we test whether group-specificity exceeds chance using a
 permutation test. We fit a linear mixed-effects model predicting pairwise
@@ -469,7 +471,7 @@ p-value is the proportion of permuted coefficients that equal or exceed the
 observed value. We require ≥80% of games to show significant group-specificity
 (p < .05) to satisfy the outcome-neutral criterion.
 
-```{r si-fig-permutation, fig.width=12, fig.height=3}
+```{r si-fig-permutation-test, fig.width=12, fig.height=3}
 if (exists("perm_results") && nrow(perm_results) > 0) {
   perm_plot_data <- perm_results |>
     left_join(games |> select(gameId, condition), by = "gameId") |>
@@ -484,7 +486,7 @@ if (exists("perm_results") && nrow(perm_results) > 0) {
       sig_label = sprintf("p = %.3f", p_value),
     )
 
-  fig2 <- ggplot(perm_plot_data, aes(x = perm_coef)) +
+  fig_permutation <- ggplot(perm_plot_data, aes(x = perm_coef)) +
     geom_histogram(bins = 40, fill = "gray75", color = "white") +
     geom_vline(data = obs_labels,
                aes(xintercept = obs_coefficient),
@@ -498,12 +500,12 @@ if (exists("perm_results") && nrow(perm_results) > 0) {
       y = "Count",
     )
 
-  print(fig2)
-  save_fig(fig2, "SI_permutation_test.pdf", width = 12, height = 3)
+  print(fig_permutation)
+  save_fig(fig_permutation, "SI_permutation_test.pdf", width = 12, height = 3)
 }
 ```
 
-# 5. Group-Specificity Trajectory (SI Figure 3)
+## 3c. Group-specificity (SI Figure 3)
 
 Within- vs between-group similarity over all blocks, showing how group-specificity
 emerges in Phase 1 and evolves in Phase 2.
@@ -562,12 +564,10 @@ if (has_block_pw) {
     group_by(condition, block1, pair_type, target) |>
     summarise(mean_sim = mean(similarity, na.rm = TRUE), .groups = "drop")
 
-  fig3a <- ggplot(wb_summary, aes(x = block1, y = empirical_stat,
+  fig_within_between <- ggplot(wb_summary, aes(x = block1, y = empirical_stat,
                                    color = condition, fill = condition,
                                    linetype = pair_type, shape = pair_type)) +
-    annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
-             ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5) +
-    geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted") +
+    phase2_layers() +
     geom_point(data = wb_by_tangram,
                aes(x = block1, y = mean_sim, color = condition, shape = pair_type,
                    alpha = pair_type, group = pair_type),
@@ -591,7 +591,6 @@ if (has_block_pw) {
     scale_shape_manual(name = "Pair type",
                        values = c("Within group" = 17,
                                   "Between group" = 15)) +
-    scale_x_continuous(breaks = scales::breaks_width(1)) +
     labs(x = "Block", y = "Cosine similarity") +
     coord_cartesian(ylim = c(0, 1)) +
     theme(legend.position = "bottom",
@@ -628,11 +627,9 @@ if (has_block_pw) {
   spec_tangram_plot <- specificity_by_tangram |>
     mutate(condition = factor(condition, levels = CONDITION_ORDER))
 
-  fig3b <- ggplot(spec_summary, aes(x = block1, y = empirical_stat,
+  fig_specificity_trajectory <- ggplot(spec_summary, aes(x = block1, y = empirical_stat,
                                      color = condition, fill = condition)) +
-    annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
-             ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5) +
-    geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted") +
+    phase2_layers() +
     geom_hline(yintercept = 0, color = "gray", linetype = "dotted", alpha = 0.5) +
     geom_point(data = spec_tangram_plot,
                aes(x = block1, y = specificity, color = condition),
@@ -643,9 +640,8 @@ if (has_block_pw) {
                 color = NA, position = position_dodge(width = 0.3)) +
     geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
     geom_point(size = 2.5, position = position_dodge(width = 0.3)) +
-    scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
-    scale_fill_condition(labels = function(x) format_condition(x), name = "Condition") +
-    scale_x_continuous(breaks = scales::breaks_width(1), limits = c(1, NA)) +
+    scale_color_condition(name = "Condition") +
+    scale_fill_condition(name = "Condition") +
     coord_cartesian(ylim = c(-0.05, 0.85)) +
     labs(x = "Block",
          y = "Group specificity") +
@@ -653,7 +649,7 @@ if (has_block_pw) {
 }
 ```
 
-# 6. Phase 1 vs Phase 2 Comparisons (SI Figure 4)
+### Phase 1 vs Phase 2 comparison (SI Figure 4)
 
 These plots correspond directly to the paper's primary analyses, which compare
 the final three blocks of Phase 1 (baseline) to the final three blocks of
@@ -687,12 +683,12 @@ if (has_pairwise) {
       condition = factor(condition, levels = CONDITION_ORDER)
     )
 
-  fig4 <- ggplot(gs_by_window, aes(x = phase, y = coefficient,
+  fig_phase_comparison <- ggplot(gs_by_window, aes(x = phase, y = coefficient,
                                     color = condition)) +
     geom_line(aes(group = interaction(gameId, condition)), linewidth = 0.6, alpha = 0.6,
               position = position_dodge(width = 0.1)) +
     geom_point(size = 3, position = position_dodge(width = 0.1)) +
-    scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
+    scale_color_condition(name = "Condition") +
     coord_cartesian(ylim = c(-0.05, 0.85)) +
     labs(x = "Phase", y = "Group-specificity") +
     theme(legend.position = "none")
@@ -700,18 +696,15 @@ if (has_pairwise) {
 }
 ```
 
-```{r si-fig-group-specificity-combined, fig.width=12, fig.height=7.7}
-if (exists("fig3a") && exists("fig3b") && exists("fig4")) {
-  # Extract condition legend from fig3b
-  p_for_legend <- fig3b +
+```{r si-fig-specificity-combined, fig.width=12, fig.height=7.7}
+if (exists("fig_within_between") && exists("fig_specificity_trajectory") && exists("fig_phase_comparison")) {
+  # Extract condition legend from fig_specificity_trajectory
+  legend_grob <- extract_legend(fig_specificity_trajectory +
     theme(legend.position = "bottom",
           legend.text = element_text(size = 14),
           legend.title = element_text(size = 14),
           legend.key.size = unit(1, "cm"),
-          legend.box.margin = margin(t = -10))
-  legend_grob <- ggplotGrob(p_for_legend)$grobs[[
-    which(ggplotGrob(p_for_legend)$layout$name == "guide-box-bottom")
-  ]]
+          legend.box.margin = margin(t = -10)))
 
   design <- "
     AAAAAAAAAA
@@ -722,7 +715,7 @@ if (exists("fig3a") && exists("fig3b") && exists("fig4")) {
     DDDDDDDDDD
   "
 
-  fig_specificity_combined <- fig3a + fig3b + fig4 +
+  fig_specificity <- fig_within_between + fig_specificity_trajectory + fig_phase_comparison +
     wrap_elements(legend_grob) +
     plot_layout(design = design,
                 heights = c(0.63, 0.63, 0.63, 0.5, 0.5, 0.16)) +
@@ -731,14 +724,14 @@ if (exists("fig3a") && exists("fig3b") && exists("fig4")) {
     theme(plot.tag = element_text(face = "bold"),
           plot.tag.position = c(0, 1.07))
 
-  print(fig_specificity_combined)
-  # save_fig(fig_specificity_combined, "SI_group_specificity.pdf",
+  print(fig_specificity)
+  # save_fig(fig_specificity, "SI_group_specificity.pdf",
   #          width = 12.5, height = 7.7)
   # i edited spacing and stuff in illustrator so this part is commented out for now
 }
 ```
 
-# 7. Secondary Analysis Previews
+## 3d. Secondary analysis previews
 
 Pilot previews of the secondary analyses described in the paper. With only
 1 game per condition these are purely descriptive — included to show the
@@ -760,7 +753,7 @@ descriptions of the same tangram by the same speaker, across both phases.
 Higher values = more stable conventions. Thin lines show per-group
 trajectories.
 
-```{r si-fig-secondary-combined, fig.width=12, fig.height=8}
+```{r si-prep-secondary-data}
 # --- Data prep ---
 
 # (a) Referential accuracy
@@ -849,19 +842,18 @@ all_adjacent <- adjacent_sim |>
   )
 
 # --- Shared phase boundary layers ---
-phase2_bg <- list(
-  annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
-           ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5),
-  geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted"),
-  scale_x_continuous(breaks = 1:12, limits = c(0.8, 12.2), labels = as.integer),
-  scale_color_condition(labels = function(x) format_condition(x), name = NULL,
-                        limits = CONDITION_ORDER, drop = FALSE),
-  scale_fill_condition(labels = function(x) format_condition(x), name = NULL,
-                       limits = CONDITION_ORDER, drop = FALSE)
+phase2_bg <- c(
+  phase2_layers(),
+  list(
+    scale_color_condition(name = NULL, limits = CONDITION_ORDER, drop = FALSE),
+    scale_fill_condition(name = NULL, limits = CONDITION_ORDER, drop = FALSE)
+  )
 )
+```
 
+```{r si-fig-secondary-previews, fig.width=12, fig.height=8}
 # --- Panel (a): Referential accuracy ---
-p_acc <- ggplot(acc_block_all, aes(x = block1, y = empirical_stat,
+p_sec_accuracy <- ggplot(acc_block_all, aes(x = block1, y = empirical_stat,
                                     color = condition, fill = condition)) +
   phase2_bg +
   geom_line(data = acc_group_all,
@@ -880,7 +872,7 @@ p_acc <- ggplot(acc_block_all, aes(x = block1, y = empirical_stat,
   theme(legend.position = "none")
 
 # --- Panel (b): Description length ---
-p_len <- ggplot(len_block_all, aes(x = block1, y = empirical_stat,
+p_sec_length <- ggplot(len_block_all, aes(x = block1, y = empirical_stat,
                                     color = condition, fill = condition)) +
   phase2_bg +
   geom_line(data = len_group_all,
@@ -897,7 +889,7 @@ p_len <- ggplot(len_block_all, aes(x = block1, y = empirical_stat,
   theme(legend.position = "none")
 
 # --- Panel (c): Social-signaling accuracy ---
-p_sg <- ggplot(sg_block, aes(x = block1, y = empirical_stat,
+p_sec_social <- ggplot(sg_block, aes(x = block1, y = empirical_stat,
                               color = condition, fill = condition)) +
   phase2_bg +
   geom_line(data = sg_group,
@@ -925,7 +917,7 @@ adj_block_all <- all_adjacent |>
   tidyboot_mean(simAdjacent, nboot = 1000) |>
   ungroup()
 
-p_stab <- ggplot(adj_block_all, aes(x = block1, y = empirical_stat,
+p_sec_stability <- ggplot(adj_block_all, aes(x = block1, y = empirical_stat,
                                      color = condition, fill = condition)) +
   phase2_bg +
   geom_line(data = adj_group_all,
@@ -942,28 +934,24 @@ p_stab <- ggplot(adj_block_all, aes(x = block1, y = empirical_stat,
   theme(legend.position = "none")
 
 # --- Combine with shared legend at bottom ---
-# Extract legend from panel a (has all 4 conditions) as a standalone grob
-p_for_legend <- p_acc +
-  scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
-  scale_fill_condition(labels = function(x) format_condition(x), name = "Condition") +
+legend_grob <- extract_legend(p_sec_accuracy +
+  scale_color_condition(name = "Condition") +
+  scale_fill_condition(name = "Condition") +
   theme(legend.position = "bottom",
         legend.text = element_text(size = 16),
         legend.title = element_text(size = 16),
-        legend.key.size = unit(1.2, "cm"))
-legend_grob <- ggplotGrob(p_for_legend)$grobs[[
-  which(ggplotGrob(p_for_legend)$layout$name == "guide-box-bottom")
-]]
+        legend.key.size = unit(1.2, "cm")))
 
-fig_secondary <- (p_acc + p_len) / (p_sg + p_stab) / wrap_elements(legend_grob) +
+fig_secondary <- (p_sec_accuracy + p_sec_length) / (p_sec_social + p_sec_stability) / wrap_elements(legend_grob) +
   plot_layout(heights = c(1, 1, 0.08)) +
   plot_annotation(tag_levels = list(c("a", "b", "c", "d", ""))) &
-  theme(plot.tag = element_text(face = "bold", size = 20))
+  TAG_THEME
 
 print(fig_secondary)
 save_fig(fig_secondary, "SI_secondary_analyses.pdf", width = 12, height = 8)
 ```
 
-# 8. H3c: Description Properties Preview
+## 3e. H3c: Description properties preview
 
 Descriptive preview of the H3c measures comparing `social_mixed` vs
 `social_first` in Phase 1. H3c predicts that anticipating a social-identification
@@ -990,7 +978,7 @@ length > 1 are retained as *content words*.
 With 1 game per social condition, these are purely descriptive — included
 to verify the H3c analysis pipeline and give a qualitative sense of the patterns.
 
-```{r h3c-pilot-data}
+```{r si-prep-h3c-data}
 # All three H3c measures are precomputed in Python with consistent tokenization
 # (same stopwords and content-word extraction). See compute_embeddings.py.
 has_desc_props <- file.exists(file.path(data_dir, "description_properties.csv"))
@@ -1018,14 +1006,14 @@ if (!has_desc_props || !has_lex_uniq) {
 }
 ```
 
-```{r h3c-plot, fig.width=14, fig.height=4.5}
+```{r si-fig-h3c, fig.width=14, fig.height=4.5}
 if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
   p1_h3c <- p1_final_social |>
     filter(!is.na(concreteness), !is.na(uniqueness)) |>
     select(condition, concreteness, uniqueness, mean_zipf_freq)
 
   # Panel A: Concrete terms
-  p_concrete <- ggplot(p1_h3c, aes(x = condition, y = concreteness, fill = condition)) +
+  p_h3c_concrete <- ggplot(p1_h3c, aes(x = condition, y = concreteness, fill = condition)) +
     geom_violin(alpha = 0.3) +
     geom_jitter(width = 0.15, size = 1.5, alpha = 0.4) +
     stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
@@ -1035,7 +1023,7 @@ if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
     theme(legend.position = "none")
 
   # Panel B: Lexical uniqueness
-  p_unique <- ggplot(p1_h3c, aes(x = condition, y = uniqueness, fill = condition)) +
+  p_h3c_unique <- ggplot(p1_h3c, aes(x = condition, y = uniqueness, fill = condition)) +
     geom_violin(alpha = 0.3) +
     geom_jitter(width = 0.15, size = 1.5, alpha = 0.4) +
     stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
@@ -1045,7 +1033,7 @@ if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
     theme(legend.position = "none")
 
   # Panel C: Word frequency
-  p_freq <- ggplot(p1_h3c |> filter(!is.na(mean_zipf_freq)),
+  p_h3c_freq <- ggplot(p1_h3c |> filter(!is.na(mean_zipf_freq)),
                    aes(x = condition, y = mean_zipf_freq, fill = condition)) +
     geom_violin(alpha = 0.3) +
     geom_jitter(width = 0.15, size = 1.5, alpha = 0.4) +
@@ -1055,11 +1043,9 @@ if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
     labs(x = "Condition", y = "Mean Zipf frequency", title = "Word frequency") +
     theme(legend.position = "none")
 
-  fig_h3c <- p_concrete + p_unique + p_freq +
-    plot_annotation(
-      tag_levels = "a"
-    ) &
-    theme(plot.tag = element_text(face = "bold", size = 20))
+  fig_h3c <- p_h3c_concrete + p_h3c_unique + p_h3c_freq +
+    plot_annotation(tag_levels = "a") &
+    TAG_THEME
 
   print(fig_h3c)
   save_fig(fig_h3c, "SI_h3c_description_properties.pdf", width = 14, height = 4.5)
@@ -1085,7 +1071,9 @@ if (exists("p1_final_social") && nrow(p1_final_social) > 0) {
 }
 ```
 
-# 9. Summary Table
+# 4. Summary and LaTeX output
+
+## Summary table
 
 ```{r summary-table}
 summary_rows <- list()
@@ -1141,11 +1129,11 @@ bind_rows(summary_rows) |>
   knitr::kable(caption = "Outcome-neutral criteria summary")
 ```
 
-# 9. Descriptive Statistics for LaTeX
+## Descriptive statistics for LaTeX
 
 Collect all numbers needed for the SI text in one place.
 
-```{r latex-numbers}
+```{r latex-descriptive}
 cat("====== Numbers for LaTeX SI section ======\n\n")
 
 # Sample
@@ -1213,7 +1201,7 @@ cat(sprintf("Total messages: %d\n", nrow(messages)))
 cat(sprintf("Speaker utterances: %d\n", nrow(speaker_utts)))
 ```
 
-# 10. Write Stats to LaTeX
+## Write stats to LaTeX
 
 Write all statistics as `\newcommand` definitions for `\input` in the paper.
 

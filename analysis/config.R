@@ -65,12 +65,12 @@ set.seed(67)
 
 # ── Helper scales ───────────────────────────────────────────
 
-scale_color_condition <- function(...) {
-  scale_color_manual(values = CONDITION_COLORS, ...)
+scale_color_condition <- function(labels = function(x) format_condition(x), ...) {
+  scale_color_manual(values = CONDITION_COLORS, labels = labels, ...)
 }
 
-scale_fill_condition <- function(...) {
-  scale_fill_manual(values = CONDITION_COLORS, ...)
+scale_fill_condition <- function(labels = function(x) format_condition(x), ...) {
+  scale_fill_manual(values = CONDITION_COLORS, labels = labels, ...)
 }
 
 scale_color_group <- function(...) {
@@ -79,6 +79,27 @@ scale_color_group <- function(...) {
 
 scale_fill_group <- function(...) {
   scale_fill_manual(values = GROUP_COLORS, ...)
+}
+
+# ── Plot layers ───────────────────────────────────────────
+
+# Phase 2 background shading, vline, and 1–12 x-axis breaks
+phase2_layers <- function() {
+  list(
+    annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
+             ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5),
+    geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted"),
+    scale_x_continuous(breaks = 1:12, limits = c(0.8, 12.2), labels = as.integer)
+  )
+}
+
+# Bold tag theme for patchwork plot_annotation
+TAG_THEME <- theme(plot.tag = element_text(face = "bold", size = 20))
+
+# Extract a standalone legend grob from a ggplot
+extract_legend <- function(p) {
+  g <- ggplotGrob(p)
+  g$grobs[[which(g$layout$name == "guide-box-bottom")]]
 }
 
 # ── Helper functions ────────────────────────────────────────
