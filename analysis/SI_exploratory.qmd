@@ -17,7 +17,7 @@ source(here::here("analysis", "config.R"))
 
 # Override paths: pilot data
 data_dir <- here("data", "pilots")
-figures_dir <- here("analysis", "pilot_outputs")
+figures_dir <- here("analysis", "pilot_outputs", "exploratory")
 dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
 
 # Re-resolve utterances file for the pilot data dir
@@ -118,7 +118,85 @@ ggplot(centroid_summary, aes(x = block_label, y = empirical_stat,
 ```
 
 
-# 2. Cross-group lexical borrowing
+# 2. Group similarity matrices
+
+How similar are descriptions between and within groups across Phase 2? Each
+heatmap shows the 3×3 matrix of mean pairwise cosine similarity between
+groups (averaged across tangrams and speaker pairs) for one block and
+condition. Diagonal cells = within-group similarity; off-diagonal =
+between-group. In mixed conditions, off-diagonal cells should brighten over
+time as groups converge. Group C was lost in the `refer_mixed` game (grey
+cells).
+
+```{r sim-matrix-data}
+block_pw <- read_csv(file.path(data_dir, "block_pairwise_similarities.csv"),
+                     show_col_types = FALSE) |>
+  left_join(games |> select(gameId, condition), by = "gameId") |>
+  continuous_block() |>
+  mutate(
+    block1 = block + 1,
+    condition = factor(condition, levels = CONDITION_ORDER)
+  )
+
+# Canonicalize group pairs and compute cell means
+cell_means <- block_pw |>
+  filter(phaseNum == 2) |>
+  mutate(
+    grp_min = pmin(group1, group2),
+    grp_max = pmax(group1, group2)
+  ) |>
+  group_by(condition, grp_min, grp_max, block1) |>
+  summarise(mean_sim = mean(similarity, na.rm = TRUE), .groups = "drop")
+
+# Mirror to fill full symmetric 3×3 matrix
+lower_tri <- cell_means |> rename(grp_row = grp_min, grp_col = grp_max)
+upper_tri <- cell_means |>
+  filter(grp_min != grp_max) |>
+  rename(grp_row = grp_max, grp_col = grp_min)
+
+matrix_data <- bind_rows(lower_tri, upper_tri) |>
+  mutate(
+    block_label = paste0("Block ", block1),
+    block_label = factor(block_label, levels = paste0("Block ", 7:12)),
+    grp_row = factor(grp_row, levels = rev(GROUP_ORDER)),
+    grp_col = factor(grp_col, levels = GROUP_ORDER),
+    condition = factor(condition, levels = CONDITION_ORDER)
+  ) |>
+  complete(condition, grp_row, grp_col, block_label)
+```
+
+```{r sim-matrix-plot, fig.width=14, fig.height=8}
+fig_sim_matrix <- ggplot(matrix_data,
+                          aes(x = grp_col, y = grp_row, fill = mean_sim)) +
+  geom_tile(color = "white", linewidth = 0.8) +
+  geom_text(aes(label = sprintf("%.2f", mean_sim)), size = 2.8, na.rm = TRUE) +
+  scale_fill_viridis_c(
+    option = "inferno",
+    na.value = "grey90",
+    name = "Mean cosine\nsimilarity"
+  ) +
+  facet_grid(
+    condition ~ block_label,
+    labeller = labeller(condition = function(x) format_condition(x))
+  ) +
+  labs(x = "Group", y = "Group") +
+  coord_equal() +
+  theme(
+    axis.text.x = element_text(color = GROUP_COLORS[GROUP_ORDER]),
+    axis.text.y = element_text(color = GROUP_COLORS[rev(GROUP_ORDER)]),
+    strip.text = element_text(size = 14),
+    strip.text.y = element_text(angle = 0),
+    panel.spacing = unit(0.3, "lines"),
+    legend.position = "right"
+  )
+
+fig_sim_matrix
+
+save_fig(fig_sim_matrix, "SI_group_similarity_matrices.pdf", width = 14, height = 8)
+```
+
+
+# 3. Cross-group lexical borrowing
 
 When groups mix in Phase 2, do speakers start adopting terms from other groups?
 We measure borrowing rate: the proportion of another group's Phase 1 signature
@@ -199,21 +277,14 @@ save_fig(fig_borrowing, "SI_lexical_borrowing.pdf", width = 12, height = 4.5)
 ```
 
 
-# 3. Within-group convergence rate (H3b)
+# 4. Within-group convergence rate (H3b)
 
 Do groups that anticipate social goals (`social_first`) converge faster within
 groups during Phase 1 than `social_mixed`? We plot within-group pairwise
 similarity across Phase 1 blocks for these two conditions.
 
 ```{r convergence-data}
-block_pw <- read_csv(file.path(data_dir, "block_pairwise_similarities.csv"),
-                     show_col_types = FALSE) |>
-  left_join(games |> select(gameId, condition), by = "gameId") |>
-  continuous_block() |>
-  mutate(
-    block1 = block + 1,
-    condition = factor(condition, levels = CONDITION_ORDER)
-  )
+# block_pw loaded in section 2
 
 # Phase 1 within-group pairs for social conditions
 p1_within <- block_pw |>
@@ -287,7 +358,7 @@ p_conv_all
 ```
 
 
-# 4. Tangram-level variation
+# 5. Tangram-level variation
 
 Some tangrams may be easier to develop conventions for than others. We look at
 three indicators at the end of Phase 1: description length, listener accuracy,
