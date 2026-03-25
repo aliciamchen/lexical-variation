@@ -110,25 +110,18 @@ quarto render analysis/SI_pilot.qmd                                 # pilot anal
 
 ### Pipeline steps
 
-Three scripts, run in order:
+Three scripts, run in order. Each reads the previous script's output:
 
-```
-1. extract_run.py <zip>       → data/pilot_runs/{timestamp}/raw/  (anonymized CSVs + bonuses)
-2. combine_runs.py <runs>     → data/pilots/raw/                  (stack multiple runs)
-3. process_data.py            → data/pilots/*.csv                 (preprocess)
-                                  → data/pilots/*_filtered.csv         (filter non-referential)
-                                  → analysis/pilot_derived/            (embeddings, similarities, UMAP)
-```
+| Script | Reads from | Writes to |
+|--------|-----------|-----------|
+| `extract_run.py <zip>` | Empirica export zip in `experiment/data/` | `data/pilot_runs/{timestamp}/raw/` + `bonuses.csv` |
+| `combine_runs.py <runs>` | `data/pilot_runs/*/raw/` | `data/pilots/raw/` + `manifest.json` |
+| `process_data.py` | `data/pilots/raw/` | `data/pilots/*.csv` + `analysis/pilot_derived/` |
+| ↳ `preprocessing.py` | `data/pilots/raw/` | `data/pilots/*.csv` |
+| ↳ `filter_nonreferential.py` | `data/pilots/messages.csv` | `data/pilots/speaker_utterances_filtered.csv` (requires Vertex AI; `--skip-filter`) |
+| ↳ `compute_derived.py` | `data/pilots/*.csv` | `analysis/pilot_derived/` (`--skip-derived`) |
 
-Step 3 (`process_data.py`) runs these sub-steps in order:
-
-| Step | Script | Output |
-|------|--------|--------|
-| Preprocess | `preprocessing.py` | `data/pilots/*.csv` |
-| Filter | `filter_nonreferential.py` | `data/pilots/speaker_utterances_filtered.csv` (requires Vertex AI; skip with `--skip-filter`) |
-| Derived metrics | `compute_derived.py` | `analysis/pilot_derived/` (skip with `--skip-derived`) |
-
-Quarto notebooks and animations are run separately (see [Notebooks for the registered report](#notebooks-for-the-registered-report) below).
+Quarto notebooks are run separately (see [Notebooks for the registered report](#notebooks-for-the-registered-report) below).
 
 ### Directory layout
 
