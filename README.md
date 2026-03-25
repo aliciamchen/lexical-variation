@@ -31,10 +31,10 @@ In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups
 ├── analysis/                 # Analysis code & outputs
 │   ├── extract_run.py        # Extract Empirica export zip → data/pilot_runs/
 │   ├── combine_runs.py       # Stack raw CSVs from multiple runs → data/pilots/raw/
-│   ├── process_data.py       # Run pipeline (preprocess → filter → derive)
-│   ├── preprocessing.py      # Raw Empirica CSVs → analysis-ready CSVs
-│   ├── compute_derived.py    # SBERT embeddings, similarities, UMAP, description properties
-│   ├── filter_nonreferential.py # LLM-based message classifier
+│   ├── process_data.py       # Run pipeline on data/pilots/ (calls the three scripts below)
+│   │   ├── preprocessing.py  #   Raw Empirica CSVs → analysis-ready CSVs
+│   │   ├── filter_nonreferential.py  #   LLM-based message classifier (Vertex AI)
+│   │   └── compute_derived.py        #   SBERT embeddings, similarities, UMAP
 │   ├── 00–05_*.qmd           # Pre-registered analysis notebooks (full sample)
 │   ├── SI_pilot.qmd          # SI: pilot data analyses
 │   ├── pilot_derived/        # Computed outputs (similarities, embeddings, UMAP)
