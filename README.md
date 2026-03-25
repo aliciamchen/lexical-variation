@@ -157,32 +157,38 @@ uv run python analysis/run_pipeline.py list
 uv run python analysis/run_pipeline.py bonuses
 ```
 
-### Notebooks
+### Notebooks for the registered report
 
-| Notebook | Purpose | Reads from |
-|----------|---------|------------|
-| `00_preprocess.qmd` | Load & validate data | `data/pilots/` |
-| `01_outcome_neutral.qmd` | Convention formation criteria | `data/pilots/` + `pilot_derived/` |
-| `02_primary_analysis.qmd` | H1 & H2 hypotheses | `data/pilots/` + `pilot_derived/` |
-| `03_secondary_analysis.qmd` | Secondary analyses | `data/pilots/` + `pilot_derived/` |
-| `04_exploratory.qmd` | Exploratory analyses | `data/pilots/` + `pilot_derived/` |
-| `05_exit_survey.qmd` | Exit survey responses | `data/pilots/` |
-| `SI_pilot.qmd` | SI pilot data (figures + stats) | `data/pilots/` + `pilot_derived/` |
+These produce the figures and stats for the manuscript. Run after the pipeline:
 
-### Stats and figures → manuscript
+```bash
+quarto render analysis/SI_pilot.qmd                              # pilot analyses
+quarto render analysis/llm_simulation/SI_llm_simulation.qmd      # LLM benchmark
+```
 
-Notebooks write `\newcommand` definitions to `paper/stats/*.tex`, which the manuscript `\input`s to keep numbers in sync.
+| Notebook | Generates | Output |
+|----------|-----------|--------|
+| `SI_pilot.qmd` | Pilot data analyses | `analysis/pilot_plots/` + `paper/stats/pilot.tex` |
+| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark | `analysis/llm_plots/` + `paper/stats/llm.tex` |
 
-| Notebook | Generates |
-|----------|-----------|
-| `SI_pilot.qmd` | `paper/stats/pilot.tex` |
-| `llm_simulation/SI_llm_simulation.qmd` | `paper/stats/llm.tex` |
-
-Figures are saved to `analysis/pilot_plots/` and `analysis/llm_plots/`. Sync to the paper before pushing to Overleaf:
+Stats are written as `\newcommand` definitions to `paper/stats/*.tex`, which the manuscript `\input`s. Sync figures to the paper before pushing to Overleaf:
 
 ```bash
 bash paper/sync_figures.sh   # copies SI_*.pdf into paper/figures/
 ```
+
+### Notebooks for the full sample (not yet active)
+
+These will run the pre-registered analyses on the full dataset. Currently they read from `data/pilots/` + `analysis/pilot_derived/` — the paths in `config.R` will need to be updated to point at the full sample data when it's collected.
+
+| Notebook | Purpose |
+|----------|---------|
+| `00_preprocess.qmd` | Load & validate data |
+| `01_outcome_neutral.qmd` | Outcome-neutral criteria (convention formation) |
+| `02_primary_analysis.qmd` | Primary analyses (H1 & H2) |
+| `03_secondary_analysis.qmd` | Secondary analyses |
+| `04_exploratory.qmd` | Exploratory analyses |
+| `05_exit_survey.qmd` | Exit survey responses |
 
 ## LLM tools
 

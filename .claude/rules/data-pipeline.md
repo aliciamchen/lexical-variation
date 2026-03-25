@@ -108,6 +108,15 @@ uv run pytest analysis/test_data_integrity.py -v
 
 All notebooks read source data from `data/pilots/` and computed outputs from `analysis/pilot_derived/` (paths set in `config.R`).
 
+**For the registered report** — run after the pipeline:
+
+| Notebook | Generates |
+|----------|-----------|
+| `SI_pilot.qmd` | Pilot data analyses → `analysis/pilot_plots/` + `paper/stats/pilot.tex` |
+| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark → `analysis/llm_plots/` + `paper/stats/llm.tex` |
+
+**For the full sample** (not yet active — paths in `config.R` will need to point at full sample data):
+
 | Notebook | Purpose |
 |----------|---------|
 | `00_preprocess.qmd` | Load & validate preprocessed data |
@@ -116,8 +125,6 @@ All notebooks read source data from `data/pilots/` and computed outputs from `an
 | `03_secondary_analysis.qmd` | Secondary analyses |
 | `04_exploratory.qmd` | Exploratory analyses |
 | `05_exit_survey.qmd` | Exit survey responses |
-| `SI_pilot.qmd` | SI pilot data — generates `paper/stats/pilot.tex` and figures in `analysis/pilot_plots/` |
-| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark — generates `paper/stats/llm.tex` and figures in `analysis/llm_plots/` |
 
 ## Stats → LaTeX pipeline
 
