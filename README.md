@@ -123,17 +123,6 @@ Three scripts, run in order. Each reads the previous script's output:
 
 Quarto notebooks are run separately (see [Notebooks for the registered report](#notebooks-for-the-registered-report) below).
 
-### Directory layout
-
-| Directory | Contents | Committed? |
-|-----------|----------|------------|
-| `data/pilots/raw/` | Anonymized raw Empirica CSVs (10 files) | Yes |
-| `data/pilots/` | Preprocessed analysis-ready CSVs (games, players, trials, messages, etc.) | Yes |
-| `data/pilot_runs/` | Per-run extracted outputs (raw CSVs, bonuses) | No (gitignored) |
-| `analysis/pilot_derived/` | Computed outputs: embeddings, pairwise similarities, UMAP, RDS caches | Yes |
-| `figures/pilot_plots/` | SI PDF figures from `SI_pilot.qmd` | Yes |
-| `figures/llm_plots/` | SI PDF figures from `SI_llm_simulation.qmd` | Yes |
-
 ### Processing new data
 
 Raw Empirica exports land in `experiment/data/` via `empirica export` or the backup script.
