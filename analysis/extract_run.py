@@ -6,6 +6,9 @@ Unzips, extracts bonuses (with Prolific IDs), and saves anonymized raw CSVs.
 Usage:
     uv run python analysis/extract_run.py experiment/data/20260301_132907/empirica-export-20260301_132907.zip
     uv run python analysis/extract_run.py                    # most recent zip under experiment/data/
+    uv run python analysis/extract_run.py list               # list extracted runs
+    uv run python analysis/extract_run.py bonuses            # print bonuses for latest run
+    uv run python analysis/extract_run.py early-ended        # print early-ended players
 """
 
 import argparse
@@ -17,6 +20,9 @@ import zipfile
 from pathlib import Path
 
 import pandas as pd
+
+SUBCOMMANDS = {"list", "bonuses", "early-ended"}
+TIMESTAMP_DIR_PATTERN = re.compile(r"^\d{8}_\d{6}$")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RUNS_DIR = PROJECT_ROOT / "data" / "pilot_runs"
@@ -133,20 +139,83 @@ def anonymize_raw(unzipped_dir: Path, raw_dir: Path) -> None:
             print(f"  {csv_file.name}: copied")
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Extract an Empirica export zip into data/pilot_runs/{timestamp}/",
-    )
-    parser.add_argument(
-        "zip_path",
-        nargs="?",
-        default=None,
-        help="Path to empirica-export-*.zip (default: most recent under experiment/data/)",
-    )
-    args = parser.parse_args()
+def find_timestamped_dirs() -> list[Path]:
+    """Find all timestamped run directories under data/pilot_runs/."""
+    if not RUNS_DIR.is_dir():
+        return []
+    dirs = []
+    for d in sorted(RUNS_DIR.iterdir(), reverse=True):
+        if d.is_dir() and TIMESTAMP_DIR_PATTERN.match(d.name):
+            dirs.append(d)
+    return dirs
 
-    if args.zip_path:
-        zip_path = Path(args.zip_path).resolve()
+
+def cmd_list():
+    """List all extracted runs."""
+    dirs = find_timestamped_dirs()
+    if not dirs:
+        print("No runs found in data/pilot_runs/.")
+        return
+    print(f"\nExtracted runs (data/pilot_runs/):")
+    print(f"{'─' * 90}")
+    for d in dirs:
+        has_bonuses = "yes" if (d / "bonuses.csv").exists() else "no"
+        n_files = sum(1 for _ in d.rglob("*") if _.is_file())
+        print(f"  {d.name}  bonuses: {has_bonuses}  {n_files} files")
+    print()
+
+
+def cmd_bonuses(run_name: str | None = None):
+    """Print bonus CSV for a specific or latest run."""
+    if run_name:
+        bonus_dir = RUNS_DIR / run_name
+    else:
+        dirs = find_timestamped_dirs()
+        if not dirs:
+            print("No runs found.", file=sys.stderr)
+            sys.exit(1)
+        bonus_dir = dirs[0]
+    bonus_path = bonus_dir / "bonuses.csv"
+    if not bonus_path.exists():
+        print(f"No bonuses.csv in {bonus_dir.name}", file=sys.stderr)
+        sys.exit(1)
+    df = pd.read_csv(bonus_path)
+    print(f"\nBonuses for run {bonus_dir.name}:")
+    print(f"{'─' * 50}")
+    print(df.to_string(index=False))
+    print(f"{'─' * 50}")
+    print(f"  Total: ${df['bonus'].sum():.2f} across {len(df)} players")
+    print(f"  Mean:  ${df['bonus'].mean():.2f}")
+    print()
+
+
+def cmd_early_ended(run_name: str | None = None):
+    """Print early-ended players CSV for a specific or latest run."""
+    if run_name:
+        run_dir = RUNS_DIR / run_name
+    else:
+        dirs = find_timestamped_dirs()
+        if not dirs:
+            print("No runs found.", file=sys.stderr)
+            sys.exit(1)
+        run_dir = dirs[0]
+    early_path = run_dir / "early_ended.csv"
+    if not early_path.exists():
+        print(f"No early_ended.csv in {run_dir.name}", file=sys.stderr)
+        sys.exit(1)
+    df = pd.read_csv(early_path)
+    print(f"\nEarly-ended players for run {run_dir.name}:")
+    print(f"{'─' * 80}")
+    print(df.to_string(index=False))
+    print(f"{'─' * 80}")
+    print(f"  {len(df)} players, total partial pay: ${df['partial_pay'].sum():.2f}")
+    print()
+
+
+def cmd_extract(zip_path_arg: str | None):
+    """Extract a single zip."""
+    if zip_path_arg:
+        zip_path = Path(zip_path_arg).resolve()
         if not zip_path.exists():
             print(f"Zip file not found: {zip_path}", file=sys.stderr)
             sys.exit(1)
@@ -170,6 +239,32 @@ def main():
 
     print(f"\nDone. Raw CSVs in {raw_dir}")
     print(f"Bonuses in {output_dir / 'bonuses.csv'}")
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] in SUBCOMMANDS:
+        subcmd = sys.argv[1]
+        if subcmd == "list":
+            cmd_list()
+        elif subcmd == "bonuses":
+            run_name = None
+            if "--run" in sys.argv:
+                idx = sys.argv.index("--run")
+                if idx + 1 < len(sys.argv):
+                    run_name = sys.argv[idx + 1]
+            cmd_bonuses(run_name)
+        elif subcmd == "early-ended":
+            run_name = None
+            if "--run" in sys.argv:
+                idx = sys.argv.index("--run")
+                if idx + 1 < len(sys.argv):
+                    run_name = sys.argv[idx + 1]
+            cmd_early_ended(run_name)
+        return
+
+    # Default: extract a zip
+    zip_path_arg = sys.argv[1] if len(sys.argv) > 1 else None
+    cmd_extract(zip_path_arg)
 
 
 if __name__ == "__main__":

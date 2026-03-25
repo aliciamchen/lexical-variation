@@ -30,7 +30,8 @@ In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups
 │   └── pilot_runs/           # Per-run outputs from run_pipeline.py (gitignored)
 ├── analysis/                 # Analysis code & outputs
 │   ├── extract_run.py        # Extract Empirica export zip → data/pilot_runs/
-│   ├── run_pipeline.py       # Combine runs + run pipeline (preprocess → filter → derive)
+│   ├── combine_runs.py       # Stack raw CSVs from multiple runs → data/pilots/raw/
+│   ├── run_pipeline.py       # Run pipeline (preprocess → filter → derive)
 │   ├── preprocessing.py      # Raw Empirica CSVs → analysis-ready CSVs
 │   ├── compute_derived.py    # SBERT embeddings, similarities, UMAP, description properties
 │   ├── filter_nonreferential.py # LLM-based message classifier
@@ -115,7 +116,7 @@ Three scripts, run in order:
 
 ```
 1. extract_run.py <zip>           → data/pilot_runs/{timestamp}/raw/   (anonymized CSVs + bonuses)
-2. run_pipeline.py combine <runs> → data/pilots/raw/                   (stack multiple runs)
+2. combine_runs.py <runs> → data/pilots/raw/                   (stack multiple runs)
 3. run_pipeline.py                → data/pilots/*.csv                  (preprocess)
                                   → data/pilots/*_filtered.csv         (filter non-referential)
                                   → analysis/pilot_derived/            (embeddings, similarities, UMAP)
@@ -152,7 +153,7 @@ uv run python analysis/extract_run.py experiment/data/20260301_132907/empirica-e
 uv run python analysis/extract_run.py experiment/data/20260301_214147/empirica-export-20260301_214147.zip
 
 # 2. Combine runs (stack raw CSVs into data/pilots/raw/)
-uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147
+uv run python analysis/combine_runs.py 20260301_132907 20260301_214147
 
 # 3. Run the pipeline (preprocess → filter → derived metrics)
 uv run python analysis/run_pipeline.py --skip-filter    # if no Vertex AI
@@ -161,8 +162,8 @@ uv run python analysis/run_pipeline.py --skip-filter    # if no Vertex AI
 quarto render analysis/SI_pilot.qmd
 
 # Browse extracted runs
-uv run python analysis/run_pipeline.py list
-uv run python analysis/run_pipeline.py bonuses
+uv run python analysis/extract_run.py list
+uv run python analysis/extract_run.py bonuses
 ```
 
 ### Notebooks for the registered report

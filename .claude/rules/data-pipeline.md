@@ -43,7 +43,7 @@ Three scripts, run in order:
 uv run python analysis/extract_run.py <zip>           → data/pilot_runs/{timestamp}/raw/
 
 # 2. Combine extracted runs (stack raw CSVs, filter failed games)
-uv run python analysis/run_pipeline.py combine <runs> → data/pilots/raw/
+uv run python analysis/combine_runs.py <runs> → data/pilots/raw/
 
 # 3. Run the analysis pipeline (preprocess → filter → derived metrics)
 uv run python analysis/run_pipeline.py                → data/pilots/, analysis/pilot_derived/
@@ -78,7 +78,7 @@ uv run python analysis/extract_run.py experiment/data/20260301_132907/empirica-e
 uv run python analysis/extract_run.py experiment/data/20260301_214147/empirica-export-20260301_214147.zip
 
 # 2. Combine runs (stack raw CSVs into data/pilots/raw/)
-uv run python analysis/run_pipeline.py combine 20260301_132907 20260301_214147
+uv run python analysis/combine_runs.py 20260301_132907 20260301_214147
 
 # 3. Run the pipeline (preprocess → filter → derived metrics)
 uv run python analysis/run_pipeline.py                  # full pipeline
@@ -91,9 +91,9 @@ quarto render analysis/SI_pilot.qmd
 ## Browsing runs
 
 ```bash
-uv run python analysis/run_pipeline.py list                               # list extracted runs
-uv run python analysis/run_pipeline.py bonuses                            # print latest bonuses
-uv run python analysis/run_pipeline.py bonuses --run 20260225_210047      # specific run
+uv run python analysis/extract_run.py list                               # list extracted runs
+uv run python analysis/extract_run.py bonuses                            # print latest bonuses
+uv run python analysis/extract_run.py bonuses --run 20260225_210047      # specific run
 ```
 
 ## Running individual scripts standalone
