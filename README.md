@@ -33,7 +33,7 @@ In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups
 │   ├── combine_runs.py       # Stack raw CSVs from multiple runs → data/pilots/raw/
 │   ├── process_data.py       # Run pipeline on data/pilots/ (calls the three scripts below)
 │   │   ├── preprocessing.py  #   Raw Empirica CSVs → analysis-ready CSVs
-│   │   ├── filter_nonreferential.py  #   LLM-based message classifier (Vertex AI)
+│   │   ├── filter_nonreferential.py  #   LLM-based message classifier 
 │   │   └── compute_derived.py        #   SBERT embeddings, similarities, UMAP
 │   ├── 00–05_*.qmd           # Pre-registered analysis notebooks (full sample)
 │   ├── SI_pilot.qmd          # SI: pilot data analyses
@@ -70,6 +70,12 @@ uv sync
 ```
 
 Note: `rpy2` requires R to be installed. Cairo-based packages may require: `brew install cairo pango`
+
+Configure environment variables (needed for running the experiment and LLM tools, not for reproducing analyses):
+
+```bash
+cp .env.example .env   # then fill in values
+```
 
 ## Running the experiment
 

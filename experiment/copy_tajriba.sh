@@ -10,11 +10,22 @@
 #   bash copy_tajriba.sh --once     # single backup and exit
 #   bash copy_tajriba.sh --help     # show this help
 #
-# Requires SSH access to root@tangramcommunication.empirica.app.
+# Requires SSH access to the production server.
+# Set EMPIRICA_SERVER in .env or environment (see .env.example).
 
 set -euo pipefail
 
-REMOTE="root@tangramcommunication.empirica.app"
+# Load .env if present
+if [[ -f "$(dirname "$0")/../.env" ]]; then
+    set -a; source "$(dirname "$0")/../.env"; set +a
+fi
+
+if [[ -z "${EMPIRICA_SERVER:-}" ]]; then
+    echo "Error: EMPIRICA_SERVER not set. Copy .env.example to .env and fill in values." >&2
+    exit 1
+fi
+
+REMOTE="root@${EMPIRICA_SERVER}"
 REMOTE_DIR="~/empirica"
 INTERVAL=300  # seconds between backups
 MAX_FAILURES=3

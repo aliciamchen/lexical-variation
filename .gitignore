@@ -6,6 +6,7 @@ scaffolding.R
 .Rhistory
 .Rprofile
 .DS_Store
+.env
 *.Rproj
 *.pyc
 __pycache__

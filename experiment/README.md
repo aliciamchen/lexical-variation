@@ -25,24 +25,24 @@ Treatments (4 between-subjects conditions): `refer_separated`, `refer_mixed`, `s
 
 ## Production deployment
 
-The production server is at `tangramcommunication.empirica.app`, following the [Empirica Ubuntu deployment guide](https://docs.empirica.ly/guides/deploying-my-experiment/ubuntu-tutorial).
+The production server hostname is set via `EMPIRICA_SERVER` in `.env` (see `.env.example`). Deployment follows the [Empirica Ubuntu deployment guide](https://docs.empirica.ly/guides/deploying-my-experiment/ubuntu-tutorial).
 
 ### Deploying a new build
 
 ```bash
 cd experiment
 empirica bundle
-scp lexical-variation.tar.zst root@tangramcommunication.empirica.app:~/empirica/empirica.tar.zst
+scp lexical-variation.tar.zst root@$EMPIRICA_SERVER:~/empirica/empirica.tar.zst
 ```
 
-The server is configured to automatically restart empirica when the bundle file is updated. 
+The server is configured to automatically restart empirica when the bundle file is updated.
 
 If you want to do it manually:
 
 ```bash
-ssh root@tangramcommunication.empirica.app
+ssh root@$EMPIRICA_SERVER
 cd ~/empirica
-# Remove the tajriba file from the server if needed: 
+# Remove the tajriba file from the server if needed:
 rm .empirica/local/tajriba.json
 
 empirica serve empirica.tar.zst
@@ -51,11 +51,11 @@ empirica serve empirica.tar.zst
 ### Running an experiment session
 
 1. **Verify the server is running**: SSH in and check the `empirica` process is alive
-2. **Open the admin panel**: https://tangramcommunication.empirica.app/admin
-3. **Open Sentry**: https://lexical-variation-project.sentry.io/ (monitors client errors, replays, performance)
+2. **Open the admin panel**: `https://$EMPIRICA_SERVER/admin`
+3. **Open Sentry**: `https://$SENTRY_ORG.sentry.io/` (monitors client errors, replays, performance)
 4. **Create a batch**: click "New Batch", select the treatment (condition), use default lobby config
 5. **Start the batch**: click the play button
-6. **Share the player URL**: https://tangramcommunication.empirica.app/ (participants arrive via Prolific)
+6. **Share the player URL**: `https://$EMPIRICA_SERVER/` (participants arrive via Prolific)
 7. **Monitor**: watch the admin panel for player arrivals and game progress
 8. **Start `copy_tajriba.sh`** locally to back up data every 5 minutes (see below)
 
@@ -76,9 +76,9 @@ Exits automatically after 3 consecutive failures. Press Ctrl-C to stop the loop.
 
 Client errors are reported to Sentry via `@sentry/react` (configured in `client/src/index.jsx`).
 
-- **Organization**: `lexical-variation-project`
+- **Organization**: set via `SENTRY_ORG` in `.env`
 - **Project**: `javascript-react`
-- **Dashboard**: https://lexical-variation-project.sentry.io/
+- **Dashboard**: `https://$SENTRY_ORG.sentry.io/`
 - **Features**: error tracking, session replays (100%), browser tracing, structured logs
 
 During pilot sessions, keep the Sentry dashboard open to watch for client errors, slow page loads, and websocket disconnections.

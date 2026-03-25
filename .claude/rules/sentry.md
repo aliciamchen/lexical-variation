@@ -8,10 +8,11 @@ paths:
 The client app reports errors to Sentry via `@sentry/react`. A Sentry MCP server is connected, so you can query production issues directly.
 
 **Project details:**
-- Organization: `lexical-variation-project`
+- Organization: set via `SENTRY_ORG` in `.env`
 - Project: `javascript-react`
 - Region URL: `https://us.sentry.io`
-- Production URL: `https://tangramcommunication.empirica.app/`
+- Production URL: set via `EMPIRICA_SERVER` in `.env`
+- DSN: set via `VITE_SENTRY_DSN` in `.env`
 
 **Available MCP tools:**
 - `search_issues` — list grouped issues (e.g. unresolved bugs)
@@ -90,7 +91,7 @@ Where logs are used, ensure Sentry is imported using `import * as Sentry from "@
 import * as Sentry from "@sentry/react";
 
 Sentry.init({
-  dsn: "https://82d1223301f5ea7d0c6d07f9935aeabd@o4510902672359424.ingest.us.sentry.io/4510908813541376",
+  dsn: import.meta.env.VITE_SENTRY_DSN,
   enableLogs: true,
   integrations: [
     // optionally send console.log, console.warn, and console.error calls as logs
