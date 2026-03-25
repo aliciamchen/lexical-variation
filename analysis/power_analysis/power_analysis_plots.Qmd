@@ -194,6 +194,23 @@ power_results <- tibble(
 power_results
 ```
 
+## Minimum detectable effect at N = 20
+
+For H3 and H4, no prior data exists to estimate effect sizes. Given our planned N = 20 games per condition, what is the minimum effect size detectable at 80% power?
+
+```{r}
+sensitivity <- power.t.test(
+  n = 20,
+  sig.level = 0.05,
+  power = 0.80,
+  type = "two.sample",
+  alternative = "two.sided"
+)
+
+cat("Minimum detectable effect (raw delta):", round(sensitivity$delta, 4), "\n")
+cat("With sd = 1, this corresponds to Cohen's d >=", round(sensitivity$delta, 2), "\n")
+```
+
 ## Power curve
 
 Visualize power as a function of sample size:

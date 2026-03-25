@@ -56,18 +56,90 @@ games |>
   knitr::kable()
 ```
 
+```{r corpus-stats}
+# Corpus statistics
+n_messages <- nrow(messages)
+n_rounds <- n_distinct(trials$roundId)
+n_rounds_per_game <- n_rounds / n_games
+
+# Load unfiltered utterances to get pre-filtering stats
+speaker_utts_unfiltered <- read_csv(
+  file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE
+)
+n_speaker_utts_unfiltered <- nrow(speaker_utts_unfiltered)
+n_words_unfiltered <- sum(speaker_utts_unfiltered$uttLength)
+
+# Filtered stats (speaker_utts loaded in setup)
+n_speaker_utts_filtered <- nrow(speaker_utts)
+n_words_filtered <- sum(speaker_utts$uttLength)
+
+# Non-referential message counts from classified messages
+messages_classified <- read_csv(
+  file.path(data_dir, "messages_classified.csv"), show_col_types = FALSE
+)
+n_non_ref <- sum(
+  messages_classified$is_referential == FALSE |
+  messages_classified$is_referential == "false" |
+  messages_classified$is_referential == "False"
+)
+pct_non_ref <- 100 * n_non_ref / nrow(messages_classified)
+
+cat(sprintf("Total messages: %d\n", n_messages))
+cat(sprintf("Unique rounds: %d (%d per game)\n", n_rounds, n_rounds_per_game))
+cat(sprintf("Speaker utterances (unfiltered): %d\n", n_speaker_utts_unfiltered))
+cat(sprintf("Total words (unfiltered): %d\n", n_words_unfiltered))
+cat(sprintf("Non-referential messages: %d / %d (%.1f%%)\n",
+            n_non_ref, n_messages, pct_non_ref))
+cat(sprintf("Speaker utterances (filtered): %d\n", n_speaker_utts_filtered))
+cat(sprintf("Total words (filtered): %d\n", n_words_filtered))
+```
+
 ```{r completion-rates}
 # Active groups (3 = all groups survived, <3 = dropout)
 games_complete <- games |>
   mutate(all_groups_active = activeGroups == 3)
 
+n_complete <- sum(games_complete$all_groups_active)
+
 cat(sprintf("\nGames with all 3 groups active through completion: %d / %d\n",
-            sum(games_complete$all_groups_active), n_games))
+            n_complete, n_games))
 
 # Per-game active groups
 games |>
   select(condition, activeGroups) |>
   knitr::kable(col.names = c("Condition", "Active groups at end"))
+
+# Condition names as they appear in the paper
+CONDITION_PAPER <- c(
+  refer_separated = "refer + separated",
+  refer_mixed     = "refer + mixed",
+  social_mixed    = "social + mixed",
+  social_first    = "social-first + mixed"
+)
+
+# Identify conditions with group removal (accuracy threshold)
+games_lost_groups <- games |> filter(activeGroups < 3)
+n_groups_removed <- sum(3 - games$activeGroups)
+condition_group_removed <- games_lost_groups |>
+  pull(condition) |>
+  (\(x) CONDITION_PAPER[x])() |>
+  paste(collapse = ", ")
+
+# Identify conditions with idle removal
+idle_removed_players <- players |>
+  filter(idleRounds >= 3) |>
+  left_join(games |> select(gameId, condition), by = "gameId")
+n_removed_idle <- nrow(idle_removed_players)
+condition_idle_removed <- idle_removed_players |>
+  pull(condition) |>
+  unique() |>
+  (\(x) CONDITION_PAPER[x])() |>
+  paste(collapse = ", ")
+
+cat(sprintf("\nGroups removed for low accuracy: %d (in %s)\n",
+            n_groups_removed, condition_group_removed))
+cat(sprintf("Players removed for idling: %d (in %s)\n",
+            n_removed_idle, condition_idle_removed))
 ```
 
 ```{r session-duration}
@@ -644,8 +716,9 @@ if (exists("fig3a") && exists("fig3b") && exists("fig4")) {
           plot.tag.position = c(0, 1.07))
 
   print(fig_specificity_combined)
-  save_fig(fig_specificity_combined, "SI_group_specificity.pdf",
-           width = 12, height = 7.7)
+  # save_fig(fig_specificity_combined, "SI_group_specificity.pdf",
+  #          width = 12, height = 7.7)
+  # i edited spacing and stuff in illustrator so this part is commented out for now
 }
 ```
 
@@ -848,7 +921,7 @@ p_stab <- ggplot(adj_block_all, aes(x = block1, y = empirical_stat,
 # Extract legend from panel a (has all 4 conditions) as a standalone grob
 p_for_legend <- p_acc +
   scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
-  guides(fill = "none") +
+  scale_fill_condition(labels = function(x) format_condition(x), name = "Condition") +
   theme(legend.position = "bottom",
         legend.text = element_text(size = 16),
         legend.title = element_text(size = 16),
@@ -1142,7 +1215,20 @@ cmds <- c(cmds,
 
 # Completion
 cmds <- c(cmds,
-  cmd("pilotNComplete", sum(games$activeGroups == 3))
+  cmd("pilotNComplete", n_complete)
+)
+
+# Corpus
+cmds <- c(cmds,
+  cmd("pilotNMessages", formatC(n_messages, big.mark = "{,}", format = "d")),
+  cmd("pilotNRounds", formatC(n_rounds, big.mark = "{,}", format = "d")),
+  cmd("pilotNRoundsPerGame", n_rounds_per_game),
+  cmd("pilotNUttsUnfiltered", formatC(n_speaker_utts_unfiltered, big.mark = "{,}", format = "d")),
+  cmd("pilotNWordsUnfiltered", formatC(n_words_unfiltered, big.mark = "{,}", format = "d")),
+  cmd("pilotNNonRef", n_non_ref),
+  cmd("pilotPctNonRef", sprintf("%.1f", pct_non_ref)),
+  cmd("pilotNUttsFiltered", formatC(n_speaker_utts_filtered, big.mark = "{,}", format = "d")),
+  cmd("pilotNWordsFiltered", formatC(n_words_filtered, big.mark = "{,}", format = "d"))
 )
 
 # Description length model
@@ -1183,9 +1269,20 @@ if (exists("perm_results")) {
 }
 
 # Idle / dropout
+n_survey_respondents <- sum(
+  !is.na(players$exitSurvey_feedback) & players$exitSurvey_feedback != ""
+)
 cmds <- c(cmds,
   cmd("pilotNIdle", nrow(players |> filter(idleRounds > 0))),
-  cmd("pilotNInactive", nrow(players |> filter(isActive == FALSE | isActive == "false")))
+  cmd("pilotNInactive", nrow(players |> filter(isActive == FALSE | isActive == "false"))),
+  cmd("pilotNRemovedIdle", n_removed_idle),
+  cmd("pilotConditionIdleRemoved", condition_idle_removed),
+  cmd("pilotNGroupsRemoved", n_groups_removed),
+  cmd("pilotConditionGroupRemoved", condition_group_removed),
+  cmd("pilotNRemovedLowAcc", nrow(players |> filter(
+    (isActive == FALSE | isActive == "false") & idleRounds < 3
+  ))),
+  cmd("pilotNSurveyRespondents", n_survey_respondents)
 )
 
 header <- "% AUTO-GENERATED by analysis/SI_pilot.qmd — do not edit by hand."

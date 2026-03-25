@@ -456,6 +456,13 @@ block0_wc <- wc_summary$empirical_stat[wc_summary$block_num == 0]
 block_last_wc <- wc_summary$empirical_stat[wc_summary$block_num == config$n_blocks - 1]
 wc_direction <- ifelse(block_last_wc >= block0_wc * 0.85, "did not show", "showed")
 
+# Block-level accuracy stats (for LaTeX)
+llm_acc_block1 <- acc_summary$empirical_stat[acc_summary$block_num == 0] * 100
+llm_acc_block3 <- acc_summary$empirical_stat[acc_summary$block_num == 2] * 100
+late_blocks <- acc_summary |> filter(block_num >= 3)
+llm_acc_late_min <- min(late_blocks$empirical_stat) * 100
+llm_acc_late_max <- max(late_blocks$empirical_stat) * 100
+
 temp_str <- ifelse(is.null(config$temperature),
                    "default temperature",
                    sprintf("temperature $= %s$", config$temperature))
@@ -522,6 +529,14 @@ cmds <- c(cmds,
 cmds <- c(cmds,
   cmd("llmMOneWC", sprintf("%.1f", block0_wc)),
   cmd("llmMSixWC", sprintf("%.1f", block_last_wc))
+)
+
+# Block-level accuracy
+cmds <- c(cmds,
+  cmd("llmAccBlockOne", sprintf("%.1f", llm_acc_block1)),
+  cmd("llmAccBlockThree", sprintf("%.1f", llm_acc_block3)),
+  cmd("llmAccLateMin", sprintf("%.0f", llm_acc_late_min)),
+  cmd("llmAccLateMax", sprintf("%.0f", llm_acc_late_max))
 )
 
 # Similarity
