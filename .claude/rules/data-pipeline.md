@@ -104,3 +104,13 @@ Analysis notebooks write statistics as `\newcommand` definitions to `paper/stats
 After re-rendering a notebook, commit the updated `paper/stats/*.tex` file so the paper picks up the new numbers. The generated files have a `% AUTO-GENERATED` header to discourage manual edits.
 
 **Note:** The `paper/` directory is in `.gitignore` (it's synced via Overleaf, not this repo). The stats files live inside `paper/stats/` and are managed on the Overleaf side.
+
+### Figures → manuscript
+
+Analysis plots are generated in `analysis/pilot_outputs/` and `analysis/llm_baseline_outputs/`. The manuscript (`paper/main.tex`) references them from `figures/` (relative to `paper/`). Run the sync script to copy them before pushing to Overleaf:
+
+```bash
+bash paper/sync_figures.sh
+```
+
+This copies all `SI_*.pdf` files into `paper/figures/`. Overleaf doesn't support paths outside the project root, so figures must live inside `paper/`.

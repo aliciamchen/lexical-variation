@@ -138,6 +138,16 @@ Analysis notebooks write statistics as `\newcommand` definitions to `paper/stats
 
 Re-render the relevant notebook to update the stats files after any data or analysis changes.
 
+### Figures → manuscript
+
+Analysis notebooks save plots to `analysis/pilot_outputs/` and `analysis/llm_baseline_outputs/`. The manuscript references these from `paper/figures/`. To sync before pushing to Overleaf:
+
+```bash
+bash paper/sync_figures.sh
+```
+
+This copies all `SI_*.pdf` files into `paper/figures/` so Overleaf can find them (Overleaf doesn't support paths outside the project root).
+
 ## LLM tools
 
 Both tools use Gemini via Vertex AI. Requires `gcloud auth application-default login` and a GCP project with Vertex AI enabled.
