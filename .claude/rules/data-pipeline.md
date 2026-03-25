@@ -139,7 +139,7 @@ After re-rendering a notebook, commit the updated `paper/stats/*.tex` file so th
 Figures are generated in `figures/pilot_plots/` and `figures/llm_plots/`. The manuscript references them from `figures/` (relative to `paper/`). Run the sync script to copy them:
 
 ```bash
-bash paper/sync_figures.sh
+bash figures/sync_figures.sh
 ```
 
 This copies all `SI_*.pdf` files into `paper/figures/`. Overleaf doesn't support paths outside the project root, so figures must live inside `paper/`.

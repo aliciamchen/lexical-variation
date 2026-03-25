@@ -174,7 +174,7 @@ quarto render analysis/llm_simulation/SI_llm_simulation.qmd      # LLM benchmark
 Stats are written as `\newcommand` definitions to `paper/stats/*.tex`, which the manuscript `\input`s. Sync figures to the paper before pushing to Overleaf:
 
 ```bash
-bash paper/sync_figures.sh   # copies SI_*.pdf into paper/figures/
+bash figures/sync_figures.sh   # copies SI_*.pdf into paper/figures/
 ```
 
 ### Notebooks for the full sample (not yet active)
