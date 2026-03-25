@@ -25,10 +25,10 @@ utterances_file <- if (file.exists(file.path(data_dir, "speaker_utterances_filte
 # ── Color palettes (match analysis/plot_style.py) ────────────
 
 CONDITION_COLORS <- c(
-  refer_separated = "#027A5E",
-  refer_mixed     = "#5EC2A0",
-  social_mixed    = "#F5B74A",
-  social_first    = "#C47A00"
+  refer_separated = "#016E4A",
+  refer_mixed     = "#029E73",
+  social_mixed    = "#DE8F05",
+  social_first    = "#A86B04"
 )
 
 CONDITION_ORDER <- c("refer_separated", "refer_mixed", "social_mixed", "social_first")

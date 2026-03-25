@@ -563,23 +563,36 @@ if (has_block_pw) {
     summarise(mean_sim = mean(similarity, na.rm = TRUE), .groups = "drop")
 
   fig3a <- ggplot(wb_summary, aes(x = block1, y = empirical_stat,
-                                   color = pair_type, fill = pair_type)) +
+                                   color = condition, fill = condition,
+                                   linetype = pair_type, shape = pair_type)) +
     annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
              ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5) +
     geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted") +
     geom_point(data = wb_by_tangram,
-               aes(x = block1, y = mean_sim, color = pair_type),
-               alpha = 0.15, size = 0.8, position = position_jitter(width = 0.2)) +
+               aes(x = block1, y = mean_sim, color = condition, shape = pair_type,
+                   alpha = pair_type, group = pair_type),
+               size = 1.2,
+               position = position_jitterdodge(jitter.width = 0.15,
+                                               dodge.width = 0.4)) +
+    scale_alpha_manual(name = "Pair type",
+                       values = c("Within group" = 0.2,
+                                  "Between group" = 0.1)) +
     geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2,
                 color = NA) +
     geom_line(linewidth = 0.8) +
     geom_point(size = 1.8) +
     facet_wrap(~condition, nrow = 1,
                labeller = labeller(condition = function(x) format_condition(x))) +
-    scale_fill_brewer(name = "Pair type", palette = "Accent") +
-    scale_color_brewer(name = "Pair type", palette = "Accent") +
+    scale_color_condition(guide = "none") +
+    scale_fill_condition(guide = "none") +
+    scale_linetype_manual(name = "Pair type",
+                          values = c("Within group" = "solid",
+                                     "Between group" = "dashed")) +
+    scale_shape_manual(name = "Pair type",
+                       values = c("Within group" = 17,
+                                  "Between group" = 15)) +
     scale_x_continuous(breaks = scales::breaks_width(1)) +
-    labs(x = "Block", y = "Pairwise cosine similarity") +
+    labs(x = "Block", y = "Cosine similarity") +
     coord_cartesian(ylim = c(0, 1)) +
     theme(legend.position = "bottom",
           legend.box.margin = margin(t = -10, b = -10))
@@ -623,11 +636,13 @@ if (has_block_pw) {
     geom_hline(yintercept = 0, color = "gray", linetype = "dotted", alpha = 0.5) +
     geom_point(data = spec_tangram_plot,
                aes(x = block1, y = specificity, color = condition),
-               alpha = 0.15, size = 1, position = position_jitter(width = 0.15)) +
+               alpha = 0.15, size = 1.6, shape = 16,
+               position = position_jitterdodge(jitter.width = 0.1,
+                                               dodge.width = 0.3)) +
     geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12,
-                color = NA) +
-    geom_line(linewidth = 0.8) +
-    geom_point(size = 2) +
+                color = NA, position = position_dodge(width = 0.3)) +
+    geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+    geom_point(size = 2.5, position = position_dodge(width = 0.3)) +
     scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
     scale_fill_condition(labels = function(x) format_condition(x), name = "Condition") +
     scale_x_continuous(breaks = scales::breaks_width(1), limits = c(1, NA)) +
@@ -674,8 +689,9 @@ if (has_pairwise) {
 
   fig4 <- ggplot(gs_by_window, aes(x = phase, y = coefficient,
                                     color = condition)) +
-    geom_line(aes(group = interaction(gameId, condition)), linewidth = 0.6, alpha = 0.6) +
-    geom_point(size = 3) +
+    geom_line(aes(group = interaction(gameId, condition)), linewidth = 0.6, alpha = 0.6,
+              position = position_dodge(width = 0.1)) +
+    geom_point(size = 3, position = position_dodge(width = 0.1)) +
     scale_color_condition(labels = function(x) format_condition(x), name = "Condition") +
     coord_cartesian(ylim = c(-0.05, 0.85)) +
     labs(x = "Phase", y = "Group-specificity") +
@@ -709,7 +725,7 @@ if (exists("fig3a") && exists("fig3b") && exists("fig4")) {
   fig_specificity_combined <- fig3a + fig3b + fig4 +
     wrap_elements(legend_grob) +
     plot_layout(design = design,
-                heights = c(0.65, 0.65, 0.65, 0.5, 0.5, 0.16)) +
+                heights = c(0.63, 0.63, 0.63, 0.5, 0.5, 0.16)) +
     plot_annotation(tag_levels = list(c("a", "b", "c", "")),
                     theme = theme(plot.margin = margin(t = 8))) &
     theme(plot.tag = element_text(face = "bold"),
@@ -717,7 +733,7 @@ if (exists("fig3a") && exists("fig3b") && exists("fig4")) {
 
   print(fig_specificity_combined)
   # save_fig(fig_specificity_combined, "SI_group_specificity.pdf",
-  #          width = 12, height = 7.7)
+  #          width = 12.5, height = 7.7)
   # i edited spacing and stuff in illustrator so this part is commented out for now
 }
 ```
@@ -837,7 +853,7 @@ phase2_bg <- list(
   annotate("rect", xmin = PHASE_BOUNDARY, xmax = Inf,
            ymin = -Inf, ymax = Inf, fill = "gray90", alpha = 0.5),
   geom_vline(xintercept = PHASE_BOUNDARY, color = "gray70", linetype = "dotted"),
-  scale_x_continuous(breaks = 1:12, limits = c(1, 12), labels = as.integer),
+  scale_x_continuous(breaks = 1:12, limits = c(0.8, 12.2), labels = as.integer),
   scale_color_condition(labels = function(x) format_condition(x), name = NULL,
                         limits = CONDITION_ORDER, drop = FALSE),
   scale_fill_condition(labels = function(x) format_condition(x), name = NULL,
@@ -851,10 +867,12 @@ p_acc <- ggplot(acc_block_all, aes(x = block1, y = empirical_stat,
   geom_line(data = acc_group_all,
             aes(x = block1, y = mean_acc,
                 group = interaction(gameId, group, condition)),
-            alpha = 0.25, linewidth = 0.3) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA) +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 1.8) +
+            alpha = 0.25, linewidth = 0.3,
+            position = position_dodge(width = 0.3)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA,
+              position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  geom_point(size = 1.8, position = position_dodge(width = 0.3)) +
   geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
   labs(x = "Block", y = "Proportion correct",
        title = "Referential accuracy") +
@@ -868,10 +886,12 @@ p_len <- ggplot(len_block_all, aes(x = block1, y = empirical_stat,
   geom_line(data = len_group_all,
             aes(x = block1, y = mean_length,
                 group = interaction(gameId, group, condition)),
-            alpha = 0.25, linewidth = 0.3) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA) +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 1.8) +
+            alpha = 0.25, linewidth = 0.3,
+            position = position_dodge(width = 0.3)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA,
+              position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  geom_point(size = 1.8, position = position_dodge(width = 0.3)) +
   labs(x = "Block", y = "Words per description",
        title = "Description length") +
   theme(legend.position = "none")
@@ -883,10 +903,12 @@ p_sg <- ggplot(sg_block, aes(x = block1, y = empirical_stat,
   geom_line(data = sg_group,
             aes(x = block1, y = mean_acc,
                 group = interaction(gameId, group, condition)),
-            alpha = 0.3, linewidth = 0.3) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA) +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 1.8) +
+            alpha = 0.3, linewidth = 0.3,
+            position = position_dodge(width = 0.3)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA,
+              position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  geom_point(size = 1.8, position = position_dodge(width = 0.3)) +
   geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
   labs(x = "Block", y = "Proportion correct",
        title = "Social-signaling accuracy") +
@@ -909,10 +931,12 @@ p_stab <- ggplot(adj_block_all, aes(x = block1, y = empirical_stat,
   geom_line(data = adj_group_all,
             aes(x = block1, y = mean_sim,
                 group = interaction(gameId, group, condition)),
-            alpha = 0.25, linewidth = 0.3) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA) +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 1.8) +
+            alpha = 0.25, linewidth = 0.3,
+            position = position_dodge(width = 0.3)) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA,
+              position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  geom_point(size = 1.8, position = position_dodge(width = 0.3)) +
   labs(x = "Block", y = "Cosine similarity\n(adjacent descriptions)",
        title = "Convention stability") +
   theme(legend.position = "none")
