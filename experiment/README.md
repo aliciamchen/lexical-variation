@@ -59,16 +59,6 @@ empirica serve empirica.tar.zst
 7. **Monitor**: watch the admin panel for player arrivals and game progress
 8. **Start `copy_tajriba.sh`** locally to back up data every 5 minutes (see below)
 
-### Testing on the production server
-
-Open 9 isolated Chrome windows pointing at the production URL:
-
-```bash
-bash experiment/open_players.sh        # open 9 players (default)
-bash experiment/open_players.sh 3      # open 3 players
-bash experiment/open_players.sh clean  # remove temp profiles
-```
-
 ## Copying data locally
 
 The `copy_tajriba.sh` script SSHs into the production server, runs `empirica export` to produce a CSV zip, and copies it into `experiment/data/<timestamp>/`. Safe to run while the experiment is live. To process the exported zip, run `analysis/extract_run.py`.

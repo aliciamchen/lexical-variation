@@ -5,6 +5,7 @@
 - [Running the experiment](#running-the-experiment)
 - [Analysis pipeline](#analysis-pipeline)
 - [LLM simulation](#llm-simulation)
+- [Power analysis](#power-analysis)
 
 In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups describe tangram images to each other across two phases, with 4 between-subjects conditions that orthogonally manipulate interaction patterns and social-signaling goals in Phase 2:
 
@@ -37,7 +38,8 @@ In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups
 │   ├── 00–05_*.qmd           # Pre-registered analysis notebooks (full sample)
 │   ├── SI_pilot.qmd          # SI: pilot data analyses
 │   ├── pilot_derived/        # Computed outputs (similarities, embeddings, UMAP)
-│   └── llm_simulation/       # LLM Phase 1 benchmark simulation
+│   ├── llm_simulation/       # LLM Phase 1 benchmark simulation
+│   └── power_analysis/       # Power analysis for sample size justification
 ├── figures/                  # Generated & design assets
 │   ├── pilot_plots/          # SI figures from SI_pilot.qmd
 │   ├── llm_plots/            # SI figures from SI_llm_simulation.qmd
@@ -197,4 +199,13 @@ bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 20 --temperature
 # Process results → CSVs, then render analysis notebook
 uv run python analysis/llm_simulation/process_llm_results.py
 cd analysis/llm_simulation && quarto render SI_llm_simulation.qmd
+```
+
+## Power analysis
+
+Sample size justification using simulated data from Boyce et al. (2023). Lives in `analysis/power_analysis/`.
+
+```bash
+quarto render analysis/power_analysis/power_analysis_setup.Qmd    # generate simulated data
+quarto render analysis/power_analysis/power_analysis_plots.Qmd    # plot power curves
 ```
