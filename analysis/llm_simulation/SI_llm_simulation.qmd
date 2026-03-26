@@ -213,26 +213,6 @@ if (has_similarity) {
 }
 ```
 
-## Per-group accuracy heatmap
-
-```{r heatmap, fig.width=5, fig.height=max(3, n_groups * 0.5)}
-heat_data <- exclusion |>
-  mutate(player_label = paste0("Player ", player_id))
-
-p_heat <- ggplot(heat_data, aes(x = player_label, y = group_id, fill = listener_accuracy)) +
-  geom_tile(color = "white", linewidth = 0.5) +
-  geom_text(aes(label = sprintf("%.0f%%", listener_accuracy * 100)), size = 3.5) +
-  scale_fill_gradient2(low = "#d73027", mid = "#fee08b", high = "#1a9850",
-                       midpoint = 0.33, limits = c(0, 1),
-                       labels = scales::percent) +
-  labs(x = NULL, y = NULL, fill = "Accuracy",
-       title = "Listener accuracy (last 3 blocks)")
-
-p_heat
-save_fig(p_heat, "SI_llm_exclusion_heatmap.pdf",
-         width = 5, height = max(3, n_groups * 0.5))
-```
-
 ## Combined panel figure
 
 Three-panel figure matching the structure of the pilot outcome-neutral criteria
@@ -409,38 +389,15 @@ p_combined
 save_fig(p_combined, "SI_llm_combined.pdf", width = 14, height = 5.5)
 ```
 
-## Example descriptions across blocks
+## Write stats to LaTeX
 
-To illustrate the lack of stable convention formation, we show how one group's
-descriptions of the same tangram evolve (or fail to converge) across blocks.
+Write all statistics as `\newcommand` definitions for `\input` in the paper.
 
-```{r example-descriptions}
-# Pick the group with median accuracy and show one tangram's descriptions
-median_group <- block_acc |>
-  group_by(group_id) |>
-  summarise(mean_acc = mean(accuracy), .groups = "drop") |>
-  arrange(mean_acc) |>
-  slice(ceiling(n() / 2)) |>
-  pull(group_id)
+```{r write-stats-tex}
+stats_dir <- here::here("paper", "stats")
+dir.create(stats_dir, showWarnings = FALSE, recursive = TRUE)
 
-example_tangram <- rounds |>
-  filter(group_id == median_group) |>
-  count(target) |>
-  slice_max(n, n = 1) |>
-  pull(target)
-
-rounds |>
-  filter(group_id == median_group, target == example_tangram) |>
-  select(block_num, speaker_id, word_count, description) |>
-  knitr::kable(col.names = c("Block", "Speaker", "Words", "Description"),
-               caption = sprintf("Descriptions of %s by %s across blocks",
-                                 example_tangram, median_group))
-```
-
-## Draft SI paragraph
-
-```{r draft-paragraph}
-# Final stats
+# Compute summary stats for LaTeX
 mean_last3 <- exclusion |>
   summarise(m = mean(listener_accuracy) * 100) |>
   pull(m)
@@ -453,60 +410,12 @@ sd_last3 <- exclusion |>
 
 block0_wc <- wc_summary$empirical_stat[wc_summary$block_num == 0]
 block_last_wc <- wc_summary$empirical_stat[wc_summary$block_num == config$n_blocks - 1]
-wc_direction <- ifelse(block_last_wc >= block0_wc * 0.85, "did not show", "showed")
 
-# Block-level accuracy stats (for LaTeX)
 llm_acc_block1 <- acc_summary$empirical_stat[acc_summary$block_num == 0] * 100
 llm_acc_block3 <- acc_summary$empirical_stat[acc_summary$block_num == 2] * 100
 late_blocks <- acc_summary |> filter(block_num >= 3)
 llm_acc_late_min <- min(late_blocks$empirical_stat) * 100
 llm_acc_late_max <- max(late_blocks$empirical_stat) * 100
-
-temp_str <- ifelse(is.null(config$temperature),
-                   "default temperature",
-                   sprintf("temperature $= %s$", config$temperature))
-
-if (!is.na(overall_sim)) {
-  sim_str <- sprintf("%.2f (SD $= %.2f$)", overall_sim, overall_sim_sd)
-  sim_interp <- ifelse(overall_sim < 0.5, "low", "moderate")
-} else {
-  sim_str <- "N/A"
-  sim_interp <- "unknown"
-}
-
-paragraph <- sprintf(
-"We simulated $N = %d$ independent groups of 3 \\texttt{%s} agents
-playing the Phase~1 reference game (6 blocks $\\times$ 6 tangrams $= 36$ rounds
-per group, %s). We evaluated each group against the same exclusion
-criterion applied to human participants: at least 2 of 3 group members achieving
-$\\geq$66.7\\%% referential accuracy across the last 3 blocks.
-%d/%d groups (%.0f\\%%) met this criterion.
-Mean listener accuracy was %.1f\\%% (SD $= %.1f$\\%%) across
-the final 3 blocks, compared to the 66.7\\%% threshold. Description length
-%s the expected reduction over blocks (block~1:
-%.1f words; block~6: %.1f words). Cosine similarity
-between adjacent descriptions of the same tangram was %s, indicating
-%s convergence on stable expressions.",
-  n_groups, config$model, temp_str,
-  n_passing, n_groups, pct_passing,
-  mean_last3, sd_last3,
-  wc_direction, block0_wc, block_last_wc,
-  sim_str, sim_interp
-)
-
-cat("============================================================\n")
-cat("DRAFT SI PARAGRAPH (copy to LaTeX)\n")
-cat("============================================================\n\n")
-cat(paragraph, "\n")
-```
-
-## Write stats to LaTeX
-
-Write all statistics as `\newcommand` definitions for `\input` in the paper.
-
-```{r write-stats-tex}
-stats_dir <- here::here("paper", "stats")
-dir.create(stats_dir, showWarnings = FALSE, recursive = TRUE)
 
 cmds <- c()
 cmd <- function(name, value) paste0("\\newcommand{\\", name, "}{", value, "}")
@@ -542,8 +451,7 @@ cmds <- c(cmds,
 if (!is.na(overall_sim)) {
   cmds <- c(cmds,
     cmd("llmSim", sprintf("%.2f", overall_sim)),
-    cmd("llmSimSD", sprintf("%.2f", overall_sim_sd)),
-    cmd("llmSimInterp", ifelse(overall_sim < 0.5, "low", "moderate"))
+    cmd("llmSimSD", sprintf("%.2f", overall_sim_sd))
   )
 }
 
