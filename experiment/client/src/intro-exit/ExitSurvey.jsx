@@ -51,7 +51,6 @@ export function ExitSurvey({ next }) {
 
   const requiredComplete =
     understood &&
-    feltHuman &&
     groupIdentification &&
     groupCloseness &&
     groupLanguage &&
@@ -62,7 +61,6 @@ export function ExitSurvey({ next }) {
     if (!requiredComplete) return;
     player.set("exitSurvey", {
       understood,
-      feltHuman,
       groupIdentification,
       groupCloseness,
       groupLanguage,
@@ -75,10 +73,14 @@ export function ExitSurvey({ next }) {
     }
   }
 
+  const page2RequiredComplete = feltHuman && age && gender;
+
   function handleOptionalSubmit(event) {
     event.preventDefault();
+    if (!page2RequiredComplete) return;
     player.set("exitSurvey", {
       ...player.get("exitSurvey"),
+      feltHuman,
       age,
       gender,
       education,
@@ -168,6 +170,10 @@ export function ExitSurvey({ next }) {
       >
         <Alert title="Thank you!">
           <p>
+            Just so you know: you were always playing with real humans
+            throughout the game.
+          </p>
+          <p className="mt-2">
             You earned <strong>{score} points</strong> for a bonus of{" "}
             <strong>${bonus.toFixed(2)}</strong>.
           </p>
@@ -204,19 +210,15 @@ export function ExitSurvey({ next }) {
             <div>
               <div>
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Optional questions
+                  Exit survey (page 2)
                 </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  These questions are optional. You do not have to provide any
-                  information you feel uncomfortable with.
-                </p>
               </div>
 
               <div className="space-y-8 mt-6">
                 <div className="flex flex-row">
                   <div>
                     <label htmlFor="age" className={labelClassName}>
-                      Age
+                      Age <span className="text-red-500">*</span>
                     </label>
                     <div className="mt-1">
                       <input
@@ -232,7 +234,7 @@ export function ExitSurvey({ next }) {
                   </div>
                   <div className="ml-5">
                     <label htmlFor="gender" className={labelClassName}>
-                      Gender
+                      Gender <span className="text-red-500">*</span>
                     </label>
                     <div className="mt-1">
                       <select
@@ -254,6 +256,30 @@ export function ExitSurvey({ next }) {
                     </div>
                   </div>
                 </div>
+
+                <div>
+                  <label className={labelClassName}>
+                    Did you feel like you were playing with other humans? <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid gap-2">
+                    <Radio
+                      selected={feltHuman}
+                      name="feltHuman"
+                      value="yes"
+                      label="Yes"
+                      onChange={(e) => setFeltHuman(e.target.value)}
+                    />
+                    <Radio
+                      selected={feltHuman}
+                      name="feltHuman"
+                      value="no"
+                      label="No"
+                      onChange={(e) => setFeltHuman(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <hr className="border-gray-300" />
 
                 <div>
                   <label className={labelClassName}>
@@ -322,7 +348,7 @@ export function ExitSurvey({ next }) {
                 </div>
 
                 <div className="mb-12">
-                  <Button type="submit">Submit</Button>
+                  <Button type="submit" disabled={!page2RequiredComplete}>Submit</Button>
                 </div>
               </div>
             </div>
@@ -467,28 +493,6 @@ export function ExitSurvey({ next }) {
                   value={strategy}
                   onChange={(e) => setStrategy(e.target.value)}
                 />
-              </div>
-
-              <div>
-                <label className={labelClassName}>
-                  Did you feel like you were playing with other humans? <span className="text-red-500">*</span>
-                </label>
-                <div className="grid gap-2">
-                  <Radio
-                    selected={feltHuman}
-                    name="feltHuman"
-                    value="yes"
-                    label="Yes"
-                    onChange={(e) => setFeltHuman(e.target.value)}
-                  />
-                  <Radio
-                    selected={feltHuman}
-                    name="feltHuman"
-                    value="no"
-                    label="No"
-                    onChange={(e) => setFeltHuman(e.target.value)}
-                  />
-                </div>
               </div>
 
               <div className="mb-12">
