@@ -1,5 +1,5 @@
 ---
-title: "04: Exploratory Analyses"
+title: "04: Exploratory analyses"
 format:
   html:
     toc: true
@@ -50,7 +50,7 @@ if (has_adjacent && nrow(adjacent_sim) > 0) {
 }
 ```
 
-# 1. Description Length in Phase 2 by Condition
+# 1. Description length in Phase 2 by condition
 
 ```{r model-phase2-length}
 p2_utts <- utts_with_condition |>
@@ -98,7 +98,7 @@ summary(m_p2_length)
 report_effect_sizes(m_p2_length)
 ```
 
-# 2. Temporal Dynamics: Full Game
+# 2. Temporal dynamics: full game
 
 ```{r plot-full-temporal, fig.width=10, fig.height=10}
 phase_boundary <- games$phase1Blocks[1] - 0.5
@@ -172,7 +172,7 @@ if (exists("p_sim")) {
 }
 ```
 
-# 3. UMAP Visualization
+# 3. UMAP visualization
 
 ```{r plot-umap, fig.width=12, fig.height=8}
 # Plot 17: UMAP embedding space
@@ -240,7 +240,7 @@ if (has_umap && exists("umap_data")) {
 }
 ```
 
-# 4. Utterance Properties
+# 4. Utterance properties
 
 ```{r utterance-properties}
 # Geometric/body-part word lists

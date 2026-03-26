@@ -1,5 +1,5 @@
 ---
-title: "05: Exit Survey Responses"
+title: "05: Exit survey responses"
 format:
   html:
     toc: true
@@ -10,7 +10,7 @@ format:
 source(here::here("analysis", "config.R"))
 ```
 
-# Load & Clean
+# Load & clean
 
 ```{r load-data}
 players_raw <- read_csv(
@@ -77,7 +77,7 @@ ggplot(survey, aes(x = education, fill = originalGroup)) +
   labs(title = "Education by group", x = "Education", y = "Count", fill = "Group")
 ```
 
-# Comprehension & Pay Fairness
+# Comprehension & pay fairness
 
 ```{r comprehension-fairness}
 survey |>
@@ -95,7 +95,7 @@ survey |>
   knitr::kable(caption = "Strategy descriptions")
 ```
 
-# Open Feedback
+# Open feedback
 
 ```{r feedback}
 survey |>
@@ -104,7 +104,7 @@ survey |>
   knitr::kable(caption = "Open feedback")
 ```
 
-# Full Response Table
+# Full response table
 
 ```{r full-table}
 survey |>

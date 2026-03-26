@@ -1,5 +1,5 @@
 ---
-title: "01: Outcome-Neutral Criteria"
+title: "01: Outcome-neutral criteria"
 format:
   html:
     toc: true
@@ -70,7 +70,7 @@ if (has_adjacent) {
 }
 ```
 
-# 1. Description Length Decreases Over Blocks
+# 1. Description length decreases over blocks
 
 **Criterion:** Significant negative main effect of `blockNum`.
 
@@ -110,7 +110,7 @@ ggplot(length_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
   scale_x_continuous(breaks = 1:6)
 ```
 
-# 2. Listener Accuracy Increases Over Blocks
+# 2. Listener accuracy increases over blocks
 
 **Criterion:** Significant positive main effect of `blockNum`.
 
@@ -156,7 +156,7 @@ ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
   scale_y_continuous(limits = c(0, 1))
 ```
 
-# 3. Conventions Are Stable (Increasing Adjacent Similarity)
+# 3. Conventions are stable (increasing adjacent similarity)
 
 **Criterion:** Significant positive main effect of `blockNum`.
 
@@ -204,7 +204,7 @@ if (has_adjacent && exists("p1_adjacent_valid")) {
 }
 ```
 
-# 4. Group-Specificity Exceeds Chance
+# 4. Group-specificity exceeds chance
 
 **Criterion:** ≥80% of games show significant group-specificity (p < .05 via permutation test).
 
@@ -280,7 +280,7 @@ if (exists("gs_results") && nrow(gs_results) > 0) {
 }
 ```
 
-# Summary of Outcome-Neutral Criteria
+# Summary of outcome-neutral criteria
 
 ```{r summary-table}
 criteria <- tibble(

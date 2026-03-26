@@ -1,5 +1,5 @@
 ---
-title: "03: Secondary Analyses"
+title: "03: Secondary analyses"
 format:
   html:
     toc: true
@@ -26,7 +26,7 @@ pairwise_sim <- if (has_pairwise) read_csv(file.path(derived_dir, "pairwise_simi
 n_conditions <- n_distinct(games$condition)
 ```
 
-# 1. Semantic Change (Phase 1 → Phase 2)
+# 1. Semantic change (Phase 1 → Phase 2)
 
 Cosine similarity between final Phase 1 and final Phase 2 descriptions per participant × tangram.
 Higher similarity = less semantic change.
@@ -81,7 +81,7 @@ ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) 
 }
 ```
 
-# 2. Referential Accuracy in Phase 2
+# 2. Referential accuracy in Phase 2
 
 **Predictions:** Above chance (1/16), main effect of `blockNum`, ordered: separated > mixed > social_mixed.
 
@@ -158,7 +158,7 @@ ggplot(acc_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
   scale_fill_condition()
 ```
 
-# 3. In-Group vs Out-Group Listener Accuracy (Social Conditions)
+# 3. In-group vs out-group listener accuracy (social conditions)
 
 Within `social_mixed` and `social_first`: do listeners understand in-group speakers better?
 
@@ -247,7 +247,7 @@ if (exists("social_listener") && nrow(social_listener) > 0 &&
 }
 ```
 
-# 4. Group-Specificity vs Social Accuracy Correlation
+# 4. Group-specificity vs social accuracy correlation
 
 Does maintaining group-specific language correlate with social identification accuracy?
 
@@ -334,7 +334,7 @@ if (exists("gs_social") && nrow(gs_social) >= 3) {
 }
 ```
 
-# 5. Social-Signaling Accuracy Over Repetitions
+# 5. Social-signaling accuracy over repetitions
 
 Does social identification improve over blocks?
 
@@ -444,7 +444,7 @@ if (nrow(social_guesses) > 0) {
 }
 ```
 
-# 6. Description Length in Phase 2
+# 6. Description length in Phase 2
 
 How does description length evolve across Phase 2 blocks by condition?
 

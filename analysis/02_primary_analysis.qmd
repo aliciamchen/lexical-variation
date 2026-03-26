@@ -1,5 +1,5 @@
 ---
-title: "02: Primary Analysis — H1 & H2"
+title: "02: Primary analysis — H1 & H2"
 format:
   html:
     toc: true
@@ -36,7 +36,7 @@ block_pairwise_sim <- if (has_block_pairwise) {
 }
 ```
 
-# Compute Group-Specificity per Game per Phase
+# Compute group-specificity per game per phase
 
 For each game, fit:
 `similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2)`
@@ -98,7 +98,7 @@ gs_combined |>
 } # end has_pairwise
 ```
 
-# Weighted Least Squares Regression
+# Weighted least squares regression
 
 ```
 group_specificity_phase2 ~ condition + group_specificity_phase1
@@ -133,7 +133,7 @@ if (n_conditions >= 2) {
 } # end exists("gs_combined")
 ```
 
-# Planned Contrasts
+# Planned contrasts
 
 Two-tailed tests at α = 0.05.
 
@@ -276,7 +276,7 @@ ggplot(pw_means, aes(x = condition, y = mean_sim, fill = groupType)) +
 }
 ```
 
-# Optional: Bayes Factors (if null results)
+# Optional: Bayes factors (if null results)
 
 Uncomment and run if contrasts are non-significant.
 
@@ -313,12 +313,12 @@ Uncomment and run if contrasts are non-significant.
 # cat("Bayes factor (full vs null):", bf$bf, "\n")
 ```
 
-# H3: Effect of Anticipated Social Goal on Phase 1 Conventions
+# H3: Effect of anticipated social goal on Phase 1 conventions
 
 Restricted to `social_mixed` vs `social_first`. Tests whether anticipating
 a social-signaling task shapes convention formation *before* Phase 2.
 
-## H3a: Phase 1 Group-Specificity
+## H3a: Phase 1 group-specificity
 
 WLS regression: `group_specificity_phase1 ~ condition`, weighted by inverse
 variance of Phase 1 GS estimates. Contrast: `social_first > social_mixed`.
@@ -371,7 +371,7 @@ if (exists("gs_social") && nrow(gs_social) > 0) {
 }
 ```
 
-## H3b: Within-Group Convergence Rate
+## H3b: Within-group convergence rate
 
 `within_group_similarity ~ condition * block + (block | group) + (block | tangram)`,
 restricted to Phase 1, within-group pairs, social conditions only.
@@ -437,7 +437,7 @@ if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
 }
 ```
 
-## H3c: Description Properties
+## H3c: Description properties
 
 Compare concreteness, lexical uniqueness, and word frequency of final Phase 1
 descriptions between `social_mixed` and `social_first`.
@@ -579,13 +579,13 @@ if (exists("p1_final_social") && "concreteness" %in% names(p1_final_social)) {
 }
 ```
 
-# H4: Downstream Trade-Off (Social-First vs Social-Mixed)
+# H4: Downstream trade-off (social-first vs social-mixed)
 
 Restricted to `social_mixed` vs `social_first` in Phase 2. Tests whether
 anticipated social goals produce a trade-off: higher social accuracy but
 lower referential accuracy. Contingent on H3a.
 
-## H4a: Social-Identification Accuracy
+## H4a: Social-identification accuracy
 
 `glmer(social_correct ~ condition + block_num + (block_num | game) + (block_num | listener) + (block_num | speaker) + (condition | tangram), family = binomial)`
 
@@ -664,7 +664,7 @@ if (exists("social_h4") && nrow(social_h4) > 0) {
 }
 ```
 
-## H4b: Referential Accuracy
+## H4b: Referential accuracy
 
 `glmer(ref_correct ~ condition + block_num + (block_num | game) + (block_num | listener) + (block_num | speaker) + (condition | tangram), family = binomial)`
 
