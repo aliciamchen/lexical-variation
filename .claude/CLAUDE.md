@@ -8,8 +8,6 @@ This is a multiplayer reference game experiment built with Empirica studying lex
 
 The registered report manuscript is in `paper/main.tex` (compiled with `cd paper && latexmk -pdf main.tex`). The paper describes the framing, design, and analysis plan. Statistics flow from analysis notebooks into the paper via `\newcommand` definitions in `paper/stats/*.tex` (see data-pipeline.md for details).
 
-We plan to submit the registered report to Nature Human Behavior. The submission guidelines are at https://www.nature.com/nathumbehav/submission-guidelines/registeredreports
-
 **Experimental Design:**
 - 9 players in 3 groups of 3
 - Phase 1: Within-group reference game (6 blocks)

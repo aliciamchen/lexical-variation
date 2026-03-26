@@ -1,4 +1,6 @@
-# lexical-variation
+# Causal evidence for how passive and active pressures independently shape linguistic diversity
+
+## Table of contents
 
 - [Repository structure](#repository-structure)
 - [Setup](#setup)
@@ -6,13 +8,6 @@
 - [Analysis pipeline](#analysis-pipeline)
 - [LLM simulation](#llm-simulation)
 - [Power analysis](#power-analysis)
-
-In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups describe tangram images to each other across two phases, with 4 between-subjects conditions that orthogonally manipulate interaction patterns and social-signaling goals in Phase 2:
-
-- **refer + separated**: same groups throughout Phase 2 (baseline)
-- **refer + mixed**: groups reshuffled every trial in Phase 2, masked identities
-- **social + mixed**: reshuffled + social guessing task (listeners guess if speaker is from their original group)
-- **social-first + mixed**: told about social identification reward before Phase 1, then same as social + mixed
 
 ## Repository structure
 
@@ -24,7 +19,7 @@ In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups
 │   ├── tests/                # Playwright end-to-end tests
 │   └── .empirica/            # Treatments, lobbies, config
 ├── data/
-│   ├── pilots/               # Canonical pilot dataset (committed)
+│   ├── pilots/               # Pilot dataset (committed)
 │   │   ├── raw/              #   Anonymized Empirica CSVs
 │   │   └── *.csv             #   Preprocessed analysis-ready CSVs
 │   └── pilot_runs/           # Per-run outputs from extract_run.py (gitignored)
@@ -50,7 +45,7 @@ In the game (built with [Empirica](https://empirica.ly/)), 9 players in 3 groups
 
 ## Setup
 
-Install Empirica:
+The game is built with [Empirica](https://empirica.ly/). Install it: 
 
 ```bash
 curl -fsS https://install.empirica.dev | sh
