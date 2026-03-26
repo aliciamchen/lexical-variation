@@ -66,7 +66,7 @@ Quarto notebooks and animations are run separately (see below).
 | `config.R` | Shared paths, palettes, ggplot theme (sourced by all .qmd notebooks) |
 | `group_specificity.R` | Group-specificity estimation with permutation testing (called by notebooks, caches RDS in `pilot_derived/`) |
 | `plot_style.py` | Shared Python plotting constants (imported, not run directly) |
-| `test_data_integrity.py` | Pytest validation of preprocessed CSV structure |
+| `test_data_integrity.py` | Pytest validation of `data/pilots/` CSV structure |
 
 ## Processing new data
 

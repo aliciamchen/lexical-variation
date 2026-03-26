@@ -1,7 +1,7 @@
 """
 Data integrity tests for preprocessed experiment data.
 
-Validates the preprocessed CSV files in analysis/processed/ against the
+Validates the preprocessed CSV files in data/pilots/ against the
 registered report specifications and the experiment's server-side logic.
 
 Run with:
@@ -28,20 +28,22 @@ VALID_CONDITIONS = {"refer_separated", "refer_mixed", "social_mixed", "social_fi
 VALID_GROUPS = {"A", "B", "C"}
 VALID_ROLES = {"speaker", "listener"}
 VALID_SOCIAL_GUESSES = {"same_group", "different_group"}
+MIXED_CONDITIONS = {"refer_mixed", "social_mixed", "social_first"}
+SOCIAL_CONDITIONS = {"social_mixed", "social_first"}
 
 # Scoring
 LISTENER_CORRECT_POINTS = 2
 SPEAKER_MAX_POINTS_PER_ROUND = 2
-SOCIAL_GUESS_CORRECT_POINTS = 4
-SOCIAL_SPEAKER_POINTS_PER_CORRECT = 4
+SOCIAL_GUESS_CORRECT_POINTS = 6
+SOCIAL_SPEAKER_POINTS_PER_CORRECT = 6
 BONUS_PER_POINT = 0.05
-BONUS_PER_POINT_SOCIAL = 0.03
+BONUS_PER_POINT_SOCIAL = 0.023
 
 # Names from constants.js
 VALID_NAMES = {"Repi", "Minu", "Laju", "Hera", "Zuda", "Bavi", "Lika", "Felu", "Nori"}
 
 # Data directory
-DATA_DIR = Path(__file__).parent / "processed_data"
+DATA_DIR = Path(__file__).parent.parent / "data" / "pilots"
 
 
 # ============ FIXTURES ============
@@ -387,7 +389,7 @@ class TestRoleAssignment:
         for gid in game_ids:
             game_trials = trials[trials["gameId"] == gid]
             condition = game_condition_map.get(gid)
-            is_mixed = condition in ("refer_mixed", "social_mixed")
+            is_mixed = condition in MIXED_CONDITIONS
 
             for pn in game_trials["phaseNum"].unique():
                 # Skip Phase 2 of mixed conditions: groups are reshuffled
@@ -483,7 +485,7 @@ class TestPhaseStructure:
         for gid in game_ids:
             game_trials = trials[trials["gameId"] == gid]
             condition = game_condition_map.get(gid)
-            is_mixed = condition in ("refer_mixed", "social_mixed")
+            is_mixed = condition in MIXED_CONDITIONS
 
             for pn in game_trials["phaseNum"].unique():
                 phase_trials = game_trials[game_trials["phaseNum"] == pn]
@@ -561,7 +563,7 @@ class TestTargetCoverage:
         for gid in game_ids:
             game_trials = trials[trials["gameId"] == gid]
             condition = game_condition_map.get(gid)
-            is_mixed = condition in ("refer_mixed", "social_mixed")
+            is_mixed = condition in MIXED_CONDITIONS
 
             for pn in game_trials["phaseNum"].unique():
                 phase_trials = game_trials[game_trials["phaseNum"] == pn]
@@ -633,7 +635,7 @@ class TestShuffling:
     ):
         """In mixed conditions, some Phase 2 trials should have different groups."""
         for gid, cond in game_condition_map.items():
-            if cond not in ("refer_mixed", "social_mixed"):
+            if cond not in MIXED_CONDITIONS:
                 continue
             game_trials = trials[trials["gameId"] == gid]
             p2 = game_trials[game_trials["phaseNum"] == 2]
@@ -653,7 +655,7 @@ class TestShuffling:
         are guaranteed mixed. We check per (roundId, currentGroup).
         """
         for gid, cond in game_condition_map.items():
-            if cond not in ("refer_mixed", "social_mixed"):
+            if cond not in MIXED_CONDITIONS:
                 continue
             game_trials = trials[trials["gameId"] == gid]
             p2 = game_trials[game_trials["phaseNum"] == 2]
@@ -680,7 +682,7 @@ class TestShuffling:
         Groups are reshuffled each trial, so check per (roundId, currentGroup).
         """
         for gid, cond in game_condition_map.items():
-            if cond not in ("refer_mixed", "social_mixed"):
+            if cond not in MIXED_CONDITIONS:
                 continue
             game_trials = trials[trials["gameId"] == gid]
             p2 = game_trials[game_trials["phaseNum"] == 2]
@@ -713,7 +715,7 @@ class TestInGroupListenerConstraint:
         """
         violations = []
         for gid, cond in game_condition_map.items():
-            if cond not in ("refer_mixed", "social_mixed"):
+            if cond not in MIXED_CONDITIONS:
                 continue
             game_trials = trials[trials["gameId"] == gid]
             p2 = game_trials[game_trials["phaseNum"] == 2]
@@ -782,7 +784,7 @@ class TestIdentityMasking:
     def test_mixed_phase2_uses_masked_names(self, trials, game_condition_map):
         """In Phase 2 of mixed conditions, playerName should be 'Player'."""
         for gid, cond in game_condition_map.items():
-            if cond not in ("refer_mixed", "social_mixed"):
+            if cond not in MIXED_CONDITIONS:
                 continue
             game_trials = trials[trials["gameId"] == gid]
             p2 = game_trials[game_trials["phaseNum"] == 2]
@@ -814,7 +816,7 @@ class TestIdentityMasking:
     def test_messages_phase2_mixed_masked(self, messages, game_condition_map):
         """In Phase 2 of mixed conditions, message senderName should be 'Player'."""
         for gid, cond in game_condition_map.items():
-            if cond not in ("refer_mixed", "social_mixed"):
+            if cond not in MIXED_CONDITIONS:
                 continue
             game_msgs = messages[
                 (messages["gameId"] == gid) & (messages["phaseNum"] == 2)
@@ -935,7 +937,7 @@ class TestBonusCalculation:
     """Validate bonus calculation.
 
     For refer conditions: bonus = score * 0.05
-    For social_mixed: bonus = (score + social_points) * 0.04
+    For social conditions: bonus = (score + social_points) * 0.023
     where social_points include both listener social guesses and speaker
     social points (not all captured in preprocessed CSVs).
     """
@@ -955,19 +957,19 @@ class TestBonusCalculation:
     def test_social_condition_bonus_uses_lower_rate(
         self, active_players, game_condition_map
     ):
-        """For social_mixed, bonus should be >= score * BONUS_PER_POINT_SOCIAL.
+        """For social conditions, bonus should be >= score * BONUS_PER_POINT_SOCIAL.
 
         The bonus includes social points on top of the base score, so
-        bonus >= score * 0.04. We cannot verify exact amounts because
-        speaker social points are not in the preprocessed data.
+        bonus >= score * BONUS_PER_POINT_SOCIAL. We cannot verify exact
+        amounts because speaker social points are not in the preprocessed data.
         """
         for _, p in active_players.iterrows():
             cond = game_condition_map.get(p["gameId"])
-            if cond != "social_mixed":
+            if cond not in SOCIAL_CONDITIONS:
                 continue
             min_bonus = p["score"] * BONUS_PER_POINT_SOCIAL
             assert p["bonus"] >= min_bonus - 0.01, (
-                f"Player {p['originalName']} (social_mixed): bonus {p['bonus']} "
+                f"Player {p['originalName']} ({cond}): bonus {p['bonus']} "
                 f"is less than minimum expected {min_bonus:.2f} "
                 f"(score {p['score']} * {BONUS_PER_POINT_SOCIAL})"
             )
@@ -975,14 +977,14 @@ class TestBonusCalculation:
     def test_social_bonus_includes_listener_social_points(
         self, active_players, social_guesses, game_condition_map
     ):
-        """For social_mixed, verify bonus accounts for listener social guesses.
+        """For social conditions, verify bonus accounts for listener social guesses.
 
-        bonus = (score + listener_social_points + speaker_social_points) * 0.04
-        We verify that bonus >= (score + listener_social_points) * 0.04.
+        bonus = (score + listener_social_points + speaker_social_points) * BONUS_PER_POINT_SOCIAL
+        We verify that bonus >= (score + listener_social_points) * BONUS_PER_POINT_SOCIAL.
         """
         for _, p in active_players.iterrows():
             cond = game_condition_map.get(p["gameId"])
-            if cond != "social_mixed":
+            if cond not in SOCIAL_CONDITIONS:
                 continue
             player_guesses = social_guesses[
                 social_guesses["playerId"] == p["playerId"]
@@ -1005,15 +1007,15 @@ class TestBonusCalculation:
 class TestSocialGuessing:
     """Validate social guessing data."""
 
-    def test_social_guesses_only_in_social_mixed(
+    def test_social_guesses_only_in_social_conditions(
         self, social_guesses, game_condition_map
     ):
-        """Social guesses should only exist for social_mixed games."""
+        """Social guesses should only exist for social_mixed or social_first games."""
         for gid in social_guesses["gameId"].unique():
             cond = game_condition_map.get(gid)
-            assert cond == "social_mixed", (
+            assert cond in SOCIAL_CONDITIONS, (
                 f"Social guesses found for game {gid} with condition "
-                f"'{cond}', expected 'social_mixed'"
+                f"'{cond}', expected 'social_mixed' or 'social_first'"
             )
 
     def test_social_guesses_only_in_phase2(self, social_guesses, trials):
@@ -1349,7 +1351,7 @@ class TestMessages:
     ):
         """In Phase 2 of mixed conditions, senderName should be 'Player'."""
         for gid, cond in game_condition_map.items():
-            if cond not in ("refer_mixed", "social_mixed"):
+            if cond not in MIXED_CONDITIONS:
                 continue
             phase2_msgs = messages[
                 (messages["gameId"] == gid) & (messages["phaseNum"] == 2)
@@ -1465,13 +1467,13 @@ class TestCrossFileConsistency:
                     f"target {utt['target']}"
                 )
 
-    def test_social_guesses_game_is_social_mixed(
+    def test_social_guesses_game_is_social_condition(
         self, social_guesses, game_condition_map
     ):
-        """All social guess game IDs should be for social_mixed condition."""
+        """All social guess game IDs should be for social_mixed or social_first."""
         for gid in social_guesses["gameId"].unique():
             cond = game_condition_map.get(gid)
-            assert cond == "social_mixed", (
+            assert cond in SOCIAL_CONDITIONS, (
                 f"Social guesses in game {gid} with condition '{cond}'"
             )
 

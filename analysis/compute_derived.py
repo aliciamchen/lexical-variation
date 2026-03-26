@@ -14,24 +14,16 @@ import re
 from itertools import combinations
 from pathlib import Path
 
+import nltk
 import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 
-# Basic English stopwords for term retention metric
-STOPWORDS = frozenset(
-    "i me my myself we our ours ourselves you your yours yourself yourselves "
-    "he him his himself she her hers herself it its itself they them their "
-    "theirs themselves what which who whom this that these those am is are was "
-    "were be been being have has had having do does did doing a an the and but "
-    "if or because as until while of at by for with about against between "
-    "through during before after above below to from up down in out on off "
-    "over under again further then once here there when where why how all both "
-    "each few more most other some such no nor not only own same so than too "
-    "very s t can will just don should now d ll m o re ve y ain aren couldn "
-    "didn doesn hadn hasn haven isn ma mightn mustn needn shan shouldn wasn "
-    "weren won wouldn like one also would could".split()
-)
+# NLTK English stopwords for content-word extraction
+nltk.download("stopwords", quiet=True)
+from nltk.corpus import stopwords  # noqa: E402
+
+STOPWORDS = frozenset(stopwords.words("english"))
 
 
 def compute_embeddings(utterances: pd.DataFrame, model: SentenceTransformer) -> np.ndarray:
@@ -318,13 +310,14 @@ def extract_content_word_tokens(text: str) -> list[str]:
     return [w for w in words if w not in STOPWORDS and len(w) > 1]
 
 
-# Concrete term stems derived from Boyce et al. 2024 (PNAS).
-# Uses prefix matching: "squar" matches "square", "squares", etc.
-# Four categories: geometric, body parts, positional, posture.
+# Concrete term stems from Boyce et al. 2024 (PNAS), Table S2.
+# Exact keyword list; only adaptation is prefix matching (e.g., "squar"
+# matches "square", "squares"). Four categories: geometric, body parts,
+# positional, posture.
 CONCRETE_STEMS_GEOMETRIC = [
     "squar", "triangle", "triangular", "diamond", "shape", "trapez",
     "angle", "degree", "parallel", "rhomb", "box", "cube", "line",
-    "rectangle", "rectangular",
+    "white", "black",
 ]
 CONCRETE_STEMS_BODY = [
     "face", "head", "back", "shoulder", "arm", "leg", "foot", "feet",

@@ -50,6 +50,7 @@ dependencies = [
     "httpx>=0.27",
     "umap-learn>=0.5.11",
     "wordfreq>=3.0",
+    "nltk>=3.8",
 ]
 
 [project.optional-dependencies]

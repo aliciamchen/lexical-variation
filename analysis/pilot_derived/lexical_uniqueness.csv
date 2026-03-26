@@ -15,7 +15,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709968YFN1,01KJN78CQJ3KY7VMGAR6F3D4S0,B,A,0.0,2.0,51.0,refgame,2.0,page3-35,1.0,birdhouse,1,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN78JVY5FN5QXW9XGGE72RG,A,B,0.0,2.0,51.0,refgame,2.0,page3-35,1.0,birdhouse,1,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN788SPAKVVBHX9T9FDQWAF,B,B,0.0,4.0,26.0,refgame,1.0,page7-107,2.0,diamond hole cutout,3,0.0
-01KJN6MMPQTMDYRN709968YFN1,01KJN791EPN054R2NTQQ1BFXJ5,A,A,0.0,4.0,26.0,refgame,1.0,page7-107,2.0,"white diamond cut out, looks like mario fireball",8,0.16666666666666666
+01KJN6MMPQTMDYRN709968YFN1,01KJN791EPN054R2NTQQ1BFXJ5,A,A,0.0,4.0,26.0,refgame,1.0,page7-107,2.0,"white diamond cut out, looks like mario fireball",8,0.14285714285714285
 01KJN6MMPQTMDYRN709968YFN1,01KJN796KT7FCNV2F9QNCQDSES,C,C,0.0,4.0,26.0,refgame,1.0,page7-107,2.0,white diamond in middle,4,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN788SPAKVVBHX9T9FDQWAF,B,B,0.0,4.0,25.0,refgame,1.0,page3-35,2.0,birdhouse,1,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN791EPN054R2NTQQ1BFXJ5,A,A,0.0,4.0,25.0,refgame,1.0,page3-35,2.0,"birdhouse, mailbox",2,0.0
@@ -33,18 +33,18 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709968YFN1,01KJN788SPAKVVBHX9T9FDQWAF,B,B,0.0,1.0,6.0,refgame,1.0,page3-35,1.0,Birdhouse,1,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN791EPN054R2NTQQ1BFXJ5,A,A,0.0,1.0,6.0,refgame,1.0,page3-35,1.0,"birdhouse, trapezoid on bottom, house on top",7,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN796KT7FCNV2F9QNCQDSES,C,C,0.0,1.0,6.0,refgame,1.0,page3-35,1.0,The game piece mentioned earlier,5,0.75
-01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,0.0,4.0,refgame,1.0,page3-35,1.0,"this looks like a candlestick, stood up. the top is two right triangles butted up together. there is a triangle base",21,0.45454545454545453
-01KJN6MMPQTMDYRN709968YFN1,01KJN78M7563R5D9TQE5G142DA,C,C,0.0,0.0,4.0,refgame,1.0,page3-35,1.0,Looks like something you would see in a board game that's very popular,13,0.8333333333333334
-01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,B,0.0,0.0,4.0,refgame,1.0,page3-35,1.0,this shape looks like a pirdhouse on a stand,9,0.25
+01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,0.0,4.0,refgame,1.0,page3-35,1.0,"this looks like a candlestick, stood up. the top is two right triangles butted up together. there is a triangle base",21,0.4166666666666667
+01KJN6MMPQTMDYRN709968YFN1,01KJN78M7563R5D9TQE5G142DA,C,C,0.0,0.0,4.0,refgame,1.0,page3-35,1.0,Looks like something you would see in a board game that's very popular,13,0.75
+01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,B,0.0,0.0,4.0,refgame,1.0,page3-35,1.0,this shape looks like a pirdhouse on a stand,9,0.2
 01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,0.0,5.0,refgame,1.0,page9-46,1.0,the right side is a big ol' right triangle. the left side has a rectangle CUT OUT from its center,20,0.18181818181818182
-01KJN6MMPQTMDYRN709968YFN1,01KJN78M7563R5D9TQE5G142DA,C,C,0.0,0.0,5.0,refgame,1.0,page9-46,1.0,Kind of like a mountainous shape but it has a cutout,11,0.5
+01KJN6MMPQTMDYRN709968YFN1,01KJN78M7563R5D9TQE5G142DA,C,C,0.0,0.0,5.0,refgame,1.0,page9-46,1.0,Kind of like a mountainous shape but it has a cutout,11,0.4
 01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,B,0.0,0.0,5.0,refgame,1.0,page9-46,1.0,"this shape has a cut out on the left side, it has a flat top, short",16,0.2857142857142857
-01KJN6MMPQTMDYRN709968YFN1,01KJN788SPAKVVBHX9T9FDQWAF,B,B,0.0,1.0,11.0,refgame,1.0,page-B,1.0,"Like a person kneeling down praying, one with bigger head, not small, head is like a box, kind of detached, having two triangle arms, and a triangle trailing onthe back",30,0.35294117647058826
-01KJN6MMPQTMDYRN709968YFN1,01KJN791EPN054R2NTQQ1BFXJ5,A,A,0.0,1.0,11.0,refgame,1.0,page-B,1.0,"this one is a square and two triangles touching at one point at the top, and it sits on top a mess of shapes, bottom left corner is a little triangle, kinda like the little girl, from last time, ponytail",40,0.38095238095238093
-01KJN6MMPQTMDYRN709968YFN1,01KJN796KT7FCNV2F9QNCQDSES,C,C,0.0,1.0,11.0,refgame,1.0,page-B,1.0,looks like a windimill with a fanned out blades,9,0.75
-01KJN6MMPQTMDYRN709968YFN1,01KJN788SPAKVVBHX9T9FDQWAF,B,B,0.0,1.0,10.0,refgame,1.0,page7-255,1.0,"Kind of has like bunny ears, but one straight up and other to its side, little cutout on right, triangle cutout",21,0.2
+01KJN6MMPQTMDYRN709968YFN1,01KJN788SPAKVVBHX9T9FDQWAF,B,B,0.0,1.0,11.0,refgame,1.0,page-B,1.0,"Like a person kneeling down praying, one with bigger head, not small, head is like a box, kind of detached, having two triangle arms, and a triangle trailing onthe back",30,0.3
+01KJN6MMPQTMDYRN709968YFN1,01KJN791EPN054R2NTQQ1BFXJ5,A,A,0.0,1.0,11.0,refgame,1.0,page-B,1.0,"this one is a square and two triangles touching at one point at the top, and it sits on top a mess of shapes, bottom left corner is a little triangle, kinda like the little girl, from last time, ponytail",40,0.3333333333333333
+01KJN6MMPQTMDYRN709968YFN1,01KJN796KT7FCNV2F9QNCQDSES,C,C,0.0,1.0,11.0,refgame,1.0,page-B,1.0,looks like a windimill with a fanned out blades,9,0.6
+01KJN6MMPQTMDYRN709968YFN1,01KJN788SPAKVVBHX9T9FDQWAF,B,B,0.0,1.0,10.0,refgame,1.0,page7-255,1.0,"Kind of has like bunny ears, but one straight up and other to its side, little cutout on right, triangle cutout",21,0.16666666666666666
 01KJN6MMPQTMDYRN709968YFN1,01KJN791EPN054R2NTQQ1BFXJ5,A,A,0.0,1.0,10.0,refgame,1.0,page7-255,1.0,"this shape is weird, top is a triangle where the head is facing right side, there are then a few trapezoids underneath the triangle facing the right",27,0.15384615384615385
-01KJN6MMPQTMDYRN709968YFN1,01KJN796KT7FCNV2F9QNCQDSES,C,C,0.0,1.0,10.0,refgame,1.0,page7-255,1.0,messed up looking one from earlier,6,0.3333333333333333
+01KJN6MMPQTMDYRN709968YFN1,01KJN796KT7FCNV2F9QNCQDSES,C,C,0.0,1.0,10.0,refgame,1.0,page7-255,1.0,messed up looking one from earlier,6,0.25
 01KJN6MMPQTMDYRN709968YFN1,01KJN78CQJ3KY7VMGAR6F3D4S0,B,B,0.0,2.0,14.0,refgame,1.0,page-B,1.0,same as person praying before,5,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN78JVY5FN5QXW9XGGE72RG,A,A,0.0,2.0,14.0,refgame,1.0,page-B,1.0,"jumbled picture, square on top tipping right, triangle on top right",11,0.3333333333333333
 01KJN6MMPQTMDYRN709968YFN1,01KJN79ZDP3YNFFHHQA302PJDP,C,C,0.0,2.0,14.0,refgame,1.0,page-B,1.0,Broken item from earlier,4,0.6666666666666666
@@ -52,16 +52,16 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709968YFN1,01KJN78JVY5FN5QXW9XGGE72RG,A,A,0.0,2.0,13.0,refgame,1.0,page9-46,1.0,cut out rectangle on left,5,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN79ZDP3YNFFHHQA302PJDP,C,C,0.0,2.0,13.0,refgame,1.0,page9-46,1.0,Like a stapler. Rectangle shape to the left side,9,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN788SPAKVVBHX9T9FDQWAF,B,B,0.0,1.0,9.0,refgame,1.0,page9-46,1.0,"Cut out on left, short, slanted on right side",9,0.16666666666666666
-01KJN6MMPQTMDYRN709968YFN1,01KJN791EPN054R2NTQQ1BFXJ5,A,A,0.0,1.0,9.0,refgame,1.0,page9-46,1.0,"white rectangle cut out on left side, the whole shape kinda looks like a triangle or trapezoid",17,0.2727272727272727
-01KJN6MMPQTMDYRN709968YFN1,01KJN796KT7FCNV2F9QNCQDSES,C,C,0.0,1.0,9.0,refgame,1.0,page9-46,1.0,"looks like claw pointing to left side., white rectangle on left side",12,0.1111111111111111
+01KJN6MMPQTMDYRN709968YFN1,01KJN791EPN054R2NTQQ1BFXJ5,A,A,0.0,1.0,9.0,refgame,1.0,page9-46,1.0,"white rectangle cut out on left side, the whole shape kinda looks like a triangle or trapezoid",17,0.25
+01KJN6MMPQTMDYRN709968YFN1,01KJN796KT7FCNV2F9QNCQDSES,C,C,0.0,1.0,9.0,refgame,1.0,page9-46,1.0,"looks like claw pointing to left side., white rectangle on left side",12,0.1
 01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,3.0,21.0,refgame,1.0,page3-35,2.0,birdhouse / mailbox / candlestick stand,6,0.25
 01KJN6MMPQTMDYRN709968YFN1,01KJN78M7563R5D9TQE5G142DA,C,C,0.0,3.0,21.0,refgame,1.0,page3-35,2.0,a popular piece and a board game,7,0.75
 01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,B,0.0,3.0,21.0,refgame,1.0,page3-35,2.0,birdhouse,1,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,3.0,20.0,refgame,1.0,page9-46,2.0,"has rectangle cut out in left side; big triangle, right side",11,0.0
-01KJN6MMPQTMDYRN709968YFN1,01KJN78M7563R5D9TQE5G142DA,C,C,0.0,3.0,20.0,refgame,1.0,page9-46,2.0,like a hill on the right side,7,0.3333333333333333
+01KJN6MMPQTMDYRN709968YFN1,01KJN78M7563R5D9TQE5G142DA,C,C,0.0,3.0,20.0,refgame,1.0,page9-46,2.0,like a hill on the right side,7,0.25
 01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,B,0.0,3.0,20.0,refgame,1.0,page9-46,2.0,"flat top left cutout side, angles side",7,0.2857142857142857
-01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,3.0,19.0,refgame,1.0,page7-107,2.0,cut out diamond in middle (looks like mario fireball),9,0.16666666666666666
-01KJN6MMPQTMDYRN709968YFN1,01KJN78M7563R5D9TQE5G142DA,C,C,0.0,3.0,19.0,refgame,1.0,page7-107,2.0,looks like it might be a logo from a hockey team flat right,13,0.7142857142857143
+01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,3.0,19.0,refgame,1.0,page7-107,2.0,cut out diamond in middle (looks like mario fireball),9,0.14285714285714285
+01KJN6MMPQTMDYRN709968YFN1,01KJN78M7563R5D9TQE5G142DA,C,C,0.0,3.0,19.0,refgame,1.0,page7-107,2.0,looks like it might be a logo from a hockey team flat right,13,0.625
 01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,B,0.0,3.0,19.0,refgame,1.0,page7-107,2.0,"squate cutout center, square",4,0.25
 01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,3.0,18.0,refgame,1.0,page-B,2.0,"the sitting girl with the arms out and ponytail (sitting girl ponytail), hunny",13,0.375
 01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,B,0.0,3.0,18.0,refgame,1.0,page-B,2.0,person praying,2,0.0
@@ -69,8 +69,8 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,A,0.0,0.0,39.0,refgame,2.0,page7-255,1.0,bunny,1,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,0.0,38.0,refgame,2.0,page9-46,1.0,"rectangle cut out from left side center, triangle right",9,0.14285714285714285
 01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,B,0.0,0.0,38.0,refgame,2.0,page9-46,1.0,flat top cut out left side slanted right side,9,0.125
-01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,"in the upper left of this figure, there is a rectangle cut out. upper right, looks like a triangle butted up against it.",23,0.6
-01KJN6MMPQTMDYRN709968YFN1,01KJN78M7563R5D9TQE5G142DA,C,C,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,Kind of looks like a half a square in the center,11,0.2
+01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,"in the upper left of this figure, there is a rectangle cut out. upper right, looks like a triangle butted up against it.",23,0.5454545454545454
+01KJN6MMPQTMDYRN709968YFN1,01KJN78M7563R5D9TQE5G142DA,C,C,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,Kind of looks like a half a square in the center,11,0.16666666666666666
 01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,B,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,"lots of triangles in this shape, the top it the corner of a large triangle",15,0.2857142857142857
 01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,B,0.0,0.0,37.0,refgame,2.0,page7-107,1.0,diamond cut out in middle of fireball,7,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,A,0.0,0.0,37.0,refgame,2.0,page7-107,1.0,cut out square center,4,0.0
@@ -84,12 +84,12 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709968YFN1,01KJN79ZDP3YNFFHHQA302PJDP,C,C,0.0,2.0,16.0,refgame,1.0,page7-107,1.0,"Heart shape in the center, Diamond",6,0.25
 01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,3.0,56.0,refgame,2.0,page7-107,2.0,diamond / fireball,3,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,B,0.0,3.0,56.0,refgame,2.0,page7-107,2.0,diamond middle cutout,3,0.0
-01KJN6MMPQTMDYRN709968YFN1,01KJN78CQJ3KY7VMGAR6F3D4S0,B,B,0.0,2.0,15.0,refgame,1.0,page7-255,1.0,"bunny one, triangle pointing right on top of a lot of shapes",12,0.14285714285714285
+01KJN6MMPQTMDYRN709968YFN1,01KJN78CQJ3KY7VMGAR6F3D4S0,B,B,0.0,2.0,15.0,refgame,1.0,page7-255,1.0,"bunny one, triangle pointing right on top of a lot of shapes",12,0.125
 01KJN6MMPQTMDYRN709968YFN1,01KJN78JVY5FN5QXW9XGGE72RG,A,A,0.0,2.0,15.0,refgame,1.0,page7-255,1.0,triangle facing right on top,5,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN79ZDP3YNFFHHQA302PJDP,C,C,0.0,2.0,15.0,refgame,1.0,page7-255,1.0,Crooked shape right angle at the top,7,0.2
 01KJN6MMPQTMDYRN709968YFN1,01KJN78CQJ3KY7VMGAR6F3D4S0,B,B,0.0,5.0,35.0,refgame,1.0,page9-46,2.0,"square cutout, slanted, short",4,0.25
 01KJN6MMPQTMDYRN709968YFN1,01KJN78JVY5FN5QXW9XGGE72RG,A,A,0.0,5.0,35.0,refgame,1.0,page9-46,2.0,rectangle cutout on left,4,0.0
-01KJN6MMPQTMDYRN709968YFN1,01KJN79ZDP3YNFFHHQA302PJDP,C,C,0.0,5.0,35.0,refgame,1.0,page9-46,2.0,Rectangle shape with a large opening. Curves to the right like a slope,13,0.2857142857142857
+01KJN6MMPQTMDYRN709968YFN1,01KJN79ZDP3YNFFHHQA302PJDP,C,C,0.0,5.0,35.0,refgame,1.0,page9-46,2.0,Rectangle shape with a large opening. Curves to the right like a slope,13,0.25
 01KJN6MMPQTMDYRN709968YFN1,01KJN78B0TFR8F59JDGD057XNS,A,A,0.0,3.0,55.0,refgame,2.0,page7-255,2.0,"""bunny"" / weird shape jumble",5,0.5
 01KJN6MMPQTMDYRN709968YFN1,01KJN79Y7T0VZNKHTSJRZWTDZ5,B,B,0.0,3.0,55.0,refgame,2.0,page7-255,2.0,bunny,1,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN78CQJ3KY7VMGAR6F3D4S0,B,B,0.0,2.0,12.0,refgame,1.0,page3-35,1.0,birdhouse,1,0.0
@@ -123,7 +123,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709968YFN1,01KJN79ZDP3YNFFHHQA302PJDP,C,C,0.0,5.0,31.0,refgame,1.0,page-B,2.0,Broken item with item on top and to the right side,11,0.3333333333333333
 01KJN6MMPQTMDYRN709968YFN1,01KJN788SPAKVVBHX9T9FDQWAF,B,B,0.0,4.0,28.0,refgame,1.0,page9-46,2.0,"cutout left side, slanted right side, short",7,0.14285714285714285
 01KJN6MMPQTMDYRN709968YFN1,01KJN791EPN054R2NTQQ1BFXJ5,A,A,0.0,4.0,28.0,refgame,1.0,page9-46,2.0,"left sided rectangle cut out, whole shape is a trapezoid",10,0.42857142857142855
-01KJN6MMPQTMDYRN709968YFN1,01KJN796KT7FCNV2F9QNCQDSES,C,C,0.0,4.0,28.0,refgame,1.0,page9-46,2.0,white rectangle on left side; looks like claw,8,0.16666666666666666
+01KJN6MMPQTMDYRN709968YFN1,01KJN796KT7FCNV2F9QNCQDSES,C,C,0.0,4.0,28.0,refgame,1.0,page9-46,2.0,white rectangle on left side; looks like claw,8,0.14285714285714285
 01KJN6MMPQTMDYRN709968YFN1,01KJN788SPAKVVBHX9T9FDQWAF,B,B,0.0,4.0,27.0,refgame,1.0,page5-28,2.0,"Big rectangle, small rectangle, slanted diamond",6,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN791EPN054R2NTQQ1BFXJ5,A,A,0.0,4.0,27.0,refgame,1.0,page5-28,2.0,bottle tipped over,3,0.0
 01KJN6MMPQTMDYRN709968YFN1,01KJN796KT7FCNV2F9QNCQDSES,C,C,0.0,4.0,27.0,refgame,1.0,page5-28,2.0,"rectangle on left side that narrows to the right, already chosen a few times",14,0.375
@@ -177,8 +177,8 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,0.0,refgame,1.0,page7-107,1.0,it has 3 fins on the left with a diamond in middle,12,0.25
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,0.0,refgame,1.0,page7-107,1.0,"It has a diamond in the middle, a white diamond only one has that",14,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,0.0,1.0,refgame,1.0,page3-35,1.0,Birdhouse on a stand with a triangle bottom,8,0.0
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,1.0,refgame,1.0,page3-35,1.0,"pedastal with trapezoid base and diamond roof, like bird feeder",10,0.42857142857142855
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,1.0,refgame,1.0,page3-35,1.0,it looks like a light house with a pointed top,10,0.4
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,1.0,refgame,1.0,page3-35,1.0,"pedastal with trapezoid base and diamond roof, like bird feeder",10,0.375
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,1.0,refgame,1.0,page3-35,1.0,it looks like a light house with a pointed top,10,0.3333333333333333
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,3.0,19.0,refgame,1.0,page5-28,2.0,camera,1,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,3.0,19.0,refgame,1.0,page5-28,2.0,rear view mirror,3,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,3.0,19.0,refgame,1.0,page5-28,2.0,it is the rectangle with the small square and diamond,10,0.0
@@ -242,9 +242,9 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,0.0,39.0,refgame,2.0,page5-28,1.0,camera,1,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,39.0,refgame,2.0,page5-28,1.0,reaview mirror,2,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,39.0,refgame,2.0,page5-28,1.0,rectanglesquareand diamond,2,0.5
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,Looks like a bird with wings stretched out,8,0.25
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,"looks like a ninja with a cloak wearing a hood, arms out to side",14,0.2857142857142857
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,"Its multiple triangles, looks a bit like rabbit ears, 5 different points",12,0.375
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,Looks like a bird with wings stretched out,8,0.2
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,"looks like a ninja with a cloak wearing a hood, arms out to side",14,0.25
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,"Its multiple triangles, looks a bit like rabbit ears, 5 different points",12,0.3333333333333333
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,0.0,38.0,refgame,2.0,page7-255,1.0,top triangle,2,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,38.0,refgame,2.0,page7-255,1.0,ninja,1,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,38.0,refgame,2.0,page7-255,1.0,bunnyears,1,1.0
@@ -277,7 +277,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7AAWT4GWKRZ7B9775509P,B,B,0.0,4.0,60.0,refgame,2.0,page-B,2.0,Slanted square with triangles,4,0.3333333333333333
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,3.0,18.0,refgame,1.0,page7-255,2.0,"90 degree angle on left with a vertical triangle on right, very top",13,0.2857142857142857
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,3.0,18.0,refgame,1.0,page7-255,2.0,"ninja running to right arms out to side, triangle head",10,0.14285714285714285
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,3.0,18.0,refgame,1.0,page7-255,2.0,its the one that has the rabit ears... these are the same again,13,0.5
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,3.0,18.0,refgame,1.0,page7-255,2.0,its the one that has the rabit ears... these are the same again,13,0.3333333333333333
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7931DXZ65NXTWK1GNEZMW,C,C,0.0,2.0,17.0,refgame,1.0,page9-46,1.0,"the earlier figure that was described as both a pac man and a sphinx. has a white rectangle cut out, slanted",21,0.6
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B32C1C5254NSG6ZK1GRK,A,A,0.0,2.0,17.0,refgame,1.0,page9-46,1.0,"wave, retangle cutout on left",5,0.25
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,2.0,17.0,refgame,1.0,page9-46,1.0,This looks like a wave with a rectangle cut out,10,0.0
@@ -285,11 +285,11 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B32C1C5254NSG6ZK1GRK,A,A,0.0,5.0,71.0,refgame,2.0,page7-107,2.0,diamond,1,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,5.0,71.0,refgame,2.0,page7-107,2.0,diamond in middle,3,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7931DXZ65NXTWK1GNEZMW,C,C,0.0,2.0,16.0,refgame,1.0,page5-28,1.0,"rectangle on the left, narrows, the rear view mirror",9,0.5
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B32C1C5254NSG6ZK1GRK,A,A,0.0,2.0,16.0,refgame,1.0,page5-28,1.0,Camera looking one,3,0.5
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B32C1C5254NSG6ZK1GRK,A,A,0.0,2.0,16.0,refgame,1.0,page5-28,1.0,Camera looking one,3,0.3333333333333333
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,2.0,16.0,refgame,1.0,page5-28,1.0,"This has a large rectangle on the left, a smaller rectangle and then a slanted diamond",16,0.0
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN7931DXZ65NXTWK1GNEZMW,C,C,0.0,2.0,15.0,refgame,1.0,page7-255,1.0,"looks like the ninja shape described erarlier, facing to the right",11,0.2857142857142857
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN7931DXZ65NXTWK1GNEZMW,C,C,0.0,2.0,15.0,refgame,1.0,page7-255,1.0,"looks like the ninja shape described erarlier, facing to the right",11,0.25
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B32C1C5254NSG6ZK1GRK,A,A,0.0,2.0,15.0,refgame,1.0,page7-255,1.0,"small triangle vertical on right, triangle cutout on left",9,0.14285714285714285
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,2.0,15.0,refgame,1.0,page7-255,1.0,This shape has a triangle that is tilted to the side and a parallelogram underneath it. I believe someone said like rabbit ears before,24,0.18181818181818182
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,2.0,15.0,refgame,1.0,page7-255,1.0,This shape has a triangle that is tilted to the side and a parallelogram underneath it. I believe someone said like rabbit ears before,24,0.16666666666666666
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7931DXZ65NXTWK1GNEZMW,C,C,0.0,5.0,70.0,refgame,2.0,page7-255,2.0,ninja,1,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B32C1C5254NSG6ZK1GRK,A,A,0.0,5.0,70.0,refgame,2.0,page7-255,2.0,top triangle,2,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,5.0,70.0,refgame,2.0,page7-255,2.0,bunny ears,2,0.0
@@ -304,7 +304,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,5.0,69.0,refgame,2.0,page-B,2.0,"square triangles, all the shapes",5,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7931DXZ65NXTWK1GNEZMW,C,C,0.0,2.0,13.0,refgame,1.0,page3-35,1.0,birdhouse on post,3,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B32C1C5254NSG6ZK1GRK,A,A,0.0,2.0,13.0,refgame,1.0,page3-35,1.0,birdhouse on stand,3,0.0
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,2.0,13.0,refgame,1.0,page3-35,1.0,This shape looks like a lighthouse,6,0.3333333333333333
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,2.0,13.0,refgame,1.0,page3-35,1.0,This shape looks like a lighthouse,6,0.25
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,3.0,58.0,refgame,2.0,page5-28,2.0,camera,1,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,3.0,58.0,refgame,2.0,page5-28,2.0,rearview mirror,2,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,3.0,58.0,refgame,2.0,page5-28,2.0,rectangle square diamond,3,0.0
@@ -315,7 +315,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B32C1C5254NSG6ZK1GRK,A,A,0.0,5.0,68.0,refgame,2.0,page3-35,2.0,birdhouse,1,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,5.0,68.0,refgame,2.0,page3-35,2.0,lighthouse,1,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN77XQHYQ5TVVY4HZM02E7R,C,C,0.0,1.0,11.0,refgame,1.0,page5-28,1.0,"rear view mirror, large square on left",7,0.5
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZRTRDMY6RH8ZCYCM9NV,A,A,0.0,1.0,11.0,refgame,1.0,page5-28,1.0,looks like a camera square on left lenses on right,10,0.3333333333333333
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZRTRDMY6RH8ZCYCM9NV,A,A,0.0,1.0,11.0,refgame,1.0,page5-28,1.0,looks like a camera square on left lenses on right,10,0.2857142857142857
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7AAWT4GWKRZ7B9775509P,B,B,0.0,1.0,11.0,refgame,1.0,page5-28,1.0,"It has a large rectangle on the left, and another rectangle and slanted shape on the right",17,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,3.0,57.0,refgame,2.0,page3-35,2.0,house,1,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,3.0,57.0,refgame,2.0,page3-35,2.0,birdhouse,1,0.0
@@ -343,7 +343,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,3.0,55.0,refgame,2.0,page9-46,2.0,rectangle wave,2,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN77XQHYQ5TVVY4HZM02E7R,C,C,0.0,1.0,7.0,refgame,1.0,page3-35,1.0,"mailbox, symmetrical",2,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZRTRDMY6RH8ZCYCM9NV,A,A,0.0,1.0,7.0,refgame,1.0,page3-35,1.0,Looks like birdhouse on top of a base,8,0.0
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN7AAWT4GWKRZ7B9775509P,B,B,0.0,1.0,7.0,refgame,1.0,page3-35,1.0,"It looks like a light post, It has a triangular bottom",11,0.2
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN7AAWT4GWKRZ7B9775509P,B,B,0.0,1.0,7.0,refgame,1.0,page3-35,1.0,"It looks like a light post, It has a triangular bottom",11,0.16666666666666666
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN77XQHYQ5TVVY4HZM02E7R,C,C,0.0,4.0,65.0,refgame,2.0,page9-46,2.0,pacman,1,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZRTRDMY6RH8ZCYCM9NV,A,A,0.0,4.0,65.0,refgame,2.0,page9-46,2.0,wave,1,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7AAWT4GWKRZ7B9775509P,B,B,0.0,4.0,65.0,refgame,2.0,page9-46,2.0,wave with rectangle,3,0.0
@@ -355,7 +355,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,3.0,54.0,refgame,2.0,page-B,2.0,slanted square and triangles,4,0.3333333333333333
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,0.0,5.0,refgame,1.0,page-B,1.0,"Square on top only touching the rest of the shape by a tiny point, Triangle to right",17,0.2222222222222222
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,5.0,refgame,1.0,page-B,1.0,a square on one of its point in between two triangles on top,13,0.0
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,5.0,refgame,1.0,page-B,1.0,"its the only one with just a square at the top. the square is tilted, and there is a triangle next to it on top barely touching",27,0.2222222222222222
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,5.0,refgame,1.0,page-B,1.0,"its the only one with just a square at the top. the square is tilted, and there is a triangle next to it on top barely touching",27,0.2
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN77XQHYQ5TVVY4HZM02E7R,C,C,0.0,4.0,64.0,refgame,2.0,page5-28,2.0,rearview mirror,2,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZRTRDMY6RH8ZCYCM9NV,A,A,0.0,4.0,64.0,refgame,2.0,page5-28,2.0,camera,1,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7AAWT4GWKRZ7B9775509P,B,B,0.0,4.0,64.0,refgame,2.0,page5-28,2.0,rectangle square landed diamong,4,0.5
@@ -363,14 +363,14 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B32C1C5254NSG6ZK1GRK,A,A,0.0,2.0,53.0,refgame,2.0,page-B,1.0,square head,2,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,2.0,53.0,refgame,2.0,page-B,1.0,slanted square and triangle,4,0.3333333333333333
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,0.0,4.0,refgame,1.0,page5-28,1.0,rectangle with a another shape on the right connected by a thinner rectangle,13,0.14285714285714285
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,4.0,refgame,1.0,page5-28,1.0,"larger rectangular on left side then goes into narrow base, almost like a mailbox on side",16,0.45454545454545453
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,4.0,refgame,1.0,page5-28,1.0,"larger rectangular on left side then goes into narrow base, almost like a mailbox on side",16,0.36363636363636365
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,4.0,refgame,1.0,page5-28,1.0,"its a rectangle with a thin neck and then a diamond cshape, it is sideways",15,0.16666666666666666
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN77XQHYQ5TVVY4HZM02E7R,C,C,0.0,4.0,63.0,refgame,2.0,page7-255,2.0,ninja,1,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZRTRDMY6RH8ZCYCM9NV,A,A,0.0,4.0,63.0,refgame,2.0,page7-255,2.0,triangle head,2,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7AAWT4GWKRZ7B9775509P,B,B,0.0,4.0,63.0,refgame,2.0,page7-255,2.0,bunny ears,2,0.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN79PCAAMFX7P2QF70Y3HJM,A,A,0.0,0.0,2.0,refgame,1.0,page9-46,1.0,Trangle with the left side cut out with a rectangle,10,0.2
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,2.0,refgame,1.0,page9-46,1.0,"mouth open to left and slanted back on right, like pacman",11,0.2857142857142857
-01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,2.0,refgame,1.0,page9-46,1.0,"it it looks like a sloping wave, it has a rectangle cut out in white to the right",18,0.14285714285714285
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN79ZQD1E4YD03FE5CGJY8K,C,C,0.0,0.0,2.0,refgame,1.0,page9-46,1.0,"mouth open to left and slanted back on right, like pacman",11,0.25
+01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B4V2673GK7HGVSG52R2P,B,B,0.0,0.0,2.0,refgame,1.0,page9-46,1.0,"it it looks like a sloping wave, it has a rectangle cut out in white to the right",18,0.125
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7931DXZ65NXTWK1GNEZMW,C,C,0.0,2.0,52.0,refgame,2.0,page5-28,1.0,rear view mirror,3,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7B32C1C5254NSG6ZK1GRK,A,A,0.0,2.0,52.0,refgame,2.0,page5-28,1.0,camera,1,1.0
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7BYA5X3A2G30KZECRY2HY,B,B,0.0,2.0,52.0,refgame,2.0,page5-28,1.0,rectangle square diamond,3,0.0
@@ -391,16 +391,16 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMPQTMDYRN709DP5DSDA,01KJN7AAWT4GWKRZ7B9775509P,B,B,0.0,4.0,61.0,refgame,2.0,page7-107,2.0,diamond in middle,3,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,0.0,0.0,refgame,1.0,page7-255,1.0,the shape kind of looks like a rabbit with 2 ears up,12,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,C,0.0,0.0,0.0,refgame,1.0,page7-255,1.0,man standing with arms up to the sides,8,0.25
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,0.0,0.0,refgame,1.0,page7-255,1.0,The image is one that looks like it has two arms or wings and a beak or nose pointing upward.,20,0.4444444444444444
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,0.0,0.0,refgame,1.0,page7-255,1.0,The image is one that looks like it has two arms or wings and a beak or nose pointing upward.,20,0.36363636363636365
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,0.0,2.0,refgame,1.0,page5-28,1.0,rectangle on the left side then a smaller rectangle attached to it and then a rhombus at the right end,20,0.1111111111111111
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,C,0.0,0.0,2.0,refgame,1.0,page5-28,1.0,two squares and a rectangle with a rombous,8,0.5
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,0.0,2.0,refgame,1.0,page5-28,1.0,"The image is a rectangle on the left portion, a square to the right of that, and then a parallelogram on the right.",23,0.25
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,0.0,4.0,refgame,1.0,page-B,1.0,it has a rotated square at the top and then 2 triangles at the center point,16,0.3333333333333333
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,C,0.0,0.0,4.0,refgame,1.0,page-B,1.0,"this shape looks like a man praying, with a square for a head and many triangles",16,0.125
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,C,0.0,0.0,4.0,refgame,1.0,page-B,1.0,"this shape looks like a man praying, with a square for a head and many triangles",16,0.1111111111111111
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,0.0,4.0,refgame,1.0,page-B,1.0,The image has an askew square at the top of it.,11,0.5
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN78DQ6KC0F9N1HA0BPB44R,C,C,0.0,2.0,13.0,refgame,1.0,page5-28,1.0,"rectangle left, smaller box middle, rhombus right",7,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7A44GGBE9XR412KV5BFSC,B,B,0.0,2.0,13.0,refgame,1.0,page5-28,1.0,rectangle on side with protrusion to right,7,0.25
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AZC7FAG17CY924MRTCF7,A,A,0.0,2.0,13.0,refgame,1.0,page5-28,1.0,"Rectangle, then small square, then diamond. We had it before. Looks kind of like a submarine or fish.",18,0.125
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AZC7FAG17CY924MRTCF7,A,A,0.0,2.0,13.0,refgame,1.0,page5-28,1.0,"Rectangle, then small square, then diamond. We had it before. Looks kind of like a submarine or fish.",18,0.1111111111111111
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7863BFF3ZYZGVVSATZTH7,C,C,0.0,1.0,8.0,refgame,1.0,page5-28,1.0,"rectangle left, then rectangle small, then horiontal square",8,0.16666666666666666
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN792W85XPK9QGH8A6HSYSJ,B,B,0.0,1.0,8.0,refgame,1.0,page5-28,1.0,"rectangle on left, small square in middle",7,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AAX1VHZ1A7ZB35BNRH8N,A,A,0.0,1.0,8.0,refgame,1.0,page5-28,1.0,"rect on left, squear, and then rhombus on right",9,0.2
@@ -415,7 +415,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AAX1VHZ1A7ZB35BNRH8N,A,A,0.0,4.0,28.0,refgame,1.0,page7-255,2.0,rabbit with one ear up,5,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7863BFF3ZYZGVVSATZTH7,C,C,0.0,1.0,9.0,refgame,1.0,page3-35,1.0,birdhouse on a stand,4,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN792W85XPK9QGH8A6HSYSJ,B,B,0.0,1.0,9.0,refgame,1.0,page3-35,1.0,rotated square on top,4,0.3333333333333333
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AAX1VHZ1A7ZB35BNRH8N,A,A,0.0,1.0,9.0,refgame,1.0,page3-35,1.0,"ok...a triangle at its base, and sorto f a tower, a square at top, angled like a diamond, kind of looks like a trophy",24,0.25
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AAX1VHZ1A7ZB35BNRH8N,A,A,0.0,1.0,9.0,refgame,1.0,page3-35,1.0,"ok...a triangle at its base, and sorto f a tower, a square at top, angled like a diamond, kind of looks like a trophy",24,0.21428571428571427
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,B,0.0,3.0,59.0,refgame,2.0,page3-35,2.0,"clocktower my group, bird house other group",7,0.4
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,A,0.0,3.0,59.0,refgame,2.0,page3-35,2.0,"bird house on tand again, stand",6,0.25
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,C,0.0,3.0,59.0,refgame,2.0,page3-35,2.0,"sign or trophy, diamond top, flat solid base",8,0.42857142857142855
@@ -424,29 +424,29 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,3.0,19.0,refgame,1.0,page9-46,2.0,Mountain with rectangle missing on left,6,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN78DQ6KC0F9N1HA0BPB44R,C,C,0.0,2.0,12.0,refgame,1.0,page3-35,1.0,birdhouse on a base,4,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7A44GGBE9XR412KV5BFSC,B,B,0.0,2.0,12.0,refgame,1.0,page3-35,1.0,tree,1,1.0
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AZC7FAG17CY924MRTCF7,A,A,0.0,2.0,12.0,refgame,1.0,page3-35,1.0,"The tower, With the triangle base, It looks like a small house on the top. We had it before",19,0.2857142857142857
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,3.0,18.0,refgame,1.0,page-B,2.0,mouse one again,3,1.0
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AZC7FAG17CY924MRTCF7,A,A,0.0,2.0,12.0,refgame,1.0,page3-35,1.0,"The tower, With the triangle base, It looks like a small house on the top. We had it before",19,0.25
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,3.0,18.0,refgame,1.0,page-B,2.0,mouse one again,3,0.5
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,C,0.0,3.0,18.0,refgame,1.0,page-B,2.0,praying monk,2,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,3.0,18.0,refgame,1.0,page-B,2.0,Slightly askew square on top,5,0.5
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7863BFF3ZYZGVVSATZTH7,C,C,0.0,1.0,11.0,refgame,1.0,page7-107,1.0,circle with fire on the left,6,0.3333333333333333
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN792W85XPK9QGH8A6HSYSJ,B,B,0.0,1.0,11.0,refgame,1.0,page7-107,1.0,square hole in middle,4,0.0
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AAX1VHZ1A7ZB35BNRH8N,A,A,0.0,1.0,11.0,refgame,1.0,page7-107,1.0,"the white square, only one that has a hollow area, completely surrounded by black",14,0.5714285714285714
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AAX1VHZ1A7ZB35BNRH8N,A,A,0.0,1.0,11.0,refgame,1.0,page7-107,1.0,"the white square, only one that has a hollow area, completely surrounded by black",14,0.5
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN78DQ6KC0F9N1HA0BPB44R,C,C,0.0,2.0,17.0,refgame,1.0,page-B,1.0,praying figure with square for head,6,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7A44GGBE9XR412KV5BFSC,B,B,0.0,2.0,17.0,refgame,1.0,page-B,1.0,angel with wings on back head tilted,7,0.4
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AZC7FAG17CY924MRTCF7,A,A,0.0,2.0,17.0,refgame,1.0,page-B,1.0,"The mouse one, that looks like it has a triangle ear and is cocking its head, And a square ear",20,0.5
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AZC7FAG17CY924MRTCF7,A,A,0.0,2.0,17.0,refgame,1.0,page-B,1.0,"The mouse one, that looks like it has a triangle ear and is cocking its head, And a square ear",20,0.4
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7863BFF3ZYZGVVSATZTH7,C,C,0.0,1.0,10.0,refgame,1.0,page-B,1.0,"man praying, square at top",5,0.25
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN792W85XPK9QGH8A6HSYSJ,B,B,0.0,1.0,10.0,refgame,1.0,page-B,1.0,"like person kneeling, flat bottom",5,0.25
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN792W85XPK9QGH8A6HSYSJ,B,B,0.0,1.0,10.0,refgame,1.0,page-B,1.0,"like person kneeling, flat bottom",5,0.2
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AAX1VHZ1A7ZB35BNRH8N,A,A,0.0,1.0,10.0,refgame,1.0,page-B,1.0,"this is a big jumble, we had before, suqare sort of offset at top, and a triangle loose on the right",21,0.6666666666666666
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN78DQ6KC0F9N1HA0BPB44R,C,C,0.0,2.0,16.0,refgame,1.0,page7-107,1.0,"fire on left, white square middle",6,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7A44GGBE9XR412KV5BFSC,B,B,0.0,2.0,16.0,refgame,1.0,page7-107,1.0,diamond shaped hole,3,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AZC7FAG17CY924MRTCF7,A,A,0.0,2.0,16.0,refgame,1.0,page7-107,1.0,Hollow diamond in the middle,5,0.3333333333333333
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN78DQ6KC0F9N1HA0BPB44R,C,C,0.0,2.0,15.0,refgame,1.0,page9-46,1.0,"backwards C , angle right",5,0.3333333333333333
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7A44GGBE9XR412KV5BFSC,B,B,0.0,2.0,15.0,refgame,1.0,page9-46,1.0,mountain rect hole,3,0.3333333333333333
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AZC7FAG17CY924MRTCF7,A,A,0.0,2.0,15.0,refgame,1.0,page9-46,1.0,"Looks like a wave. Open piece on the left side, a big triangle on the right., A rectangle at the bottom",21,0.18181818181818182
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,0.0,5.0,refgame,1.0,page9-46,1.0,"it has a white rectanlge on the left side, like a triangle edge on the right side",17,0.25
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,C,0.0,0.0,5.0,refgame,1.0,page9-46,1.0,this shape looks like the letter c backwards made out of rectangles and triangles,14,0.42857142857142855
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,0.0,5.0,refgame,1.0,page9-46,1.0,"The image has a rectangular void on the left, and otherwise looks like a mountain",15,0.42857142857142855
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN7863BFF3ZYZGVVSATZTH7,C,C,0.0,1.0,6.0,refgame,1.0,page7-255,1.0,looks like a witch running,5,0.3333333333333333
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AZC7FAG17CY924MRTCF7,A,A,0.0,2.0,15.0,refgame,1.0,page9-46,1.0,"Looks like a wave. Open piece on the left side, a big triangle on the right., A rectangle at the bottom",21,0.16666666666666666
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,0.0,5.0,refgame,1.0,page9-46,1.0,"it has a white rectanlge on the left side, like a triangle edge on the right side",17,0.2222222222222222
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,C,0.0,0.0,5.0,refgame,1.0,page9-46,1.0,this shape looks like the letter c backwards made out of rectangles and triangles,14,0.375
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,0.0,5.0,refgame,1.0,page9-46,1.0,"The image has a rectangular void on the left, and otherwise looks like a mountain",15,0.375
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN7863BFF3ZYZGVVSATZTH7,C,C,0.0,1.0,6.0,refgame,1.0,page7-255,1.0,looks like a witch running,5,0.25
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN792W85XPK9QGH8A6HSYSJ,B,B,0.0,1.0,6.0,refgame,1.0,page7-255,1.0,small sideways triangle on top,5,0.25
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AAX1VHZ1A7ZB35BNRH8N,A,A,0.0,1.0,6.0,refgame,1.0,page7-255,1.0,"like a rabbit facing right, one ear pointed up on the right half",13,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN78DQ6KC0F9N1HA0BPB44R,C,B,0.0,2.0,48.0,refgame,2.0,page7-107,1.0,"fire on left, white square in middle",7,0.0
@@ -520,13 +520,13 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN78DQ6KC0F9N1HA0BPB44R,C,A,0.0,2.0,53.0,refgame,2.0,page-B,1.0,praying figure with square head,5,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7A44GGBE9XR412KV5BFSC,B,C,0.0,2.0,53.0,refgame,2.0,page-B,1.0,"askew square on top, angel wings",6,0.6
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AZC7FAG17CY924MRTCF7,A,B,0.0,2.0,53.0,refgame,2.0,page-B,1.0,"mouse for my group, praying monk for others",8,0.4
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,0.0,41.0,refgame,2.0,page3-35,1.0,"looksl like a clocktower with a triangle base, then square at top",12,0.16666666666666666
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,0.0,41.0,refgame,2.0,page3-35,1.0,"looksl like a clocktower with a triangle base, then square at top",12,0.14285714285714285
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,C,0.0,0.0,41.0,refgame,2.0,page3-35,1.0,bird house on top of base,6,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,0.0,41.0,refgame,2.0,page3-35,1.0,trophy or street sign,4,0.6666666666666666
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN78DQ6KC0F9N1HA0BPB44R,C,C,0.0,5.0,31.0,refgame,1.0,page7-107,2.0,"fire left, white square middle",5,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7A44GGBE9XR412KV5BFSC,B,B,0.0,5.0,31.0,refgame,1.0,page7-107,2.0,diamond hole in middle,4,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AZC7FAG17CY924MRTCF7,A,A,0.0,5.0,31.0,refgame,1.0,page7-107,2.0,hollow diamond,2,0.5
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,B,0.0,0.0,40.0,refgame,2.0,page9-46,1.0,"looks like a wave with a white rectangle on the left side, triangle edge on left side",17,0.1
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,B,0.0,0.0,40.0,refgame,2.0,page9-46,1.0,"looks like a wave with a white rectangle on the left side, triangle edge on left side",17,0.09090909090909091
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,A,0.0,0.0,40.0,refgame,2.0,page9-46,1.0,backward c,2,1.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,C,0.0,0.0,40.0,refgame,2.0,page9-46,1.0,mountain with rectangle missing,4,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN78DQ6KC0F9N1HA0BPB44R,C,C,0.0,5.0,30.0,refgame,1.0,page5-28,2.0,"rectangle left, square, rhombus right",5,0.0
@@ -553,10 +553,10 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,3.0,23.0,refgame,1.0,page7-107,2.0,"white square in center, diamond",5,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,C,0.0,3.0,23.0,refgame,1.0,page7-107,2.0,"fire to the left, and small white square center",9,0.16666666666666666
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,3.0,23.0,refgame,1.0,page7-107,2.0,Diamond shaped hole in the middle,6,0.0
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,3.0,21.0,refgame,1.0,page3-35,2.0,"the one looks like the clocktower, with trapazoid as bottom base, then square and a diaomond at the top",19,0.25
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,3.0,21.0,refgame,1.0,page3-35,2.0,"the one looks like the clocktower, with trapazoid as bottom base, then square and a diaomond at the top",19,0.2
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,C,0.0,3.0,21.0,refgame,1.0,page3-35,2.0,bird house on top of base,6,0.0
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,3.0,21.0,refgame,1.0,page3-35,2.0,"Looks like a trophy, pointy diamond formed by two triangles at the top, wide solid base",16,0.36363636363636365
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,3.0,22.0,refgame,1.0,page5-28,2.0,"okay long rectangle on the left then square then rhombus, we had this one",14,0.16666666666666666
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,3.0,21.0,refgame,1.0,page3-35,2.0,"Looks like a trophy, pointy diamond formed by two triangles at the top, wide solid base",16,0.3333333333333333
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN79B14FBSYSKKCG2BYVBB6,A,A,0.0,3.0,22.0,refgame,1.0,page5-28,2.0,"okay long rectangle on the left then square then rhombus, we had this one",14,0.14285714285714285
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,C,0.0,3.0,22.0,refgame,1.0,page5-28,2.0,"large rectangle to the left, small square, rhombous right",9,0.14285714285714285
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,B,0.0,3.0,22.0,refgame,1.0,page5-28,2.0,"Solid rectangle on left, then square in middle, then parallelogram on right",12,0.14285714285714285
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN78DQ6KC0F9N1HA0BPB44R,C,B,0.0,5.0,71.0,refgame,2.0,page9-46,2.0,"backwards C, angle right",4,0.3333333333333333
@@ -587,7 +587,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN79J529BWBWTESKB6D9MB7,C,B,0.0,3.0,58.0,refgame,2.0,page7-107,2.0,"fire to the left, small white square center",8,0.16666666666666666
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7C40WEQBDF48ACG18M0EV,B,A,0.0,3.0,58.0,refgame,2.0,page7-107,2.0,diamond hole in middle,4,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7863BFF3ZYZGVVSATZTH7,C,C,0.0,4.0,24.0,refgame,1.0,page3-35,2.0,bird house on a stand,5,0.0
-01KJN6MMQ03KZPZN0275VZXK6R,01KJN792W85XPK9QGH8A6HSYSJ,B,B,0.0,4.0,24.0,refgame,1.0,page3-35,2.0,flat bottom - like a street sign,7,0.75
+01KJN6MMQ03KZPZN0275VZXK6R,01KJN792W85XPK9QGH8A6HSYSJ,B,B,0.0,4.0,24.0,refgame,1.0,page3-35,2.0,flat bottom - like a street sign,7,0.6
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AAX1VHZ1A7ZB35BNRH8N,A,A,0.0,4.0,24.0,refgame,1.0,page3-35,2.0,clocktower,1,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7863BFF3ZYZGVVSATZTH7,C,C,0.0,4.0,63.0,refgame,2.0,page-B,2.0,"man praying, square head. again",5,0.25
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN792W85XPK9QGH8A6HSYSJ,B,B,0.0,4.0,63.0,refgame,2.0,page-B,2.0,square top - flat bottom,5,0.25
@@ -604,29 +604,29 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7863BFF3ZYZGVVSATZTH7,C,C,0.0,4.0,60.0,refgame,2.0,page7-255,2.0,"monk running, again",3,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN792W85XPK9QGH8A6HSYSJ,B,A,0.0,4.0,60.0,refgame,2.0,page7-255,2.0,running monk,2,0.0
 01KJN6MMQ03KZPZN0275VZXK6R,01KJN7AAX1VHZ1A7ZB35BNRH8N,A,B,0.0,4.0,60.0,refgame,2.0,page7-255,2.0,"rabbit my group, running monk or bird with mouth  open",10,0.2857142857142857
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,0.0,0.0,refgame,1.0,page5-28,1.0,"It kind of looks like a fish with a pointy tail, or a big whale",15,0.42857142857142855
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,0.0,refgame,1.0,page5-28,1.0,looks like a pack of cigarettes with a stick coming out of it,13,0.6
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,0.0,refgame,1.0,page5-28,1.0,Jason here.. Pick the one that looks lilke a muffler.  Sideways rectangle and pipe out the right,17,0.4444444444444444
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,0.0,5.0,refgame,1.0,page-B,1.0,"Ok a rabbit with ears one square one triangle, Triangle for a nose and for a foot, Square on top triangle on the right of it, It's looking up kinda",30,0.35714285714285715
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,5.0,refgame,1.0,page-B,1.0,looks like someone praying,4,0.3333333333333333
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,5.0,refgame,1.0,page-B,1.0,Jason (Lika) hefre.  pick the one that looks like a vase that has broken pieces falling off the top,19,0.7
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,0.0,4.0,refgame,1.0,page9-46,1.0,"Looks like a jetski with a big rriangle pointing towards rigt, BAckwards C pointing towards left, Not the column",19,0.5
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,4.0,refgame,1.0,page9-46,1.0,like a hand or a triangle with a mouth,9,0.3333333333333333
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,4.0,refgame,1.0,page9-46,1.0,Jason (Lika) here.  its the one with a white rectangle in the middle of the left side.  sort of liek a pyramid shape,23,0.36363636363636365
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,0.0,0.0,refgame,1.0,page5-28,1.0,"It kind of looks like a fish with a pointy tail, or a big whale",15,0.375
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,0.0,refgame,1.0,page5-28,1.0,looks like a pack of cigarettes with a stick coming out of it,13,0.5
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,0.0,refgame,1.0,page5-28,1.0,Jason here.. Pick the one that looks lilke a muffler.  Sideways rectangle and pipe out the right,17,0.4
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,0.0,5.0,refgame,1.0,page-B,1.0,"Ok a rabbit with ears one square one triangle, Triangle for a nose and for a foot, Square on top triangle on the right of it, It's looking up kinda",30,0.3125
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,5.0,refgame,1.0,page-B,1.0,looks like someone praying,4,0.25
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,5.0,refgame,1.0,page-B,1.0,Jason (Lika) hefre.  pick the one that looks like a vase that has broken pieces falling off the top,19,0.5833333333333334
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,0.0,4.0,refgame,1.0,page9-46,1.0,"Looks like a jetski with a big rriangle pointing towards rigt, BAckwards C pointing towards left, Not the column",19,0.46153846153846156
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,4.0,refgame,1.0,page9-46,1.0,like a hand or a triangle with a mouth,9,0.25
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,4.0,refgame,1.0,page9-46,1.0,Jason (Lika) here.  its the one with a white rectangle in the middle of the left side.  sort of liek a pyramid shape,23,0.3333333333333333
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,0.0,1.0,refgame,1.0,page7-107,1.0,,0,
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,1.0,refgame,1.0,page7-107,1.0,like a flaming asteroid going right,6,0.75
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,1.0,refgame,1.0,page7-107,1.0,like a flaming asteroid going right,6,0.6
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,1.0,refgame,1.0,page7-107,1.0,"Jason here.  Look for the bird head, with the big eye in the middle .. diamond shapped",17,0.7777777777777778
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,3.0,21.0,refgame,1.0,page-B,2.0,Person praying,2,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,3.0,21.0,refgame,1.0,page-B,3.0,praying person we've done before,5,0.3333333333333333
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,3.0,21.0,refgame,1.0,page-B,2.0,"vase with pieces falling off the top, a square and triangle.. jason here (Lika)",14,0.625
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,4.0,28.0,refgame,1.0,page5-28,2.0,cigarette,1,1.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,4.0,28.0,refgame,1.0,page5-28,2.0,muffler,1,0.0
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,A,0.0,4.0,28.0,refgame,1.0,page5-28,2.0,"turtle looking one, big rectangular box, thin neck and triangle head",11,0.2222222222222222
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,A,0.0,4.0,28.0,refgame,1.0,page5-28,2.0,"turtle looking one, big rectangular box, thin neck and triangle head",11,0.2
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,1.0,8.0,refgame,1.0,page-B,1.0,person praying,2,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,1.0,8.0,refgame,1.0,page-B,1.0,it has a square and trinagle on top,8,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,A,0.0,1.0,8.0,refgame,1.0,page-B,1.0,"looks like a person with a sideways square head and a triangle on the right, square tilted head",18,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,C,0.0,5.0,35.0,refgame,1.0,page7-255,2.0,Bunny Wabbit :),3,0.5
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,5.0,35.0,refgame,1.0,page7-255,2.0,"Rooster, Same one as before",5,1.0
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,5.0,35.0,refgame,1.0,page7-255,2.0,"Rooster, Same one as before",5,0.5
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,5.0,35.0,refgame,1.0,page7-255,3.0,hood dude,2,0.5
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,4.0,26.0,refgame,1.0,page-B,2.0,praying person,2,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,4.0,26.0,refgame,1.0,page-B,2.0,square on top and triangle they are falling off,9,0.25
@@ -636,22 +636,22 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,5.0,34.0,refgame,1.0,page-B,3.0,praying dude,2,0.5
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,"Ok a triangle at the top with a beak, Multiple with a trapezoid on the legt, left",17,0.375
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,looks like someone wearing a hood looking down,8,0.0
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,Jason here.  its the one that looks like a bird flying while carrying a package underneath it.,17,0.42857142857142855
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,3.0,refgame,1.0,page7-255,1.0,Jason here.  its the one that looks like a bird flying while carrying a package underneath it.,17,0.3333333333333333
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,C,0.0,5.0,33.0,refgame,1.0,page7-107,2.0,Bird with diamond in middle / fireball,7,0.25
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,5.0,33.0,refgame,1.0,page7-107,2.0,Fireball,1,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,5.0,33.0,refgame,1.0,page7-107,3.0,asteroid,1,1.0
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,B,0.0,0.0,36.0,refgame,2.0,page3-35,1.0,"Royal chalice, triangle base with a triangle at top, like a house",12,0.2857142857142857
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,B,0.0,0.0,36.0,refgame,2.0,page3-35,1.0,"Royal chalice, triangle base with a triangle at top, like a house",12,0.25
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,A,0.0,0.0,36.0,refgame,2.0,page3-35,1.0,chess piece,2,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,36.0,refgame,2.0,page3-35,1.0,Jason here says that it is a tall birdhouse shape,10,0.6
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,C,0.0,2.0,12.0,refgame,1.0,page3-35,1.0,"It looks like a clock shape, square on top, base is trapezoid",12,0.14285714285714285
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,12.0,refgame,1.0,page3-35,1.0,"Looks like a fancy mediaval cup with a diamond at the top, Triangle for a base, Going up to a stem thats a diamond and square combined",27,0.5
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,C,0.0,2.0,12.0,refgame,1.0,page3-35,1.0,"It looks like a clock shape, square on top, base is trapezoid",12,0.125
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,12.0,refgame,1.0,page3-35,1.0,"Looks like a fancy mediaval cup with a diamond at the top, Triangle for a base, Going up to a stem thats a diamond and square combined",27,0.4666666666666667
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,1.0,11.0,refgame,1.0,page7-255,1.0,person with hood going right,5,0.5
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,1.0,11.0,refgame,1.0,page7-255,1.0,it is the bunny looking one has a tringle ear and a paralllelogram other ear,15,0.16666666666666666
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,1.0,11.0,refgame,1.0,page7-255,1.0,it is the bunny looking one has a tringle ear and a paralllelogram other ear,15,0.14285714285714285
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,A,0.0,1.0,11.0,refgame,1.0,page7-255,1.0,"the closest thing to abird a short pointy head pertruding out on the rifht, no diamond.",16,0.8888888888888888
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,1.0,10.0,refgame,1.0,page7-107,1.0,flaming asteroid going to the right side,7,0.6
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,1.0,10.0,refgame,1.0,page7-107,1.0,it is a fire ball with a diamond in the middle,11,0.0
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,A,0.0,1.0,10.0,refgame,1.0,page7-107,1.0,"a sideways blank white square in the middle, the only one that has a white square in the middle, sure diamond!",21,0.2
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,3.0,20.0,refgame,1.0,page9-46,2.0,"A triangle for a slope pointed towards right, and a backwards c, pyramid one, Rectangle taken out on the left",20,0.2
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,A,0.0,1.0,10.0,refgame,1.0,page7-107,1.0,"a sideways blank white square in the middle, the only one that has a white square in the middle, sure diamond!",21,0.18181818181818182
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,3.0,20.0,refgame,1.0,page9-46,2.0,"A triangle for a slope pointed towards right, and a backwards c, pyramid one, Rectangle taken out on the left",20,0.18181818181818182
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,3.0,20.0,refgame,1.0,page9-46,3.0,big mouth going left,4,0.25
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,3.0,20.0,refgame,1.0,page9-46,2.0,pyramid shape with rectangle cut out . Jason here (Lika),10,0.3333333333333333
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,1.0,9.0,refgame,1.0,page5-28,1.0,"cigarette box with cigarette coming from right side, rectangle that goes to right",13,0.2222222222222222
@@ -672,20 +672,20 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,C,0.0,2.0,17.0,refgame,1.0,page9-46,1.0,Pyramid shape with rectangle cut out of it,8,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,17.0,refgame,1.0,page9-46,1.0,"Its a pyramid with the top cut off, And a rectangular hole on the left",15,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,2.0,17.0,refgame,1.0,page9-46,2.0,alligator with big mouth going left,6,0.4
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,C,0.0,2.0,13.0,refgame,1.0,page-B,1.0,"This one looks like a person waving, with a square on top and triangle falling, looks kneeling",17,0.2222222222222222
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,13.0,refgame,1.0,page-B,1.0,"The bunny thing, Triangle for arms, Off kilter square for a head, Looks like somebody praying facing right",18,0.3333333333333333
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,C,0.0,2.0,13.0,refgame,1.0,page-B,1.0,"This one looks like a person waving, with a square on top and triangle falling, looks kneeling",17,0.18181818181818182
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,13.0,refgame,1.0,page-B,1.0,"The bunny thing, Triangle for arms, Off kilter square for a head, Looks like somebody praying facing right",18,0.3076923076923077
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,2.0,13.0,refgame,1.0,page-B,2.0,praying person again,3,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,C,0.0,2.0,16.0,refgame,1.0,page5-28,1.0,Muffler on its side,4,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,16.0,refgame,1.0,page5-28,1.0,"Whale swimming the the left, Large rectangle head left, then a tail pointing to the right",16,0.4
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,2.0,16.0,refgame,1.0,page5-28,2.0,that cigarette one with the weird thing,7,1.0
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,3.0,23.0,refgame,1.0,page3-35,2.0,"Ok the chalice one? Royal cup, Triangle on top with a thin middle",13,0.625
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,2.0,16.0,refgame,1.0,page5-28,2.0,that cigarette one with the weird thing,7,0.75
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,3.0,23.0,refgame,1.0,page3-35,2.0,"Ok the chalice one? Royal cup, Triangle on top with a thin middle",13,0.5555555555555556
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,3.0,23.0,refgame,1.0,page3-35,3.0,looks kind like  a chess piece,6,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,3.0,23.0,refgame,1.0,page3-35,2.0,tall birdhouse... Jason here (Lika),5,0.75
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,C,0.0,2.0,15.0,refgame,1.0,page7-107,1.0,The bird with a diamond in the middle / fireball shape,11,0.2
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,15.0,refgame,1.0,page7-107,1.0,"Fireball flying to the right, DIamond in the middle",9,0.2
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,2.0,15.0,refgame,1.0,page7-107,2.0,flaming asteroid going right again,5,0.75
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,C,0.0,2.0,14.0,refgame,1.0,page7-255,1.0,The bunny looking one with parallelogram ear and triangle ear,10,0.0
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,14.0,refgame,1.0,page7-255,1.0,"Looks like a rooster facing right, Minu you described it as a bird earlier, Many triangles",16,0.3
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,14.0,refgame,1.0,page7-255,1.0,"Looks like a rooster facing right, Minu you described it as a bird earlier, Many triangles",16,0.2727272727272727
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,2.0,14.0,refgame,1.0,page7-255,2.0,person with hood jumping and going right,7,0.6
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,3.0,22.0,refgame,1.0,page5-28,2.0,"Whale with tail pointed to right, Rectangle then extending out to a two triangles",14,0.625
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,3.0,22.0,refgame,1.0,page5-28,3.0,cigarette,1,1.0
@@ -709,7 +709,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,38.0,refgame,2.0,page7-255,1.0,hooded dude jumping,3,1.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,38.0,refgame,2.0,page7-255,1.0,Jason here says that it is a bunny rabbit shape,10,0.4
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,C,0.0,5.0,30.0,refgame,1.0,page9-46,2.0,Pyramid with square cut out,5,0.0
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,5.0,30.0,refgame,1.0,page9-46,2.0,"Topless pyramid, With rectangle missing on the left, And yes that last one before, we call that the royal chalice",20,0.5
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,5.0,30.0,refgame,1.0,page9-46,2.0,"Topless pyramid, With rectangle missing on the left, And yes that last one before, we call that the royal chalice",20,0.45454545454545453
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,5.0,30.0,refgame,1.0,page9-46,3.0,big mouth left,3,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,4.0,29.0,refgame,1.0,page3-35,2.0,chess piece,2,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,4.0,29.0,refgame,1.0,page3-35,2.0,tall birdhouse,2,0.5
@@ -724,11 +724,11 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,5.0,70.0,refgame,2.0,page9-46,2.0,Topless pyramid,2,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,C,0.0,5.0,70.0,refgame,2.0,page9-46,3.0,staple remover,2,1.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,B,0.0,5.0,69.0,refgame,2.0,page3-35,2.0,"tall birdhouse - N, with square on top",8,0.25
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,5.0,69.0,refgame,2.0,page3-35,2.0,"Royal Chalice, Or chess piece I heard one say",9,0.6666666666666666
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,5.0,69.0,refgame,2.0,page3-35,2.0,"Royal Chalice, Or chess piece I heard one say",9,0.5714285714285714
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,C,0.0,5.0,69.0,refgame,2.0,page3-35,3.0,smaller triangle head,3,0.6666666666666666
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,0.0,2.0,refgame,1.0,page3-35,1.0,"House at the top, And like a lamp almost?",9,0.5
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,2.0,refgame,1.0,page3-35,1.0,an award or kind of like a helmet,8,0.6666666666666666
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,2.0,refgame,1.0,page3-35,1.0,Jason here.  Look for the one that looks liek a tall birdhouse on a stand.,15,0.5714285714285714
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,A,0.0,0.0,2.0,refgame,1.0,page3-35,1.0,"House at the top, And like a lamp almost?",9,0.4
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,0.0,2.0,refgame,1.0,page3-35,1.0,an award or kind of like a helmet,8,0.5
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,0.0,2.0,refgame,1.0,page3-35,1.0,Jason here.  Look for the one that looks liek a tall birdhouse on a stand.,15,0.5
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,C,0.0,4.0,61.0,refgame,2.0,page3-35,2.0,chess piece,2,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,A,0.0,4.0,61.0,refgame,2.0,page3-35,2.0,tall birdhouse,2,0.5
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,B,0.0,4.0,61.0,refgame,2.0,page3-35,2.0,"smaller diamond head, mermaid looking bottom",6,0.5
@@ -737,7 +737,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,C,0.0,5.0,67.0,refgame,2.0,page7-255,3.0,hooded dude jumping right,4,0.75
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,A,0.0,5.0,66.0,refgame,2.0,page-B,2.0,square and triangle falling - N,6,0.3333333333333333
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,B,0.0,5.0,66.0,refgame,2.0,page-B,2.0,Prayer,1,1.0
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,5.0,66.0,refgame,2.0,page-B,3.0,top is square and triangle falling off. bottom is like a vase,12,0.3333333333333333
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,5.0,66.0,refgame,2.0,page-B,3.0,top is square and triangle falling off. bottom is like a vase,12,0.2857142857142857
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,C,0.0,4.0,65.0,refgame,2.0,page7-107,2.0,asteroid,1,1.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,B,0.0,4.0,65.0,refgame,2.0,page7-107,2.0,fireball w diamond middle,4,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,A,0.0,4.0,65.0,refgame,2.0,page7-107,2.0,missing white diamond out of the center,7,0.25
@@ -764,7 +764,7 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,48.0,refgame,2.0,page9-46,1.0,"Topless pyramid, Rectangle missing from left",6,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,C,0.0,2.0,50.0,refgame,2.0,page5-28,2.0,Whale,1,1.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,B,0.0,2.0,50.0,refgame,2.0,page5-28,1.0,Sideways muffler - N,4,0.0
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,50.0,refgame,2.0,page5-28,1.0,"Whale pointing left, Parallelogram for tail, One person said cig, another said muffler",13,0.6363636363636364
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,50.0,refgame,2.0,page5-28,1.0,"Whale pointing left, Parallelogram for tail, One person said cig, another said muffler",13,0.5833333333333334
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,1.0,46.0,refgame,2.0,page9-46,1.0,big mouth left topless pyramid,5,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,1.0,46.0,refgame,2.0,page9-46,1.0,pyramid with a rectangle cut out,6,0.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,A,0.0,1.0,46.0,refgame,2.0,page9-46,1.0,paper clip remover,3,1.0
@@ -808,14 +808,14 @@ gameId,playerId,originalGroup,currentGroup,tangramSet,blockNum,trialNum,phase,ph
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RH1QNE571FNJRJ0ZHM7W,B,B,0.0,3.0,54.0,refgame,2.0,page7-107,2.0,asteroid,1,1.0
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SNNP4ZB6K1QMGZX5CC0T,C,C,0.0,3.0,54.0,refgame,2.0,page7-107,2.0,bird head with diamond eye hole says Jason,8,0.7142857142857143
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,1.0,7.0,refgame,1.0,page9-46,1.0,triangle with rectangle in white coming from left side,9,0.16666666666666666
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,1.0,7.0,refgame,1.0,page9-46,1.0,it has a rectangle cut out of it so like a reverse letter c,14,0.25
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,A,0.0,1.0,7.0,refgame,1.0,page9-46,1.0,"Looks like a paper clip remover, mouth facing left",9,0.42857142857142855
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,1.0,7.0,refgame,1.0,page9-46,1.0,it has a rectangle cut out of it so like a reverse letter c,14,0.2
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,A,0.0,1.0,7.0,refgame,1.0,page9-46,1.0,"Looks like a paper clip remover, mouth facing left",9,0.375
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,B,0.0,1.0,6.0,refgame,1.0,page3-35,1.0,helmet looking down,3,0.5
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,1.0,6.0,refgame,1.0,page3-35,1.0,pick the one that is the birdhouse,7,0.5
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,1.0,6.0,refgame,1.0,page3-35,1.0,pick the one that is the birdhouse,7,0.3333333333333333
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,A,0.0,1.0,6.0,refgame,1.0,page3-35,1.0,,0,
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,C,0.0,2.0,53.0,refgame,2.0,page3-35,2.0,"Royal chalice, Triangle on top, House like",7,0.4
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q4FMMNPG4DTS771Y4V70,A,C,0.0,2.0,53.0,refgame,2.0,page3-35,2.0,"Royal chalice, Triangle on top, House like",7,0.3333333333333333
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2Q9Z7MR3VPYE4MH3SC9C8,C,B,0.0,2.0,53.0,refgame,2.0,page3-35,1.0,Birdhouse - N,3,0.0
-01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,53.0,refgame,2.0,page3-35,1.0,"Royal chalice, Or chess piece, i heard one say",9,0.6666666666666666
+01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RBVR6E36EKC8HYRAV5GF,A,A,0.0,2.0,53.0,refgame,2.0,page3-35,1.0,"Royal chalice, Or chess piece, i heard one say",9,0.5714285714285714
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2RVD8SK7AN1X5EMGRM458,B,A,0.0,4.0,60.0,refgame,2.0,page-B,2.0,praying dude,2,0.5
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SDQCR0935BS4E06A6D2G,C,C,0.0,4.0,60.0,refgame,2.0,page-B,2.0,"square and triangle falling off, they are on the top",10,0.25
 01KJP22PXRH9VYFY7Z1HZVNSMN,01KJP2SGRYQPGESDGRKTMMAJX4,A,B,0.0,4.0,60.0,refgame,2.0,page-B,2.0,prayer,1,1.0

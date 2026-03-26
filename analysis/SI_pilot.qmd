@@ -957,7 +957,7 @@ use lower-frequency vocabulary.
 
 All three measures are precomputed in Python (`compute_derived.py`) with
 consistent tokenization: each utterance is lowercased, split into alphabetic
-sequences, filtered for standard English stopwords, and only tokens with
+sequences, filtered for NLTK English stopwords, and only tokens with
 length > 1 are retained as *content words*.
 
 - **Concreteness**: the proportion of content words matching concrete term
