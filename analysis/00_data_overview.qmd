@@ -11,7 +11,7 @@ library(jsonlite)
 source(here::here("analysis", "config.R"))
 ```
 
-# Load Data
+# Load data
 
 ```{r load-data}
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
@@ -22,7 +22,7 @@ speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = 
 social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
 ```
 
-# Game-Level Summary
+# Game-level summary
 
 ```{r game-summary}
 games |>
@@ -37,7 +37,7 @@ games |>
   knitr::kable(caption = "Games per condition")
 ```
 
-# Player-Level Summary
+# Player-level summary
 
 ```{r player-summary}
 players |>
@@ -73,7 +73,7 @@ if (length(demo_cols) > 0) {
 }
 ```
 
-# Trial-Level Summary
+# Trial-level summary
 
 ```{r trial-summary}
 cat("Total trial rows:", nrow(trials), "\n")
@@ -91,7 +91,7 @@ trials |>
   knitr::kable(caption = "Listener accuracy by phase")
 ```
 
-# Message Summary
+# Message summary
 
 ```{r message-summary}
 cat("Total messages:", nrow(messages), "\n")
@@ -110,7 +110,7 @@ messages |>
   knitr::kable(caption = "Message statistics by role")
 ```
 
-# Speaker Utterance Summary
+# Speaker utterance summary
 
 ```{r utterance-summary}
 cat("Total speaker utterances:", nrow(speaker_utts), "\n")
@@ -126,7 +126,7 @@ speaker_utts |>
   knitr::kable(caption = "Speaker utterance length by phase")
 ```
 
-# Social Guesses Summary
+# Social guesses summary
 
 ```{r social-guess-summary}
 if (nrow(social_guesses) > 0) {
@@ -139,7 +139,7 @@ if (nrow(social_guesses) > 0) {
 }
 ```
 
-# Exclusion Criteria Checks
+# Exclusion criteria checks
 
 ```{r exclusion-checks}
 # Groups where <2/3 participants achieved <2/3 accuracy in last 3 blocks of Phase 1

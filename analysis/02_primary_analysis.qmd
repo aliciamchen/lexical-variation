@@ -44,46 +44,22 @@ For each game, fit:
 Extract the `sameGroup` coefficient as the group-specificity score.
 
 ```{r fit-group-specificity}
+source(here::here("analysis", "group_specificity.R"))
+
 if (!has_pairwise || nrow(pairwise_sim) == 0) {
   cat("Skipping group-specificity analysis: no pairwise similarity data.\n")
 } else {
-fit_gs_by_game_window <- function(pw_df) {
-  game_ids <- unique(pw_df$gameId)
-
-  map_dfr(game_ids, function(gid) {
-    game_data <- pw_df |> filter(gameId == gid)
-
-    if (nrow(game_data) < 5) return(NULL)
-    if (n_distinct(game_data$sameGroup) < 2) return(NULL)
-
-    tryCatch({
-      model <- lmer(
-        similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
-        data = game_data,
-        control = lmerControl(optimizer = "bobyqa")
-      )
-      coefs <- coef(summary(model))
-      tibble(
-        gameId = gid,
-        coefficient = coefs["sameGroup", "Estimate"],
-        std_error = coefs["sameGroup", "Std. Error"],
-        t_value = coefs["sameGroup", "t value"]
-      )
-    }, error = function(e) NULL)
-  })
-}
-
 # Phase 1 final
 gs_p1 <- pairwise_sim |>
   filter(window == "phase1_final") |>
-  fit_gs_by_game_window() |>
+  fit_group_specificity() |>
   rename(gs_phase1 = coefficient, se_phase1 = std_error) |>
   select(gameId, gs_phase1, se_phase1)
 
 # Phase 2 final
 gs_p2 <- pairwise_sim |>
   filter(window == "phase2_final") |>
-  fit_gs_by_game_window() |>
+  fit_group_specificity() |>
   rename(gs_phase2 = coefficient, se_phase2 = std_error) |>
   select(gameId, gs_phase2, se_phase2)
 
@@ -276,42 +252,6 @@ ggplot(pw_means, aes(x = condition, y = mean_sim, fill = groupType)) +
 }
 ```
 
-# Optional: Bayes factors (if null results)
-
-Uncomment and run if contrasts are non-significant.
-
-```{r bayes-factors, eval=FALSE}
-# library(brms)
-# library(bridgesampling)
-#
-# # Refit with brms using Cauchy(0, sqrt(2)/2) prior on condition effects
-# prior <- c(
-#   set_prior("cauchy(0, 0.707)", class = "b")
-# )
-#
-# brm_model <- brm(
-#   gs_phase2 | weights(weight) ~ condition + gs_phase1,
-#   data = gs_combined,
-#   prior = prior,
-#   iter = 10000,
-#   warmup = 2000,
-#   chains = 4,
-#   save_pars = save_pars(all = TRUE)
-# )
-#
-# # Compute Bayes factors via bridge sampling
-# brm_null <- brm(
-#   gs_phase2 | weights(weight) ~ gs_phase1,
-#   data = gs_combined,
-#   iter = 10000,
-#   warmup = 2000,
-#   chains = 4,
-#   save_pars = save_pars(all = TRUE)
-# )
-#
-# bf <- bayes_factor(brm_model, brm_null)
-# cat("Bayes factor (full vs null):", bf$bf, "\n")
-```
 
 # H3: Effect of anticipated social goal on Phase 1 conventions
 
@@ -674,17 +614,11 @@ listener's interpretation and the quality of the speaker's description.
 Contrast: `social_mixed > social_first` (lower ref accuracy expected in social_first).
 
 ```{r h4b-ref-accuracy}
-# Join speaker identity onto listener trials
-speaker_lookup_h4b <- trials |>
-  filter(role == "speaker") |>
-  select(gameId, blockNum, target, playerId) |>
-  rename(speakerId = playerId) |>
-  distinct()
-
+# Reuse speaker_lookup from H4a
 p2_listener_social <- trials |>
   filter(phaseNum == 2, role == "listener") |>
   left_join(games |> select(gameId, condition), by = "gameId") |>
-  left_join(speaker_lookup_h4b, by = c("gameId", "blockNum", "target")) |>
+  left_join(speaker_lookup, by = c("gameId", "blockNum", "target")) |>
   filter(condition %in% c("social_mixed", "social_first")) |>
   mutate(
     correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),

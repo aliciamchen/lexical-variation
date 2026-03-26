@@ -7,8 +7,6 @@ format:
 ---
 
 ```{r setup, message=FALSE, warning=FALSE}
-library(lme4)
-library(lmerTest)
 library(tidyboot)
 library(patchwork)
 source(here::here("analysis", "config.R"))
@@ -50,55 +48,7 @@ if (has_adjacent && nrow(adjacent_sim) > 0) {
 }
 ```
 
-# 1. Description length in Phase 2 by condition
-
-```{r model-phase2-length}
-p2_utts <- utts_with_condition |>
-  filter(phaseNum == 2) |>
-  mutate(
-    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
-  )
-
-n_cond <- n_distinct(p2_utts$condition)
-if (n_cond >= 2) {
-  # Maximal RE: blockNum varies within player and tangram
-  m_p2_length <- tryCatch(
-    lmer(
-      uttLength ~ condition * blockNum_c + (blockNum_c | playerId) + (blockNum_c | target),
-      data = p2_utts,
-      control = lmerControl(optimizer = "bobyqa")
-    ),
-    error = function(e) {
-      cat("Maximal model failed:", e$message, "\nSimplifying to intercepts-only.\n")
-      lmer(
-        uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
-        data = p2_utts,
-        control = lmerControl(optimizer = "bobyqa")
-      )
-    }
-  )
-  if (isSingular(m_p2_length)) {
-    cat("Maximal model is singular; refitting with intercepts-only random effects.\n")
-    m_p2_length <- lmer(
-      uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
-      data = p2_utts,
-      control = lmerControl(optimizer = "bobyqa")
-    )
-  }
-} else {
-  m_p2_length <- lmer(
-    uttLength ~ blockNum_c + (1 | playerId) + (1 | target),
-    data = p2_utts,
-    control = lmerControl(optimizer = "bobyqa")
-  )
-  cat("Only 1 condition; fitting without condition predictor.\n")
-}
-
-summary(m_p2_length)
-report_effect_sizes(m_p2_length)
-```
-
-# 2. Temporal dynamics: full game
+# 1. Temporal dynamics: full game
 
 ```{r plot-full-temporal, fig.width=10, fig.height=10}
 phase_boundary <- games$phase1Blocks[1] - 0.5
@@ -172,7 +122,7 @@ if (exists("p_sim")) {
 }
 ```
 
-# 3. UMAP visualization
+# 2. UMAP visualization
 
 ```{r plot-umap, fig.width=12, fig.height=8}
 # Plot 17: UMAP embedding space
@@ -240,75 +190,3 @@ if (has_umap && exists("umap_data")) {
 }
 ```
 
-# 4. Utterance properties
-
-```{r utterance-properties}
-# Geometric/body-part word lists
-geometric_words <- c(
-  "triangle", "square", "rectangle", "diamond", "circle", "line",
-  "angle", "point", "shape", "geometric", "polygon", "parallelogram",
-  "trapezoid", "hexagon", "pentagon"
-)
-
-body_words <- c(
-  "head", "arm", "leg", "body", "hand", "foot", "feet", "person",
-  "man", "woman", "standing", "sitting", "walking", "running",
-  "dancing", "jumping", "kicking", "reaching", "bending"
-)
-
-utts_props <- utts_with_condition |>
-  mutate(
-    utt_lower = str_to_lower(utterance),
-    n_geometric = map_int(utt_lower, ~sum(str_count(.x, paste0("\\b", geometric_words, "\\b")))),
-    n_body = map_int(utt_lower, ~sum(str_count(.x, paste0("\\b", body_words, "\\b")))),
-    prop_geometric = n_geometric / uttLength,
-    prop_body = n_body / uttLength
-  )
-
-# Summary by condition and phase
-utts_props |>
-  group_by(condition, phaseNum) |>
-  summarise(
-    mean_geometric = mean(prop_geometric, na.rm = TRUE),
-    mean_body = mean(prop_body, na.rm = TRUE),
-    mean_length = mean(uttLength, na.rm = TRUE),
-    .groups = "drop"
-  ) |>
-  knitr::kable(digits = 3,
-    caption = "Utterance properties by condition and phase")
-```
-
-```{r plot-word-types, fig.width=10, fig.height=5}
-props_long <- utts_props |>
-  select(condition, phaseNum, blockNum, prop_geometric, prop_body) |>
-  pivot_longer(
-    cols = c(prop_geometric, prop_body),
-    names_to = "word_type",
-    values_to = "proportion"
-  ) |>
-  mutate(word_type = ifelse(word_type == "prop_geometric", "Geometric", "Body-part"))
-
-props_by_block <- props_long |>
-  group_by(condition, blockNum, word_type) |>
-  summarise(
-    mean_prop = mean(proportion, na.rm = TRUE),
-    se_prop = sd(proportion, na.rm = TRUE) / sqrt(n()),
-    .groups = "drop"
-  )
-
-ggplot(props_by_block, aes(x = blockNum, y = mean_prop, color = condition)) +
-  geom_ribbon(aes(ymin = mean_prop - se_prop, ymax = mean_prop + se_prop, fill = condition),
-              alpha = 0.1, color = NA) +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 1.5) +
-  facet_wrap(~word_type, scales = "free_y") +
-  labs(
-    x = "Block",
-    y = "Proportion of words",
-    color = "Condition",
-    title = "Word type proportions over blocks by condition"
-  ) +
-  scale_color_condition() +
-  scale_fill_condition() +
-  theme(legend.position = "bottom")
-```

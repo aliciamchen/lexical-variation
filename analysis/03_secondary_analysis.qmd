@@ -11,6 +11,7 @@ library(lme4)
 library(lmerTest)
 library(tidyboot)
 source(here::here("analysis", "config.R"))
+source(here::here("analysis", "group_specificity.R"))
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
@@ -200,28 +201,6 @@ if (nrow(social_listener) > 0) {
 }
 ```
 
-```{r plot-ingroup, fig.width=6, fig.height=4}
-# Plot 12: In-group vs out-group accuracy (social conditions)
-if (exists("social_listener") && nrow(social_listener) > 0 &&
-    "inGroupSpeaker" %in% names(social_listener)) {
-  ingroup_acc <- social_listener |>
-    filter(!is.na(correct), !is.na(inGroupSpeaker)) |>
-    mutate(speaker_type = ifelse(inGroupSpeaker == 1, "In-group", "Out-group")) |>
-    group_by(speaker_type) |>
-    tidyboot_mean(correct, nboot = 1000)
-
-  ggplot(ingroup_acc, aes(x = speaker_type, y = empirical_stat, fill = speaker_type)) +
-    geom_col(alpha = 0.7, width = 0.6) +
-    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
-    labs(
-      x = "Speaker type",
-      y = "Mean listener accuracy",
-      title = "In-group vs out-group accuracy (social conditions)"
-    ) +
-    theme(legend.position = "none")
-}
-```
-
 ```{r plot-ingroup-by-condition, fig.width=8, fig.height=5}
 if (exists("social_listener") && nrow(social_listener) > 0 &&
     "inGroupSpeaker" %in% names(social_listener) &&
@@ -266,38 +245,16 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
   # Get Phase 2 group-specificity per game (with SE for WLS weighting)
   gs_p2 <- pairwise_sim |>
     filter(window == "phase2_final") |>
-    group_by(gameId) |>
-    group_modify(~ {
-      if (nrow(.x) < 5 || n_distinct(.x$sameGroup) < 2) return(tibble())
-      tryCatch({
-        model <- lmer(
-          similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
-          data = .x, control = lmerControl(optimizer = "bobyqa")
-        )
-        coefs <- coef(summary(model))
-        tibble(
-          gs_phase2 = coefs["sameGroup", "Estimate"],
-          se_phase2 = coefs["sameGroup", "Std. Error"]
-        )
-      }, error = function(e) tibble())
-    }) |>
-    ungroup()
+    fit_group_specificity() |>
+    rename(gs_phase2 = coefficient, se_phase2 = std_error) |>
+    select(gameId, gs_phase2, se_phase2)
 
   # Get Phase 1 group-specificity
   gs_p1 <- pairwise_sim |>
     filter(window == "phase1_final") |>
-    group_by(gameId) |>
-    group_modify(~ {
-      if (nrow(.x) < 5 || n_distinct(.x$sameGroup) < 2) return(tibble())
-      tryCatch({
-        model <- lmer(
-          similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
-          data = .x, control = lmerControl(optimizer = "bobyqa")
-        )
-        tibble(gs_phase1 = coef(summary(model))["sameGroup", "Estimate"])
-      }, error = function(e) tibble())
-    }) |>
-    ungroup()
+    fit_group_specificity() |>
+    rename(gs_phase1 = coefficient) |>
+    select(gameId, gs_phase1)
 
   gs_social <- gs_p2 |>
     inner_join(gs_p1, by = "gameId") |>
@@ -350,19 +307,12 @@ if (nrow(social_guesses) > 0) {
 
   n_social_games <- n_distinct(social_guesses_model$gameId)
   if (n_social_games >= 2) {
-    # Paper: social_correct ~ rep_num + (1 | game) + (1 | participant) + (1 | tangram)
-    m_social_acc <- tryCatch(
-      glmer(
-        correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
-        data = social_guesses_model,
-        family = binomial,
-        control = glmerControl(optimizer = "bobyqa")
+    m_social_acc <- fit_progressively(
+      list(
+        mixed = correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target)
       ),
-      error = function(e) {
-        cat("glmer failed:", e$message, "\nFalling back to lmer.\n")
-        lmer(correct ~ blockNum_c + (1 | gameId),
-             data = social_guesses_model, control = lmerControl(optimizer = "bobyqa"))
-      }
+      data = social_guesses_model,
+      family = binomial
     )
   } else {
     m_social_acc <- glm(correct ~ blockNum_c, data = social_guesses_model, family = binomial)
