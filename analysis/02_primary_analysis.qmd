@@ -373,8 +373,10 @@ if (exists("gs_social") && nrow(gs_social) > 0) {
 
 ## H3b: Within-Group Convergence Rate
 
-`within_group_similarity ~ condition * block + (1 | game) + (1 | tangram)`,
+`within_group_similarity ~ condition * block + (block | group) + (block | tangram)`,
 restricted to Phase 1, within-group pairs, social conditions only.
+Group (not game) is the natural unit of replication for within-group similarity,
+and condition is between-game so cannot have a random slope within game or group.
 
 ```{r h3b-convergence}
 if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
@@ -390,36 +392,22 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
       condition = factor(condition, levels = c("social_mixed", "social_first"))
     )
 
-  if (nrow(p1_within_social) > 0 && n_distinct(p1_within_social$condition) >= 2) {
-    # Maximal RE justified by design: blockNum varies within game and tangram
-    m_h3b <- tryCatch(
-      lmer(
-        similarity ~ condition * blockNum_c + (blockNum_c | gameId) + (blockNum_c | target),
-        data = p1_within_social,
-        control = lmerControl(optimizer = "bobyqa")
-      ),
-      error = function(e) {
-        cat("Maximal model failed:", e$message, "\nSimplifying to intercepts-only.\n")
-        lmer(
-          similarity ~ condition * blockNum_c + (1 | gameId) + (1 | target),
-          data = p1_within_social,
-          control = lmerControl(optimizer = "bobyqa")
-        )
-      }
-    )
-    if (isSingular(m_h3b)) {
-      cat("Maximal model is singular; refitting with intercepts-only random effects.\n")
-      m_h3b <- lmer(
-        similarity ~ condition * blockNum_c + (1 | gameId) + (1 | target),
-        data = p1_within_social,
-        control = lmerControl(optimizer = "bobyqa")
-      )
-    }
+  # Derive group ID for within-group pairs (group1 == group2 since sameGroup == 1)
+  p1_within_social <- p1_within_social |>
+    mutate(group = paste0(gameId, "_", group1))
 
-    if (!is.null(m_h3b)) {
-      summary(m_h3b)
-      report_effect_sizes(m_h3b)
-    }
+  if (nrow(p1_within_social) > 0 && n_distinct(p1_within_social$condition) >= 2) {
+    # Group is the natural unit of replication for within-group similarity.
+    # Condition is between-game, so it cannot have a random slope within group.
+    m_h3b <- fit_progressively(
+      list(
+        maximal    = similarity ~ condition * blockNum_c + (blockNum_c | group) + (blockNum_c | target),
+        intercepts = similarity ~ condition * blockNum_c + (1 | group) + (1 | target)
+      ),
+      data = p1_within_social
+    )
+    summary(m_h3b)
+    report_effect_sizes(m_h3b)
   } else {
     cat("Insufficient data for H3b convergence analysis.\n")
   }
@@ -467,7 +455,7 @@ length > 1 are retained as *content words*.
   *square* and *squares*.
 - **Lexical uniqueness**: the proportion of content words in a description
   that do not appear in any other group's descriptions for the same tangram
-  in the same game.
+  across games.
 - **Word frequency**: the mean Zipf frequency of content words, computed via
   the `wordfreq` Python package (which draws on SUBTLEX and other corpora).
   Common words score higher (e.g., "the" ≈ 7.7); rare words score lower.
@@ -497,67 +485,49 @@ if (!has_desc_props || !has_lex_uniq) {
     mutate(condition = factor(condition, levels = c("social_mixed", "social_first")))
 
   if (nrow(p1_final_social) > 0 && n_distinct(p1_final_social$condition) >= 2) {
-    # Model: concreteness ~ condition + (1 | participant) + (1 | tangram)
+    # Concreteness
     p1_concrete <- p1_final_social |> filter(!is.na(concreteness))
     if (nrow(p1_concrete) > 0) {
-      m_concrete <- tryCatch(
-        lmer(
-          concreteness ~ condition + (1 | playerId) + (1 | target),
-          data = p1_concrete,
-          control = lmerControl(optimizer = "bobyqa")
+      cat("=== Concreteness ===\n")
+      m_concrete <- fit_progressively(
+        list(
+          maximal    = concreteness ~ condition + (1 | playerId) + (condition | target),
+          intercepts = concreteness ~ condition + (1 | playerId) + (1 | target)
         ),
-        error = function(e) {
-          cat("Concreteness lmer failed:", e$message, "\n")
-          NULL
-        }
+        data = p1_concrete
       )
-      if (!is.null(m_concrete)) {
-        cat("=== Concreteness ===\n")
-        print(summary(m_concrete))
-        report_effect_sizes(m_concrete)
-      }
+      summary(m_concrete)
+      report_effect_sizes(m_concrete)
     }
 
-    # Model: lexical uniqueness ~ condition + (1 | participant) + (1 | tangram)
+    # Lexical uniqueness
     p1_unique <- p1_final_social |> filter(!is.na(uniqueness))
     if (nrow(p1_unique) > 0) {
-      m_uniqueness <- tryCatch(
-        lmer(
-          uniqueness ~ condition + (1 | playerId) + (1 | target),
-          data = p1_unique,
-          control = lmerControl(optimizer = "bobyqa")
+      cat("\n=== Lexical Uniqueness ===\n")
+      m_uniqueness <- fit_progressively(
+        list(
+          maximal    = uniqueness ~ condition + (1 | playerId) + (condition | target),
+          intercepts = uniqueness ~ condition + (1 | playerId) + (1 | target)
         ),
-        error = function(e) {
-          cat("Lexical uniqueness lmer failed:", e$message, "\n")
-          NULL
-        }
+        data = p1_unique
       )
-      if (!is.null(m_uniqueness)) {
-        cat("\n=== Lexical Uniqueness ===\n")
-        print(summary(m_uniqueness))
-        report_effect_sizes(m_uniqueness)
-      }
+      summary(m_uniqueness)
+      report_effect_sizes(m_uniqueness)
     }
 
-    # Model: word frequency ~ condition + (1 | participant) + (1 | tangram)
+    # Word frequency
     p1_freq <- p1_final_social |> filter(!is.na(mean_zipf_freq))
     if (nrow(p1_freq) > 0) {
-      m_freq <- tryCatch(
-        lmer(
-          mean_zipf_freq ~ condition + (1 | playerId) + (1 | target),
-          data = p1_freq,
-          control = lmerControl(optimizer = "bobyqa")
+      cat("\n=== Word Frequency ===\n")
+      m_freq <- fit_progressively(
+        list(
+          maximal    = mean_zipf_freq ~ condition + (1 | playerId) + (condition | target),
+          intercepts = mean_zipf_freq ~ condition + (1 | playerId) + (1 | target)
         ),
-        error = function(e) {
-          cat("Word frequency lmer failed:", e$message, "\n")
-          NULL
-        }
+        data = p1_freq
       )
-      if (!is.null(m_freq)) {
-        cat("\n=== Word Frequency ===\n")
-        print(summary(m_freq))
-        report_effect_sizes(m_freq)
-      }
+      summary(m_freq)
+      report_effect_sizes(m_freq)
     }
   } else {
     cat("Insufficient data for H3c (need both social conditions with Phase 1 utterances).\n")
@@ -617,32 +587,42 @@ lower referential accuracy. Contingent on H3a.
 
 ## H4a: Social-Identification Accuracy
 
-`glmer(social_correct ~ condition + (1 | game) + (1 | participant) + (1 | tangram), family = binomial)`
+`glmer(social_correct ~ condition + block_num + (block_num | game) + (block_num | listener) + (block_num | speaker) + (condition | tangram), family = binomial)`
+
+Crossed listener and speaker random effects: social-identification accuracy depends on
+both the listener's ability to detect cues and the speaker's tendency to produce
+identifiable language.
 
 Contrast: `social_first > social_mixed`.
 
 ```{r h4a-social-accuracy}
 if (nrow(social_guesses) > 0) {
+  # Join speaker identity from trials (one speaker per game × block × target)
+  speaker_lookup <- trials |>
+    filter(role == "speaker") |>
+    select(gameId, blockNum, target, playerId) |>
+    rename(speakerId = playerId) |>
+    distinct()
+
   social_h4 <- social_guesses |>
     left_join(games |> select(gameId, condition), by = "gameId") |>
+    left_join(speaker_lookup, by = c("gameId", "blockNum", "target")) |>
     filter(condition %in% c("social_mixed", "social_first")) |>
     mutate(
       correct = as.numeric(socialGuessCorrect == TRUE | socialGuessCorrect == "true"),
-      condition = factor(condition, levels = c("social_mixed", "social_first"))
+      condition = factor(condition, levels = c("social_mixed", "social_first")),
+      blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
     )
 
   if (n_distinct(social_h4$condition) >= 2 && nrow(social_h4) > 0) {
-    m_h4a <- tryCatch(
-      glmer(
-        correct ~ condition + (1 | gameId) + (1 | playerId) + (1 | target),
-        data = social_h4,
-        family = binomial,
-        control = glmerControl(optimizer = "bobyqa")
+    m_h4a <- fit_progressively(
+      list(
+        maximal    = correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (condition | target),
+        drop_cond  = correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (1 | target),
+        intercepts = correct ~ condition + blockNum_c + (1 | gameId) + (1 | playerId) + (1 | speakerId) + (1 | target)
       ),
-      error = function(e) {
-        cat("glmer failed:", e$message, "\nFalling back to glm.\n")
-        glm(correct ~ condition, data = social_h4, family = binomial)
-      }
+      data = social_h4,
+      family = binomial
     )
     summary(m_h4a)
     report_effect_sizes(m_h4a)
@@ -686,32 +666,41 @@ if (exists("social_h4") && nrow(social_h4) > 0) {
 
 ## H4b: Referential Accuracy
 
-`glmer(ref_correct ~ condition + (1 | game) + (1 | participant) + (1 | tangram), family = binomial)`
+`glmer(ref_correct ~ condition + block_num + (block_num | game) + (block_num | listener) + (block_num | speaker) + (condition | tangram), family = binomial)`
+
+Crossed listener and speaker random effects: referential accuracy depends on both the
+listener's interpretation and the quality of the speaker's description.
 
 Contrast: `social_mixed > social_first` (lower ref accuracy expected in social_first).
 
 ```{r h4b-ref-accuracy}
+# Join speaker identity onto listener trials
+speaker_lookup_h4b <- trials |>
+  filter(role == "speaker") |>
+  select(gameId, blockNum, target, playerId) |>
+  rename(speakerId = playerId) |>
+  distinct()
+
 p2_listener_social <- trials |>
   filter(phaseNum == 2, role == "listener") |>
   left_join(games |> select(gameId, condition), by = "gameId") |>
+  left_join(speaker_lookup_h4b, by = c("gameId", "blockNum", "target")) |>
   filter(condition %in% c("social_mixed", "social_first")) |>
   mutate(
     correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
-    condition = factor(condition, levels = c("social_mixed", "social_first"))
+    condition = factor(condition, levels = c("social_mixed", "social_first")),
+    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
   )
 
 if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 0) {
-  m_h4b <- tryCatch(
-    glmer(
-      correct ~ condition + (1 | gameId) + (1 | playerId) + (1 | target),
-      data = p2_listener_social,
-      family = binomial,
-      control = glmerControl(optimizer = "bobyqa")
+  m_h4b <- fit_progressively(
+    list(
+      maximal    = correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (condition | target),
+      drop_cond  = correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (1 | target),
+      intercepts = correct ~ condition + blockNum_c + (1 | gameId) + (1 | playerId) + (1 | speakerId) + (1 | target)
     ),
-    error = function(e) {
-      cat("glmer failed:", e$message, "\nFalling back to glm.\n")
-      glm(correct ~ condition, data = p2_listener_social, family = binomial)
-    }
+    data = p2_listener_social,
+    family = binomial
   )
   summary(m_h4b)
   report_effect_sizes(m_h4b)
@@ -738,7 +727,7 @@ if (exists("p2_listener_social") && nrow(p2_listener_social) > 0) {
   ggplot(h4b_summary, aes(x = condition, y = empirical_stat, fill = condition)) +
     geom_col(alpha = 0.7, width = 0.6) +
     geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
-    geom_hline(yintercept = 1/6, linetype = "dashed", color = "gray50") +
+    geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
     scale_fill_condition() +
     labs(
       x = "Condition",

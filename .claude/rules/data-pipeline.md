@@ -119,7 +119,7 @@ All notebooks read source data from `data/pilots/` and computed outputs from `an
 
 | Notebook | Purpose |
 |----------|---------|
-| `00_preprocess.qmd` | Load & validate preprocessed data |
+| `00_data_overview.qmd` | Data overview |
 | `01_outcome_neutral.qmd` | Outcome-neutral criteria (convention formation) |
 | `02_primary_analysis.qmd` | Primary analyses (H1 & H2) |
 | `03_secondary_analysis.qmd` | Secondary analyses |

@@ -179,7 +179,7 @@ These will run the pre-registered analyses on the full dataset. Currently they r
 
 | Notebook | Purpose |
 |----------|---------|
-| `00_preprocess.qmd` | Load & validate data |
+| `00_data_overview.qmd` | Data overview |
 | `01_outcome_neutral.qmd` | Outcome-neutral criteria (convention formation) |
 | `02_primary_analysis.qmd` | Primary analyses (H1 & H2) |
 | `03_secondary_analysis.qmd` | Secondary analyses |

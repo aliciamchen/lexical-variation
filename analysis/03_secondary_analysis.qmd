@@ -41,10 +41,12 @@ phase_change <- phase_change |>
   mutate(condition = factor(condition, levels = CONDITION_ORDER))
 
 if (n_conditions >= 2) {
-  m_semantic <- lmer(
-    simPhase1Phase2 ~ condition + (1 | playerId) + (1 | target),
-    data = phase_change,
-    control = lmerControl(optimizer = "bobyqa")
+  m_semantic <- fit_progressively(
+    list(
+      maximal    = simPhase1Phase2 ~ condition + (1 | playerId) + (condition | target),
+      intercepts = simPhase1Phase2 ~ condition + (1 | playerId) + (1 | target)
+    ),
+    data = phase_change
   )
   summary(m_semantic)
   report_effect_sizes(m_semantic)
@@ -81,7 +83,7 @@ ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) 
 
 # 2. Referential Accuracy in Phase 2
 
-**Predictions:** Above chance (1/6), main effect of `blockNum`, ordered: separated > mixed > social_mixed.
+**Predictions:** Above chance (1/16), main effect of `blockNum`, ordered: separated > mixed > social_mixed.
 
 ```{r prep-accuracy}
 # Phase 2 listener accuracy — trial-level binary outcome
@@ -101,75 +103,26 @@ p2_listener <- trials |>
 n_games <- n_distinct(p2_listener$gameId)
 
 if (n_conditions >= 2 && n_games >= 2) {
-  # Maximal RE: blockNum varies within game, player, and tangram
-  m_ref_accuracy <- tryCatch(
-    glmer(
-      correct ~ condition * blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | target),
-      data = p2_listener,
-      family = binomial,
-      control = glmerControl(optimizer = "bobyqa")
+  # Paper formula: condition * blockNum slopes on tangram, blockNum on game/player
+  m_ref_accuracy <- fit_progressively(
+    list(
+      maximal      = correct ~ condition * blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (condition * blockNum_c | target),
+      drop_cond_tg = correct ~ condition * blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | target),
+      intercepts   = correct ~ condition * blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target)
     ),
-    error = function(e) {
-      cat("Maximal glmer failed:", e$message, "\nSimplifying to intercepts-only.\n")
-      tryCatch(
-        glmer(
-          correct ~ condition * blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
-          data = p2_listener,
-          family = binomial,
-          control = glmerControl(optimizer = "bobyqa")
-        ),
-        error = function(e2) {
-          cat("Intercepts-only glmer also failed:", e2$message, "\nFalling back to lmer.\n")
-          lmer(correct ~ condition * blockNum_c + (1 | gameId),
-               data = p2_listener, control = lmerControl(optimizer = "bobyqa"))
-        }
-      )
-    }
+    data = p2_listener,
+    family = binomial
   )
-  if (inherits(m_ref_accuracy, "glmerMod") && isSingular(m_ref_accuracy)) {
-    cat("Maximal model is singular; refitting with intercepts-only random effects.\n")
-    m_ref_accuracy <- glmer(
-      correct ~ condition * blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
-      data = p2_listener,
-      family = binomial,
-      control = glmerControl(optimizer = "bobyqa")
-    )
-  }
 } else if (n_games >= 2) {
-  m_ref_accuracy <- tryCatch(
-    glmer(
-      correct ~ blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | target),
-      data = p2_listener,
-      family = binomial,
-      control = glmerControl(optimizer = "bobyqa")
-    ),
-    error = function(e) {
-      cat("Maximal glmer failed:", e$message, "\nSimplifying to intercepts-only.\n")
-      tryCatch(
-        glmer(
-          correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
-          data = p2_listener,
-          family = binomial,
-          control = glmerControl(optimizer = "bobyqa")
-        ),
-        error = function(e2) {
-          cat("glmer failed:", e2$message, "\nFalling back to lmer.\n")
-          lmer(correct ~ blockNum_c + (1 | gameId),
-               data = p2_listener, control = lmerControl(optimizer = "bobyqa"))
-        }
-      )
-    }
-  )
-  if (inherits(m_ref_accuracy, "glmerMod") && isSingular(m_ref_accuracy)) {
-    cat("Maximal model is singular; refitting with intercepts-only random effects.\n")
-    m_ref_accuracy <- glmer(
-      correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
-      data = p2_listener,
-      family = binomial,
-      control = glmerControl(optimizer = "bobyqa")
-    )
-  }
   cat("Only 1 condition; fitting without condition predictor.\n")
+  m_ref_accuracy <- fit_progressively(
+    list(
+      slopes     = correct ~ blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | target),
+      intercepts = correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target)
+    ),
+    data = p2_listener,
+    family = binomial
+  )
 } else {
   m_ref_accuracy <- glm(correct ~ blockNum_c, data = p2_listener, family = binomial)
   cat("Only 1 game; using fixed-effects logistic model.\n")
@@ -191,9 +144,9 @@ ggplot(acc_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
               alpha = 0.15, color = NA) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
-  geom_hline(yintercept = 1/6, linetype = "dashed", color = "gray50") +
-  annotate("text", x = max(acc_by_block$blockNum), y = 1/6 + 0.02,
-           label = "Chance", hjust = 1, color = "gray50", size = 3) +
+  geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
+  annotate("text", x = max(acc_by_block$blockNum), y = 1/16 + 0.02,
+           label = "Chance (1/16)", hjust = 1, color = "gray50", size = 3) +
   labs(
     x = "Block number",
     y = "Proportion correct",
@@ -228,22 +181,18 @@ if (nrow(social_listener) > 0) {
     left_join(speaker_groups, by = c("gameId", "roundId")) |>
     mutate(inGroupSpeaker = as.numeric(originalGroup == speakerGroup))
 
-  # Paper formula: ref_correct ~ in_group_speaker + (1 | speaker) + (1 | listener) + (1 | tangram)
-  # Note: paper omits (1 | game) here; participant IDs are unique across games.
-  m_ingroup <- tryCatch(
-    glmer(
-      correct ~ inGroupSpeaker + (1 | playerId) + (1 | speakerId) + (1 | target),
-      data = social_listener,
-      family = binomial,
-      control = glmerControl(optimizer = "bobyqa")
-    ),
-    error = function(e) {
-      cat("glmer failed (likely sparse data):", e$message, "\n")
-      cat("Falling back to fixed-effects logistic model.\n")
-      glm(correct ~ inGroupSpeaker, data = social_listener, family = binomial)
-    }
-  )
+  # Paper formula: ref_correct ~ in_group_speaker * condition + (1 | speaker) + (1 | listener) + (condition | tangram)
+  social_listener <- social_listener |>
+    mutate(condition = factor(condition, levels = CONDITION_ORDER))
 
+  m_ingroup <- fit_progressively(
+    list(
+      maximal    = correct ~ inGroupSpeaker * condition + (1 | playerId) + (1 | speakerId) + (condition | target),
+      intercepts = correct ~ inGroupSpeaker * condition + (1 | playerId) + (1 | speakerId) + (1 | target)
+    ),
+    data = social_listener,
+    family = binomial
+  )
   summary(m_ingroup)
   report_effect_sizes(m_ingroup)
 } else {
@@ -287,7 +236,7 @@ if (exists("social_listener") && nrow(social_listener) > 0 &&
     geom_col(alpha = 0.7, width = 0.6) +
     geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
     facet_wrap(~condition) +
-    geom_hline(yintercept = 1/6, linetype = "dashed", color = "gray50") +
+    geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
     labs(
       x = "Speaker type",
       y = "Mean listener accuracy",
@@ -314,7 +263,7 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
     group_by(gameId) |>
     summarise(social_accuracy = mean(correct, na.rm = TRUE), .groups = "drop")
 
-  # Get Phase 2 group-specificity per game
+  # Get Phase 2 group-specificity per game (with SE for WLS weighting)
   gs_p2 <- pairwise_sim |>
     filter(window == "phase2_final") |>
     group_by(gameId) |>
@@ -325,7 +274,11 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
           similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
           data = .x, control = lmerControl(optimizer = "bobyqa")
         )
-        tibble(gs_phase2 = coef(summary(model))["sameGroup", "Estimate"])
+        coefs <- coef(summary(model))
+        tibble(
+          gs_phase2 = coefs["sameGroup", "Estimate"],
+          se_phase2 = coefs["sameGroup", "Std. Error"]
+        )
       }, error = function(e) tibble())
     }) |>
     ungroup()
@@ -351,7 +304,9 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
     inner_join(social_acc_by_game, by = "gameId")
 
   if (nrow(gs_social) >= 3) {
-    m_gs_social <- lm(gs_phase2 ~ social_accuracy + gs_phase1, data = gs_social)
+    # WLS weighted by inverse variance of Phase 2 GS estimates (consistent with H1/H2)
+    gs_social <- gs_social |> mutate(weight = 1 / se_phase2^2)
+    m_gs_social <- lm(gs_phase2 ~ social_accuracy + gs_phase1, data = gs_social, weights = weight)
     summary(m_gs_social)
     report_effect_sizes(m_gs_social)
   } else {
@@ -493,7 +448,7 @@ if (nrow(social_guesses) > 0) {
 
 How does description length evolve across Phase 2 blocks by condition?
 
-Paper formula: `log(utt_length) ~ condition * block_num + (1 | participant) + (1 | tangram)`
+Paper formula: `utt_length ~ condition * block_num + (1 | participant) + (1 | tangram)`
 
 ```{r model-utt-length-phase2}
 p2_utts <- speaker_utts |>
@@ -506,30 +461,12 @@ p2_utts <- speaker_utts |>
 
 n_cond <- n_distinct(p2_utts$condition)
 if (n_cond >= 2) {
-  # Maximal RE: blockNum varies within player and tangram
-  m_p2_length <- tryCatch(
-    lmer(
-      uttLength ~ condition * blockNum_c + (blockNum_c | playerId) + (blockNum_c | target),
-      data = p2_utts,
-      control = lmerControl(optimizer = "bobyqa")
-    ),
-    error = function(e) {
-      cat("Maximal model failed:", e$message, "\nSimplifying to intercepts-only.\n")
-      lmer(
-        uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
-        data = p2_utts,
-        control = lmerControl(optimizer = "bobyqa")
-      )
-    }
+  # Paper formula: utt_length ~ condition * block_num + (1 | participant) + (1 | tangram)
+  m_p2_length <- lmer(
+    uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
+    data = p2_utts,
+    control = lmerControl(optimizer = "bobyqa")
   )
-  if (isSingular(m_p2_length)) {
-    cat("Maximal model is singular; refitting with intercepts-only random effects.\n")
-    m_p2_length <- lmer(
-      uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
-      data = p2_utts,
-      control = lmerControl(optimizer = "bobyqa")
-    )
-  }
 } else {
   m_p2_length <- lmer(
     uttLength ~ blockNum_c + (1 | playerId) + (1 | target),

@@ -114,6 +114,13 @@ format_condition <- function(x) {
          str_to_sentence(str_replace_all(x, "_", " ")))
 }
 
+# ── P-value formatting ───────────────────────────────────
+
+fmt_pval <- function(p) {
+  if (p < .001) return("< .001")
+  sub("^0", "", sprintf("%.3f", p))
+}
+
 # ── Effect sizes ──────────────────────────────────────────
 
 library(effectsize)
@@ -123,6 +130,53 @@ report_effect_sizes <- function(model) {
   std_params <- standardize_parameters(model, method = "basic")
   print(std_params)
   invisible(std_params)
+}
+
+# ── Model fitting with progressive simplification ─────────
+#
+# Tries a list of model formulas in order. For each formula, catches errors
+# and checks for singularity (lmer/glmer). Falls through to the next formula
+# on failure. Returns the first model that fits without error or singularity.
+
+fit_progressively <- function(formulas, data, family = NULL,
+                              control = NULL, verbose = TRUE) {
+  for (i in seq_along(formulas)) {
+    f <- formulas[[i]]
+    label <- if (!is.null(names(formulas)[i])) names(formulas)[i] else paste("step", i)
+
+    model <- tryCatch({
+      if (is.null(family)) {
+        lmer(f, data = data, control = control %||% lmerControl(optimizer = "bobyqa"))
+      } else {
+        glmer(f, data = data, family = family,
+              control = control %||% glmerControl(optimizer = "bobyqa"))
+      }
+    }, error = function(e) {
+      if (verbose) cat(sprintf("[%s] failed: %s\n", label, e$message))
+      NULL
+    })
+
+    if (is.null(model)) next
+
+    is_mixed <- inherits(model, "lmerMod") || inherits(model, "glmerMod")
+    if (is_mixed && isSingular(model)) {
+      if (verbose) cat(sprintf("[%s] singular, trying next.\n", label))
+      next
+    }
+
+    if (verbose && i > 1) cat(sprintf("[%s] converged.\n", label))
+    return(model)
+  }
+
+  # Last resort: strip random effects and fit fixed-effects only
+  if (verbose) cat("All mixed models failed; fitting fixed-effects model.\n")
+  f_last <- formulas[[length(formulas)]]
+  f_fixed <- lme4::nobars(f_last)
+  if (is.null(family)) {
+    lm(f_fixed, data = data)
+  } else {
+    glm(f_fixed, data = data, family = family)
+  }
 }
 
 save_fig <- function(p, filename, width = 8, height = 5, dpi = 150) {
