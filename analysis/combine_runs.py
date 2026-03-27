@@ -1,5 +1,5 @@
 """
-Combine raw CSVs from multiple extracted runs into data/pilots/raw/.
+Combine raw CSVs from multiple extracted runs into data/pilots/raw_anonymized/.
 
 Stacks the raw Empirica CSVs, filters out failed games (lobby timeouts),
 and writes a manifest.json with provenance info.
@@ -118,7 +118,7 @@ def write_manifest(output_dir: Path, run_ids: list[str], combined: dict[str, pd.
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Combine raw CSVs from multiple extracted runs into data/pilots/raw/"
+        description="Combine raw CSVs from multiple extracted runs into data/pilots/raw_anonymized/"
     )
     parser.add_argument(
         "runs", nargs="+",
@@ -126,7 +126,7 @@ def main():
     )
     args = parser.parse_args()
 
-    output_raw = PILOTS_DIR / "raw"
+    output_raw = PILOTS_DIR / "raw_anonymized"
 
     print("Validating runs...")
     raw_dirs = validate_runs(args.runs)

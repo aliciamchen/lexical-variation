@@ -8,7 +8,7 @@
 #
 # Individual targets:
 #   make extract        # extract zips → data/pilot_runs/
-#   make combine        # stack runs → data/pilots/raw/
+#   make combine        # stack runs → data/pilots/raw_anonymized/
 #   make process        # preprocess → filter → derived metrics
 #   make notebooks      # render SI_pilot.qmd + SI_llm_simulation.qmd
 #   make llm-process    # process LLM simulation JSONs → CSVs
@@ -38,7 +38,7 @@ extract: $(ZIPS)  ## Extract each Empirica export zip
 		uv run python analysis/extract_run.py "$$zip"; \
 	done
 
-combine: ## Stack extracted runs into data/pilots/raw/
+combine: ## Stack extracted runs into data/pilots/raw_anonymized/
 	uv run python analysis/combine_runs.py $(PILOT_RUNS)
 
 process: ## Run full pipeline (preprocess → filter → derived)

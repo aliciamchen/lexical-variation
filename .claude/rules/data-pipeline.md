@@ -13,7 +13,7 @@ paths:
 | Directory | Contents | Committed? |
 |-----------|----------|------------|
 | `experiment/data/` | Raw Empirica export zips from `copy_tajriba.sh` | No |
-| `data/pilots/raw/` | Anonymized raw Empirica CSVs (10 files) | Yes |
+| `data/pilots/raw_anonymized/` | Anonymized raw Empirica CSVs (10 files) | Yes |
 | `data/pilots/*.csv` | Preprocessed analysis-ready CSVs (games, players, trials, messages, speaker_utterances, social_guesses) | Yes |
 | `data/pilots/manifest.json` | Provenance: which runs were combined | Yes |
 | `data/pilot_runs/{timestamp}/` | Per-run pipeline outputs (raw/, data/, derived/, bonuses.csv) | No (gitignored) |
@@ -43,7 +43,7 @@ Three scripts, run in order:
 uv run python analysis/extract_run.py <zip>           → data/pilot_runs/{timestamp}/raw/
 
 # 2. Combine extracted runs (stack raw CSVs, filter failed games)
-uv run python analysis/combine_runs.py <runs> → data/pilots/raw/
+uv run python analysis/combine_runs.py <runs> → data/pilots/raw_anonymized/
 
 # 3. Run the analysis pipeline (preprocess → filter → derived metrics)
 uv run python analysis/process_data.py                → data/pilots/, analysis/pilot_derived/
@@ -53,7 +53,7 @@ Step 3 runs these sub-steps in order:
 
 | Step | Script | Inputs → Outputs |
 |------|--------|------------------|
-| Preprocess | `preprocessing.py` | `data/pilots/raw/` → `data/pilots/*.csv` |
+| Preprocess | `preprocessing.py` | `data/pilots/raw_anonymized/` → `data/pilots/*.csv` |
 | Filter | `filter_nonreferential.py` | `data/pilots/messages.csv` → `speaker_utterances_filtered.csv` (requires Vertex AI; `--skip-filter`) |
 | Derived | `compute_derived.py` | `data/pilots/*.csv` → `analysis/pilot_derived/` (`--skip-derived`) |
 
@@ -77,7 +77,7 @@ Raw Empirica exports land in `experiment/data/` via `empirica export` or the bac
 uv run python analysis/extract_run.py experiment/data/20260301_132907/empirica-export-20260301_132907.zip
 uv run python analysis/extract_run.py experiment/data/20260301_214147/empirica-export-20260301_214147.zip
 
-# 2. Combine runs (stack raw CSVs into data/pilots/raw/)
+# 2. Combine runs (stack raw CSVs into data/pilots/raw_anonymized/)
 uv run python analysis/combine_runs.py 20260301_132907 20260301_214147
 
 # 3. Run the pipeline (preprocess → filter → derived metrics)

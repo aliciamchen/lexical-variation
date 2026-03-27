@@ -1,7 +1,7 @@
 """
 Analysis pipeline: raw CSVs → preprocessed data → derived metrics.
 
-Operates on data/pilots/. The raw CSVs in data/pilots/raw/ must already exist
+Operates on data/pilots/. The raw CSVs in data/pilots/raw_anonymized/ must already exist
 (either committed, or produced by extract_run.py + combine_runs.py).
 
 Usage:
@@ -71,7 +71,7 @@ def main():
                         help="Skip computing derived metrics (SBERT, similarities, UMAP)")
     args = parser.parse_args()
 
-    raw_dir = PILOTS_DIR / "raw"
+    raw_dir = PILOTS_DIR / "raw_anonymized"
     data_dir = PILOTS_DIR
     derived_dir = ANALYSIS_DIR / "pilot_derived"
 
