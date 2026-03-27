@@ -64,7 +64,7 @@ uv sync
 # In R: renv::restore()
 ```
 
-Note: `rpy2` requires R to be installed. Cairo-based packages may require: `brew install cairo pango`
+Note: `rpy2` requires R to be installed. Cairo-based packages may require additional system libraries: `brew install cairo pango`
 
 Configure environment variables (needed for running the experiment and LLM tools, not for reproducing analyses):
 
@@ -105,7 +105,7 @@ See [`experiment/README.md`](experiment/README.md) for details on test architect
 The preprocessed pilot data (including filtered utterances) is committed in `data/pilots/`. After installing dependencies (see [Setup](#setup)):
 
 ```bash
-make pilot    # derive metrics + render notebooks (no Vertex AI needed)
+make pilot    # derive metrics + render notebooks
 ```
 
 Or step by step:
@@ -133,7 +133,7 @@ There are three scripts that should be run in order. Each reads the previous scr
 
 ### Processing new data
 
-Raw Empirica exports land in `experiment/data/` via `empirica export` or the backup script.
+Raw Empirica exports (`.zip` files) are in `experiment/data/` via `empirica export` or the backup script. (Note: these are not committed because they contain identifiable participant data). To process: 
 
 ```bash
 make all    # extract zips → combine → process → render notebooks
@@ -155,7 +155,7 @@ uv run python analysis/process_data.py
 
 ### Notebooks for the registered report
 
-These produce the figures and stats for the manuscript. Run after the process data pipeline:
+These produce the figures and stats for the manuscript. Run after data are processed: 
 
 ```bash
 quarto render analysis/SI_pilot.qmd                              # pilot analyses
@@ -188,7 +188,7 @@ These will run the pre-registered analyses on the full dataset. Currently they r
 
 ## LLM simulation
 
-All simulation code lives in `analysis/llm_simulation/`. Simulates groups of 3 LLM agents playing the reference game to benchmark whether AI can form stable conventions (paper, AI detection section). Uses Gemini via Vertex AI (`gcloud auth application-default login`).
+All simulation code lives in `analysis/llm_simulation/`. The code simulates groups of 3 LLM agents playing the reference game to benchmark whether AI can form stable conventions (paper, AI detection section). This uses Gemini via Vertex AI (`gcloud auth application-default login`).
 
 ```bash
 # Run simulation (quick test)
@@ -204,7 +204,7 @@ cd analysis/llm_simulation && quarto render SI_llm_simulation.qmd
 
 ## Power analysis
 
-Sample size justification using simulated data from Boyce et al. (2023). This is in `analysis/power_analysis/`.
+The power analysis provides sample size justification using simulated data from Boyce et al. (2023). The code is in `analysis/power_analysis/`.
 
 ```bash
 quarto render analysis/power_analysis/power_analysis_setup.Qmd    # generate simulated data
