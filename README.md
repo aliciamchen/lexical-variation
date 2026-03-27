@@ -37,7 +37,7 @@ The game is built with [Empirica](https://empirica.ly/). Install it:
 curl -fsS https://install.empirica.dev | sh
 ```
 
-Analysis notebooks are rendered with [Quarto](https://quarto.org/docs/get-started/). Install it before running any `quarto render` commands.
+Analysis notebooks are rendered with [Quarto](https://quarto.org/docs/get-started/), which needs to be installed before running any `quarto render` commands.
 
 Install dependencies:
 
@@ -54,7 +54,7 @@ uv sync
 
 Note: `rpy2` requires R to be installed. Cairo-based packages may require additional system libraries: `brew install cairo pango`
 
-Configure environment variables (needed for running the experiment and LLM tools, not for reproducing analyses):
+Configure environment variables (needed for running the experiment and for gemini, but not for reproducing analyses):
 
 ```bash
 cp .env.example .env   # then fill in values
@@ -88,7 +88,7 @@ See [`experiment/README.md`](experiment/README.md) for details on test architect
 
 ## Data files
 
-The preprocessed pilot data is in `data/pilots/`. See [`data/pilots/README.md`](data/pilots/README.md) for column-level documentation.
+The preprocessed pilot data is in `data/pilots/`. See [`data/pilots/README.md`](data/pilots/README.md) for descriptions of the data columns. 
 
 | File | Description |
 |------|-------------|
@@ -171,7 +171,7 @@ quarto render analysis/llm_simulation/SI_llm_simulation.qmd      # LLM benchmark
 | `SI_pilot.qmd` | Pilot data analyses | `figures/pilot_plots/` + `paper/stats/pilot.tex` |
 | `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark | `figures/llm_plots/` + `paper/stats/llm.tex` |
 
-Stats are written as `\newcommand` definitions to `paper/stats/*.tex`, which the manuscript `\input`s. Sync figures to the paper before pushing to Overleaf:
+The stats are written as `\newcommand` definitions to `paper/stats/*.tex`, which the manuscript `\input`s. Sync figures to the paper before pushing to Overleaf:
 
 ```bash
 bash figures/sync_figures.sh   # copies SI_*.pdf into paper/figures/
@@ -192,7 +192,26 @@ These will run the pre-registered analyses on the full dataset. Currently they r
 
 ## LLM simulation
 
-All simulation code lives in `analysis/llm_simulation/`. The code simulates groups of 3 LLM agents playing the reference game to benchmark whether AI can form stable conventions (paper, AI detection section). This uses Gemini via Vertex AI (`gcloud auth application-default login`).
+All simulation code is in `analysis/llm_simulation/`. The code simulates groups of 3 LLM agents playing the reference game to benchmark whether AI can form stable conventions (paper, AI detection section). This uses Gemini via Vertex AI (needs a Google Cloud project with the Vertex AI API enabled): 
+
+```bash
+# Install gcloud CLI if needed: https://cloud.google.com/sdk/docs/install
+
+# Login and set up application default credentials
+gcloud auth application-default login
+
+# Set your default project
+gcloud config set project YOUR_PROJECT_ID
+```
+
+Your credentials will be stored at `~/.config/gcloud/application_default_credentials.json`.
+
+The script auto-detects the project from your gcloud config. You can override with:
+- `--project` flag
+- `GOOGLE_CLOUD_PROJECT` environment variable
+- `.env` file with `GOOGLE_CLOUD_PROJECT=your-project-id`
+
+### Running the simulations
 
 ```bash
 # Run simulation (quick test)
