@@ -85,6 +85,22 @@ npx playwright show-report       # view report
 
 See [`experiment/README.md`](experiment/README.md) for details on test architecture and writing new tests.
 
+## Data files
+
+The preprocessed pilot data is in `data/pilots/`. See [`data/pilots/README.md`](data/pilots/README.md) for column-level documentation.
+
+| File | Description |
+|------|-------------|
+| `raw_anonymized/` | Anonymized raw Empirica CSVs (9 files), with Prolific IDs and PII stripped |
+| `games.csv` | One row per game session — condition, tangram set, block counts |
+| `players.csv` | One row per player — group assignment, score, exit survey responses |
+| `trials.csv` | One row per player per round — role, target, click, accuracy |
+| `messages.csv` | Individual chat messages, deduplicated across players in a group |
+| `messages_classified.csv` | Messages augmented with LLM referential/non-referential classification |
+| `speaker_utterances.csv` | Speaker messages concatenated per round (all messages) |
+| `speaker_utterances_filtered.csv` | Same as above, but with non-referential messages removed first |
+| `social_guesses.csv` | Listener guesses about speaker group membership (social conditions only) |
+
 ## Analysis pipeline
 
 ### Reproducing pilot results
@@ -105,21 +121,7 @@ quarto render analysis/llm_simulation/SI_llm_simulation.qmd  # LLM benchmark
 
 The filter step requires Vertex AI (see [LLM simulation](#llm-simulation)) and can be skipped since the filtered data is already committed. Run `make help` to see all available targets.
 
-### Dataset files
 
-The preprocessed pilot data lives in `data/pilots/`. See [`data/pilots/README.md`](data/pilots/README.md) for column-level documentation.
-
-| File | Description |
-|------|-------------|
-| `raw_anonymized/` | Anonymized raw Empirica CSVs (9 files), with Prolific IDs and PII stripped |
-| `games.csv` | One row per game session — condition, tangram set, block counts |
-| `players.csv` | One row per player — group assignment, score, exit survey responses |
-| `trials.csv` | One row per player per round — role, target, click, accuracy |
-| `messages.csv` | Individual chat messages, deduplicated across players in a group |
-| `messages_classified.csv` | Messages augmented with LLM referential/non-referential classification |
-| `speaker_utterances.csv` | Speaker messages concatenated per round (all messages) |
-| `speaker_utterances_filtered.csv` | Same as above, but with non-referential messages removed first |
-| `social_guesses.csv` | Listener guesses about speaker group membership (social conditions only) |
 
 ### Data processing scripts
 
