@@ -524,7 +524,7 @@ def run_group_simulation(
     target_tangrams = TANGRAM_SETS[tangram_set]
     all_tangram_ids = list(ALL_TANGRAMS)
 
-    # Check for resumable partial results
+    # Check if there is a resumable partial simulation file
     partial = _load_partial(output_path) if output_path else None
 
     if partial:

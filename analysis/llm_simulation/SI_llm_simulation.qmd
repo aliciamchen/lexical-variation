@@ -7,12 +7,12 @@ format:
 ---
 
 This notebook analyzes LLM reference game simulations to evaluate whether
-AI agents can form stable conventions in Phase 1. Used as an AI detection
-benchmark for the registered report.
+AI agents can form stable conventions in Phase 1. The results serve as an
+AI detection benchmark for the registered report.
 
 **Prerequisites:** Run `process_llm_results.py` on a results directory first
-to generate the CSVs this notebook reads. Groups still marked `in_progress`
-are automatically excluded by the processing script.
+to generate the CSVs this notebook reads. The processing script automatically
+excludes groups still marked `in_progress`.
 
 ```{r setup, message=FALSE, warning=FALSE}
 source(here::here("analysis", "config.R"))

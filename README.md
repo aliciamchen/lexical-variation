@@ -20,36 +20,23 @@
 │   └── .empirica/            # Treatments, lobbies, config
 ├── data/
 │   ├── pilots/               # Pilot dataset (committed)
-│   │   ├── raw/              #   Anonymized Empirica CSVs
-│   │   └── *.csv             #   Preprocessed analysis-ready CSVs
 │   └── pilot_runs/           # Per-run outputs from extract_run.py (gitignored)
 ├── analysis/                 # Analysis code & outputs
-│   ├── extract_run.py        # Extract Empirica export zip → data/pilot_runs/
-│   ├── combine_runs.py       # Stack raw CSVs from multiple runs → data/pilots/raw/
-│   ├── process_data.py       # Run pipeline on data/pilots/ (calls the three scripts below)
-│   │   ├── preprocessing.py  #   Raw Empirica CSVs → analysis-ready CSVs
-│   │   ├── filter_nonreferential.py  #   LLM-based message classifier 
-│   │   └── compute_derived.py        #   SBERT embeddings, similarities, UMAP
-│   ├── 00–05_*.qmd           # Pre-registered analysis notebooks (full sample)
-│   ├── SI_pilot.qmd          # SI: pilot data analyses
-│   ├── pilot_derived/        # Computed outputs (similarities, embeddings, UMAP)
 │   ├── llm_simulation/       # LLM Phase 1 benchmark simulation
 │   └── power_analysis/       # Power analysis for sample size justification
 ├── figures/                  # Generated & design assets
-│   ├── pilot_plots/          # SI figures from SI_pilot.qmd
-│   ├── llm_plots/            # SI figures from SI_llm_simulation.qmd
-│   └── ...                   # Tangrams, avatars, etc.
 ├── paper/                    # Manuscript (gitignored; synced via Overleaf)
-│   └── stats/                # Auto-generated stats from notebooks
 ```
 
 ## Setup
 
-The game is built with [Empirica](https://empirica.ly/). Install it: 
+The game is built with [Empirica](https://empirica.ly/). Install it:
 
 ```bash
 curl -fsS https://install.empirica.dev | sh
 ```
+
+Analysis notebooks are rendered with [Quarto](https://quarto.org/docs/get-started/). Install it before running any `quarto render` commands.
 
 Install dependencies:
 

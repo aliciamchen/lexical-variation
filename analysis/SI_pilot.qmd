@@ -6,8 +6,8 @@ format:
     code-fold: true
 ---
 
-This notebook generates the numbers and figures for the Supplementary Information
-pilot data section. Run it to extract statistics for the LaTeX writeup.
+This notebook generates statistics and figures for the pilot data section of the
+Supplementary Information. Run it to extract statistics for the LaTeX writeup.
 
 ```{r setup, message=FALSE, warning=FALSE}
 library(lme4)
@@ -59,7 +59,7 @@ n_messages <- nrow(messages)
 n_rounds <- n_distinct(trials$roundId)
 n_rounds_per_game <- n_rounds / n_games
 
-# Load unfiltered utterances to get pre-filtering stats
+# Load unfiltered utterances to compute pre-filtering statistics
 speaker_utts_unfiltered <- read_csv(
   file.path(data_dir, "speaker_utterances.csv"), show_col_types = FALSE
 )
