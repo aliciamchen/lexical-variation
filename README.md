@@ -5,6 +5,7 @@
 - [Repository structure](#repository-structure)
 - [Setup](#setup)
 - [Running the experiment](#running-the-experiment)
+- [Data files](#data-files)
 - [Analysis pipeline](#analysis-pipeline)
 - [LLM simulation](#llm-simulation)
 - [Power analysis](#power-analysis)
@@ -120,8 +121,6 @@ quarto render analysis/llm_simulation/SI_llm_simulation.qmd  # LLM benchmark
 ```
 
 The filter step requires Vertex AI (see [LLM simulation](#llm-simulation)) and can be skipped since the filtered data is already committed. Run `make help` to see all available targets.
-
-
 
 ### Data processing scripts
 
