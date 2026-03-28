@@ -189,7 +189,6 @@ p1_utts <- speaker_utts |>
   filter(phaseNum == 1) |>
   mutate(
     blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
-    log_uttLength = log(uttLength + 1),
     participant = playerId,
     group = originalGroup,
     tangram = target
@@ -231,7 +230,7 @@ if (has_adjacent) {
 
 ```{r model-length}
 m_length <- lmer(
-  log_uttLength ~ blockNum_c + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram),
+  uttLength ~ blockNum_c + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram),
   data = p1_utts,
   control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
 )
