@@ -1,4 +1,4 @@
-# Causal evidence for how passive and active pressures independently shape linguistic diversity
+# Testing the roles of passive isolation and active social motivation in lexical variation using experimental microsocieties
 
 ## Table of contents
 
