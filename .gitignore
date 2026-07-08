@@ -18,7 +18,6 @@ lexical-variation*/
 .playwright-mcp
 *export*
 
-*.test.js
 *.tar.zst
 .mcp.json
 .zed

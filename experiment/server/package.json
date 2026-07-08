@@ -5,14 +5,16 @@
     "minimist": "1.2.6"
   },
   "devDependencies": {
-    "esbuild": "0.14.47"
+    "esbuild": "0.14.47",
+    "vitest": "^4.1.10"
   },
   "name": "empirica-server",
   "private": true,
   "scripts": {
     "build": "rsync -aP --exclude=node_modules --exclude=*.js -m src/* dist/ && esbuild src/index.js --color=true --log-level=warning --log-level=warning --platform=node --define:process.env.NODE_ENV='\"production\"' --bundle --minify --outfile=dist/index.js --sourcemap",
     "dev": "npm run build && node --trace-warnings --enable-source-maps --unhandled-rejections=warn-with-error-code dist/index.js",
-    "serve": "node --trace-warnings --enable-source-maps --unhandled-rejections=warn-with-error-code index.js"
+    "serve": "node --trace-warnings --enable-source-maps --unhandled-rejections=warn-with-error-code index.js",
+    "test": "vitest run"
   },
   "volta": {
     "node": "20.11.1",
