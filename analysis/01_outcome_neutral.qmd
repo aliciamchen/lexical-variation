@@ -33,7 +33,9 @@ p1_utts <- speaker_utts |>
   mutate(
     blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
     participant = playerId,
-    group = originalGroup,
+    # Group labels A/B/C repeat across games; combine with gameId so each
+    # group gets a globally unique id
+    group = paste(gameId, originalGroup),
     tangram = target
   )
 
@@ -42,7 +44,9 @@ p1_listener <- trials |>
   filter(phaseNum == 1, role == "listener") |>
   mutate(
     correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
-    group = originalGroup,
+    # Group labels A/B/C repeat across games; combine with gameId so each
+    # group gets a globally unique id
+    group = paste(gameId, originalGroup),
     tangram = target
   )
 
@@ -64,7 +68,9 @@ if (has_adjacent) {
     mutate(
       blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
       participant = playerId,
-      group = originalGroup,
+      # Group labels A/B/C repeat across games; combine with gameId so each
+    # group gets a globally unique id
+    group = paste(gameId, originalGroup),
       tangram = target
     )
 }

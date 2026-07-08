@@ -190,7 +190,9 @@ p1_utts <- speaker_utts |>
   mutate(
     blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
     participant = playerId,
-    group = originalGroup,
+    # Group labels A/B/C repeat across games; combine with gameId so each
+    # group gets a globally unique id
+    group = paste(gameId, originalGroup),
     tangram = target
   )
 
@@ -199,7 +201,9 @@ p1_listener <- trials |>
   filter(phaseNum == 1, role == "listener") |>
   mutate(
     correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
-    group = originalGroup,
+    # Group labels A/B/C repeat across games; combine with gameId so each
+    # group gets a globally unique id
+    group = paste(gameId, originalGroup),
     tangram = target
   )
 
@@ -220,7 +224,9 @@ if (has_adjacent) {
     mutate(
       blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
       participant = playerId,
-      group = originalGroup,
+      # Group labels A/B/C repeat across games; combine with gameId so each
+    # group gets a globally unique id
+    group = paste(gameId, originalGroup),
       tangram = target
     )
 }
@@ -760,7 +766,9 @@ all_listener <- trials |>
   mutate(
     correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
     condition = factor(condition, levels = CONDITION_ORDER),
-    group = originalGroup,
+    # Group labels A/B/C repeat across games; combine with gameId so each
+    # group gets a globally unique id
+    group = paste(gameId, originalGroup),
     block1 = block + 1
   )
 
@@ -793,7 +801,9 @@ all_utts <- speaker_utts |>
   continuous_block() |>
   mutate(
     condition = factor(condition, levels = CONDITION_ORDER),
-    group = originalGroup,
+    # Group labels A/B/C repeat across games; combine with gameId so each
+    # group gets a globally unique id
+    group = paste(gameId, originalGroup),
     block1 = block + 1
   )
 
@@ -813,7 +823,9 @@ social_guesses_cond <- social_guesses |>
   mutate(
     correct = as.numeric(socialGuessCorrect == TRUE),
     condition = factor(condition, levels = CONDITION_ORDER),
-    group = originalGroup,
+    # Group labels A/B/C repeat across games; combine with gameId so each
+    # group gets a globally unique id
+    group = paste(gameId, originalGroup),
     block1 = blockNum + PHASE2_OFFSET + 1  # align to continuous x-axis
   )
 
@@ -833,7 +845,9 @@ all_adjacent <- adjacent_sim |>
   continuous_block() |>
   mutate(
     condition = factor(condition, levels = CONDITION_ORDER),
-    group = originalGroup,
+    # Group labels A/B/C repeat across games; combine with gameId so each
+    # group gets a globally unique id
+    group = paste(gameId, originalGroup),
     block1 = block + 1
   )
 
