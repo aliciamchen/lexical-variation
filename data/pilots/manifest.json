@@ -3,7 +3,7 @@
     "20260301_132907",
     "20260301_214147"
   ],
-  "created": "2026-03-25T17:30:47.037692",
+  "created": "2026-07-07T20:25:24.149022",
   "games": 4,
   "conditions": {
     "refer_mixed": 1,
@@ -21,5 +21,33 @@
     "playerStage.csv": 5256,
     "round.csv": 296,
     "stage.csv": 584
-  }
+  },
+  "input_row_counts": {
+    "20260301_132907": {
+      "batch.csv": 1,
+      "game.csv": 3,
+      "global.csv": 1,
+      "player.csv": 32,
+      "playerGame.csv": 27,
+      "playerRound.csv": 1998,
+      "playerStage.csv": 3942,
+      "round.csv": 222,
+      "stage.csv": 438
+    },
+    "20260301_214147": {
+      "batch.csv": 2,
+      "game.csv": 3,
+      "global.csv": 1,
+      "player.csv": 25,
+      "playerGame.csv": 9,
+      "playerRound.csv": 666,
+      "playerStage.csv": 1314,
+      "round.csv": 74,
+      "stage.csv": 146
+    }
+  },
+  "filtered_failed_games": [
+    "01KJP22PXP1SKJXX96F7G716FA",
+    "01KJP3SKQZ7EDVPMXVMGGM8QV9"
+  ]
 }
