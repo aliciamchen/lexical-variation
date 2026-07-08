@@ -679,7 +679,12 @@ Empirica.onStageEnded(({ stage }) => {
   // Only check idleness during Selection stage (not Feedback or transitions)
   // Speakers are idle if they don't send any chat message
   // Listeners are idle if they don't send any chat message AND don't click a tangram
-  if (stageName === "Selection") {
+  //
+  // Defined here but CALLED AFTER SCORING (bottom of this callback): idle
+  // removal can disband a group or trigger a mid-block reshuffle, which
+  // mutates is_active / current_group / active_groups. Scoring must run
+  // against the groups as the trial was actually played.
+  const runIdleDetection = () => {
     const activeGroups = game.get("active_groups") || GROUP_NAMES;
 
     players.forEach((player) => {
@@ -764,10 +769,15 @@ Empirica.onStageEnded(({ stage }) => {
         player.set("idle_rounds", 0);
       }
     });
-  }
+  };
 
   // ============ SCORING FOR SELECTION STAGE ============
-  if (stage.get("name") === "Selection") {
+  // Runs BEFORE idle detection so that removals, group disbanding, or a
+  // mid-block reshuffle triggered by idle players cannot corrupt the scoring
+  // of the trial that was just played. The "scored" sentinel guards against a
+  // re-fired stage callback double-adding points.
+  if (stage.get("name") === "Selection" && !stage.get("scored")) {
+    stage.set("scored", true);
     const round = stage.round;
     const target = round.get("target");
     const phase_num = round.get("phase_num");
@@ -932,6 +942,13 @@ Empirica.onStageEnded(({ stage }) => {
         player.round.set("chat", chat);
       });
     });
+  }
+
+  // Idle detection runs last (see comment at its definition above): removals
+  // and any resulting disband/reshuffle must only affect FUTURE rounds, never
+  // the scoring of the round that just ended.
+  if (stageName === "Selection") {
+    runIdleDetection();
   }
 });
 
