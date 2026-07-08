@@ -7,19 +7,24 @@ import {
   getActivePlayers,
   waitForExitScreen,
 } from '../helpers/game-actions';
+import { expectPlayerInGame } from '../helpers/assertions';
+import { SORRY_SCREEN } from '../helpers/selectors';
 import { MAX_IDLE_ROUNDS } from '../helpers/constants';
 
 /**
- * TEST_PLAN 5.8: When group becomes smaller, message appears.
+ * TEST_PLAN 5.7 + 5.8: Sorry/exit page and group-size-change message.
  *
- * Sets up a 9-player game, makes one player idle until kicked,
- * then verifies remaining group members see the message:
- * "Your group is smaller because a player left or was inactive."
+ * Both suites need the same destructive setup — one player (index 0) made idle
+ * until kicked in a refer_separated game — so they share a single game and idle
+ * that player out once. The 5.7 checks then inspect the kicked player's Sorry
+ * screen, and the 5.8 checks inspect the smaller-group message and reduced
+ * player display seen by the remaining members of that group.
  */
-test.describe.serial('UI Verification: Group Size Change (5.8)', () => {
+test.describe.serial('UI Verification: Idle Removal (5.7, 5.8)', () => {
   let pm: PlayerManager;
   let idlePlayerGroup: string | null = null;
   let sameGroupIndices: number[] = [];
+  const idlePlayerIndex = 0;
 
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext();
@@ -40,7 +45,7 @@ test.describe.serial('UI Verification: Group Size Change (5.8)', () => {
     await pm.cleanup();
   });
 
-  test('identify player to make idle and their group members', async () => {
+  test('(5.8) identify idle player group and its members', async () => {
     const pages = pm.getPages();
 
     // Get the group membership so we can check the right pages later
@@ -59,19 +64,12 @@ test.describe.serial('UI Verification: Group Size Change (5.8)', () => {
     for (const indices of Object.values(groupMap)) {
       expect(indices.length).toBe(3);
     }
-  });
 
-  test('make player idle until kicked and verify group size message', async () => {
-    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
-    const pages = pm.getPages();
-
-    // Find out which group player 0 is in
-    const idlePlayerIndex = 0;
+    // Record the idle player's group and its other members for later checks
     const idleInfo = await getPlayerInfo(pages[idlePlayerIndex]);
     expect(idleInfo).not.toBeNull();
     idlePlayerGroup = idleInfo!.originalGroup;
 
-    // Find the other players in the same group
     sameGroupIndices = [];
     for (let i = 0; i < pages.length; i++) {
       if (i === idlePlayerIndex) continue;
@@ -81,8 +79,13 @@ test.describe.serial('UI Verification: Group Size Change (5.8)', () => {
       }
     }
     expect(sameGroupIndices.length).toBe(2);
+  });
 
-    // Play rounds while skipping the idle player
+  test('(5.7) idle player is removed and sees sorry screen with correct attributes', async () => {
+    test.slow(); // Idle rounds require SELECTION_DURATION timeout each
+    const pages = pm.getPages();
+
+    // Play rounds while skipping the idle player until it is kicked
     for (let r = 0; r < MAX_IDLE_ROUNDS; r++) {
       await playRound(pages, { skipIndices: [idlePlayerIndex] });
     }
@@ -90,12 +93,80 @@ test.describe.serial('UI Verification: Group Size Change (5.8)', () => {
     // Wait for the kick to process
     await pages[idlePlayerIndex].waitForTimeout(3000);
 
-    // Verify idle player is on sorry screen
+    // Idle player should now be on the sorry screen
     const exitInfo = await waitForExitScreen(pages[idlePlayerIndex], 30_000);
     expect(exitInfo).not.toBeNull();
+    expect(exitInfo!.type).toBe('sorry');
+  });
 
-    // Now play at least one more round so the remaining group members
-    // are in a new round and see the smaller group message
+  test('(5.7) sorry screen has data-testid attribute', async () => {
+    const idlePage = pm.getPage(idlePlayerIndex);
+
+    const sorryEl = idlePage.locator(SORRY_SCREEN);
+    await expect(sorryEl).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('(5.7) sorry screen has data-exit-reason attribute', async () => {
+    const idlePage = pm.getPage(idlePlayerIndex);
+
+    const sorryEl = idlePage.locator(SORRY_SCREEN);
+    const exitReason = await sorryEl.getAttribute('data-exit-reason');
+    expect(exitReason).not.toBeNull();
+    expect(exitReason).toBe('player timeout');
+  });
+
+  test('(5.7) sorry screen has data-prolific-code attribute', async () => {
+    const idlePage = pm.getPage(idlePlayerIndex);
+
+    const sorryEl = idlePage.locator(SORRY_SCREEN);
+    const prolificCode = await sorryEl.getAttribute('data-prolific-code');
+    expect(prolificCode).not.toBeNull();
+    // Idle players do NOT receive compensation, so code should be "none"
+    expect(prolificCode).toBe('none');
+  });
+
+  test('(5.7) sorry screen has data-player-id attribute', async () => {
+    const idlePage = pm.getPage(idlePlayerIndex);
+
+    const sorryEl = idlePage.locator(SORRY_SCREEN);
+    const playerId = await sorryEl.getAttribute('data-player-id');
+    expect(playerId).not.toBeNull();
+    expect(playerId).not.toBe('unknown');
+  });
+
+  test('(5.7) sorry screen shows "Removed for Inactivity" title', async () => {
+    const idlePage = pm.getPage(idlePlayerIndex);
+
+    const bodyText = await idlePage.textContent('body');
+    expect(bodyText).toContain('Removed for Inactivity');
+  });
+
+  test('(5.7) sorry screen shows no compensation message for idle player', async () => {
+    const idlePage = pm.getPage(idlePlayerIndex);
+
+    const bodyText = await idlePage.textContent('body');
+    // Idle players should see message about no compensation
+    expect(bodyText).toContain('will not receive compensation');
+  });
+
+  test('(5.7) remaining players are still in the game', async () => {
+    const pages = pm.getPages();
+
+    // All other players should still be in the game
+    const activePages = await getActivePlayers(pages.slice(1));
+    expect(activePages.length).toBeGreaterThanOrEqual(6);
+
+    for (const page of activePages) {
+      await expectPlayerInGame(page);
+    }
+  });
+
+  test('(5.8) remaining group members see the smaller group message', async () => {
+    const pages = pm.getPages();
+    expect(idlePlayerGroup).not.toBeNull();
+
+    // Play at least one more round so the remaining group members are in a new
+    // round and see the smaller group message
     const remainingPages = pages.filter((_, i) => i !== idlePlayerIndex);
     const active = await getActivePlayers(remainingPages);
     await playRound(active);
@@ -119,7 +190,7 @@ test.describe.serial('UI Verification: Group Size Change (5.8)', () => {
     expect(foundMessage).toBe(true);
   });
 
-  test('group member display shows fewer players after dropout', async () => {
+  test('(5.8) group member display shows fewer players after dropout', async () => {
     const pages = pm.getPages();
     expect(idlePlayerGroup).not.toBeNull();
 
@@ -136,7 +207,7 @@ test.describe.serial('UI Verification: Group Size Change (5.8)', () => {
     }
   });
 
-  test('other groups still show 3 players', async () => {
+  test('(5.8) other groups still show 3 players', async () => {
     const pages = pm.getPages();
     expect(idlePlayerGroup).not.toBeNull();
 

@@ -23,23 +23,9 @@ test.describe.serial('UI Verification: Intro & Instructions (5.1)', () => {
     context = await browser.newContext();
     page = await context.newPage();
 
-    // Navigate to the app and enter as a new player
+    // Navigate to the app. The custom consent page is the first thing shown
+    // (before player identification), so stop here and let test (a) assert it.
     await page.goto('/');
-
-    // Wait for and click Empirica built-in consent ("I AGREE")
-    try {
-      await page.getByRole('button', { name: /agree/i }).click({ timeout: 15_000 });
-      await page.waitForTimeout(500);
-    } catch {
-      // Consent dialog may already have been accepted
-    }
-
-    // Wait for the textbox to be visible before filling
-    const textbox = page.getByRole('textbox');
-    await textbox.waitFor({ state: 'visible', timeout: 15_000 });
-    await textbox.fill('intro_test_player');
-    await page.getByRole('button', { name: /enter/i }).click();
-    await page.waitForTimeout(500);
   });
 
   test.afterAll(async () => {
@@ -47,7 +33,7 @@ test.describe.serial('UI Verification: Intro & Instructions (5.1)', () => {
   });
 
   test('(a) consent page has "I consent" button', async () => {
-    // We should be on the consent page after entering player ID
+    // The consent page is shown first, before player identification
     const consentButton = page.getByRole('button', { name: /consent/i });
     await expect(consentButton).toBeVisible({ timeout: 10_000 });
 
@@ -57,8 +43,12 @@ test.describe.serial('UI Verification: Intro & Instructions (5.1)', () => {
   });
 
   test('(b) instruction page 1 has Next button and correct content', async () => {
-    // Click consent to move to instruction page 1
+    // Click consent, then enter a player identifier to reach the instructions
     await page.getByRole('button', { name: /consent/i }).click();
+    const textbox = page.getByRole('textbox');
+    await textbox.waitFor({ state: 'visible', timeout: 15_000 });
+    await textbox.fill('intro_test_player');
+    await page.getByRole('button', { name: /enter/i }).click();
     await page.waitForTimeout(500);
 
     // Verify Next button is visible

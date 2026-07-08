@@ -410,58 +410,56 @@ export async function handleTransition(pages: Page[], timeout = 120_000): Promis
 // ============ EXIT SURVEY ============
 
 export async function completeExitSurvey(page: Page): Promise<void> {
-  try {
-    // Fill survey fields
-    const ageInput = page.locator('input[name="age"]');
-    if (await ageInput.count() > 0) await ageInput.fill('25');
+  // The ExitSurvey component (client/src/intro-exit/ExitSurvey.jsx) is a
+  // three-page flow: page 1 required questions ("Next"), page 2 demographics
+  // ("Submit"), page 3 confirmation with the Prolific code ("Finish").
+  // Disbanded players skip page 2 — page 1's submit calls next() directly,
+  // sending them straight to the Sorry screen.
 
-    const genderSelect = page.locator('select[name="gender"]');
-    if (await genderSelect.count() > 0) await genderSelect.selectOption('prefer-not-to-say');
+  // ── Page 1: required questions (gates the "Next" button) ──
+  await page.locator('input[name="understood"][value="yes"]').click();
+  await page.locator('input[name="groupIdentification"][value="5"]').click();
+  await page.locator('input[name="groupCloseness"][value="5"]').click();
+  await page.locator('input[name="groupLanguage"][value="yes"]').click();
+  // fill() alone does not always fire React's onChange (which gates the
+  // "Next" button on strategy), so dispatch an input event after filling.
+  const strategy = page.locator('textarea[name="strategy"]');
+  await strategy.fill('Test strategy');
+  await strategy.dispatchEvent('input');
 
-    // Education radio
-    const educationRadio = page.getByRole('radio', { name: /bachelor/i });
-    if (await educationRadio.count() > 0) await educationRadio.click();
+  // Page 1's submit button is labelled "Next" and stays disabled until every
+  // required field is set; Playwright's actionability wait covers the React
+  // state update that enables it.
+  await page.getByRole('button', { name: /^next$/i }).click();
 
-    // Understanding radio
-    const understandingRadio = page.getByRole('radio', { name: /^yes$/i });
-    if (await understandingRadio.count() > 0) await understandingRadio.click();
+  // Normal players advance to page 2 (the age field renders). Disbanded
+  // players are sent to the Sorry screen instead. Wait for whichever appears.
+  const ageInput = page.locator('input[name="age"]');
+  const sorry = page.locator(SORRY_SCREEN);
+  await Promise.race([
+    ageInput.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {}),
+    sorry.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {}),
+  ]);
 
-    // Group identification (7-point Likert) — pick radio value "5"
-    const groupIdRadio = page.locator('input[name="groupIdentification"][value="5"]');
-    if (await groupIdRadio.count() > 0) await groupIdRadio.click();
+  // Disbanded flow: no page 2, already navigated away from the survey.
+  if ((await ageInput.count()) === 0) return;
 
-    // Group language radio
-    const groupLanguageYes = page.locator('input[name="groupLanguage"][value="yes"]');
-    if (await groupLanguageYes.count() > 0) await groupLanguageYes.click();
+  // ── Page 2: demographics (age, gender, feltHuman gate the "Submit" button) ──
+  await ageInput.fill('25');
+  await ageInput.dispatchEvent('input'); // ensure React onChange fires (gates Submit)
+  await page.locator('select[name="gender"]').selectOption('prefer-not-to-say');
+  await page.locator('input[name="feltHuman"][value="yes"]').click();
+  // Optional page-2 fields
+  await page.locator('input[name="education"][value="bachelor"]').click();
+  await page.locator('textarea[name="fair"]').fill('Yes');
+  await page.locator('textarea[name="feedback"]').fill('Test feedback');
 
-    // Strategy textarea
-    const strategyTextarea = page.locator('textarea[name="strategy"]');
-    if (await strategyTextarea.count() > 0) await strategyTextarea.fill('Test strategy');
+  await page.getByRole('button', { name: /^submit$/i }).click();
 
-    // Textareas
-    const fairTextarea = page.locator('textarea[name="fair"]');
-    if (await fairTextarea.count() > 0) await fairTextarea.fill('Yes');
-
-    const feedbackTextarea = page.locator('textarea[name="feedback"]');
-    if (await feedbackTextarea.count() > 0) await feedbackTextarea.fill('Test feedback');
-
-    // Submit
-    await page.getByRole('button', { name: /submit/i }).click();
-    await page.waitForTimeout(500);
-
-    // Normal completion: shows confirmation page with Finish button.
-    // Disbanded: Submit calls next() immediately → navigates to Sorry page (no Finish button).
-    const finishButton = page.getByRole('button', { name: /finish/i });
-    try {
-      await finishButton.waitFor({ state: 'visible', timeout: 3000 });
-      await finishButton.click();
-      await page.waitForTimeout(500);
-    } catch {
-      // Disbanded flow — no Finish button, already navigated to Sorry
-    }
-  } catch {
-    // Survey fields may vary
-  }
+  // ── Page 3: confirmation with the Prolific code and a Finish button ──
+  const finishButton = page.getByRole('button', { name: /finish/i });
+  await finishButton.waitFor({ state: 'visible', timeout: 10_000 });
+  await finishButton.click();
 }
 
 /**
