@@ -12,6 +12,7 @@
 #   make process        # preprocess → filter → derived metrics
 #   make notebooks      # render SI_pilot.qmd + SI_llm_simulation.qmd
 #   make llm-process    # process LLM simulation JSONs → CSVs
+#   make test           # validate processed data (pytest integrity suite)
 
 PILOT_RUNS = 20260301_132907 20260301_214147
 ZIPS = $(foreach run,$(PILOT_RUNS),experiment/data/$(run)/empirica-export-$(run).zip)
@@ -22,11 +23,11 @@ DERIVED_DIR = analysis/pilot_derived
 LLM_SIM_DIR = analysis/llm_simulation
 LLM_RESULTS = $(shell ls -d $(LLM_SIM_DIR)/llm_results_*/ 2>/dev/null | sort | tail -1)
 
-.PHONY: all pilot extract combine process process-no-filter notebooks llm-process clean help
+.PHONY: all pilot extract combine process process-no-filter notebooks llm-process test clean help
 
 # ── Main targets ────────────────────────────────────────────
 
-all: extract combine process notebooks  ## Full pipeline from zips to rendered notebooks
+all: extract combine process test notebooks  ## Full pipeline from zips to rendered notebooks
 
 pilot: process-no-filter notebooks  ## For reviewers: derive metrics + render (data already committed)
 
@@ -46,6 +47,9 @@ process: ## Run full pipeline (preprocess → filter → derived)
 
 process-no-filter: ## Run pipeline skipping filter (no Vertex AI needed)
 	uv run python analysis/process_data.py --skip-filter
+
+test: ## Validate processed data against the integrity suite
+	uv run pytest analysis/test_data_integrity.py -q
 
 # ── LLM simulation ─────────────────────────────────────────
 
