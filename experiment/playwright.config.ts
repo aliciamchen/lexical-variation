@@ -23,8 +23,17 @@ const isTestMode = process.env.TEST_MODE !== 'false';
  * | group-4 | idle-detection, group-viability, compensation     |
  * | group-holistic | holistic end-to-end (social_mixed, 15 players) |
  *
- * Run holistic test standalone (always uses production timing):
- *   npx playwright test --project=setup-5 --project=group-holistic --reporter=list
+ * Groups are chained via project dependencies so a bare `npx playwright test`
+ * runs them in order on the shared server. Playwright runs dependencies
+ * UNFILTERED, so a bare single-file or --project run replays every earlier
+ * group first. For selective runs, use the npm scripts (package.json), which
+ * pair each group with its server-reset setup and pass --no-deps:
+ *   npm run test:group4
+ *   npm run test:group4:fast   (IDLE_TEST_TIMING=true - short timers for idle suites)
+ *   npm run test:holistic      (production timing)
+ * Single file (setup + file, skipping earlier groups):
+ *   npx playwright test reset-server.setup tests/idle-detection/speaker-idle.spec.ts \
+ *     --project=setup-4 --project=group-4 --no-deps
  */
 export default defineConfig({
   testDir: './tests',
@@ -32,7 +41,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: 1,
-  reporter: [['html'], ['list']],
+  // open: 'never' so a failed run doesn't spawn a blocking report server;
+  // view reports with `npm run test:report`
+  reporter: [['html', { open: 'never' }], ['list']],
   // Test mode: 10 min per test. Production: 90 min (72 rounds * ~55s each + overhead).
   timeout: isTestMode ? 600_000 : 5_400_000,
   globalTeardown: './tests/global-teardown.ts',
@@ -103,7 +114,11 @@ export default defineConfig({
     // ── Holistic end-to-end test (production timing) ──
     {
       name: 'setup-5',
-      // dependencies: ['group-4'], // Uncomment to chain after group-4 in full suite
+      // Chained after group-4 so a full run can't start the holistic group
+      // early: set-production-mode.ts flips TEST_MODE for the whole runner
+      // process, which would corrupt groups 1-4 if it ran first. Standalone
+      // runs skip the chain via --no-deps (see `npm run test:holistic`).
+      dependencies: ['group-4'],
       testMatch: 'reset-server-production.setup.ts',
     },
     {

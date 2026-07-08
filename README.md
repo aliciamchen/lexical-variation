@@ -79,9 +79,10 @@ empirica
 
 ```bash
 cd experiment
-npx playwright test              # test mode (shorter games)
-npx playwright test --headed     # visible browser
-npx playwright show-report       # view report
+npm test                  # full Playwright suite (test mode: shorter games)
+npm run test:group1       # one test group only (test:group1 ... test:group4)
+npm run test:unit         # server unit tests (scoring, reshuffling; no browser)
+npm run test:report       # view the HTML report
 ```
 
 See [`experiment/README.md`](experiment/README.md) for details on test architecture and writing new tests.

@@ -47,35 +47,46 @@ Tests live in `experiment/tests/` and use `@playwright/test`. The server is mana
 
 **Running tests:**
 
+IMPORTANT: the test groups are chained via Playwright project dependencies, and Playwright runs dependencies UNFILTERED. A bare `npx playwright test <file>` or `--project=group-N` therefore replays every earlier group in full first (a group-4 file runs all of groups 1-3 before it). Use the npm scripts, which pair each group with its server-reset setup and pass `--no-deps`:
+
 ```bash
 cd experiment
 
-# Run the full test suite (test mode: 3+2 blocks, 120s selection)
-npx playwright test
+# Full suite in order (test mode; the production-timing holistic group runs last)
+npm test
 
-# Run with production timing (6+6 blocks, 45s selection, 2 idle rounds)
-TEST_MODE=false npx playwright test
+# One group only (server reset + that group, nothing else)
+npm run test:group1       # happy-path, communication, lobby, edge-cases
+npm run test:group2       # ui-verification, timing
+npm run test:group3       # data-integrity, condition-specific, score-display
+npm run test:group4       # idle-detection, group-viability, compensation
+npm run test:group4:fast  # same as group4 with IDLE_TEST_TIMING=true (30s timers,
+                          # 2 idle rounds instead of 120s x 5 -- idle tests wait out
+                          # full timers, so this is several times faster)
+npm run test:holistic     # holistic end-to-end, production timing
 
-# Run a specific test file
-npx playwright test tests/ui-verification/intro-instructions.spec.ts
+# Server unit tests (fast, no browser or server needed)
+npm run test:unit
 
-# Run tests matching a category (matches directory names)
-npx playwright test tests/happy-path/
-npx playwright test tests/idle-detection/
+# A single spec file: include its group's reset setup and skip earlier groups
+npx playwright test reset-server.setup tests/idle-detection/speaker-idle.spec.ts \
+  --project=setup-4 --project=group-4 --no-deps
 
-# Run a specific test group (project) only
-npx playwright test --project=group-1
+# Production timing for everything (6+6 blocks, 45s/25s selection, 3 idle rounds)
+TEST_MODE=false npm test
 
-# Run with visible browser
-npx playwright test --headed
+# Run with visible browser: append flags after --
+npm run test:group2 -- --headed
 
-# View the HTML report after a run
-npx playwright show-report
+# View the HTML report (reports no longer auto-open on failure)
+npm run test:report
 ```
+
+Pipe long runs through `tee` to a stable file so results can be read without re-running: `npm run test:group4 2>&1 | tee /tmp/test-results.txt`
 
 **Test architecture:**
 
-Tests are split into 4 project groups in `playwright.config.ts`. Between each group, the Empirica server is restarted (tajriba.json deleted) to prevent state accumulation. Execution order: `setup-1 → group-1 → setup-2 → group-2 → setup-3 → group-3 → setup-4 → group-4`.
+Tests are split into 5 project groups in `playwright.config.ts`. Between each group, the Empirica server is restarted (tajriba.json deleted) to prevent state accumulation. Full-suite execution order: `setup-1 → group-1 → ... → setup-4 → group-4 → setup-5 → group-holistic`.
 
 | Group | Categories | Description |
 |-------|-----------|-------------|
@@ -83,6 +94,7 @@ Tests are split into 4 project groups in `playwright.config.ts`. Between each gr
 | group-2 | ui-verification, timing | UI and timing checks |
 | group-3 | data-integrity, condition-specific, score-display | Data and conditions |
 | group-4 | idle-detection, group-viability, compensation | Dropout handling |
+| group-holistic | holistic | Full end-to-end games at production timing |
 
 **Writing a new test:**
 
@@ -134,4 +146,5 @@ Tests are split into 4 project groups in `playwright.config.ts`. Between each gr
 **Key config values** (from `experiment/shared/constants.js`, mirrored in `tests/helpers/constants.ts`):
 - `TEST_MODE` — controlled by `TEST_MODE` env var (defaults to `false` for production, `server-manager.ts` sets `true` for tests)
 - Test mode: 3+2 blocks, 120s selection, 5 idle rounds, 600s timeout
-- Production mode (`TEST_MODE=false`): 6+6 blocks, 45s selection, 2 idle rounds, 5400s timeout
+- Production mode (`TEST_MODE=false`): 6+6 blocks, 45s/25s selection (Phase 1/2), 3 idle rounds, 5400s timeout
+- `IDLE_TEST_TIMING=true` (used by `npm run test:group4:fast`): 30s selection, 2 idle rounds — for suites whose tests wait out full idle timers

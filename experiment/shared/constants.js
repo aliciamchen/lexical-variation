@@ -20,10 +20,20 @@ export const TEST_MODE =
 // | PHASE_1_BLOCKS       | 2       | 6          | Blocks in Phase 1                    |
 // | PHASE_2_BLOCKS       | 2       | 6          | Blocks in Phase 2                    |
 
+// ============ IDLE-TEST TIMING ============
+// Idle-detection tests must wait out the FULL selection timer for
+// MAX_IDLE_ROUNDS consecutive rounds (an idle player never submits), so
+// TEST_MODE's long 120s selection makes them pathologically slow
+// (5 rounds x 120s per removal). IDLE_TEST_TIMING=true shortens the timer
+// and the idle threshold for suites that exercise idleness
+// (see `npm run test:group4:fast` in experiment/package.json).
+export const IDLE_TEST_TIMING =
+  typeof process !== "undefined" && process.env?.IDLE_TEST_TIMING === "true";
+
 // ============ TIMING CONFIGURATION ============
 // Stage durations in seconds
-export const SELECTION_DURATION = TEST_MODE ? 120 : 45; // Phase 1 selection stage (TEST: 120s)
-export const PHASE2_SELECTION_DURATION = TEST_MODE ? 120 : 25; // Phase 2 selection stage (TEST: 120s)
+export const SELECTION_DURATION = IDLE_TEST_TIMING ? 30 : TEST_MODE ? 120 : 45; // Phase 1 selection stage (TEST: 120s)
+export const PHASE2_SELECTION_DURATION = IDLE_TEST_TIMING ? 30 : TEST_MODE ? 120 : 25; // Phase 2 selection stage (TEST: 120s)
 export const FEEDBACK_DURATION = 15; // Feedback stage (same for both)
 export const TRANSITION_DURATION = 60; // Phase transition (same for both)
 export const BONUS_INFO_DURATION = 30; // End game bonus info (same for both)
@@ -51,6 +61,9 @@ export const distractors = ["page5-63", "page9-7", "page5-142", "page4-15"];
 // Group count is derived dynamically in callbacks.js from actual player count
 export const GROUP_SIZE = 3;
 export const LISTENERS_PER_TRIAL = 2;
+
+// Group names (no color distinction)
+export const GROUP_NAMES = ["A", "B", "C"];
 
 // ============ PHASE CONFIGURATION ============
 // Phase 1: Within-group reference game
@@ -148,7 +161,7 @@ export const LOBBY_TIMEOUT_PAY = 2; // dollars for players who couldn't find a m
 export const EXPECTED_GAME_DURATION_MIN = 45; // midpoint of 30-45 minute estimate
 
 // ============ DROPOUT HANDLING ============
-export const MAX_IDLE_ROUNDS = TEST_MODE ? 5 : 3; // TEST: 5 rounds tolerance
+export const MAX_IDLE_ROUNDS = IDLE_TEST_TIMING ? 2 : TEST_MODE ? 5 : 3; // TEST: 5 rounds tolerance
 export const MIN_GROUP_SIZE = 2; // Minimum players needed to continue in a group
 // MIN_ACTIVE_GROUPS is derived dynamically in callbacks.js based on actual group count
 

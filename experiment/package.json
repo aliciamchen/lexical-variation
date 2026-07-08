@@ -3,7 +3,17 @@
   "version": "1.0.0",
   "description": "## Custom Chat Component",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "test": "playwright test",
+    "test:group1": "playwright test --project=setup-1 --project=group-1 --no-deps",
+    "test:group2": "playwright test --project=setup-2 --project=group-2 --no-deps",
+    "test:group3": "playwright test --project=setup-3 --project=group-3 --no-deps",
+    "test:group4": "playwright test --project=setup-4 --project=group-4 --no-deps",
+    "test:group4:fast": "IDLE_TEST_TIMING=true playwright test --project=setup-4 --project=group-4 --no-deps",
+    "test:holistic": "playwright test --project=setup-5 --project=group-holistic --no-deps --reporter=list",
+    "test:unit": "npm run test --prefix server",
+    "test:report": "playwright show-report"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

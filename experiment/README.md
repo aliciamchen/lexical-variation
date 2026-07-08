@@ -97,30 +97,40 @@ npx playwright install chromium
 
 ### Running tests
 
+The test groups are chained via Playwright project dependencies, and Playwright runs dependencies unfiltered — a bare `npx playwright test <file>` or `--project=group-N` replays every earlier group in full first. The npm scripts avoid this by pairing each group with its server-reset setup and passing `--no-deps`:
+
 ```bash
 # Full suite (test mode: 3+2 blocks, 120s selection, 5 idle rounds)
-npx playwright test
+npm test
 
-# Production timing (6+6 blocks, 45s selection, 2 idle rounds)
-TEST_MODE=false npx playwright test
+# One group only
+npm run test:group1       # happy-path, communication, lobby, edge-cases
+npm run test:group2       # ui-verification, timing
+npm run test:group3       # data-integrity, condition-specific, score-display
+npm run test:group4       # idle-detection, group-viability, compensation
+npm run test:group4:fast  # group 4 with shortened idle timers (IDLE_TEST_TIMING=true)
+npm run test:holistic     # holistic end-to-end games at production timing
 
-# Specific test group
-npx playwright test --project=group-1
+# Server unit tests (scoring and reshuffling logic; fast, no browser)
+npm run test:unit
 
-# Specific category or file
-npx playwright test tests/happy-path/
-npx playwright test tests/happy-path/refer-separated.spec.ts
+# A single spec file (include its group's reset setup, skip earlier groups)
+npx playwright test reset-server.setup tests/idle-detection/speaker-idle.spec.ts \
+  --project=setup-4 --project=group-4 --no-deps
 
-# Visible browser
-npx playwright test --headed
+# Production timing (6+6 blocks, 45s/25s selection, 3 idle rounds)
+TEST_MODE=false npm test
+
+# Visible browser (append flags after --)
+npm run test:group2 -- --headed
 
 # View report
-npx playwright show-report
+npm run test:report
 ```
 
 ### Test architecture
 
-Tests are split into 4 project groups in `playwright.config.ts`. Between each group, the server is restarted (tajriba.json deleted) to prevent state accumulation.
+Tests are split into 5 project groups in `playwright.config.ts`. Between each group, the server is restarted (tajriba.json deleted) to prevent state accumulation.
 
 | Group | Categories | Description |
 |-------|-----------|-------------|
@@ -128,6 +138,9 @@ Tests are split into 4 project groups in `playwright.config.ts`. Between each gr
 | group-2 | ui-verification, timing | UI and timing checks |
 | group-3 | data-integrity, condition-specific, score-display | Data and conditions |
 | group-4 | idle-detection, group-viability, compensation | Dropout handling |
+| group-holistic | holistic | Full end-to-end games at production timing |
+
+Unit tests for the server's scoring and reshuffling logic are in `server/src/*.test.js` (vitest); they import the production modules (`scoring.js`, `reshuffling.js`) directly, so they run in milliseconds without a browser or server.
 
 ### Writing new tests
 
