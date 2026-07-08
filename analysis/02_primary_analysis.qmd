@@ -537,16 +537,12 @@ Contrast: `social_first > social_mixed`.
 
 ```{r h4a-social-accuracy}
 if (nrow(social_guesses) > 0) {
-  # Join speaker identity from trials (one speaker per game × block × target)
-  speaker_lookup <- trials |>
-    filter(role == "speaker") |>
-    select(gameId, blockNum, target, playerId) |>
-    rename(speakerId = playerId) |>
-    distinct()
-
+  # speakerId comes from preprocessing, attributed by (roundId, currentGroup):
+  # a roundId is shared across all groups in a game, so joining on
+  # (gameId, blockNum, target) would match three speakers (one per group)
+  # and, because blockNum resets per phase, Phase 1 speakers too
   social_h4 <- social_guesses |>
     left_join(games |> select(gameId, condition), by = "gameId") |>
-    left_join(speaker_lookup, by = c("gameId", "blockNum", "target")) |>
     filter(condition %in% c("social_mixed", "social_first")) |>
     mutate(
       correct = as.numeric(socialGuessCorrect == TRUE | socialGuessCorrect == "true"),
@@ -614,11 +610,17 @@ listener's interpretation and the quality of the speaker's description.
 Contrast: `social_mixed > social_first` (lower ref accuracy expected in social_first).
 
 ```{r h4b-ref-accuracy}
-# Reuse speaker_lookup from H4a
+# One speaker per (game, round, group): the group key is required because a
+# roundId is shared across all groups in a game
+speaker_lookup <- trials |>
+  filter(role == "speaker") |>
+  select(gameId, roundId, currentGroup, speakerId = playerId) |>
+  distinct()
+
 p2_listener_social <- trials |>
   filter(phaseNum == 2, role == "listener") |>
   left_join(games |> select(gameId, condition), by = "gameId") |>
-  left_join(speaker_lookup, by = c("gameId", "blockNum", "target")) |>
+  left_join(speaker_lookup, by = c("gameId", "roundId", "currentGroup")) |>
   filter(condition %in% c("social_mixed", "social_first")) |>
   mutate(
     correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),

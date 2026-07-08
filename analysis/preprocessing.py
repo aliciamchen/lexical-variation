@@ -343,38 +343,40 @@ def build_social_guesses(
 
     # Filter to refgame rounds with social guess data
     pr = pr[pr["phase"] == "refgame"].copy()
+
+    empty_columns = [
+        "gameId",
+        "playerId",
+        "originalGroup",
+        "tangramSet",
+        "blockNum",
+        "phase",
+        "phaseNum",
+        "roundId",
+        "currentGroup",
+        "speakerId",
+        "target",
+        "socialGuess",
+        "socialGuessCorrect",
+        "socialRoundScore",
+    ]
     if "social_guess" not in pr.columns:
-        return pd.DataFrame(
-            columns=[
-                "gameId",
-                "playerId",
-                "originalGroup",
-                "tangramSet",
-                "blockNum",
-                "phase",
-                "target",
-                "socialGuess",
-                "socialGuessCorrect",
-                "socialRoundScore",
-            ]
-        )
+        return pd.DataFrame(columns=empty_columns)
+
+    # Speaker of each (round, group): a roundId is shared across all groups in a
+    # game, so the group is required to attribute a guess to the speaker the
+    # listener actually heard
+    speaker_lookup = (
+        pr[pr["role"] == "speaker"][["roundID", "current_group", "playerID"]]
+        .drop_duplicates()
+        .set_index(["roundID", "current_group"])["playerID"]
+        .to_dict()
+    )
+
     pr = pr[pr["social_guess"].notna() & (pr["social_guess"] != "")].copy()
 
     if pr.empty:
-        return pd.DataFrame(
-            columns=[
-                "gameId",
-                "playerId",
-                "originalGroup",
-                "tangramSet",
-                "blockNum",
-                "phase",
-                "target",
-                "socialGuess",
-                "socialGuessCorrect",
-                "socialRoundScore",
-            ]
-        )
+        return pd.DataFrame(columns=empty_columns)
 
     guesses = pr[
         [
@@ -383,6 +385,9 @@ def build_social_guesses(
             "original_group",
             "block_num",
             "phase",
+            "phase_num",
+            "roundID",
+            "current_group",
             "target",
             "social_guess",
             "social_guess_correct",
@@ -395,10 +400,17 @@ def build_social_guesses(
         "originalGroup",
         "blockNum",
         "phase",
+        "phaseNum",
+        "roundId",
+        "currentGroup",
         "target",
         "socialGuess",
         "socialGuessCorrect",
         "socialRoundScore",
+    ]
+    guesses["speakerId"] = [
+        speaker_lookup.get((round_id, group))
+        for round_id, group in zip(guesses["roundId"], guesses["currentGroup"])
     ]
 
     # Merge tangramSet from game

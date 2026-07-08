@@ -171,15 +171,17 @@ social_listener <- trials |>
   mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"))
 
 if (nrow(social_listener) > 0) {
-  # Determine in-group status: listener's original group matches speaker's original group
+  # Determine in-group status: listener's original group matches speaker's original group.
+  # The currentGroup key is required: a roundId is shared across all groups in a
+  # game, so joining on (gameId, roundId) alone would match three speakers
   speaker_groups <- trials |>
     filter(role == "speaker") |>
-    select(gameId, roundId, playerId, originalGroup) |>
+    select(gameId, roundId, currentGroup, playerId, originalGroup) |>
     rename(speakerId = playerId, speakerGroup = originalGroup) |>
     distinct()
 
   social_listener <- social_listener |>
-    left_join(speaker_groups, by = c("gameId", "roundId")) |>
+    left_join(speaker_groups, by = c("gameId", "roundId", "currentGroup")) |>
     mutate(inGroupSpeaker = as.numeric(originalGroup == speakerGroup))
 
   # Paper formula: ref_correct ~ in_group_speaker * condition + (1 | speaker) + (1 | listener) + (condition | tangram)
