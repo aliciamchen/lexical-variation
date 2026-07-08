@@ -20,7 +20,7 @@ import {
  * TEST_PLAN 3.9: Idle Warning Display
  *
  * After a player's first idle round (idle_rounds === 1), the feedback screen
- * should display a warning message: "Warning: You were inactive last round."
+ * should display a warning: "Warning: You have been inactive for 1 round(s)..."
  * The player should NOT be kicked yet -- the warning is just a heads-up.
  *
  * Strategy:
@@ -114,8 +114,9 @@ test.describe.serial('Idle Detection: Idle Warning Display (TEST_PLAN 3.9)', () 
     expect(feedbackReached).toBe(true);
 
     // Check for warning text NOW, while still in Feedback stage.
-    // Refgame.jsx shows "Warning: You were inactive last round." when idle_rounds === 1.
-    const warningText = 'Warning: You were inactive';
+    // Refgame.jsx shows "Warning: You have been inactive for N round(s)..."
+    // when idle_rounds >= 1.
+    const warningText = 'Warning: You have been inactive';
     const bodyContent = await idlePage.textContent('body');
     expect(
       bodyContent,
