@@ -34,26 +34,34 @@ def build_games(game_df: pd.DataFrame) -> pd.DataFrame:
     """Build games.csv: 1 row per game."""
     game_df = drop_last_changed_cols(game_df)
 
-    games = game_df[
-        [
-            "id",
-            "condition",
-            "tangram_set",
-            "actualPlayerCount",
-            "active_groups",
-            "phase1Blocks",
-            "phase2Blocks",
-        ]
-    ].copy()
-    games.columns = [
-        "gameId",
+    required_cols = [
+        "id",
         "condition",
-        "tangramSet",
-        "numPlayers",
-        "activeGroups",
+        "tangram_set",
+        "actualPlayerCount",
+        "active_groups",
         "phase1Blocks",
         "phase2Blocks",
     ]
+    # Termination fields for attrition reporting; only present in exports
+    # where a game actually ended early
+    optional_cols = ["ended", "endedReason", "gameTerminated"]
+    cols = required_cols + [c for c in optional_cols if c in game_df.columns]
+    games = game_df[cols].copy()
+
+    rename_map = {
+        "id": "gameId",
+        "condition": "condition",
+        "tangram_set": "tangramSet",
+        "actualPlayerCount": "numPlayers",
+        "active_groups": "activeGroups",
+        "phase1Blocks": "phase1Blocks",
+        "phase2Blocks": "phase2Blocks",
+        "ended": "ended",
+        "endedReason": "endedReason",
+        "gameTerminated": "gameTerminated",
+    }
+    games = games.rename(columns={c: rename_map[c] for c in cols})
 
     # Normalize condition names
     games["condition"] = games["condition"].replace({"exp2_social_goal": "social_first"})
@@ -81,7 +89,19 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
         "is_active",
         "idle_rounds",
     ]
-    optional_cols = ["exitSurvey"]
+    # Attrition/removal fields (exitReason, ended, timing, partial pay) are
+    # needed to distinguish idle-timeout vs low-accuracy vs group-disbanded
+    # removals when reporting exclusions
+    optional_cols = [
+        "exitSurvey",
+        "exitReason",
+        "ended",
+        "gameStartTime",
+        "gameEndTime",
+        "partialPay",
+        "partialBasePay",
+        "partialBonus",
+    ]
 
     # Only include optional columns that exist in the data
     cols = required_cols + [c for c in optional_cols if c in player_df.columns]
@@ -98,6 +118,13 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
         "is_active": "isActive",
         "idle_rounds": "idleRounds",
         "exitSurvey": "exitSurvey",
+        "exitReason": "exitReason",
+        "ended": "ended",
+        "gameStartTime": "gameStartTime",
+        "gameEndTime": "gameEndTime",
+        "partialPay": "partialPay",
+        "partialBasePay": "partialBasePay",
+        "partialBonus": "partialBonus",
     }
     players = players.rename(columns={c: rename_map[c] for c in cols})
 
