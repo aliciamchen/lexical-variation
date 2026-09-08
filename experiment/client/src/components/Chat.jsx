@@ -29,21 +29,20 @@ export function Chat({
       ? customPlayerName(player)
       : player.get("name") || player.id;
 
-    // Use .set() with array instead of .append() for simpler server-side access
-    const currentMessages = scope.get(attribute) || [];
-    scope.set(attribute, [
-      ...currentMessages,
-      {
-        id: `${player.id}-${Date.now()}`,
-        text,
-        timestamp: Date.now(),
-        sender: {
-          id: player.id,
-          name: senderName,
-          avatar: player.get("avatar"),
-        },
+    // Atomic server-side append: two players sending at the same moment can no
+    // longer overwrite each other (the previous read-modify-write of the whole
+    // array could drop a message). The server still reads the attribute as an
+    // array via stage.get(...).
+    scope.append(attribute, {
+      id: `${player.id}-${Date.now()}`,
+      text,
+      timestamp: Date.now(),
+      sender: {
+        id: player.id,
+        name: senderName,
+        avatar: player.get("avatar"),
       },
-    ]);
+    });
   };
 
   const setTyping = useCallback(
