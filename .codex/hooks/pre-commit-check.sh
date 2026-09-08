@@ -1,0 +1,1 @@
+../../.claude/hooks/pre-commit-check.sh

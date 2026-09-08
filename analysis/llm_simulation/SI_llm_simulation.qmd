@@ -8,7 +8,8 @@ format:
 
 This notebook analyzes LLM reference game simulations to evaluate whether
 AI agents can form stable conventions in Phase 1. The results serve as an
-AI detection benchmark for the registered report.
+AI detection benchmark reported in the supplementary information of the
+preregistration manuscript.
 
 **Prerequisites:** Run `process_llm_results.py` on a results directory first
 to generate the CSVs this notebook reads. The processing script automatically

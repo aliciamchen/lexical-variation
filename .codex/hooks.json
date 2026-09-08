@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel)/.codex/hooks/block-destructive-commands.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel)/.codex/hooks/pre-commit-check.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

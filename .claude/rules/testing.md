@@ -34,7 +34,7 @@ You can use the Playwright MCP browser tools to manually test the experiment wit
 
 **Key lessons:**
 - **Dialog handler first**: The quiz uses `window.alert()` which blocks Playwright. Register `page.on('dialog', async d => await d.accept())` on each player page *before* submitting the quiz, not after.
-- **Player intro flow**: I AGREE → Enter identifier → I consent → 5x Next → Quiz (6 radio answers) → Submit. See exact quiz answer text in `experiment/client/src/intro-exit/Quiz.jsx`.
+- **Player intro flow**: I consent → Enter identifier → 6x Next → Quiz (6 radio answers; `social_first` adds a 7th) → Submit. The built-in Empirica "I AGREE" consent is disabled; the custom consent page comes first. See exact quiz answer text in `experiment/client/src/intro-exit/Quiz.jsx` and the answers listed in `architecture.md`.
 - **Globals don't persist**: `globalThis.__var` set in one `browser_run_code` call is NOT available in the next. Instead, access player pages via `browser.contexts()` (admin is `contexts[0]`, players are `contexts[1..9]`, each has `.pages()[0]`).
 - **Inactivity kicks**: The selection timer runs during testing. If you spend too long inspecting state between actions, players get kicked for inactivity. Work quickly or use TEST_MODE (longer timeouts).
 - **`fill()` vs real typing**: Playwright's `fill()` sets the value but doesn't fire React `onChange`. Follow `fill()` with `dispatchEvent('input')` to trigger typing indicators and other onChange-dependent state.

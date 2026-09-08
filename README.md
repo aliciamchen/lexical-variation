@@ -158,9 +158,9 @@ uv run python analysis/combine_runs.py 20260301_132907 20260301_214147
 uv run python analysis/process_data.py
 ```
 
-### Notebooks for the registered report
+### Notebooks for the pilot data
 
-These produce the figures and stats for the manuscript. Run after data are processed: 
+These produce the figures and statistics for the pilot section of the preregistration manuscript. Run them after data are processed:
 
 ```bash
 quarto render analysis/SI_pilot.qmd                              # pilot analyses
@@ -178,9 +178,9 @@ The stats are written as `\newcommand` definitions to `paper/stats/*.tex`, which
 bash figures/sync_figures.sh   # copies SI_*.pdf into paper/figures/
 ```
 
-### Notebooks for the full sample (not yet active)
+### Notebooks for the full sample
 
-These will run the pre-registered analyses on the full dataset. Currently they read from `data/pilots/` + `analysis/pilot_derived/` — the paths in `config.R` will need to be updated to point at the full sample data when it's collected.
+These run the preregistered analyses. The full sample has not been collected yet, so the notebooks currently read the pilot data from `data/pilots/` and `analysis/pilot_derived/`; the paths in `config.R` will be switched to the full-sample directories once data collection is complete.
 
 | Notebook | Purpose |
 |----------|---------|

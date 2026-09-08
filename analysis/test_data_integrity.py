@@ -2,7 +2,7 @@
 Data integrity tests for preprocessed experiment data.
 
 Validates the preprocessed CSV files in data/pilots/ against the
-registered report specifications and the experiment's server-side logic.
+preregistered specifications and the experiment's server-side logic.
 
 Run with:
     uv run pytest analysis/test_data_integrity.py -v

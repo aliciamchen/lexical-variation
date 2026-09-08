@@ -19,7 +19,6 @@ lexical-variation*/
 *export*
 
 *.tar.zst
-.mcp.json
 .zed
 review*.md
 analysis/outputs
@@ -31,4 +30,4 @@ paper
 analysis/*_files/
 data/pilot_runs/
 data/old_pilots/
-
+full-sample-todos.md

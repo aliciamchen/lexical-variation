@@ -1,0 +1,8 @@
+# Project-level Codex configuration. MCP servers mirror .mcp.json (Claude Code).
+
+[mcp_servers.sentry]
+url = "https://mcp.sentry.dev/mcp"
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["@playwright/mcp@latest"]
