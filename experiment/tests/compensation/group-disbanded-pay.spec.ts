@@ -147,7 +147,7 @@ test.describe.serial('Compensation: Group Disbanded (TEST_PLAN 10.3)', () => {
     }
   });
 
-  test('idle players get no compensation (prolific code "none")', async () => {
+  test('idle players get the partial-payment code (prorated base pay, no bonus)', async () => {
     const pages = pm.getPages();
     const removed = await getRemovedPlayers(pages);
 
@@ -157,7 +157,7 @@ test.describe.serial('Compensation: Group Disbanded (TEST_PLAN 10.3)', () => {
     expect(timeoutPlayers.length).toBeGreaterThanOrEqual(2);
 
     for (const { info } of timeoutPlayers) {
-      expect(info.prolificCode).toBe('none');
+      expect(info.prolificCode).toBe('CFTYDMIY');
     }
   });
 

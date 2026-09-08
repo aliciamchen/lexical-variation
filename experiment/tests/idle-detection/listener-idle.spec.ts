@@ -90,7 +90,7 @@ test.describe.serial('Idle Detection: Listener Idle (TEST_PLAN 3.2)', () => {
     expect(exitInfo).not.toBeNull();
     expect(exitInfo!.type).toBe('sorry');
     expect(exitInfo!.exitReason).toBe('player timeout');
-    expect(exitInfo!.prolificCode).toBe('none');
+    expect(exitInfo!.prolificCode).toBe('CFTYDMIY');
   });
 
   test('remaining players are still in the game', async () => {
@@ -116,6 +116,6 @@ test.describe.serial('Idle Detection: Listener Idle (TEST_PLAN 3.2)', () => {
     // Exactly one player should have been removed
     expect(removed.length).toBe(1);
     expect(removed[0].info.exitReason).toBe('player timeout');
-    expect(removed[0].info.prolificCode).toBe('none');
+    expect(removed[0].info.prolificCode).toBe('CFTYDMIY');
   });
 });

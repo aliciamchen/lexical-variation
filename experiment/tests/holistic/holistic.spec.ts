@@ -448,7 +448,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     const exitInfo = await waitForExitScreen(gamePages[idleSpeakerGameIdx], 60_000);
     expect(exitInfo).not.toBeNull();
     expect(exitInfo!.exitReason).toBe('player timeout');
-    expect(exitInfo!.prolificCode).toBe('none');
+    expect(exitInfo!.prolificCode).toBe('CFTYDMIY');
   });
 
   // ─── Test 8: Verify speaker reassignment in group A (8 active) ───
@@ -501,7 +501,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     const exitInfo = await waitForExitScreen(gamePages[idleListenerGameIdx], 60_000);
     expect(exitInfo).not.toBeNull();
     expect(exitInfo!.exitReason).toBe('player timeout');
-    expect(exitInfo!.prolificCode).toBe('none');
+    expect(exitInfo!.prolificCode).toBe('CFTYDMIY');
   });
 
   // ─── Test 10: Verify 7 active players, all groups still viable ───

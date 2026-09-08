@@ -123,7 +123,7 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
       const exitInfo = await waitForExitScreen(pages[idx], 60_000);
       expect(exitInfo).not.toBeNull();
       expect(exitInfo!.exitReason).toBe('player timeout');
-      expect(exitInfo!.prolificCode).toBe('none');
+      expect(exitInfo!.prolificCode).toBe('CFTYDMIY');
     }
   });
 

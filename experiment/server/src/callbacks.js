@@ -27,8 +27,6 @@ import {
   FEEDBACK_DURATION,
   TRANSITION_DURATION,
   BONUS_INFO_DURATION,
-  BASE_PAY,
-  EXPECTED_GAME_DURATION_MIN,
   ACCURACY_CHECK_BLOCKS,
   ACCURACY_THRESHOLD,
   PLAYER_ACCURACY_THRESHOLD,
@@ -38,6 +36,7 @@ import {
 } from "./constants";
 import { reshuffleGroups } from "./reshuffling";
 import { scoreSelectionStage } from "./scoring";
+import { applyPartialPay } from "./compensation";
 
 Empirica.onGameStart(({ game }) => {
   console.log(`Game ${game.id} started`);
@@ -449,8 +448,12 @@ Empirica.onStageEnded(({ stage }) => {
           player.set("ended", "player timeout");
           player.set("exitReason", "player timeout");
           player.set("gameEndTime", Date.now());
-          // Idle players get NO compensation
-          player.set("partialPay", 0);
+          // Inactivity removals are paid base pay prorated to time spent but
+          // forfeit the bonus (see compensation.js).
+          applyPartialPay(player, { includeBonus: false });
+          console.log(
+            `  -> Prorated base pay (no bonus): $${player.get("partialPay")} for ${player.get("minutesSpent")} minutes`,
+          );
 
           // If speaker was kicked, log that reassignment will occur
           if (wasSpeak) {
@@ -528,27 +531,10 @@ function checkGroupViability(game) {
         player.set("exitReason", "group disbanded");
         player.set("gameEndTime", Date.now());
 
-        // Calculate proportional pay based on time spent + earned bonus
-        const startTime = player.get("gameStartTime");
-        const endTime = Date.now();
-        const minutesSpent = (endTime - startTime) / (1000 * 60);
-        const proportionalBasePay = Math.min(
-          BASE_PAY,
-          (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY,
-        );
-        // Include bonus earned so far
-        const earnedBonus = player.get("bonus") || 0;
-        const totalPartialPay = proportionalBasePay + earnedBonus;
-
-        player.set("partialPay", Math.round(totalPartialPay * 100) / 100); // Round to 2 decimals
-        player.set(
-          "partialBasePay",
-          Math.round(proportionalBasePay * 100) / 100,
-        );
-        player.set("partialBonus", Math.round(earnedBonus * 100) / 100);
-        player.set("minutesSpent", Math.round(minutesSpent));
+        // Proportional pay: base prorated to time spent, plus earned bonus
+        applyPartialPay(player);
         console.log(
-          `  -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${Math.round(minutesSpent)} minutes`,
+          `  -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${player.get("minutesSpent")} minutes`,
         );
       });
     }
@@ -574,23 +560,10 @@ function checkGroupViability(game) {
       player.set("exitReason", "group disbanded");
       player.set("gameEndTime", Date.now());
 
-      // Calculate proportional pay based on time spent + earned bonus
-      const startTime = player.get("gameStartTime");
-      const endTime = Date.now();
-      const minutesSpent = (endTime - startTime) / (1000 * 60);
-      const proportionalBasePay = Math.min(
-        BASE_PAY,
-        (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY,
-      );
-      const earnedBonus = player.get("bonus") || 0;
-      const totalPartialPay = proportionalBasePay + earnedBonus;
-
-      player.set("partialPay", Math.round(totalPartialPay * 100) / 100);
-      player.set("partialBasePay", Math.round(proportionalBasePay * 100) / 100);
-      player.set("partialBonus", Math.round(earnedBonus * 100) / 100);
-      player.set("minutesSpent", Math.round(minutesSpent));
+      // Proportional pay: base prorated to time spent, plus earned bonus
+      applyPartialPay(player);
       console.log(
-        `  -> Proportional pay: $${player.get("partialPay")} for ${Math.round(minutesSpent)} minutes`,
+        `  -> Proportional pay: $${player.get("partialPay")} for ${player.get("minutesSpent")} minutes`,
       );
     });
 
@@ -732,26 +705,9 @@ function checkPhase1AccuracyThreshold(game) {
         player.set("exitReason", "low accuracy");
         player.set("gameEndTime", Date.now());
 
-        // Calculate proportional pay based on time spent + earned bonus
-        const startTime = player.get("gameStartTime");
-        const endTime = Date.now();
-        const minutesSpent = (endTime - startTime) / (1000 * 60);
-        const proportionalBasePay = Math.min(
-          BASE_PAY,
-          (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY,
-        );
-        const earnedBonus = player.get("bonus") || 0;
-        const totalPartialPay = proportionalBasePay + earnedBonus;
-
-        player.set("partialPay", Math.round(totalPartialPay * 100) / 100);
-        player.set(
-          "partialBasePay",
-          Math.round(proportionalBasePay * 100) / 100,
-        );
-        player.set("partialBonus", Math.round(earnedBonus * 100) / 100);
-        player.set("minutesSpent", Math.round(minutesSpent));
+        applyPartialPay(player);
         console.log(
-          `    -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${Math.round(minutesSpent)} minutes`,
+          `    -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${player.get("minutesSpent")} minutes`,
         );
       });
     }
@@ -783,22 +739,9 @@ function checkPhase1AccuracyThreshold(game) {
       player.set("exitReason", "insufficient groups after accuracy check");
       player.set("gameEndTime", Date.now());
 
-      const startTime = player.get("gameStartTime");
-      const endTime = Date.now();
-      const minutesSpent = (endTime - startTime) / (1000 * 60);
-      const proportionalBasePay = Math.min(
-        BASE_PAY,
-        (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY,
-      );
-      const earnedBonus = player.get("bonus") || 0;
-      const totalPartialPay = proportionalBasePay + earnedBonus;
-
-      player.set("partialPay", Math.round(totalPartialPay * 100) / 100);
-      player.set("partialBasePay", Math.round(proportionalBasePay * 100) / 100);
-      player.set("partialBonus", Math.round(earnedBonus * 100) / 100);
-      player.set("minutesSpent", Math.round(minutesSpent));
+      applyPartialPay(player);
       console.log(
-        `  -> Proportional pay: $${player.get("partialPay")} for ${Math.round(minutesSpent)} minutes`,
+        `  -> Proportional pay: $${player.get("partialPay")} for ${player.get("minutesSpent")} minutes`,
       );
     });
 

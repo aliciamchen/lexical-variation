@@ -67,7 +67,7 @@ export type Condition = typeof CONDITIONS[number];
 // Quiz answers (correct values matching Quiz.jsx)
 export const QUIZ_ANSWERS = {
   speakerJob: 'To describe the target picture so Listeners can identify it.',
-  inactivePenalty: 'You will be removed from the game and will not receive your pay.',
+  inactivePenalty: 'You will be removed from the game and lose your bonus.',
   chatRestrictions: 'Only topics related to picking out the correct target picture.',
   listenerWaiting: 'Listeners must wait for the Speaker to send a message before they can click.',
   picturePositions: 'Everyone will see the same pictures, but the pictures will be mixed up and in different places for different people.',

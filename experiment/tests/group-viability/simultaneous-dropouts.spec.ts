@@ -130,12 +130,12 @@ test.describe.serial('Group Viability: Simultaneous Dropouts from Different Grou
     const exitInfoA = await waitForExitScreen(pages[idleFromGroupA], 60_000);
     expect(exitInfoA).not.toBeNull();
     expect(exitInfoA!.exitReason).toBe('player timeout');
-    expect(exitInfoA!.partialPay).toBe('0.00');
+    expect(parseFloat(exitInfoA!.partialPay || '0')).toBeGreaterThan(0); // prorated base pay, no bonus
 
     const exitInfoB = await waitForExitScreen(pages[idleFromGroupB], 60_000);
     expect(exitInfoB).not.toBeNull();
     expect(exitInfoB!.exitReason).toBe('player timeout');
-    expect(exitInfoB!.partialPay).toBe('0.00');
+    expect(parseFloat(exitInfoB!.partialPay || '0')).toBeGreaterThan(0); // prorated base pay, no bonus
   });
 
   test('each group viability is checked independently', async () => {

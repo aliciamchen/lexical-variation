@@ -290,8 +290,8 @@ export function Introduction4({ next }) {
       </p>
       <p>
         <strong>Remember, free riding is not permitted.</strong> If we detect
-        that you are inactive, you will be removed from the game and{" "}
-        <strong>will not receive your pay</strong>.
+        that you are inactive, you will be removed from the game,{" "}
+        <strong>paid only for the time you spent, and lose your bonus</strong>.
       </p>
       <p>
         In each block, participants will describe {NUM_TANGRAMS} of the

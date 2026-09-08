@@ -568,8 +568,8 @@ export function Refgame(props) {
             }}
           >
             Warning: You have been inactive for {idleRounds} round(s). If you
-            continue to be inactive, you will be removed from the experiment and
-            will not receive any pay.
+            continue to be inactive, you will be removed from the experiment,
+            paid only for the time you spent, and lose your bonus.
           </p>
         )}
 

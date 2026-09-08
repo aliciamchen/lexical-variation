@@ -222,7 +222,7 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
       const exitInfo = await getExitInfo(pages[idx]);
       expect(exitInfo).not.toBeNull();
       if (exitInfo!.exitReason === 'player timeout') {
-        expect(exitInfo!.partialPay).toBe('0.00');
+        expect(parseFloat(exitInfo!.partialPay || '0')).toBeGreaterThan(0); // prorated base pay
       }
     }
 
@@ -231,7 +231,7 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
       const exitInfo = await getExitInfo(pages[idx]);
       expect(exitInfo).not.toBeNull();
       if (exitInfo!.exitReason === 'player timeout') {
-        expect(exitInfo!.partialPay).toBe('0.00');
+        expect(parseFloat(exitInfo!.partialPay || '0')).toBeGreaterThan(0); // prorated base pay
       }
     }
   });

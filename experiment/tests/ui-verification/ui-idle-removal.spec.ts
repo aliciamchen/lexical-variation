@@ -121,8 +121,8 @@ test.describe.serial('UI Verification: Idle Removal (5.7, 5.8)', () => {
     const sorryEl = idlePage.locator(SORRY_SCREEN);
     const prolificCode = await sorryEl.getAttribute('data-prolific-code');
     expect(prolificCode).not.toBeNull();
-    // Idle players do NOT receive compensation, so code should be "none"
-    expect(prolificCode).toBe('none');
+    // Idle players receive prorated base pay (no bonus) with the partial-payment code
+    expect(prolificCode).toBe('CFTYDMIY');
   });
 
   test('(5.7) sorry screen has data-player-id attribute', async () => {
@@ -141,12 +141,15 @@ test.describe.serial('UI Verification: Idle Removal (5.7, 5.8)', () => {
     expect(bodyText).toContain('Removed for Inactivity');
   });
 
-  test('(5.7) sorry screen shows no compensation message for idle player', async () => {
+  test('(5.7) sorry screen shows prorated base pay without bonus for idle player', async () => {
     const idlePage = pm.getPage(idlePlayerIndex);
 
     const bodyText = await idlePage.textContent('body');
-    // Idle players should see message about no compensation
-    expect(bodyText).toContain('will not receive compensation');
+    expect(bodyText).toContain('for the time you spent');
+    expect(bodyText).toContain('no bonus');
+    const sorryEl = idlePage.locator(SORRY_SCREEN);
+    const partialPay = parseFloat((await sorryEl.getAttribute('data-partial-pay')) || '0');
+    expect(partialPay).toBeGreaterThan(0);
   });
 
   test('(5.7) remaining players are still in the game', async () => {

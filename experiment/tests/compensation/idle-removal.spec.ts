@@ -1,9 +1,9 @@
 /**
  * TEST_PLAN 10.2: Idle Removal Compensation
  *
- * Idle-removed players get NO compensation. Make one player idle for
- * MAX_IDLE_ROUNDS. Verify their sorry screen has data-prolific-code="none"
- * (not a compensation code). Verify remaining players can continue.
+ * Idle-removed players get base pay prorated to time spent, no bonus. Make one
+ * player idle for MAX_IDLE_ROUNDS. Verify their sorry screen shows the
+ * partial-payment code and a positive amount. Verify remaining players can continue.
  */
 import { test, expect } from '@playwright/test';
 import { PlayerManager } from '../helpers/player-manager';
@@ -56,7 +56,7 @@ test.describe.serial('Compensation: Idle Removal (TEST_PLAN 10.2)', () => {
     }
   });
 
-  test(`idle player is removed after ${MAX_IDLE_ROUNDS} rounds and gets no compensation`, async () => {
+  test(`idle player is removed after ${MAX_IDLE_ROUNDS} rounds and gets prorated base pay`, async () => {
     test.slow(); // Idle rounds require SELECTION_DURATION timeout each
     const pages = pm.getPages();
 
@@ -84,19 +84,19 @@ test.describe.serial('Compensation: Idle Removal (TEST_PLAN 10.2)', () => {
     expect(exitInfo!.type).toBe('sorry');
     expect(exitInfo!.exitReason).toBe('player timeout');
 
-    // Verify data-prolific-code is "none" (no compensation)
-    expect(exitInfo!.prolificCode).toBe('none');
+    // Idle players receive prorated base pay (no bonus) with the partial-payment code
+    expect(exitInfo!.prolificCode).toBe('CFTYDMIY');
 
     // Also verify via DOM attribute directly
     const sorryScreen = idlePlayerPage.locator(SORRY_SCREEN);
     await expect(sorryScreen).toBeVisible({ timeout: 10_000 });
     const prolificCodeAttr = await sorryScreen.getAttribute('data-prolific-code');
-    expect(prolificCodeAttr).toBe('none');
+    expect(prolificCodeAttr).toBe('CFTYDMIY');
 
-    // Verify the code is NOT a valid compensation code
-    expect(prolificCodeAttr).not.toBe(PROLIFIC_CODES.completion);
-    expect(prolificCodeAttr).not.toBe(PROLIFIC_CODES.disbanded);
-    expect(prolificCodeAttr).not.toBe(PROLIFIC_CODES.lobbyTimeout);
+    // Idle players receive prorated base pay (no bonus) with the partial-payment code
+    expect(prolificCodeAttr).toBe(PROLIFIC_CODES.disbanded);
+    const partialPayAttr = await sorryScreen.getAttribute('data-partial-pay');
+    expect(parseFloat(partialPayAttr || '0')).toBeGreaterThan(0);
   });
 
   test('remaining players can continue playing', async () => {

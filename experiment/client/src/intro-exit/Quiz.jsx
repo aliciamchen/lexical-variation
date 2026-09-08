@@ -29,11 +29,11 @@ export function Quiz({ next }) {
       question: "What happens if you are inactive for multiple rounds?",
       choices: [
         "Nothing, you can rejoin later.",
-        "You will be removed from the game and will not receive your pay.",
+        "You will be removed from the game and lose your bonus.",
         "You will lose some bonus points but can continue playing.",
       ],
       correctAnswer:
-        "You will be removed from the game and will not receive your pay.",
+        "You will be removed from the game and lose your bonus.",
     },
     {
       question: "What are you allowed to discuss in the chat?",

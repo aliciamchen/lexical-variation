@@ -71,13 +71,17 @@ export function Sorry() {
           messages or make any selections.
         </p>
         <p className="mt-2">
-          We understand that technical issues or distractions can occur. If you
-          believe this was an error, please contact the researcher on Prolific.
+          You will be paid for the time you spent in the game, but the bonus is
+          forfeited when a player is removed for inactivity. We understand that
+          technical issues or distractions can occur. If you believe this was an
+          error, please contact the researcher on Prolific.
         </p>
       </>
     );
-    // Idle players do NOT receive compensation
-    showCompensation = false;
+    // Prorated base pay for time spent; no bonus (see server/src/compensation.js)
+    const idleBasePay = partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
+    compensationCode = "CFTYDMIY";
+    compensationMessage = `$${idleBasePay} for the time you spent (base pay only, no bonus)`;
   } else if (
     endedReason === "group disbanded" ||
     endedReason === "low accuracy" ||
