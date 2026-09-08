@@ -27,9 +27,6 @@ import {
   FEEDBACK_DURATION,
   TRANSITION_DURATION,
   BONUS_INFO_DURATION,
-  ACCURACY_CHECK_BLOCKS,
-  ACCURACY_THRESHOLD,
-  PLAYER_ACCURACY_THRESHOLD,
   isMixedCondition,
   hasSocialGuessing,
   GROUP_NAMES,
@@ -37,6 +34,8 @@ import {
 import { reshuffleGroups } from "./reshuffling";
 import { scoreSelectionStage } from "./scoring";
 import { applyPartialPay } from "./compensation";
+import { classifyIdle, isLateClick, updateIdleRounds } from "./idle";
+import { accuracyCheckBlocks, evaluateGroupAccuracy, playerAccuracyOverBlocks } from "./accuracy";
 
 Empirica.onGameStart(({ game }) => {
   console.log(`Game ${game.id} started`);
@@ -411,9 +410,11 @@ Empirica.onStageEnded(({ stage }) => {
       // Check if player clicked a tangram (only relevant for listeners)
       const clickedTangram = player.round.get("clicked");
       if (
-        role === "listener" &&
-        clickedTangram &&
-        player.round.get("clicked_at_deadline") === false
+        isLateClick({
+          role,
+          clicked: clickedTangram,
+          clickedAtDeadline: player.round.get("clicked_at_deadline"),
+        })
       ) {
         // Arrived after the Selection deadline: unscored, but not idle.
         player.round.set("late_click", true);
@@ -431,31 +432,22 @@ Empirica.onStageEnded(({ stage }) => {
       const speakerSentMessage =
         groupSpeaker && chat.some((msg) => msg.sender?.id === groupSpeaker.id);
 
-      // Determine if player was idle this round
-      let wasIdle = false;
-      if (role === "speaker") {
-        // Speakers are idle if they didn't send any message
-        wasIdle = !sentMessage;
-      } else {
-        // Listeners are idle ONLY if speaker sent a message but listener didn't respond
-        // If speaker didn't send a message, listener couldn't act - not their fault
-        if (!speakerSentMessage) {
-          // Speaker was idle, don't penalize listeners
-          wasIdle = false;
-        } else {
-          // Speaker sent a message, listener should have clicked
-          wasIdle = !clickedTangram;
-        }
-      }
+      // Idle this round? (see idle.js for the rule)
+      const wasIdle = classifyIdle({
+        role,
+        sentMessage,
+        clicked: clickedTangram,
+        speakerSentMessage,
+      });
 
       if (wasIdle) {
-        const idleRounds = (player.get("idle_rounds") || 0) + 1;
+        const { idleRounds, remove } = updateIdleRounds(player.get("idle_rounds"), true);
         player.set("idle_rounds", idleRounds);
         console.log(
           `Player ${player.id} (${role}) idle round ${idleRounds}/${MAX_IDLE_ROUNDS}`,
         );
 
-        if (idleRounds >= MAX_IDLE_ROUNDS) {
+        if (remove) {
           const wasSpeak = role === "speaker";
           console.log(
             `Player ${player.id} (${role}) removed after ${MAX_IDLE_ROUNDS} idle rounds`,
@@ -651,12 +643,8 @@ function checkPhase1AccuracyThreshold(game) {
   const players = game.players;
   const activeGroups = game.get("active_groups") || GROUP_NAMES;
 
-  // Determine which blocks to check (last ACCURACY_CHECK_BLOCKS of Phase 1)
-  const startBlock = Math.max(0, PHASE_1_BLOCKS - ACCURACY_CHECK_BLOCKS);
-  const blocksToCheck = [];
-  for (let i = startBlock; i < PHASE_1_BLOCKS; i++) {
-    blocksToCheck.push(i);
-  }
+  // Last ACCURACY_CHECK_BLOCKS blocks of Phase 1 (see accuracy.js)
+  const blocksToCheck = accuracyCheckBlocks();
 
   const groupResults = {};
   const viableGroups = [];
@@ -671,37 +659,15 @@ function checkPhase1AccuracyThreshold(game) {
       return;
     }
 
-    // Calculate accuracy for each player in the checked blocks
-    const playerAccuracies = groupPlayers.map((player) => {
-      const blockAccuracy = player.get("block_accuracy") || {};
-      let totalCorrect = 0;
-      let totalTrials = 0;
+    // Listener accuracy per player over the checked blocks (see accuracy.js)
+    const playerAccuracies = groupPlayers.map((player) => ({
+      playerId: player.id,
+      playerName: player.get("original_name"),
+      ...playerAccuracyOverBlocks(player.get("block_accuracy") || {}, blocksToCheck),
+    }));
 
-      blocksToCheck.forEach((blockNum) => {
-        const blockData = blockAccuracy[blockNum];
-        if (blockData) {
-          totalCorrect += blockData.correct;
-          totalTrials += blockData.total;
-        }
-      });
-
-      const accuracy = totalTrials > 0 ? totalCorrect / totalTrials : 0;
-      return {
-        playerId: player.id,
-        playerName: player.get("original_name"),
-        accuracy,
-        meetsThreshold: accuracy >= ACCURACY_THRESHOLD,
-        totalCorrect,
-        totalTrials,
-      };
-    });
-
-    // Count players meeting the threshold
-    const playersMeetingThreshold = playerAccuracies.filter(
-      (p) => p.meetsThreshold,
-    ).length;
-    const proportionMeeting = playersMeetingThreshold / groupPlayers.length;
-    const groupMeetsThreshold = proportionMeeting >= PLAYER_ACCURACY_THRESHOLD;
+    const { playersMeetingThreshold, proportionMeeting, groupMeetsThreshold } =
+      evaluateGroupAccuracy(playerAccuracies.map((p) => p.accuracy));
 
     groupResults[groupName] = {
       players: playerAccuracies,
