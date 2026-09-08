@@ -89,7 +89,13 @@ export const TREATMENTS = {
   refer_mixed: 'Refer Mixed (9 players)',
   social_mixed: 'Social Mixed (9 players)',
   social_first: 'Social First (9 players)',
+  // Tangram set 1 variants (set 0 is the default for the names above)
+  refer_separated_set1: 'Refer Separated (9 players, tangram set 1)',
+  refer_mixed_set1: 'Refer Mixed (9 players, tangram set 1)',
+  social_mixed_set1: 'Social Mixed (9 players, tangram set 1)',
+  social_first_set1: 'Social First (9 players, tangram set 1)',
 };
+export type TreatmentKey = keyof typeof TREATMENTS;
 
 // Group names
 export const GROUP_NAMES = ['A', 'B', 'C'];

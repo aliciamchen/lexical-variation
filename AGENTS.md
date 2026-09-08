@@ -16,7 +16,7 @@ This is a multiplayer reference game built with Empirica for studying lexical va
 ## Sources of truth
 
 - Game configuration (player counts, blocks, timing, scoring) is `experiment/shared/constants.js`; `experiment/tests/helpers/constants.ts` must mirror it.
-- Game logic is `experiment/server/src/callbacks.js`; scoring and reshuffling are importable modules (`scoring.js`, `reshuffling.js`) with vitest unit tests beside them. Treatments are in `experiment/.empirica/treatments.yaml`.
+- Game logic is `experiment/server/src/callbacks.js`; scoring, reshuffling, compensation, idle classification, the Phase 1 accuracy screen, and tangram-set assignment are importable modules (`scoring.js`, `reshuffling.js`, `compensation.js`, `idle.js`, `accuracy.js`, `tangrams.js`) with vitest unit tests beside them. Treatments are in `experiment/.empirica/treatments.yaml`: two per condition, one per tangram set, so sets are counterbalanced by alternating treatments across sessions.
 - `analysis/config.R` defines dataset paths, palettes, and the ggplot theme; every notebook sources it, and all ggplots use its scales and theme. `analysis/plot_style.py` is the Python counterpart.
 - `paper/main.tex` describes the design and analysis plan. Statistics reach it only through `\newcommand` macros written by the notebooks to `paper/stats/*.tex`; never hardcode a computed value in the manuscript.
 - Local, gitignored audit notes are in `reviews/` (dated files; the July 2026 full audit and the September 2026 manuscript-alignment check are the current ones). They record verified-correct behavior and open findings; check them before re-investigating game logic or the analysis joins.

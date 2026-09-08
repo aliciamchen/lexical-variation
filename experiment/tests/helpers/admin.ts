@@ -1,5 +1,5 @@
 import { Page } from '@playwright/test';
-import { Condition, TREATMENTS } from './constants';
+import { Condition, TREATMENTS, TreatmentKey } from './constants';
 
 /**
  * Wait for the admin page to fully load by checking for known UI elements.
@@ -72,7 +72,7 @@ async function stopRunningBatches(page: Page): Promise<void> {
  *
  * Includes retry logic for server connectivity and proper admin UI wait.
  */
-export async function createBatch(page: Page, condition: Condition): Promise<void> {
+export async function createBatch(page: Page, condition: TreatmentKey): Promise<void> {
   // Navigate to admin with retry for server connectivity
   for (let attempt = 0; attempt < 3; attempt++) {
     try {

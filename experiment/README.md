@@ -53,7 +53,7 @@ empirica serve empirica.tar.zst
 1. **Verify the server is running**: SSH in and check the `empirica` process is alive
 2. **Open the admin panel**: `https://$EMPIRICA_SERVER/admin`
 3. **Open Sentry**: `https://$SENTRY_ORG.sentry.io/` (monitors client errors, replays, performance)
-4. **Create a batch**: click "New Batch", select the treatment (condition), use default lobby config
+4. **Create a batch**: click "New Batch", select the treatment, use default lobby config. There are two treatments per condition, one for each tangram set (the names without a suffix use set 0; the "tangram set 1" variants use set 1). Alternate the two sets across sessions within each condition so that the sets are counterbalanced (10 games per set per condition in the full sample)
 5. **Start the batch**: click the play button
 6. **Share the player URL**: `https://$EMPIRICA_SERVER/` (participants arrive via Prolific)
 7. **Monitor**: watch the admin panel for player arrivals and game progress

@@ -10,24 +10,57 @@ factors:
         - value: refer_mixed
         - value: social_mixed
         - value: social_first
+    - name: tangramSet
+      desc: which of the two target tangram sets the game uses (counterbalance across games within each condition)
+      values:
+        - value: 0
+        - value: 1
 treatments:
     - name: Refer Separated (9 players)
-      desc: Players stay in original groups throughout Phase 2
+      desc: Players stay in original groups throughout Phase 2 (tangram set 0)
       factors:
         playerCount: 9
         condition: refer_separated
+        tangramSet: 0
     - name: Refer Mixed (9 players)
-      desc: Groups reshuffled with masked identities in Phase 2
+      desc: Groups reshuffled with masked identities in Phase 2 (tangram set 0)
       factors:
         playerCount: 9
         condition: refer_mixed
+        tangramSet: 0
     - name: Social Mixed (9 players)
-      desc: Groups reshuffled with social guessing in Phase 2
+      desc: Groups reshuffled with social guessing in Phase 2 (tangram set 0)
       factors:
         playerCount: 9
         condition: social_mixed
+        tangramSet: 0
     - name: Social First (9 players)
-      desc: Told about social identification before Phase 1, social guessing in Phase 2
+      desc: Told about social identification before Phase 1, social guessing in Phase 2 (tangram set 0)
       factors:
         playerCount: 9
         condition: social_first
+        tangramSet: 0
+    - name: Refer Separated (9 players, tangram set 1)
+      desc: Players stay in original groups throughout Phase 2 (tangram set 1)
+      factors:
+        playerCount: 9
+        condition: refer_separated
+        tangramSet: 1
+    - name: Refer Mixed (9 players, tangram set 1)
+      desc: Groups reshuffled with masked identities in Phase 2 (tangram set 1)
+      factors:
+        playerCount: 9
+        condition: refer_mixed
+        tangramSet: 1
+    - name: Social Mixed (9 players, tangram set 1)
+      desc: Groups reshuffled with social guessing in Phase 2 (tangram set 1)
+      factors:
+        playerCount: 9
+        condition: social_mixed
+        tangramSet: 1
+    - name: Social First (9 players, tangram set 1)
+      desc: Told about social identification before Phase 1, social guessing in Phase 2 (tangram set 1)
+      factors:
+        playerCount: 9
+        condition: social_first
+        tangramSet: 1

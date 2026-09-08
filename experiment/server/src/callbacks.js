@@ -34,6 +34,7 @@ import {
 import { reshuffleGroups } from "./reshuffling";
 import { scoreSelectionStage } from "./scoring";
 import { applyPartialPay } from "./compensation";
+import { resolveTangramSet } from "./tangrams";
 import { classifyIdle, isLateClick, updateIdleRounds } from "./idle";
 import { accuracyCheckBlocks, evaluateGroupAccuracy, playerAccuracyOverBlocks } from "./accuracy";
 
@@ -49,10 +50,10 @@ Empirica.onGameStart(({ game }) => {
     `Game condition: ${condition}, Treatment: ${JSON.stringify(treatment)}`,
   );
 
-  // Randomly assign tangram set (two sets with Ji et al. 2022 high-SND tangrams)
-  // TODO: Restore randomization for full data collection: Math.random() < 0.5 ? 0 : 1
-  // Hardcoded to set 1 during pilot to reduce variability while debugging
-  const tangram_set = 0;
+  // Tangram set (two sets of Ji et al. 2022 high-SND tangrams) is a treatment
+  // factor chosen when the batch is created, so sets are counterbalanced
+  // exactly across games within each condition. Defaults to set 0.
+  const tangram_set = resolveTangramSet(treatment);
   const context = tangram_sets[tangram_set];
   console.log(`Game assigned to tangram set: ${tangram_set}`);
   game.set("tangram_set", tangram_set);

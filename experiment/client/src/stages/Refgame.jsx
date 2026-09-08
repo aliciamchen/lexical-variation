@@ -452,6 +452,8 @@ export function Refgame(props) {
   return (
     <div
       className="task"
+      data-tangram-set={game.get("tangram_set")}
+      data-target={target}
       data-target-index={targetIndex}
       data-role={player.round.get("role")}
       data-current-group={playerGroup}
