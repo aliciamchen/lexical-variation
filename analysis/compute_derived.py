@@ -37,13 +37,22 @@ def compute_adjacent_similarities(
     utterances: pd.DataFrame, embeddings: np.ndarray, model: SentenceTransformer
 ) -> pd.DataFrame:
     """
-    For each group x tangram, compute cosine similarity between successive
-    descriptions across blocks (regardless of which player spoke).
-    This measures cross-speaker convention convergence within a group.
+    For each ORIGINAL group x tangram, compute cosine similarity between
+    successive descriptions across blocks within a phase, regardless of which
+    member spoke. In Phase 1 (and refer_separated) this is cross-speaker
+    convention convergence within the conversing group. In Phase 2 of the mixed
+    conditions original-group members no longer converse with one another, so
+    there it measures retention of the original group's convention, not
+    adjacency within a conversation.
+
+    Ordering within a group is by block, then trial, then player id, so ties
+    (two original-group members describing the same tangram in the same block,
+    possible after a speaker reassignment) are resolved deterministically.
     """
     df = utterances.copy()
     df["embedding_idx"] = range(len(df))
-    df = df.sort_values(["gameId", "originalGroup", "target", "phaseNum", "blockNum"]).copy()
+    order_cols = [c for c in ["gameId", "originalGroup", "target", "phaseNum", "blockNum", "trialNum", "playerId"] if c in df.columns]
+    df = df.sort_values(order_cols, kind="stable").copy()
 
     # Shift to get previous embedding index within each (game, group, target, phase)
     df["prev_embedding_idx"] = df.groupby(
@@ -79,6 +88,10 @@ def compute_pairwise_similarities(
 
     rows = []
     for (game, target), group_data in df.groupby(["gameId", "target"]):
+        # Each speaker's most recent description in the window. Sort by block
+        # explicitly: the filtered utterance file is not in block order, so
+        # taking the last row by file position picked an earlier block.
+        group_data = group_data.sort_values("blockNum", kind="stable")
         speakers = group_data["playerId"].unique()
 
         if len(speakers) < 2:
@@ -198,6 +211,7 @@ def compute_first_phrase_pairwise(
 
     rows = []
     for (game, target), group_data in df.groupby(["gameId", "target"]):
+        group_data = group_data.sort_values("blockNum", kind="stable")  # latest by block, not file order
         speakers = group_data["playerId"].unique()
         if len(speakers) < 2:
             continue
@@ -266,8 +280,16 @@ def compute_block_pairwise(
                     up_to_block = target_data[target_data["blockNum"] <= block]
                     latest = up_to_block.sort_values("blockNum").groupby("playerId").last()
 
+                    # Preregistered start rule: begin once at least two
+                    # participants per original group have described this
+                    # tangram, so every group contributes within-group pairs.
+                    # (Block 0 has one speaker per group and is skipped.)
                     if len(latest) < 2:
                         continue
+                    if "originalGroup" in latest.columns:
+                        per_group = latest.groupby("originalGroup").size()
+                        if (per_group < 2).any():
+                            continue
 
                     players = latest.index.tolist()
                     for s1, s2 in combinations(players, 2):
@@ -396,19 +418,25 @@ def compute_lexical_uniqueness(
     """
     Compute lexical uniqueness per utterance: proportion of content words
     NOT appearing in any other group's descriptions for the same tangram
-    across all games.
+    across all games, within the same phase.
+
+    The reference vocabulary is restricted to the utterance's own phase so
+    that labels other groups borrow in Phase 2 (mixed conditions) cannot
+    retroactively make a Phase 1 word non-unique: Phase 1 utterances are
+    compared against other groups' Phase 1 descriptions, Phase 2 against
+    Phase 2.
 
     Uses the same tokenization as compute_description_properties().
     """
-    # Build word sets per (gameId, originalGroup, target) across all games
-    group_words: dict[tuple[str, str, str], set[str]] = {}
-    for (game_id, grp, target), grp_df in utterances.groupby(
-        ["gameId", "originalGroup", "target"]
+    # Build word sets per (gameId, originalGroup, target, phaseNum) across all games
+    group_words: dict[tuple[str, str, str, int], set[str]] = {}
+    for (game_id, grp, target, phase), grp_df in utterances.groupby(
+        ["gameId", "originalGroup", "target", "phaseNum"]
     ):
         all_words: set[str] = set()
         for text in grp_df["utterance"]:
             all_words.update(extract_content_word_tokens(text))
-        group_words[(game_id, grp, target)] = all_words
+        group_words[(game_id, grp, target, int(phase))] = all_words
 
     rows = []
     for _, row in utterances.iterrows():
@@ -417,11 +445,14 @@ def compute_lexical_uniqueness(
             rows.append({**row, "uniqueness": float("nan")})
             continue
 
-        # Collect words from all other groups (across all games) for the same tangram
+        # Words from all other groups (across all games) for the same tangram
+        # in the same phase
         other_words: set[str] = set()
-        for (g_id, grp, tgt), words in group_words.items():
-            if tgt == row["target"] and not (
-                g_id == row["gameId"] and grp == row["originalGroup"]
+        for (g_id, grp, tgt, phase), words in group_words.items():
+            if (
+                tgt == row["target"]
+                and phase == int(row["phaseNum"])
+                and not (g_id == row["gameId"] and grp == row["originalGroup"])
             ):
                 other_words.update(words)
 
@@ -562,9 +593,14 @@ def compute_social_guess_retention(
     games: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Join social guesses to speaker term retention via trials to test whether
-    higher speaker retention predicts better social guessing accuracy.
-    Only social_mixed games have social guess data.
+    Join social guesses to speaker term retention to test whether higher
+    speaker retention predicts better social guessing accuracy. Only the
+    social conditions have social guess data, and only in Phase 2.
+
+    Preprocessing attributes each guess to its speaker (speakerId, via the
+    round and current group), so that attribution is used directly. Term
+    retention is joined on the Phase 2 rows only: blockNum restarts at 0 in
+    each phase, so joining without the phase filter matched Phase 1 rows too.
     """
     if social_guesses.empty or term_retention.empty or trials.empty:
         return pd.DataFrame()
@@ -573,42 +609,44 @@ def compute_social_guess_retention(
 
     sg = social_guesses.copy()
     tr = trials.copy()
-
-    # Listener trials (the guesser is a listener) — get roundId, currentGroup
-    listener_trials = tr[tr["role"] == "listener"][
-        ["gameId", "playerId", "blockNum", "target", "roundId", "currentGroup"]
-    ].copy()
-    listener_trials["blockNum"] = listener_trials["blockNum"].astype(int)
     sg["blockNum"] = sg["blockNum"].astype(int)
+    if "phaseNum" in sg.columns:
+        sg = sg[sg["phaseNum"].astype(int) == 2]
 
-    # Step 1: link guesser to their listener trial → roundId, currentGroup
-    merged = sg.merge(
-        listener_trials,
-        on=["gameId", "playerId", "blockNum", "target"],
-        how="inner",
-    )
+    if "speakerId" in sg.columns and sg["speakerId"].notna().any():
+        merged = sg.copy()
+    else:
+        # Legacy exports without speaker attribution: recover the speaker via
+        # the guesser's listener trial (roundId, currentGroup).
+        sg = sg.drop(columns=[c for c in ("roundId", "currentGroup", "speakerId") if c in sg.columns])
+        listener_trials = tr[tr["role"] == "listener"][
+            ["gameId", "playerId", "blockNum", "target", "roundId", "currentGroup"]
+        ].copy()
+        listener_trials["blockNum"] = listener_trials["blockNum"].astype(int)
+        merged = sg.merge(
+            listener_trials, on=["gameId", "playerId", "blockNum", "target"], how="inner"
+        )
+        speaker_trials = tr[tr["role"] == "speaker"][
+            ["gameId", "roundId", "currentGroup", "playerId"]
+        ].rename(columns={"playerId": "speakerId"})
+        merged = merged.merge(
+            speaker_trials, on=["gameId", "roundId", "currentGroup"], how="inner"
+        )
 
-    # Step 2: find the speaker for that (gameId, roundId, currentGroup)
-    speaker_trials = tr[tr["role"] == "speaker"][
-        ["gameId", "roundId", "currentGroup", "playerId", "originalGroup"]
-    ].rename(columns={"playerId": "speakerId", "originalGroup": "speakerOriginalGroup"})
+    # The speaker's original group is fixed for the whole game
+    player_group = tr.drop_duplicates("playerId").set_index("playerId")["originalGroup"]
+    merged["speakerOriginalGroup"] = merged["speakerId"].map(player_group)
 
-    merged = merged.merge(
-        speaker_trials,
-        on=["gameId", "roundId", "currentGroup"],
-        how="inner",
-    )
-
-    # Step 3: join speaker's term retention
+    # Speaker's Phase 2 term retention for this tangram and block
     tr_data = term_retention.copy()
     tr_data["blockNum"] = tr_data["blockNum"].astype(int)
+    if "phaseNum" in tr_data.columns:
+        tr_data = tr_data[tr_data["phaseNum"].astype(int) == 2]
     speaker_ret = tr_data[["gameId", "playerId", "target", "blockNum", "retention"]].rename(
         columns={"playerId": "speakerId", "retention": "speakerRetention"}
     )
     merged = merged.merge(
-        speaker_ret,
-        on=["gameId", "speakerId", "target", "blockNum"],
-        how="left",
+        speaker_ret, on=["gameId", "speakerId", "target", "blockNum"], how="left"
     )
 
     # speakerWasSameGroup: was the speaker from the same original group as the guesser?

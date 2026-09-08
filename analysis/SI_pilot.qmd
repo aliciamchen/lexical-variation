@@ -751,9 +751,12 @@ conditions only). Data exists only in Phase 2; x-axis matches the other
 panels. Dashed line marks chance (50%).
 
 **Panel (d) Convention stability:** Cosine similarity between successive
-descriptions of the same tangram by the same speaker, across both phases.
-Higher values = more stable conventions. Thin lines show per-group
-trajectories.
+descriptions of the same tangram within the speaker's original group, across
+speakers, across both phases. In Phase 2 of the mixed conditions the members of
+an original group no longer converse with one another, so there this measures
+retention of the original group's convention rather than similarity within a
+conversation. Higher values = more stable conventions. Thin lines show
+per-group trajectories.
 
 ```{r si-prep-secondary-data}
 # --- Data prep ---

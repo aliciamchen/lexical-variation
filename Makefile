@@ -49,7 +49,7 @@ process-no-filter: ## Run pipeline skipping filter (no Vertex AI needed)
 	uv run python analysis/process_data.py --skip-filter
 
 test: ## Validate processed data against the integrity suite
-	uv run pytest analysis/test_data_integrity.py -q
+	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py -q
 
 # ── LLM simulation ─────────────────────────────────────────
 
