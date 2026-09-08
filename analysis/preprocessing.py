@@ -189,8 +189,21 @@ def build_trials(
         "roundId",
     ]
 
-    # Listener timeout: role is listener but no tangram was clicked
-    trials["timeout"] = (trials["role"] == "listener") & trials["clicked"].isna()
+    # Late clicks: a selection that reached the server after the Selection
+    # deadline. The server does not score it (clickedCorrect stays null and the
+    # round earns no points) but no longer counts the round as idle. Exports
+    # from before September 2026 do not have these attributes.
+    if "late_click" in pr.columns:
+        trials["lateClick"] = pr["late_click"].fillna(False).astype(bool).values
+    else:
+        trials["lateClick"] = False
+    trials["clickedAt"] = pr["clicked_at"].values if "clicked_at" in pr.columns else pd.NA
+
+    # Listener timeout: no scored selection at the deadline (no click, or a
+    # click that arrived late)
+    trials["timeout"] = (trials["role"] == "listener") & (
+        trials["clicked"].isna() | trials["lateClick"]
+    )
 
     # Merge trialNum from round and tangramSet from game
     round_info = rd[["id", "trial_num"]].rename(

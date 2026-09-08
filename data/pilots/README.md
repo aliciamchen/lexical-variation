@@ -59,7 +59,9 @@ One row per player per reference game round.
 | `clickedCorrect` | Whether the listener clicked correctly (NaN for speakers) |
 | `roundScore` | Points awarded this round |
 | `roundId` | Unique round identifier |
-| `timeout` | Whether the round timed out before the listener clicked |
+| `timeout` | Whether the listener had no scored selection at the deadline (no click, or a click that arrived late) |
+| `lateClick` | Whether the listener's selection reached the server after the Selection deadline (unscored, but not counted as idle). Always `False` in the pilot, which predates this flag |
+| `clickedAt` | Client-side timestamp (ms since epoch) of the listener's click; empty in the pilot |
 | `trialNum` | Sequential trial number within the game |
 | `tangramSet` | Which tangram set was used |
 | `repNum` | How many times this speaker has described this target within the current phase (1st, 2nd, etc.). Only present for speakers. |

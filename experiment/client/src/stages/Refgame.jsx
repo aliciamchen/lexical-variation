@@ -53,6 +53,7 @@ export function Refgame(props) {
     ) {
       if (localTangramSelection) {
         player.round.set("clicked", localTangramSelection);
+        player.round.set("clicked_at", Date.now());
       }
       if (localSocialGuess) {
         player.round.set("social_guess", localSocialGuess);
@@ -324,6 +325,7 @@ export function Refgame(props) {
   const handleSimultaneousSubmit = () => {
     if (!localTangramSelection || !localSocialGuess) return;
     player.round.set("clicked", localTangramSelection);
+    player.round.set("clicked_at", Date.now());
     player.round.set("social_guess", localSocialGuess);
   };
 
@@ -554,7 +556,9 @@ export function Refgame(props) {
           </h3>
         )}
 
-        {showIdleWarning && stage.get("name") == "Feedback" && (
+        {/* Idle rounds are counted at the end of Feedback, so the warning is
+            shown in the following Selection stage as well as in Feedback. */}
+        {showIdleWarning && (
           <p
             style={{
               marginTop: 12,

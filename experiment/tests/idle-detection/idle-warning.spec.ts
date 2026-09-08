@@ -113,23 +113,20 @@ test.describe.serial('Idle Detection: Idle Warning Display (TEST_PLAN 3.9)', () 
     );
     expect(feedbackReached).toBe(true);
 
-    // Check for warning text NOW, while still in Feedback stage.
+    // Idle rounds are counted at the END of the Feedback stage (so a selection
+    // that arrives after the Selection deadline is not treated as idleness), so
+    // the warning appears once the next round's Selection stage begins.
     // Refgame.jsx shows "Warning: You have been inactive for N round(s)..."
     // when idle_rounds >= 1.
-    const warningText = 'Warning: You have been inactive';
-    const bodyContent = await idlePage.textContent('body');
-    expect(
-      bodyContent,
-      'Expected idle warning text to be visible on the idle player page during Feedback',
-    ).toContain(warningText);
+    const nextSelection = await waitForStage(
+      idlePage,
+      'Selection',
+      (FEEDBACK_DURATION + 15) * 1000,
+    );
+    expect(nextSelection).toBe(true);
 
-    // Now wait for Feedback to end so the game can proceed
-    const startWait = Date.now();
-    while (Date.now() - startWait < (FEEDBACK_DURATION + 10) * 1000) {
-      const info = await getPlayerInfo(idlePage);
-      if (!info || info.stageName !== 'Feedback') break;
-      await idlePage.waitForTimeout(1000);
-    }
+    const warningText = 'Warning: You have been inactive';
+    await expect(idlePage.locator('body')).toContainText(warningText, { timeout: 10_000 });
   });
 
   test('idle player is still in the game after warning', async () => {

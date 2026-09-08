@@ -79,6 +79,7 @@ export function Tangram(props) {
         }
 
         player.round.set("clicked", tangram);
+        player.round.set("clicked_at", Date.now()); // client clock; for auditing late arrivals
         // Auto-submit is handled by Refgame.jsx on a per-player basis
         // to avoid race conditions where submit reaches the server
         // before the clicked state has synced.

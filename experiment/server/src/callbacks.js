@@ -380,14 +380,18 @@ Empirica.onStageEnded(({ stage }) => {
   }
 
   // ============ IDLE PLAYER DETECTION ============
-  // Only check idleness during Selection stage (not Feedback or transitions)
   // Speakers are idle if they don't send any chat message
   // Listeners are idle if they don't send any chat message AND don't click a tangram
   //
-  // Defined here but CALLED AFTER SCORING (bottom of this callback): idle
-  // removal can disband a group or trigger a mid-block reshuffle, which
-  // mutates is_active / current_group / active_groups. Scoring must run
-  // against the groups as the trial was actually played.
+  // Defined here but CALLED AT THE END OF THE FEEDBACK STAGE (bottom of this
+  // callback), not when the Selection timer expires. Two reasons: (1) idle
+  // removal can disband a group or trigger a reshuffle, which mutates
+  // is_active / current_group / active_groups, and scoring must run against
+  // the groups as the trial was actually played; (2) a selection sent just
+  // before the deadline can reach the server after the Selection stage has
+  // ended. It earns no points (scoring is final at the deadline), but by the
+  // end of Feedback it has arrived, so it must not count as an idle round.
+  // Such late arrivals are flagged on the player's round as late_click.
   const runIdleDetection = () => {
     const activeGroups = game.get("active_groups") || GROUP_NAMES;
 
@@ -396,13 +400,25 @@ Empirica.onStageEnded(({ stage }) => {
 
       const playerGroup = player.get("current_group");
       const role = player.round.get("role");
-      const chat = stage.get(`${playerGroup}_chat`) || [];
+      // The group chat lives on the Selection stage; scoring copies it onto
+      // every group member's round at the deadline, which is what we read here
+      // (this runs at the end of the Feedback stage).
+      const chat = player.round.get("chat") || [];
 
       // Check if player sent any message
       const sentMessage = chat.some((msg) => msg.sender?.id === player.id);
 
       // Check if player clicked a tangram (only relevant for listeners)
       const clickedTangram = player.round.get("clicked");
+      if (
+        role === "listener" &&
+        clickedTangram &&
+        player.round.get("clicked_at_deadline") === false
+      ) {
+        // Arrived after the Selection deadline: unscored, but not idle.
+        player.round.set("late_click", true);
+        console.log(`Player ${player.id} late click (after deadline) in round ${player.round.get("target_num")}`);
+      }
 
       // Check if the speaker in this group sent any message
       // (listeners shouldn't be marked idle if speaker didn't send anything - they couldn't act)
@@ -487,12 +503,20 @@ Empirica.onStageEnded(({ stage }) => {
   if (stage.get("name") === "Selection" && !stage.get("scored")) {
     stage.set("scored", true);
     scoreSelectionStage(game, stage);
+    // Snapshot which listeners had a selection when the deadline passed, so
+    // idle detection (end of Feedback) can tell a late arrival from no click.
+    players.forEach((player) => {
+      if (!player.get("is_active") || player.round.get("role") !== "listener") return;
+      player.round.set("clicked_at_deadline", Boolean(player.round.get("clicked")));
+    });
   }
 
-  // Idle detection runs last (see comment at its definition above): removals
-  // and any resulting disband/reshuffle must only affect FUTURE rounds, never
-  // the scoring of the round that just ended.
-  if (stageName === "Selection") {
+  // Idle detection runs at the end of the Feedback stage (see the comment at
+  // its definition): removals and any resulting disband/reshuffle must only
+  // affect FUTURE rounds, and selections that arrive after the deadline must
+  // not be counted as idleness.
+  if (stageName === "Feedback" && !stage.get("idle_checked")) {
+    stage.set("idle_checked", true);
     runIdleDetection();
   }
 });

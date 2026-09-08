@@ -6,7 +6,7 @@
 - **callbacks.js**: Game logic via Empirica callbacks:
   - `onGameStart`: Player/group assignment, round/stage creation
   - `onRoundStart`: Role assignment, group reshuffling (mixed conditions), identity masking
-  - `onStageEnded`: Scoring, idle player detection, group viability checks
+  - `onStageEnded`: Scoring at the end of Selection (snapshotting which listeners had clicked); idle detection, late-click flagging, and group viability checks at the end of Feedback
 
 ## Client (`experiment/client/src/`)
 
