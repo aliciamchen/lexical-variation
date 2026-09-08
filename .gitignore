@@ -20,7 +20,7 @@ lexical-variation*/
 
 *.tar.zst
 .zed
-review*.md
+reviews/
 analysis/outputs
 raw
 paper

@@ -19,13 +19,13 @@ This is a multiplayer reference game built with Empirica for studying lexical va
 - Game logic is `experiment/server/src/callbacks.js`; scoring and reshuffling are importable modules (`scoring.js`, `reshuffling.js`) with vitest unit tests beside them. Treatments are in `experiment/.empirica/treatments.yaml`.
 - `analysis/config.R` defines dataset paths, palettes, and the ggplot theme; every notebook sources it, and all ggplots use its scales and theme. `analysis/plot_style.py` is the Python counterpart.
 - `paper/main.tex` describes the design and analysis plan. Statistics reach it only through `\newcommand` macros written by the notebooks to `paper/stats/*.tex`; never hardcode a computed value in the manuscript.
-- The July 2026 audit notes (`review-full-audit.md`, local only) record verified-correct behavior and open findings; check them before re-investigating game logic or the analysis joins.
+- Local, gitignored audit notes are in `reviews/` (dated files; the July 2026 full audit and the September 2026 manuscript-alignment check are the current ones). They record verified-correct behavior and open findings; check them before re-investigating game logic or the analysis joins.
 
 ## Repository boundaries
 
 - `paper/` is gitignored and synced with Overleaf through Dropbox. Read and edit it locally when asked to work on the manuscript, and run `bash figures/sync_figures.sh` to copy SI figures into `paper/figures/`.
 - `experiment/data/` holds raw Empirica export zips with identifiable participant data and is gitignored. `data/pilot_runs/` (per-run extracts) is gitignored too. Only the anonymized outputs in `data/pilots/` are committed; `analysis/extract_run.py` strips the sensitive columns and a pre-commit hook blocks anything that looks like a participant identifier.
-- `review*.md` at the root are local design notes and match a gitignore pattern; do not reference them from public docs.
+- `reviews/` holds local audit and design notes and is gitignored; do not reference it from public docs.
 - `.env` holds the production hostname, Sentry DSN, and organization. Never read or print it; `.env.example` documents the variables.
 
 ## Workflow and commands
