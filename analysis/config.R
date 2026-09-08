@@ -132,6 +132,27 @@ report_effect_sizes <- function(model) {
   invisible(std_params)
 }
 
+# Cohen's d between two conditions on game-level estimates (the unit of the
+# weighted regressions for H1, H2, and H3a), with a pooled SD and 95% CI.
+# This is the unadjusted between-condition difference that the power analysis
+# was based on; the WLS contrast remains the inferential test. Returns NA when
+# either condition has fewer than two games (e.g. the pilot).
+cohens_d_games <- function(df, value, condition, a, b) {
+  x <- df[[value]][df[[condition]] == a]
+  y <- df[[value]][df[[condition]] == b]
+  if (length(x) < 2 || length(y) < 2) {
+    return(data.frame(contrast = paste(a, "-", b), d = NA_real_, CI_low = NA_real_, CI_high = NA_real_,
+                      note = "not estimable with fewer than two games per condition"))
+  }
+  es <- effectsize::cohens_d(x, y, pooled_sd = TRUE)
+  data.frame(contrast = paste(a, "-", b), d = es$Cohens_d, CI_low = es$CI_low, CI_high = es$CI_high, note = "")
+}
+
+# Bayes factors for non-significant planned contrasts (see bayes_factors.R):
+# "auto" computes them only when a contrast has p >= .05, "always" computes
+# them for every planned contrast, "never" skips them (fast renders).
+BAYES_FACTORS <- Sys.getenv("BAYES_FACTORS", unset = "auto")
+
 # ── Model fitting with progressive simplification ─────────
 #
 # Tries a list of model formulas in order. For each formula, catches errors

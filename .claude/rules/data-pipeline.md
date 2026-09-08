@@ -67,6 +67,8 @@ Quarto notebooks and animations are run separately (see below).
 | `group_specificity.R` | Group-specificity estimation with permutation testing (called by notebooks, caches RDS in `pilot_derived/`) |
 | `plot_style.py` | Shared Python plotting constants (imported, not run directly) |
 | `test_data_integrity.py` | Pytest validation of `data/pilots/` CSV structure |
+| `test_compute_derived.py` | Pytest unit tests for the derived-metric definitions (latest-utterance selection, trajectory start rule, lexical uniqueness) |
+| `bayes_factors.R` | brms/bridgesampling Bayes factors for non-significant planned contrasts (called from `02_primary_analysis.qmd`; `BAYES_FACTORS=auto\|always\|never`) |
 
 ## Processing new data
 
@@ -101,7 +103,7 @@ uv run python analysis/extract_run.py bonuses --run 20260225_210047      # speci
 ```bash
 uv run python analysis/compute_derived.py data/pilots/ --output analysis/pilot_derived/
 uv run python analysis/animate_umap.py --data-dir data/pilots/ --umap-dir analysis/pilot_derived/ --output-dir figures/pilot_plots/
-uv run pytest analysis/test_data_integrity.py -v
+uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py -v
 ```
 
 ## Quarto notebooks

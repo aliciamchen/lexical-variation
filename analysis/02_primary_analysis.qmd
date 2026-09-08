@@ -126,8 +126,44 @@ if (!is.null(wls_model) && n_conditions >= 4) {
   ))
   summary(contrasts, infer = c(TRUE, TRUE))
 } else {
-  cat("Skipping contrasts: need all 3 conditions.\n")
+  cat("Skipping contrasts: need all four conditions.\n")
   contrasts <- NULL
+}
+```
+
+Game-level Cohen's *d* for each contrast (unadjusted difference in Phase 2
+group-specificity between the two conditions, pooled SD; the quantity the
+power analysis was based on). Not estimable with one game per condition.
+
+```{r effect-sizes-h1-h2}
+if (!is.null(contrasts)) {
+  rbind(
+    cohens_d_games(gs_combined, "gs_phase2", "condition", "refer_separated", "refer_mixed"),
+    cohens_d_games(gs_combined, "gs_phase2", "condition", "social_mixed", "refer_mixed")
+  )
+}
+```
+
+Bayes factors for non-significant contrasts (preregistered: brms refit,
+standardized estimates, Cauchy(0, sqrt(2)/2) prior on the effect size; see
+`bayes_factors.R`). Each contrast is tested on its two conditions, keeping the
+Phase 1 covariate and the inverse-variance weights.
+
+```{r bayes-factors-h1-h2}
+if (!is.null(contrasts) && BAYES_FACTORS != "never") {
+  ct <- as.data.frame(summary(contrasts, infer = c(TRUE, TRUE)))
+  if (BAYES_FACTORS == "always" || any(ct$p.value >= 0.05)) {
+    source(here::here("analysis", "bayes_factors.R"))
+    bf_cache <- file.path(derived_dir, "bayes_factors")
+    report_bf(bf_wls_contrast(gs_combined, "gs_phase2", levels = c("refer_mixed", "refer_separated"),
+                              covariates = "gs_phase1", weights = "weight",
+                              name = "H1", cache_dir = bf_cache), "H1 refer_separated vs refer_mixed")
+    report_bf(bf_wls_contrast(gs_combined, "gs_phase2", levels = c("refer_mixed", "social_mixed"),
+                              covariates = "gs_phase1", weights = "weight",
+                              name = "H2", cache_dir = bf_cache), "H2 social_mixed vs refer_mixed")
+  } else {
+    cat("All planned contrasts significant; Bayes factors not required.\n")
+  }
 }
 ```
 
@@ -288,6 +324,19 @@ if (!exists("gs_combined")) {
       H3a_socialfirst_gt_socialmixed = c(-1, 1)  # social_first - social_mixed
     ))
     summary(contrast_h3a, infer = c(TRUE, TRUE))
+
+    print(cohens_d_games(gs_social, "gs_phase1", "condition", "social_first", "social_mixed"))
+
+    if (BAYES_FACTORS != "never") {
+      p_h3a <- as.data.frame(summary(contrast_h3a, infer = c(TRUE, TRUE)))$p.value
+      if (BAYES_FACTORS == "always" || any(p_h3a >= 0.05)) {
+        source(here::here("analysis", "bayes_factors.R"))
+        report_bf(bf_wls_contrast(gs_social, "gs_phase1", levels = c("social_mixed", "social_first"),
+                                  weights = "weight_p1", name = "H3a",
+                                  cache_dir = file.path(derived_dir, "bayes_factors")),
+                  "H3a social_first vs social_mixed")
+      }
+    }
   } else {
     cat("Insufficient data for H3a (need both social conditions).\n")
   }
@@ -569,6 +618,17 @@ if (nrow(social_guesses) > 0) {
         H4a_socialfirst_gt_socialmixed = c(-1, 1)
       ))
       summary(contrast_h4a, infer = c(TRUE, TRUE))
+
+      if (BAYES_FACTORS != "never") {
+        p_h4a <- as.data.frame(summary(contrast_h4a, infer = c(TRUE, TRUE)))$p.value
+        if (BAYES_FACTORS == "always" || any(p_h4a >= 0.05)) {
+          source(here::here("analysis", "bayes_factors.R"))
+          # Same formula that converged above; the null drops the fixed effect of condition
+          report_bf(bf_glmm_condition(social_h4, formula(m_h4a), levels = c("social_mixed", "social_first"),
+                                      name = "H4a", cache_dir = file.path(derived_dir, "bayes_factors")),
+                    "H4a social_first vs social_mixed")
+        }
+      }
     }
   } else {
     cat("Insufficient data for H4a (need both social conditions).\n")
@@ -647,6 +707,16 @@ if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 
       H4b_socialmixed_gt_socialfirst = c(1, -1)
     ))
     summary(contrast_h4b, infer = c(TRUE, TRUE))
+
+    if (BAYES_FACTORS != "never") {
+      p_h4b <- as.data.frame(summary(contrast_h4b, infer = c(TRUE, TRUE)))$p.value
+      if (BAYES_FACTORS == "always" || any(p_h4b >= 0.05)) {
+        source(here::here("analysis", "bayes_factors.R"))
+        report_bf(bf_glmm_condition(p2_listener_social, formula(m_h4b), levels = c("social_mixed", "social_first"),
+                                    name = "H4b", cache_dir = file.path(derived_dir, "bayes_factors")),
+                  "H4b social_mixed vs social_first")
+      }
+    }
   }
 } else {
   cat("Insufficient data for H4b (need both social conditions with Phase 2 listener trials).\n")

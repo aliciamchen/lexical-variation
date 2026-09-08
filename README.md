@@ -123,6 +123,8 @@ quarto render analysis/llm_simulation/SI_llm_simulation.qmd  # LLM benchmark
 
 The filter step requires Vertex AI (see [LLM simulation](#llm-simulation)) and can be skipped since the filtered data is already committed. Run `make help` to see all available targets.
 
+The `make test` target runs the data integrity suite on the processed CSVs together with unit tests for the derived-metric definitions (`analysis/test_compute_derived.py`). The primary-analysis notebook computes Bayes factors for non-significant planned contrasts with `brms`, which takes several minutes per contrast; set the environment variable `BAYES_FACTORS=never` before rendering to skip them, or `BAYES_FACTORS=always` to compute them for every contrast.
+
 ### Data processing scripts
 
 There are three scripts that should be run in order. Each reads the previous script's output:
