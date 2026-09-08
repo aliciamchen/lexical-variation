@@ -17,21 +17,13 @@ test.describe.serial('Lobby: quiz failure after 3 attempts', () => {
     await page.goto('/');
     await page.waitForTimeout(500);
 
-    // Handle Empirica built-in consent ("I AGREE") if present
-    try {
-      await page.getByRole('button', { name: /agree/i }).click({ timeout: 10_000 });
-      await page.waitForTimeout(500);
-    } catch {
-      // Consent may have already been accepted
-    }
+    // Custom consent page comes first (Empirica's built-in "I AGREE" is disabled)
+    await page.getByRole('button', { name: /consent/i }).click({ timeout: 15_000 });
 
     // Enter identifier
+    await page.getByRole('textbox').waitFor({ state: 'visible', timeout: 15_000 });
     await page.getByRole('textbox').fill('quiz_fail_player');
     await page.getByRole('button', { name: /enter/i }).click();
-    await page.waitForTimeout(200);
-
-    // Custom consent
-    await page.getByRole('button', { name: /consent/i }).click();
     await page.waitForTimeout(200);
 
     // Go through 6 intro/instruction pages

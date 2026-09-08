@@ -45,15 +45,17 @@ export class PlayerManager {
         }
       }
 
-      // Wait for Empirica UI to render (consent dialog or identifier textbox)
+      // Wait for the first screen to render: the custom consent page ("I consent")
+      // or, if consent was already given in this context, the identifier textbox.
+      // (The old loop looked for Empirica's disabled "I AGREE" button and always
+      // ran its full 15 s: about 2 minutes of dead time per 9-player spec.)
       if (success) {
-        const start = Date.now();
-        while (Date.now() - start < 15_000) {
-          const agree = page.getByRole('button', { name: /agree/i });
-          const textbox = page.getByRole('textbox');
-          if ((await agree.count()) > 0 || (await textbox.count()) > 0) break;
-          await page.waitForTimeout(500);
-        }
+        const firstScreen = page
+          .getByRole('button', { name: /consent/i })
+          .or(page.getByRole('textbox'));
+        await firstScreen.first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {
+          // completeIntro will report a clear error if the page never rendered
+        });
       }
 
       await page.waitForTimeout(300);
