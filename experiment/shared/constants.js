@@ -17,7 +17,7 @@ export const TEST_MODE =
 // | SELECTION_DURATION   | 120     | 45         | Seconds for Phase 1 selection stage  |
 // | PHASE2_SEL_DURATION  | 120     | 25         | Seconds for Phase 2 selection stage  |
 // | MAX_IDLE_ROUNDS      | 5       | 3          | Rounds before idle kick              |
-// | PHASE_1_BLOCKS       | 2       | 6          | Blocks in Phase 1                    |
+// | PHASE_1_BLOCKS       | 3       | 6          | Blocks in Phase 1                    |
 // | PHASE_2_BLOCKS       | 2       | 6          | Blocks in Phase 2                    |
 
 // ============ IDLE-TEST TIMING ============
@@ -158,7 +158,7 @@ export const BASE_PAY = 12; // dollars
 export const LOBBY_TIMEOUT_PAY = 2; // dollars for players who couldn't find a match in lobby
 
 // Expected game duration in minutes (used for proportional compensation)
-export const EXPECTED_GAME_DURATION_MIN = 45; // midpoint of 30-45 minute estimate
+export const EXPECTED_GAME_DURATION_MIN = 45; // full base pay after 45 minutes (task estimate is 45-60 min)
 
 // ============ DROPOUT HANDLING ============
 export const MAX_IDLE_ROUNDS = IDLE_TEST_TIMING ? 2 : TEST_MODE ? 5 : 3; // TEST: 5 rounds tolerance

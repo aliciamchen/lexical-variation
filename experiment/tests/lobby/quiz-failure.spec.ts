@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createBatch } from '../helpers/admin';
-import { QUIZ_FAILED_SCREEN } from '../helpers/selectors';
+import { QUIZ_FAILED_SCREEN, SORRY_SCREEN } from '../helpers/selectors';
 
 // TEST_PLAN 4.2: Player fails comprehension quiz 3 times and is shown failure screen
 test.describe.serial('Lobby: quiz failure after 3 attempts', () => {
@@ -32,8 +32,30 @@ test.describe.serial('Lobby: quiz failure after 3 attempts', () => {
       await page.waitForTimeout(100);
     }
 
-    // Now on the quiz page. Answer wrong 3 times.
+    // Now on the quiz page. Answer wrong 3 times. Between the second and third
+    // attempt the page is reloaded: the attempt count is stored on the player
+    // record, so the reload must not grant fresh attempts.
     for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt === 2) {
+        await page.reload();
+        // Same participant token: after reconnecting, the intro restarts at its
+        // first instruction page (consent and identifier are already done).
+        const consent = page.getByRole('button', { name: /consent/i });
+        const textbox = page.getByRole('textbox');
+        const next = page.getByRole('button', { name: /next/i });
+        await consent.or(textbox).or(next).first().waitFor({ state: 'visible', timeout: 20_000 });
+        if (await consent.count()) await consent.click();
+        if (await textbox.count()) {
+          await textbox.fill('quiz_fail_player');
+          await page.getByRole('button', { name: /enter/i }).click();
+        }
+        for (let j = 0; j < 8; j++) {
+          if (!(await next.isVisible().catch(() => false))) break;
+          await next.click();
+          await page.waitForTimeout(200);
+        }
+        await page.getByRole('radio', { name: /click on the target picture as fast/i }).waitFor({ state: 'visible', timeout: 15_000 });
+      }
       // Wrong answers: first choice for each question
       await page.getByRole('radio', { name: /click on the target picture as fast/i }).click();
       await page.getByRole('radio', { name: /nothing, you can rejoin/i }).click();
@@ -54,16 +76,18 @@ test.describe.serial('Lobby: quiz failure after 3 attempts', () => {
       await page.waitForTimeout(500);
     }
 
-    // After 3 failed attempts, the quiz-failed screen should be visible
-    const quizFailedScreen = page.locator(QUIZ_FAILED_SCREEN);
-    await expect(quizFailedScreen).toBeVisible({ timeout: 10_000 });
-
-    // Verify the data attributes on the quiz-failed screen
-    await expect(quizFailedScreen).toHaveAttribute('data-testid', 'quiz-failed-screen');
-    await expect(quizFailedScreen).toHaveAttribute('data-exit-reason', 'quiz_failed');
+    // After 3 failed attempts the player is marked ended ("quiz failed") and
+    // routed to the Sorry page; the Quiz component's own failure screen may show
+    // briefly first. Either must carry the quiz-failed reason and no code.
+    const sorry = page.locator(SORRY_SCREEN);
+    const failedScreen = page.locator(QUIZ_FAILED_SCREEN).or(sorry);
+    await expect(failedScreen.first()).toBeVisible({ timeout: 10_000 });
+    await expect(sorry).toBeVisible({ timeout: 15_000 });
+    await expect(sorry).toHaveAttribute('data-exit-reason', 'quiz failed');
+    await expect(sorry).toHaveAttribute('data-prolific-code', 'none');
 
     // Verify the failure message content — no code, player is asked to return the study
-    const screenText = await quizFailedScreen.textContent();
+    const screenText = await sorry.textContent();
     expect(screenText).toContain('Quiz Failed');
     expect(screenText).toContain('return this study on Prolific');
 

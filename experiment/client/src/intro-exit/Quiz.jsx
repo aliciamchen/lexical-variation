@@ -7,7 +7,9 @@ export function Quiz({ next }) {
   const game = useGame();
   const condition = game?.get("treatment")?.condition;
   const [answers, setAnswers] = useState({});
-  const [attempts, setAttempts] = useState(0);
+  // Attempts are stored on the player record (not just React state) so a page
+  // reload cannot reset the three-attempt limit.
+  const [attempts, setAttempts] = useState(player.get("quiz_attempts") || 0);
   const [failed, setFailed] = useState(
     player.get("exitReason") === "quiz failed"
   );
@@ -113,10 +115,15 @@ export function Quiz({ next }) {
     } else {
       const newAttempts = attempts + 1;
       setAttempts(newAttempts);
+      player.set("quiz_attempts", newAttempts);
 
       if (newAttempts >= MAX_ATTEMPTS) {
         setFailed(true);
         player.set("exitReason", "quiz failed");
+        // Formally exit: Empirica excludes players with `ended` set from the
+        // game's ready count and never reassigns them to another game. The
+        // participant is routed to the Sorry page (quiz-failed message).
+        player.set("ended", "quiz failed");
       } else {
         alert(
           `Some answers are incorrect. You have ${

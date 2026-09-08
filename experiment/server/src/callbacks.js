@@ -131,8 +131,7 @@ Empirica.onGameStart(({ game }) => {
 
   // ============ PHASE 1: REFERENCE GAME ============
   // Players play within their original groups
-  // Production: 6 blocks (each of 3 players speaks twice)
-  // Test mode: 2 blocks
+  // Production: 6 blocks (each of 3 players speaks twice); test mode: 3
 
   let trialNum = 0;
 
@@ -178,7 +177,7 @@ Empirica.onGameStart(({ game }) => {
   // - refer_separated: Same groups as Phase 1
   // - refer_mixed: Groups reshuffled at start of each trial, identities masked
   // - social_mixed: Same as refer_mixed + social guessing question
-  // Production: 12 blocks, Test mode: 4 blocks
+  // Production: 6 blocks (12 in total with Phase 1); test mode: 2
 
   _.times(PHASE_2_BLOCKS, (blockNum) => {
     const speakerIndex = blockNum % GROUP_SIZE; // Rotate through speakers

@@ -7,7 +7,6 @@ import { ExitSurvey } from "./intro-exit/ExitSurvey";
 import { Introduction } from "./intro-exit/Introduction";
 import { ConsentPage } from "./intro-exit/Consent.jsx";
 import { Sorry } from "./intro-exit/Sorry.jsx";
-import { Failed } from "./intro-exit/Failed.jsx";
 import { MyPlayerForm } from "./intro-exit/PlayerCreate.jsx";
 
 export default function App() {
@@ -45,8 +44,6 @@ export default function App() {
       return [Sorry];
     } else if (ended === "game ended") {
       return [ExitSurvey];
-    } else if (ended === "game terminated") {
-      return [Failed];
     } else {
       return [Sorry];
     }

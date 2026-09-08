@@ -169,11 +169,14 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
         await page.waitForTimeout(500);
       }
 
-      // Verify quiz-failed screen — no code, player is asked to return the study
-      const quizFailedScreen = page.locator(QUIZ_FAILED_SCREEN);
-      await expect(quizFailedScreen).toBeVisible({ timeout: 10_000 });
-      await expect(quizFailedScreen).toHaveAttribute('data-exit-reason', 'quiz_failed');
-      const screenText = await quizFailedScreen.textContent();
+      // Failed players are marked ended ("quiz failed") and routed to the Sorry
+      // page with no code; the Quiz component's own screen may show briefly first.
+      const sorry = page.locator(SORRY_SCREEN);
+      await expect(page.locator(QUIZ_FAILED_SCREEN).or(sorry).first()).toBeVisible({ timeout: 10_000 });
+      await expect(sorry).toBeVisible({ timeout: 15_000 });
+      await expect(sorry).toHaveAttribute('data-exit-reason', 'quiz failed');
+      await expect(sorry).toHaveAttribute('data-prolific-code', 'none');
+      const screenText = await sorry.textContent();
       expect(screenText).toContain('return this study on Prolific');
     }
   });

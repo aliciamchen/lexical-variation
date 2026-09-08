@@ -1,13 +1,10 @@
+# Only the shared "fail" lobby is offered: if nine players have not finished the
+# intro when the timer ends, the batch fails and everyone waiting is sent to the
+# Sorry page with the lobby-timeout payment. The "ignore" strategies were removed
+# because they would start a game with fewer than nine players, which the
+# group-assignment code does not support.
 lobbies:
 - name: Default shared fail
   kind: shared
   duration: 10m
   strategy: fail
-- name: Default shared ignore
-  kind: shared
-  duration: 10m
-  strategy: ignore
-- name: 10m individual kick
-  kind: individual
-  duration: 10m
-  strategy: ignore

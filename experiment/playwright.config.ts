@@ -12,7 +12,7 @@ const isTestMode = process.env.TEST_MODE !== 'false';
  * prevents batch contamination between groups.
  *
  * By default, tests run in TEST_MODE (3+2 blocks, 120s selection, 5 idle rounds).
- * Run with TEST_MODE=false for production timing (6+6 blocks, 45s selection, 2 idle rounds):
+ * Run with TEST_MODE=false for production timing (6+6 blocks, 45s/25s selection, 3 idle rounds):
  *   TEST_MODE=false npx playwright test
  *
  * | Group   | Categories                                        |

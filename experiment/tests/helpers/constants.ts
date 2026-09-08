@@ -78,7 +78,6 @@ export const QUIZ_ANSWERS = {
 // Prolific codes
 export const PROLIFIC_CODES = {
   completion: 'C2I8XDMC',
-  quizFail: 'QUIZFAIL2026',
   lobbyTimeout: 'CMZUY3MK',
   disbanded: 'CFTYDMIY',
 };
