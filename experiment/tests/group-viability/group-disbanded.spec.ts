@@ -150,7 +150,7 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
       expect(info!.exitReason).toBe('group disbanded');
 
       // Verify the prolific code is CFTYDMIY
-      expect(info!.prolificCode).toBe(PROLIFIC_CODES.disbanded);
+      expect(info!.prolificCode).toBe(PROLIFIC_CODES.partial);
 
       // Verify partial pay is greater than 0 (proportional compensation)
       const partialPay = parseFloat(info!.partialPay || '0');

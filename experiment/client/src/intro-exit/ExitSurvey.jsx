@@ -2,7 +2,7 @@ import { usePlayer, useGame } from "@empirica/core/player/classic/react";
 import React, { useState } from "react";
 import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
-import { BASE_PAY } from "../constants";
+import { BASE_PAY, PROLIFIC_CODES } from "../constants";
 
 export function ExitSurvey({ next }) {
   const labelClassName = "block text-sm font-medium text-gray-700 my-2";
@@ -184,7 +184,7 @@ export function ExitSurvey({ next }) {
           </p>
           <p className="mt-2">
             Please submit the following code on Prolific to receive your
-            payment: <strong>C2I8XDMC</strong>.
+            payment: <strong>{PROLIFIC_CODES.completion}</strong>.
           </p>
         </Alert>
         <div className="mt-8">

@@ -1,7 +1,7 @@
 import React from "react";
 import { usePlayer } from "@empirica/core/player/classic/react";
 import { Alert } from "../components/Alert";
-import { LOBBY_TIMEOUT_PAY } from "../constants";
+import { LOBBY_TIMEOUT_PAY, PROLIFIC_CODES } from "../constants";
 
 export function Sorry() {
   const player = usePlayer();
@@ -59,7 +59,7 @@ export function Sorry() {
         </p>
       </>
     );
-    compensationCode = "CMZUY3MK";
+    compensationCode = PROLIFIC_CODES.lobbyTimeout;
     compensationMessage = `$${LOBBY_TIMEOUT_PAY.toFixed(2)} for your time spent`;
   } else if (endedReason === "player timeout") {
     title = "Removed for Inactivity";
@@ -80,7 +80,7 @@ export function Sorry() {
     );
     // Prorated base pay for time spent; no bonus (see server/src/compensation.js)
     const idleBasePay = partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
-    compensationCode = "CFTYDMIY";
+    compensationCode = PROLIFIC_CODES.partial;
     compensationMessage = `$${idleBasePay} for the time you spent (base pay only, no bonus)`;
   } else if (
     endedReason === "group disbanded" ||
@@ -100,7 +100,7 @@ export function Sorry() {
         receive your payment.
       </p>
     );
-    compensationCode = "CFTYDMIY";
+    compensationCode = PROLIFIC_CODES.partial;
     compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
   } else {
     // Default / unknown reason

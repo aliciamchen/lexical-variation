@@ -94,7 +94,7 @@ test.describe.serial('Compensation: Idle Removal (TEST_PLAN 10.2)', () => {
     expect(prolificCodeAttr).toBe('CFTYDMIY');
 
     // Idle players receive prorated base pay (no bonus) with the partial-payment code
-    expect(prolificCodeAttr).toBe(PROLIFIC_CODES.disbanded);
+    expect(prolificCodeAttr).toBe(PROLIFIC_CODES.partial);
     const partialPayAttr = await sorryScreen.getAttribute('data-partial-pay');
     expect(parseFloat(partialPayAttr || '0')).toBeGreaterThan(0);
   });

@@ -52,7 +52,7 @@ IMPORTANT: the test groups are chained via Playwright project dependencies, and 
 ```bash
 cd experiment
 
-# Full suite in order (test mode; the production-timing holistic group runs last)
+# Full suite in order (test mode: 3+2 blocks at production timers; the full-length holistic group runs last)
 npm test
 
 # One group only (server reset + that group, nothing else)
@@ -61,8 +61,9 @@ npm run test:group2       # ui-verification, timing
 npm run test:group3       # data-integrity, condition-specific, score-display
 npm run test:group4       # idle-detection, group-viability, compensation
 npm run test:group4:fast  # same as group4 with IDLE_TEST_TIMING=true (30s timers,
-                          # 2 idle rounds instead of 120s x 5 -- idle tests wait out
-                          # full timers, so this is several times faster)
+                          # 2 idle rounds instead of 45s x 3 -- idle tests wait out
+                          # full timers, so this is faster)
+npm run test:smoke        # tests tagged @smoke (quiz failure, chat, tangram set): a few minutes
 npm run test:holistic     # holistic end-to-end, production timing
 
 # Server unit tests (fast, no browser or server needed)
@@ -72,7 +73,7 @@ npm run test:unit
 npx playwright test reset-server.setup tests/idle-detection/speaker-idle.spec.ts \
   --project=setup-4 --project=group-4 --no-deps
 
-# Production timing for everything (6+6 blocks, 45s/25s selection, 3 idle rounds)
+# Full-length games for everything (6+6 blocks; timers are always production)
 TEST_MODE=false npm test
 
 # Run with visible browser: append flags after --
@@ -144,7 +145,9 @@ Tests are split into 5 project groups in `playwright.config.ts`. Between each gr
 4. Tests run sequentially (`workers: 1`, `fullyParallel: false`) because they share a single Empirica server. Use `test.describe.serial` for tests that depend on ordering within a file.
 
 **Key config values** (from `experiment/shared/constants.js`, mirrored in `tests/helpers/constants.ts`):
-- `TEST_MODE` — controlled by `TEST_MODE` env var (defaults to `false` for production, `server-manager.ts` sets `true` for tests)
-- Test mode: 3+2 blocks, 120s selection, 5 idle rounds, 600s timeout
-- Production mode (`TEST_MODE=false`): 6+6 blocks, 45s/25s selection (Phase 1/2), 3 idle rounds, 5400s timeout
+- `TEST_MODE` — controlled by `TEST_MODE` env var (defaults to `false` for production; `server-manager.ts` and `tests/helpers/set-default-test-mode.ts` default it to `true` for tests)
+- Test mode: 3+2 blocks; timers and idle threshold are the production values (45s/25s selection, 15s feedback, 3 idle rounds); 600s per-test timeout
+- Production mode (`TEST_MODE=false`): 6+6 blocks, same timers; 5400s per-test timeout
 - `IDLE_TEST_TIMING=true` (used by `npm run test:group4:fast`): 30s selection, 2 idle rounds — for suites whose tests wait out full idle timers
+- `LOBBY_TESTS=true`: un-skips the lobby-timeout compensation test, which waits out the 10-minute production lobby
+- `tests/helpers/constants.ts` re-exports `shared/constants.js`; only test-specific values (player count, quiz answers, treatment names) are defined there

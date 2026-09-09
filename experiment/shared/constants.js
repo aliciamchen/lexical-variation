@@ -3,37 +3,37 @@
 
 // ============ TEST MODE ============
 // Defaults to false for production. Set TEST_MODE=true env var for local testing.
-// When true: longer timeouts, more idle tolerance, fewer blocks.
+// TEST_MODE shortens the game (fewer blocks) but keeps production timers and the
+// production idle threshold, so end-to-end tests exercise the timing that
+// participants actually get.
 export const TEST_MODE =
   typeof process !== "undefined" && process.env?.TEST_MODE === "true";
 
 // ============ TESTING VS PRODUCTION VALUES ============
-// TEST_MODE only affects timing and tolerance settings, not player/group counts.
+// TEST_MODE only affects the number of blocks, not player/group counts or timing.
 // Player count is set in treatments.yaml and group count is derived from player count.
 //
 // | Setting              | Testing | Production | Description                          |
 // |----------------------|---------|------------|--------------------------------------|
 // | TEST_MODE            | true    | false      | Master toggle                        |
-// | SELECTION_DURATION   | 120     | 45         | Seconds for Phase 1 selection stage  |
-// | PHASE2_SEL_DURATION  | 120     | 25         | Seconds for Phase 2 selection stage  |
-// | MAX_IDLE_ROUNDS      | 5       | 3          | Rounds before idle kick              |
+// | SELECTION_DURATION   | 45      | 45         | Seconds for Phase 1 selection stage  |
+// | PHASE2_SEL_DURATION  | 25      | 25         | Seconds for Phase 2 selection stage  |
+// | MAX_IDLE_ROUNDS      | 3       | 3          | Rounds before idle kick              |
 // | PHASE_1_BLOCKS       | 3       | 6          | Blocks in Phase 1                    |
 // | PHASE_2_BLOCKS       | 2       | 6          | Blocks in Phase 2                    |
 
 // ============ IDLE-TEST TIMING ============
 // Idle-detection tests must wait out the FULL selection timer for
-// MAX_IDLE_ROUNDS consecutive rounds (an idle player never submits), so
-// TEST_MODE's long 120s selection makes them pathologically slow
-// (5 rounds x 120s per removal). IDLE_TEST_TIMING=true shortens the timer
-// and the idle threshold for suites that exercise idleness
-// (see `npm run test:group4:fast` in experiment/package.json).
+// MAX_IDLE_ROUNDS consecutive rounds (an idle player never submits).
+// IDLE_TEST_TIMING=true shortens the timer to 30 s and the idle threshold to 2
+// for suites that exercise idleness (see `npm run test:group4:fast`).
 export const IDLE_TEST_TIMING =
   typeof process !== "undefined" && process.env?.IDLE_TEST_TIMING === "true";
 
 // ============ TIMING CONFIGURATION ============
 // Stage durations in seconds
-export const SELECTION_DURATION = IDLE_TEST_TIMING ? 30 : TEST_MODE ? 120 : 45; // Phase 1 selection stage (TEST: 120s)
-export const PHASE2_SELECTION_DURATION = IDLE_TEST_TIMING ? 30 : TEST_MODE ? 120 : 25; // Phase 2 selection stage (TEST: 120s)
+export const SELECTION_DURATION = IDLE_TEST_TIMING ? 30 : 45; // Phase 1 selection stage
+export const PHASE2_SELECTION_DURATION = IDLE_TEST_TIMING ? 30 : 25; // Phase 2 selection stage
 export const FEEDBACK_DURATION = 15; // Feedback stage (same for both)
 export const TRANSITION_DURATION = 60; // Phase transition (same for both)
 export const BONUS_INFO_DURATION = 30; // End game bonus info (same for both)
@@ -157,11 +157,18 @@ export const BONUS_PER_POINT_SOCIAL = 0.023;
 export const BASE_PAY = 12; // dollars
 export const LOBBY_TIMEOUT_PAY = 2; // dollars for players who couldn't find a match in lobby
 
+// Prolific completion codes shown on the exit screens
+export const PROLIFIC_CODES = {
+  completion: "C2I8XDMC", // finished the game
+  lobbyTimeout: "CMZUY3MK", // no game formed within the lobby timeout
+  partial: "CFTYDMIY", // removed early (disbanded, low accuracy, insufficient groups, inactivity)
+};
+
 // Expected game duration in minutes (used for proportional compensation)
 export const EXPECTED_GAME_DURATION_MIN = 45; // full base pay after 45 minutes (task estimate is 45-60 min)
 
 // ============ DROPOUT HANDLING ============
-export const MAX_IDLE_ROUNDS = IDLE_TEST_TIMING ? 2 : TEST_MODE ? 5 : 3; // TEST: 5 rounds tolerance
+export const MAX_IDLE_ROUNDS = IDLE_TEST_TIMING ? 2 : 3; // consecutive idle rounds before removal (2 under IDLE_TEST_TIMING)
 export const MIN_GROUP_SIZE = 2; // Minimum players needed to continue in a group
 // MIN_ACTIVE_GROUPS is derived dynamically in callbacks.js based on actual group count
 

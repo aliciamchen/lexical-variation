@@ -11,7 +11,7 @@ This is a multiplayer reference game built with Empirica for studying lexical va
 - 9 players in 3 groups of 3; Phase 1 is a within-group reference game (6 blocks); Phase 2 continues for 6 blocks with condition-dependent behavior.
 - Conditions: `refer_separated` (same groups throughout), `refer_mixed` (groups reshuffled every trial, identities masked), `social_mixed` (reshuffled plus a social guessing task), `social_first` (told about the social identification reward before Phase 1, then reshuffled plus social guessing).
 - `original_group` (A, B, C) persists for the whole game; `current_group` changes per trial in mixed conditions. In mixed Phase 2, anonymous avatars are re-seeded per trial and chat names are masked, so `senderName` is uninformative there while `senderId` remains valid.
-- `TEST_MODE` (default false) shortens games to 3+2 blocks with long timers; the Playwright framework sets it. Production timing is 6+6 blocks with 45 s / 25 s selection.
+- `TEST_MODE` (default false) shortens games to 3+2 blocks; timers and the idle threshold are always the production values (45 s / 25 s selection, 3 idle rounds). The Playwright framework sets it; `IDLE_TEST_TIMING` shortens timers further for idle suites.
 
 ## Sources of truth
 

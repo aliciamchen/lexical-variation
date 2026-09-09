@@ -203,7 +203,7 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
       expect(exitInfo!.exitReason).toBe('group disbanded');
 
       // They should get the CFTYDMIY code
-      expect(exitInfo!.prolificCode).toBe(PROLIFIC_CODES.disbanded);
+      expect(exitInfo!.prolificCode).toBe(PROLIFIC_CODES.partial);
 
       // They should have partial pay > 0 (they participated but game ended early)
       const partialPay = parseFloat(exitInfo!.partialPay || '0');

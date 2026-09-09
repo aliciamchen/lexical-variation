@@ -663,7 +663,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     const disbandedExitInfo = await getExitInfo(gamePages[disbandedTargetIdx]);
     expect(disbandedExitInfo).not.toBeNull();
     expect(disbandedExitInfo!.type).toBe('sorry');
-    expect(disbandedExitInfo!.prolificCode).toBe(PROLIFIC_CODES.disbanded);
+    expect(disbandedExitInfo!.prolificCode).toBe(PROLIFIC_CODES.partial);
     expect(parseFloat(disbandedExitInfo!.partialPay || '0')).toBeGreaterThan(0);
   });
 

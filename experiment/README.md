@@ -2,9 +2,14 @@
 
 ## Recruiting participants and running experiment
 
-Around 75% of people who take the initial survey end up showing up 
+The game needs nine people online at once, so participants are recruited in two stages: a
+short screening and scheduling form, then a session at an announced time. Around 75% of the
+people who say on the form that they can make it actually show up, so plan on inviting
+roughly twice the number of players you need.
 
-### Templates
+The full procedure, the messages sent to participants on Prolific, the per-session show-up
+numbers from the pilots, and the operational gotchas are in
+[`recruitment-procedures.md`](recruitment-procedures.md).
 
 
 
@@ -102,7 +107,7 @@ npx playwright install chromium
 The test groups are chained via Playwright project dependencies, and Playwright runs dependencies unfiltered — a bare `npx playwright test <file>` or `--project=group-N` replays every earlier group in full first. The npm scripts avoid this by pairing each group with its server-reset setup and passing `--no-deps`:
 
 ```bash
-# Full suite (test mode: 3+2 blocks, 120s selection, 5 idle rounds)
+# Full suite (test mode: 3+2 blocks at production timers)
 npm test
 
 # One group only
@@ -120,8 +125,11 @@ npm run test:unit
 npx playwright test reset-server.setup tests/idle-detection/speaker-idle.spec.ts \
   --project=setup-4 --project=group-4 --no-deps
 
-# Production timing (6+6 blocks, 45s/25s selection, 3 idle rounds)
+# Full-length games (6+6 blocks; timers are always the production values)
 TEST_MODE=false npm test
+
+# Quick smoke subset (tests tagged @smoke)
+npm run test:smoke
 
 # Visible browser (append flags after --)
 npm run test:group2 -- --headed
