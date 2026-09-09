@@ -4,6 +4,13 @@ import { defineConfig, searchForWorkspaceRoot } from "vite";
 import restart from "vite-plugin-restart";
 import UnoCSS from "unocss/vite";
 import dns from "dns";
+import { fileURLToPath } from "url";
+import { assertSentryDsn } from "../shared/sentry-env.js";
+
+// The single .env at the repository root supplies VITE_SENTRY_DSN to the client
+// build (and the server hostname to copy_tajriba.sh). Vite would otherwise only
+// look for .env files inside client/.
+const envDir = fileURLToPath(new URL("../..", import.meta.url));
 
 dns.setDefaultResultOrder("verbatim");
 
@@ -13,7 +20,11 @@ const builtinsPlugin = {
 };
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => {
+  // A production bundle without a DSN would ship with Sentry silently disabled.
+  assertSentryDsn({ command, envDir });
+  return {
+  envDir,
   optimizeDeps: {
     exclude: ["@empirica/tajriba", "@empirica/core"],
   },
@@ -64,4 +75,5 @@ export default defineConfig({
       TEST_MODE: process.env.TEST_MODE || "false",
     },
   },
+  };
 });

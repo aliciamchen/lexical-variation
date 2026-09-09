@@ -35,6 +35,8 @@ empirica bundle
 scp lexical-variation.tar.zst root@$EMPIRICA_SERVER:~/empirica/empirica.tar.zst
 ```
 
+The Sentry DSN is compiled into the client bundle when you build, so it has to be available on the machine that runs `empirica bundle`, not on the server. The client build reads it from the `.env` file at the repository root (Vite is pointed there with `envDir`), and a production build fails with a clear message if the DSN is missing; set `ALLOW_NO_SENTRY=1` to build without Sentry on purpose. The server itself reads none of the `.env` values.
+
 The server is configured to automatically restart empirica when the bundle file is updated.
 
 If you want to do it manually:

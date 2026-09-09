@@ -12,7 +12,7 @@ The client app reports errors to Sentry via `@sentry/react`, initialized in `exp
 - Project: `javascript-react`
 - Region URL: `https://us.sentry.io`
 - Production URL: set via `EMPIRICA_SERVER` in `.env`
-- DSN: set via `VITE_SENTRY_DSN` in `.env` (never read `.env` directly; the values are secrets)
+- DSN: set via `VITE_SENTRY_DSN` in the repository-root `.env`, which the client build reads through Vite's `envDir` and compiles into the bundle; a production build without it fails (`shared/sentry-env.js`) unless `ALLOW_NO_SENTRY=1`. Never read `.env` directly; the values are secrets, and hostnames and organization names must not appear in committed files
 
 **MCP server:** the Sentry MCP server (`https://mcp.sentry.dev/mcp`, declared in `.mcp.json` and `.codex/config.toml`) exposes `search_issues`, `get_issue_details`, `search_events`, and `analyze_issue_with_seer`. Use it to query production issues directly.
 
