@@ -81,6 +81,13 @@ group_specificity_phase2 ~ condition + group_specificity_phase1
 ```
 Weights: `1 / SE_phase2^2` (inverse variance of Phase 2 estimates).
 
+Restricted to the three conditions that share the same Phase 1 procedure
+(`refer_separated`, `refer_mixed`, `social_mixed`). In `social_first` the
+manipulation precedes Phase 1, so its Phase 1 group-specificity is an outcome
+(H3a) rather than a pre-manipulation baseline, and pooling it into the common
+covariate slope could bias the H1 and H2 contrasts. `social_first` is kept in
+the descriptive plots below.
+
 ```{r wls-model}
 if (!exists("gs_combined")) {
   cat("Skipping: no group-specificity data.\n")
@@ -91,19 +98,25 @@ gs_combined <- gs_combined |>
     condition = factor(condition, levels = CONDITION_ORDER)
   )
 
-n_conditions <- n_distinct(gs_combined$condition)
+# H1/H2 model: only the conditions with an identical Phase 1 (see above)
+H12_CONDITIONS <- c("refer_separated", "refer_mixed", "social_mixed")
+gs_h12 <- gs_combined |>
+  filter(condition %in% H12_CONDITIONS) |>
+  mutate(condition = factor(condition, levels = H12_CONDITIONS))
+
+n_conditions <- n_distinct(gs_h12$condition)
 
 if (n_conditions >= 2) {
   wls_model <- lm(
     gs_phase2 ~ condition + gs_phase1,
-    data = gs_combined,
+    data = gs_h12,
     weights = weight
   )
   summary(wls_model)
   report_effect_sizes(wls_model)
 } else {
-  cat(sprintf("Only %d condition(s) in data (%s). Need ≥2 for WLS model.\n",
-              n_conditions, paste(unique(gs_combined$condition), collapse = ", ")))
+  cat(sprintf("Only %d H1/H2 condition(s) in data (%s). Need ≥2 for WLS model.\n",
+              n_conditions, paste(unique(gs_h12$condition), collapse = ", ")))
   wls_model <- NULL
 }
 } # end exists("gs_combined")
@@ -117,16 +130,16 @@ Two-tailed tests at α = 0.05.
 - **H2:** `social_mixed > refer_mixed`
 
 ```{r planned-contrasts}
-if (!is.null(wls_model) && n_conditions >= 4) {
+if (!is.null(wls_model) && n_conditions == length(H12_CONDITIONS)) {
   em <- emmeans(wls_model, "condition")
-  # Order: refer_separated, refer_mixed, social_mixed, social_first
+  # Order: refer_separated, refer_mixed, social_mixed
   contrasts <- contrast(em, list(
-    H1_sep_vs_mixed = c(1, -1, 0, 0),    # refer_separated - refer_mixed
-    H2_social_vs_mixed = c(0, -1, 1, 0)  # social_mixed - refer_mixed
+    H1_sep_vs_mixed = c(1, -1, 0),    # refer_separated - refer_mixed
+    H2_social_vs_mixed = c(0, -1, 1)  # social_mixed - refer_mixed
   ))
   summary(contrasts, infer = c(TRUE, TRUE))
 } else {
-  cat("Skipping contrasts: need all four conditions.\n")
+  cat("Skipping contrasts: need all three H1/H2 conditions.\n")
   contrasts <- NULL
 }
 ```
@@ -138,8 +151,8 @@ power analysis was based on). Not estimable with one game per condition.
 ```{r effect-sizes-h1-h2}
 if (!is.null(contrasts)) {
   rbind(
-    cohens_d_games(gs_combined, "gs_phase2", "condition", "refer_separated", "refer_mixed"),
-    cohens_d_games(gs_combined, "gs_phase2", "condition", "social_mixed", "refer_mixed")
+    cohens_d_games(gs_h12, "gs_phase2", "condition", "refer_separated", "refer_mixed"),
+    cohens_d_games(gs_h12, "gs_phase2", "condition", "social_mixed", "refer_mixed")
   )
 }
 ```
@@ -152,13 +165,17 @@ Phase 1 covariate and the inverse-variance weights.
 ```{r bayes-factors-h1-h2}
 if (!is.null(contrasts) && BAYES_FACTORS != "never") {
   ct <- as.data.frame(summary(contrasts, infer = c(TRUE, TRUE)))
-  if (BAYES_FACTORS == "always" || any(ct$p.value >= 0.05)) {
+  if (any(is.na(ct$p.value))) {
+    # One game per condition saturates the WLS model, so the contrast p-values
+    # are undefined on pilot data; the full sample will not hit this branch.
+    cat("Contrast p-values are undefined (saturated model); Bayes factors skipped.\n")
+  } else if (BAYES_FACTORS == "always" || any(ct$p.value >= 0.05)) {
     source(here::here("analysis", "bayes_factors.R"))
     bf_cache <- file.path(derived_dir, "bayes_factors")
-    report_bf(bf_wls_contrast(gs_combined, "gs_phase2", levels = c("refer_mixed", "refer_separated"),
+    report_bf(bf_wls_contrast(gs_h12, "gs_phase2", levels = c("refer_mixed", "refer_separated"),
                               covariates = "gs_phase1", weights = "weight",
                               name = "H1", cache_dir = bf_cache), "H1 refer_separated vs refer_mixed")
-    report_bf(bf_wls_contrast(gs_combined, "gs_phase2", levels = c("refer_mixed", "social_mixed"),
+    report_bf(bf_wls_contrast(gs_h12, "gs_phase2", levels = c("refer_mixed", "social_mixed"),
                               covariates = "gs_phase1", weights = "weight",
                               name = "H2", cache_dir = bf_cache), "H2 social_mixed vs refer_mixed")
   } else {
