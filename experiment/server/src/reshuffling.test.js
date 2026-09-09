@@ -183,3 +183,104 @@ describe("best-effort fallback for irregular rosters", () => {
     expect(anyMixed).toBe(true);
   });
 });
+
+// ── Fallback behaviour for dropout-shaped rosters ─────────────────────────
+// The constrained reshuffle needs one player per index in every remaining
+// original group. These rosters break that, so reshuffleGroups falls back to
+// best-effort assignment. The tests pin down what the fallback guarantees
+// (everyone assigned, no undersized group, mixing when possible) and measure
+// how often the in-group-listener constraint still holds, which the paper
+// describes as "approximate fallbacks".
+
+function removePlayers(players, ids) {
+  return players.filter((p) => !ids.includes(p.id));
+}
+
+function assertAllAssigned(players, usedGroups) {
+  for (const p of players) {
+    expect(usedGroups).toContain(p.get("current_group"));
+  }
+  for (const g of usedGroups) {
+    expect(groupMembers(players, g).length).toBeGreaterThanOrEqual(MIN_GROUP_SIZE);
+  }
+}
+
+function inGroupListenerRate(players, usedGroups, blockNum) {
+  const speakerIdx = blockNum % GROUP_SIZE;
+  let checked = 0;
+  let ok = 0;
+  for (const g of usedGroups) {
+    const members = groupMembers(players, g);
+    const speaker = members.find((p) => p.get("player_index") === speakerIdx);
+    if (!speaker) continue;
+    const listeners = members.filter((p) => p !== speaker);
+    const inGroup = listeners.filter((p) => p.get("original_group") === speaker.get("original_group"));
+    checked++;
+    if (inGroup.length === 1) ok++;
+  }
+  return { checked, ok };
+}
+
+describe("reshuffleGroups fallback rosters", () => {
+  it("7 players (two groups lost one member each): everyone lands in a group of at least two", () => {
+    for (let block = 0; block < 6; block++) {
+      const players = removePlayers(makePlayers(["A", "B", "C"]), ["A1", "B2"]);
+      reshuffleGroups(makeGame(["A", "B", "C"]), players, block);
+      assertAllAssigned(players, ["A", "B", "C"]);
+    }
+  });
+
+  it("6 players as three groups of two: falls back and still fills three groups", () => {
+    const players = removePlayers(makePlayers(["A", "B", "C"]), ["A0", "B1", "C2"]);
+    expect(doConstrainedReshuffle(players, ["A", "B", "C"], 0)).toBe(false);
+    reshuffleGroups(makeGame(["A", "B", "C"]), players, 0);
+    assertAllAssigned(players, ["A", "B", "C"]);
+  });
+
+  it("5 and 4 players: the number of groups shrinks so every group keeps at least two", () => {
+    const five = removePlayers(makePlayers(["A", "B", "C"]), ["A0", "B1", "C2", "C1"]);
+    reshuffleGroups(makeGame(["A", "B", "C"]), five, 1);
+    const fiveGroups = new Set(five.map((p) => p.get("current_group")));
+    expect(fiveGroups.size).toBe(2);
+    assertAllAssigned(five, [...fiveGroups]);
+
+    const four = removePlayers(makePlayers(["A", "B"]), ["A0", "B1"]);
+    reshuffleGroups(makeGame(["A", "B"]), four, 2);
+    const fourGroups = new Set(four.map((p) => p.get("current_group")));
+    expect(fourGroups.size).toBe(2);
+    assertAllAssigned(four, [...fourGroups]);
+  });
+
+  it("a single remaining original group cannot be mixed but is still assigned", () => {
+    const players = makePlayers(["A"]);
+    reshuffleGroups(makeGame(["A"]), players, 0);
+    assertAllAssigned(players, ["A"]);
+    expect(players.every((p) => p.get("original_group") === "A")).toBe(true);
+  });
+
+  it("an undefined block number skips the constrained path and still assigns everyone", () => {
+    const players = makePlayers(["A", "B", "C"]);
+    reshuffleGroups(makeGame(["A", "B", "C"]), players, undefined);
+    assertAllAssigned(players, ["A", "B", "C"]);
+  });
+
+  it("documents the in-group-listener rate under the fallback (a 7-player roster)", () => {
+    let checked = 0;
+    let ok = 0;
+    for (let trial = 0; trial < 300; trial++) {
+      const players = removePlayers(makePlayers(["A", "B", "C"]), ["A1", "B2"]);
+      const block = trial % 3;
+      reshuffleGroups(makeGame(["A", "B", "C"]), players, block);
+      const r = inGroupListenerRate(players, ["A", "B", "C"], block);
+      checked += r.checked;
+      ok += r.ok;
+    }
+    expect(checked).toBeGreaterThan(0);
+    const rate = ok / checked;
+    // The fallback does not enforce the constraint; this pins the current
+    // behaviour so a future change in either direction is visible. Under the
+    // constrained path the rate is exactly 1.
+    expect(rate).toBeGreaterThan(0);
+    expect(rate).toBeLessThan(1);
+  });
+});

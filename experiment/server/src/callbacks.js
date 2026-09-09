@@ -37,6 +37,8 @@ import { applyPartialPay } from "./compensation";
 import { resolveTangramSet } from "./tangrams";
 import { classifyIdle, isLateClick, updateIdleRounds } from "./idle";
 import { accuracyCheckBlocks, evaluateGroupAccuracy, playerAccuracyOverBlocks } from "./accuracy";
+import { selectSpeaker } from "./roles";
+import { gameCanContinue, hasUndersizedCurrentGroup, strandedPlayers, viableOriginalGroups } from "./viability";
 
 Empirica.onGameStart(({ game }) => {
   console.log(`Game ${game.id} started`);
@@ -282,26 +284,12 @@ Empirica.onRoundStart(({ round }) => {
 
       // Determine speaker based on player_index (consistent rotation across all conditions)
       // Speaker is the player whose original_player_index matches blockNum % GROUP_SIZE
-      const speakerTargetIndex = blockNum % GROUP_SIZE;
+      // Designated speaker rotates by block; if that member was removed the
+      // role falls back to the remaining members (see roles.js).
+      const { speaker, reassigned, designatedIndex: speakerTargetIndex } =
+        selectSpeaker(groupPlayers, blockNum);
 
-      // Find the designated speaker (player with matching player_index)
-      let speaker = groupPlayers.find(
-        (p) => p.get("player_index") === speakerTargetIndex,
-      );
-
-      // SPEAKER REASSIGNMENT: If designated speaker is not available (kicked/inactive),
-      // reassign speaker role to another player in the group
-      if (!speaker && groupPlayers.length > 0) {
-        // Sort by player_index to ensure consistent fallback selection
-        const sortedPlayers = _.sortBy(groupPlayers, (p) =>
-          p.get("player_index"),
-        );
-
-        // Pick the next available player in rotation order
-        // Use the same block-based rotation but with available players only
-        const fallbackIdx = blockNum % sortedPlayers.length;
-        speaker = sortedPlayers[fallbackIdx];
-
+      if (reassigned) {
         console.log(
           `SPEAKER REASSIGNMENT: Original speaker (index ${speakerTargetIndex}) not available in group ${groupName}`,
         );
@@ -525,42 +513,31 @@ function checkGroupViability(game) {
   const isMixedPhase2 =
     phase_num === 2 && isMixedCondition(condition);
 
-  const viableGroups = activeGroups.filter((groupName) => {
-    const groupPlayers = players.filter(
-      (p) => p.get("is_active") && p.get("original_group") === groupName,
+  // Original groups with at least MIN_GROUP_SIZE active members (see viability.js)
+  const viableGroups = viableOriginalGroups(players, activeGroups);
+
+  // Remove the lone remaining member of any disbanded group, with proportional pay
+  strandedPlayers(players, activeGroups).forEach((player) => {
+    console.log(
+      `Removing final member ${player.id} from disbanded group ${player.get("original_group")}`,
     );
-    return groupPlayers.length >= MIN_GROUP_SIZE;
-  });
+    player.set("is_active", false);
+    player.set("ended", "group disbanded");
+    player.set("exitReason", "group disbanded");
+    player.set("gameEndTime", Date.now());
 
-  // If a group is no longer viable, remove remaining member with proportional pay
-  activeGroups.forEach((groupName) => {
-    if (!viableGroups.includes(groupName)) {
-      const remainingPlayers = players.filter(
-        (p) => p.get("is_active") && p.get("original_group") === groupName,
-      );
-      remainingPlayers.forEach((player) => {
-        console.log(
-          `Removing final member ${player.id} from disbanded group ${groupName}`,
-        );
-        player.set("is_active", false);
-        player.set("ended", "group disbanded");
-        player.set("exitReason", "group disbanded");
-        player.set("gameEndTime", Date.now());
-
-        // Proportional pay: base prorated to time spent, plus earned bonus
-        applyPartialPay(player);
-        console.log(
-          `  -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${player.get("minutesSpent")} minutes`,
-        );
-      });
-    }
+    // Proportional pay: base prorated to time spent, plus earned bonus
+    applyPartialPay(player);
+    console.log(
+      `  -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${player.get("minutesSpent")} minutes`,
+    );
   });
 
   game.set("active_groups", viableGroups);
 
   // Check if game can continue (use dynamic min_active_groups from game)
   const minRequired = game.get("min_active_groups") || 1;
-  if (viableGroups.length < minRequired) {
+  if (!gameCanContinue(viableGroups.length, minRequired)) {
     console.log(
       `Not enough active groups (${viableGroups.length} < ${minRequired}), ending game`,
     );
@@ -596,20 +573,8 @@ function checkGroupViability(game) {
   if (isMixedPhase2) {
     const activePlayers = players.filter((p) => p.get("is_active"));
 
-    // Get all unique current groups that have active players
-    const currentGroupNames = [
-      ...new Set(activePlayers.map((p) => p.get("current_group"))),
-    ];
-
-    // Check if any current group has fewer than MIN_GROUP_SIZE players
-    const hasSoloPlayer = currentGroupNames.some((groupName) => {
-      const groupSize = activePlayers.filter(
-        (p) => p.get("current_group") === groupName,
-      ).length;
-      return groupSize < MIN_GROUP_SIZE;
-    });
-
-    if (hasSoloPlayer) {
+    // Any current (reshuffled) group below MIN_GROUP_SIZE? (see viability.js)
+    if (hasUndersizedCurrentGroup(activePlayers)) {
       // Only reshuffle if we have enough players to form at least one viable group
       if (activePlayers.length >= MIN_GROUP_SIZE) {
         console.log(

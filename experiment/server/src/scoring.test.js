@@ -356,3 +356,79 @@ describe("social-guess scoring", () => {
     expect(refer.inGroup.round.get("social_guess_correct")).toBeUndefined();
   });
 });
+
+describe("scoring edge cases after dropout", () => {
+  it("gives the speaker zero when no active listener remains and does not crash", () => {
+    const speaker = makePlayer({ id: "s", role: "speaker" });
+    const gone = makePlayer({ id: "l1", role: "listener", clicked: "T1", isActive: false });
+    const game = makeGame({ players: [speaker, gone] });
+    const stage = makeStage({ chats: { A: [{ sender: { id: "s" } }] } });
+
+    scoreSelectionStage(game, stage);
+
+    expect(speaker.round.get("round_score") ?? 0).toBe(0);
+    expect(speaker.get("score")).toBe(0);
+    expect(gone.get("score")).toBe(0);
+  });
+
+  it("scores a two-person group (one listener) with the full speaker share for one correct click", () => {
+    const speaker = makePlayer({ id: "s", role: "speaker" });
+    const only = makePlayer({ id: "l1", role: "listener", clicked: "T1" });
+    const game = makeGame({ players: [speaker, only] });
+    const stage = makeStage({ chats: { A: [{ sender: { id: "s" } }] } });
+
+    scoreSelectionStage(game, stage);
+
+    expect(only.get("score")).toBe(LISTENER_CORRECT_POINTS);
+    expect(speaker.round.get("round_score")).toBe(SPEAKER_MAX_POINTS_PER_ROUND);
+  });
+
+  it("treats a listener who never clicked as incorrect for the speaker's share", () => {
+    const speaker = makePlayer({ id: "s", role: "speaker" });
+    const clicked = makePlayer({ id: "l1", role: "listener", clicked: "T1" });
+    const silent = makePlayer({ id: "l2", role: "listener", clicked: null });
+    const game = makeGame({ players: [speaker, clicked, silent] });
+    const stage = makeStage({ chats: { A: [{ sender: { id: "s" } }] } });
+
+    scoreSelectionStage(game, stage);
+
+    expect(silent.get("score")).toBe(0);
+    expect(speaker.round.get("round_score")).toBe(SPEAKER_MAX_POINTS_PER_ROUND / 2);
+  });
+});
+
+describe("social scoring with irregular in-group counts", () => {
+  function socialGame(listeners) {
+    const speaker = makePlayer({ id: "s", role: "speaker", originalGroup: "A" });
+    const game = makeGame({ players: [speaker, ...listeners], condition: "social_mixed" });
+    const stage = makeStage({ phaseNum: 2, chats: { A: [{ sender: { id: "s" } }] } });
+    return { speaker, game, stage };
+  }
+
+  it("gives the speaker zero social points, not NaN, when no in-group listener is present", () => {
+    const out1 = makePlayer({ id: "o1", role: "listener", originalGroup: "B", clicked: "T1", socialGuess: "different_group" });
+    const out2 = makePlayer({ id: "o2", role: "listener", originalGroup: "C", clicked: "T1", socialGuess: "different_group" });
+    const { speaker, game, stage } = socialGame([out1, out2]);
+
+    scoreSelectionStage(game, stage);
+
+    expect(speaker.round.get("social_round_score") ?? 0).toBe(0);
+    expect(Number.isNaN(speaker.get("score"))).toBe(false);
+    expect(speaker.round.get("social_original_group_listeners") ?? 0).toBe(0);
+    // Out-group listeners who correctly said "different" still earn their points
+    expect(out1.round.get("social_guess_correct")).toBe(true);
+    expect(out1.round.get("social_round_score")).toBe(SOCIAL_GUESS_CORRECT_POINTS);
+  });
+
+  it("gives the speaker half the social points when one of two in-group listeners recognizes them", () => {
+    const inYes = makePlayer({ id: "i1", role: "listener", originalGroup: "A", clicked: "T1", socialGuess: "same_group" });
+    const inNo = makePlayer({ id: "i2", role: "listener", originalGroup: "A", clicked: "T1", socialGuess: "different_group" });
+    const { speaker, game, stage } = socialGame([inYes, inNo]);
+
+    scoreSelectionStage(game, stage);
+
+    expect(speaker.round.get("social_original_group_listeners")).toBe(2);
+    expect(speaker.round.get("social_recognized_count")).toBe(1);
+    expect(speaker.round.get("social_round_score")).toBe(SOCIAL_SPEAKER_POINTS_PER_CORRECT / 2);
+  });
+});
