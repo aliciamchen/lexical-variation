@@ -375,6 +375,50 @@ def build_speaker_utterances(
     return utterances
 
 
+LENGTH_INCREASE_THRESHOLD_WORDS = 5
+
+
+def flag_length_increase(
+    speaker_utterances: pd.DataFrame,
+    threshold: float = LENGTH_INCREASE_THRESHOLD_WORDS,
+) -> pd.DataFrame:
+    """Per-player Phase 1 description-length change and the AI-use flag.
+
+    The preregistration flags participants whose descriptions lengthened over
+    Phase 1 for manual inspection of their chat logs: lengthening descriptions
+    are the signature of the simulated language-model agents, whereas human
+    descriptions shorten. The flag is a trigger for inspection, not an
+    exclusion by itself. For each player, the mean word count of their
+    descriptions in their last Phase 1 block as speaker is compared with that
+    in their first; a change greater than `threshold` words sets the flag.
+    Word counts come from the unfiltered utterances so the flag does not
+    depend on the LLM classifier. Players who spoke in fewer than two Phase 1
+    blocks get a missing change and are not flagged.
+
+    Returns one row per (gameId, playerId) with `phase1LengthChange` and
+    `lengthIncreaseFlag`.
+    """
+    keys = ["gameId", "playerId"]
+    p1 = speaker_utterances[speaker_utterances["phaseNum"] == 1]
+    per_block = (
+        p1.groupby(keys + ["blockNum"])["uttLength"]
+        .mean()
+        .reset_index()
+        .sort_values(keys + ["blockNum"])
+    )
+    grouped = per_block.groupby(keys)
+    out = pd.DataFrame(
+        {
+            "n_blocks": grouped["blockNum"].nunique(),
+            "phase1LengthChange": grouped["uttLength"].last()
+            - grouped["uttLength"].first(),
+        }
+    ).reset_index()
+    out.loc[out["n_blocks"] < 2, "phase1LengthChange"] = float("nan")
+    out["lengthIncreaseFlag"] = out["phase1LengthChange"] > threshold
+    return out[keys + ["phase1LengthChange", "lengthIncreaseFlag"]]
+
+
 def build_social_guesses(
     player_round_df: pd.DataFrame, game_df: pd.DataFrame
 ) -> pd.DataFrame:
@@ -493,11 +537,6 @@ def main():
     games.to_csv(output_dir / "games.csv", index=False)
     print(f"  {len(games)} games")
 
-    print("Building players.csv...")
-    players = build_players(player_df)
-    players.to_csv(output_dir / "players.csv", index=False)
-    print(f"  {len(players)} players")
-
     print("Building trials.csv...")
     trials = build_trials(player_round_df, round_df, game_df)
     trials.to_csv(output_dir / "trials.csv", index=False)
@@ -512,6 +551,16 @@ def main():
     speaker_utterances = build_speaker_utterances(messages, trials)
     speaker_utterances.to_csv(output_dir / "speaker_utterances.csv", index=False)
     print(f"  {len(speaker_utterances)} speaker utterances")
+
+    # players.csv is written after the utterances because the AI-use flag
+    # (Phase 1 description-length increase) is computed from them.
+    print("Building players.csv...")
+    players = build_players(player_df).merge(
+        flag_length_increase(speaker_utterances), on=["gameId", "playerId"], how="left"
+    )
+    players["lengthIncreaseFlag"] = players["lengthIncreaseFlag"].fillna(False).astype(bool)
+    players.to_csv(output_dir / "players.csv", index=False)
+    print(f"  {len(players)} players, {int(players['lengthIncreaseFlag'].sum())} flagged for a Phase 1 length increase")
 
     print("Building social_guesses.csv...")
     social_guesses = build_social_guesses(player_round_df, game_df)

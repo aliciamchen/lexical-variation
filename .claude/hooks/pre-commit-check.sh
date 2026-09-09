@@ -11,7 +11,7 @@
 #    `npm run test:unit` (vitest on scoring.js and reshuffling.js; seconds).
 # 3. Analysis tests. If staged files touch analysis/*.py or data/pilots/,
 #    runs the data integrity suite and the derived-metric unit tests
-#    (`uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py`,
+#    (`uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py`,
 #    about seven seconds on the pilot data).
 #
 # Other Bash commands pass through untouched. Playwright end-to-end tests are
@@ -96,9 +96,9 @@ fi
 if printf '%s\n' "$staged" | grep -qE '^(analysis/[^/]+\.py|data/pilots/)'; then
   if command -v uv >/dev/null 2>&1; then
     log=$(mktemp)
-    if ! uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py -q >"$log" 2>&1; then
+    if ! uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py -q >"$log" 2>&1; then
       out=$(tail -n 60 "$log"); rm -f "$log"
-      deny "Commit blocked: analysis tests failed (uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py).
+      deny "Commit blocked: analysis tests failed (uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py).
 
 $out
 

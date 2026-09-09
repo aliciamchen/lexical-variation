@@ -31,6 +31,8 @@ One row per player.
 | `bonus` | Monetary bonus (score × bonus rate) |
 | `isActive` | Whether the player remained active throughout |
 | `idleRounds` | Number of rounds the player was idle |
+| `phase1LengthChange` | Mean word count of the player's descriptions in their last Phase 1 block as speaker minus that in their first (from the unfiltered utterances); empty if they spoke in fewer than two Phase 1 blocks |
+| `lengthIncreaseFlag` | Whether `phase1LengthChange` exceeds 5 words. Lengthening descriptions are the signature of the simulated LLM agents, so flagged players' chat logs are inspected for AI use; the flag is a trigger for inspection, not an exclusion by itself. No pilot player is flagged |
 | `exitSurvey_age` | Self-reported age |
 | `exitSurvey_gender` | Self-reported gender |
 | `exitSurvey_education` | Self-reported education level |
@@ -119,7 +121,7 @@ Speaker messages concatenated per round. One row per speaker per round.
 
 ## speaker_utterances_filtered.csv
 
-Same structure as `speaker_utterances.csv`, but non-referential messages are removed before concatenation. Some rows may have empty utterances if all messages in that round were non-referential.
+Same structure as `speaker_utterances.csv`, but non-referential messages are removed before concatenation. Rounds in which every speaker message was non-referential are dropped rather than kept as empty utterances, matching how rounds with no speaker message are handled, so this file can have fewer rows than the unfiltered one (two fewer in the pilot). The `apply` command reports how many rounds it dropped.
 
 ## social_guesses.csv
 

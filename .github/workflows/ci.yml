@@ -28,4 +28,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v7
       - name: Run the data integrity suite on the committed pilot data
-        run: uv run --no-project --with pytest --with pandas --with numpy pytest analysis/test_data_integrity.py -q
+        run: uv run --no-project --with pytest --with pandas --with numpy pytest analysis/test_data_integrity.py analysis/test_preprocessing.py -q

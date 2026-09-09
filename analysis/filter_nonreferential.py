@@ -13,6 +13,8 @@ Subcommands:
   apply     - Filter messages and rebuild speaker_utterances_filtered.csv
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -21,10 +23,10 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-from dotenv import load_dotenv
-from google import genai
-from google.genai import types
-from tqdm import tqdm
+
+# The Vertex AI client, tqdm, and dotenv are imported inside the functions that
+# need them so that the pure data functions (`build_filtered_utterances`) can be
+# imported and unit-tested without the API dependencies installed.
 
 
 CLASSIFICATION_PROMPT = """\
@@ -86,6 +88,8 @@ def get_client(project: str | None = None) -> genai.Client:
               file=sys.stderr)
         sys.exit(1)
 
+    from google import genai
+
     location = os.environ.get("GOOGLE_CLOUD_LOCATION", "global")
     return genai.Client(vertexai=True, project=project, location=location)
 
@@ -99,6 +103,8 @@ def classify_batch(
 
     Returns list of labels ('R' or 'NR') aligned with input messages.
     """
+    from google.genai import types
+
     prompt = CLASSIFICATION_PROMPT
     for i, msg in enumerate(messages, 1):
         prompt += f"  {i}: {msg}\n"
@@ -164,6 +170,8 @@ def cmd_classify(args):
     data_dir = Path(args.data_dir)
     messages = pd.read_csv(data_dir / "messages.csv")
     speaker_msgs = messages[messages["senderRole"] == "speaker"].copy()
+
+    from tqdm import tqdm
 
     client = get_client(args.project)
     batch_size = args.batch_size
@@ -246,19 +254,17 @@ def cmd_validate(args):
             print(f'  "{row["text"]}" — human={row["human_label"]}, llm={row["llm_label"]}')
 
 
-def cmd_apply(args):
-    """Apply filter and produce speaker_utterances_filtered.csv."""
-    data_dir = Path(args.data_dir)
+def build_filtered_utterances(
+    messages: pd.DataFrame, trials: pd.DataFrame
+) -> tuple[pd.DataFrame, int]:
+    """Rebuild speaker utterances from referential messages only.
 
-    # Use classified messages if available, otherwise classify first
-    classified_path = data_dir / "messages_classified.csv"
-    if not classified_path.exists():
-        print("No messages_classified.csv found. Run 'classify' first.")
-        sys.exit(1)
-
-    messages = pd.read_csv(classified_path)
-    trials = pd.read_csv(data_dir / "trials.csv")
-
+    Rounds in which every speaker message was classified as non-referential
+    are dropped rather than kept as empty utterances: the preregistration
+    treats them like rounds in which the speaker sent no message, which never
+    produce an utterance row either. Returns the utterances and the number of
+    speaker rounds dropped for that reason.
+    """
     # Filter to referential speaker messages only
     speaker_msgs = messages[
         (messages["senderRole"] == "speaker") & (messages["is_referential"] == True)
@@ -277,15 +283,11 @@ def cmd_apply(args):
     )
     utterances["uttLength"] = utterances["utterance"].apply(lambda x: len(x.split()))
 
-    # Handle rounds where ALL speaker messages were non-referential
-    # These rounds won't appear in utterances; add them back with empty utterance
+    # Rounds where ALL speaker messages were non-referential have no row in
+    # `utterances`; count them so the caller can report how many were dropped.
     all_speaker = messages[messages["senderRole"] == "speaker"]
-    all_rounds = all_speaker.groupby(groupby_cols).size().reset_index(name="_count")
-    all_rounds = all_rounds.drop(columns=["_count"])
-
-    utterances = all_rounds.merge(utterances, on=groupby_cols, how="left")
-    utterances["utterance"] = utterances["utterance"].fillna("")
-    utterances["uttLength"] = utterances["uttLength"].fillna(0).astype(int)
+    n_speaker_rounds = all_speaker.groupby(groupby_cols).ngroups
+    n_dropped = n_speaker_rounds - len(utterances)
 
     # Merge speaker trial info (same as preprocessing.py)
     speaker_trials = trials[trials["role"] == "speaker"][
@@ -306,6 +308,22 @@ def cmd_apply(args):
     ]
     existing_cols = [c for c in cols if c in utterances.columns]
     utterances = utterances[existing_cols]
+    return utterances, n_dropped
+
+
+def cmd_apply(args):
+    """Apply filter and produce speaker_utterances_filtered.csv."""
+    data_dir = Path(args.data_dir)
+
+    # Use classified messages if available, otherwise classify first
+    classified_path = data_dir / "messages_classified.csv"
+    if not classified_path.exists():
+        print("No messages_classified.csv found. Run 'classify' first.")
+        sys.exit(1)
+
+    messages = pd.read_csv(classified_path)
+    trials = pd.read_csv(data_dir / "trials.csv")
+    utterances, n_dropped = build_filtered_utterances(messages, trials)
 
     output_path = data_dir / "speaker_utterances_filtered.csv"
     utterances.to_csv(output_path, index=False)
@@ -316,6 +334,7 @@ def cmd_apply(args):
     filt_words = utterances["uttLength"].sum()
     print(f"Original: {orig_words} total words across {len(original)} utterances")
     print(f"Filtered: {filt_words} total words across {len(utterances)} utterances")
+    print(f"Dropped {n_dropped} speaker rounds whose messages were all non-referential")
     print(f"Removed {orig_words - filt_words} words ({(orig_words - filt_words) / orig_words:.1%})")
     print(f"Saved to {output_path}")
 
@@ -324,6 +343,8 @@ def cmd_apply(args):
 
 
 def main():
+    from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = argparse.ArgumentParser(

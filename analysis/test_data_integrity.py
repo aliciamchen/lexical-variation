@@ -149,6 +149,29 @@ class TestSchemaValidation:
                 f"games.csv has {null_count} null values in '{col}'"
             )
 
+    def test_players_length_increase_flag(self, players, speaker_utterances):
+        """The AI-use trigger: a boolean flag with its numeric basis.
+
+        `phase1LengthChange` is the mean word count in a player's last Phase 1
+        block as speaker minus their first; `lengthIncreaseFlag` is True only
+        when that exceeds 5 words. Players who spoke in fewer than two Phase 1
+        blocks have no change and are never flagged.
+        """
+        for col in ("phase1LengthChange", "lengthIncreaseFlag"):
+            assert col in players.columns, f"players.csv missing column: {col}"
+        flag = players["lengthIncreaseFlag"]
+        assert set(flag.dropna().unique()) <= {True, False}
+        change = pd.to_numeric(players["phase1LengthChange"])
+        assert ((change > 5) == flag).all(), "lengthIncreaseFlag disagrees with phase1LengthChange > 5"
+        p1 = speaker_utterances[speaker_utterances["phaseNum"] == 1]
+        blocks = p1.groupby(["gameId", "playerId"])["blockNum"].nunique()
+        two_plus = players.set_index(["gameId", "playerId"]).index.map(
+            lambda k: blocks.get(k, 0) >= 2
+        )
+        assert change.notna().to_numpy().tolist() == list(two_plus), (
+            "phase1LengthChange should be present exactly for players with two or more Phase 1 speaker blocks"
+        )
+
     def test_players_required_columns(self, players):
         required = [
             "playerId", "gameId", "name", "originalGroup", "originalName",
@@ -1208,6 +1231,26 @@ class TestSpeakerUtterances:
         assert len(empty) == 0, (
             f"Found {len(empty)} empty/null speaker utterances"
         )
+
+    def test_filtered_utterances_have_text_and_are_a_subset(self, speaker_utterances):
+        """The non-referential filter drops rounds with no referential message.
+
+        The preregistration treats a trial whose speaker messages were all
+        non-referential like a trial with no message, so the filtered file
+        must contain no empty utterances and no rounds absent from the
+        unfiltered file.
+        """
+        path = DATA_DIR / "speaker_utterances_filtered.csv"
+        if not path.exists():
+            pytest.skip("speaker_utterances_filtered.csv not present")
+        filtered = pd.read_csv(path)
+        filtered = filtered[filtered["gameId"].isin(speaker_utterances["gameId"].unique())]
+        empty = filtered["utterance"].isna() | (filtered["utterance"].astype(str).str.strip() == "")
+        assert not empty.any(), f"Found {int(empty.sum())} empty utterances in the filtered file"
+        keys = ["gameId", "playerId", "phaseNum", "blockNum", "target"]
+        merged = filtered[keys].merge(speaker_utterances[keys], on=keys, how="left", indicator=True)
+        assert (merged["_merge"] == "both").all(), "Filtered utterances include rounds missing from the unfiltered file"
+        assert len(filtered) <= len(speaker_utterances)
 
 
 # ============ 13. REPNUM ============

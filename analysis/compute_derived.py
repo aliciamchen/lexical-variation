@@ -893,6 +893,22 @@ def get_window_utterances(
     return pd.concat(rows, ignore_index=True)
 
 
+def drop_empty_utterances(utterances: pd.DataFrame) -> pd.DataFrame:
+    """Remove utterance rows with no text.
+
+    A speaker whose messages were all classified as non-referential has no
+    description on that trial; the preregistration excludes such trials from
+    the utterance-based analyses, as with trials in which the speaker sent
+    nothing. The filter step no longer emits these rows, but older filtered
+    files and hand-built inputs may still contain them.
+    """
+    text = utterances["utterance"].fillna("").astype(str).str.strip()
+    empty = text == ""
+    if empty.any():
+        print(f"  Dropping {int(empty.sum())} utterances with no referential text")
+    return utterances.loc[~empty].copy()
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Compute SBERT embeddings and similarity metrics"
@@ -928,6 +944,7 @@ def main():
     utterances = pd.read_csv(data_dir / args.utterances_file)
     games = pd.read_csv(data_dir / "games.csv")
     print(f"  {len(utterances)} utterances across {len(games)} games")
+    utterances = drop_empty_utterances(utterances)
 
     print("Loading SBERT model (paraphrase-MiniLM-L12-v2)...")
     model = SentenceTransformer("sentence-transformers/paraphrase-MiniLM-L12-v2")
