@@ -230,56 +230,58 @@ test.describe.serial('Condition-Specific: refer_mixed (TEST_PLAN 8.2)', () => {
     }
   });
 
-  test('(b) Phase 2: per-trial reshuffling across blocks', async () => {
-    test.slow(); // Phase 2 is 12 rounds, takes several minutes
+  test('(b) Phase 2: groups reshuffle every trial with exactly one in-group listener per group', async () => {
+    test.slow(); // plays all of Phase 2
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
-    // Track group assignments at first round of each block (for between-block comparison)
-    const blockGroupAssignments: Record<number, Record<number, string>> = {};
+    type Snap = { originalGroup: string; currentGroup: string; role: string }[];
+    const snapshot = async (): Promise<Snap> => {
+      const snap: Snap = [];
+      for (const page of active) {
+        const info = await getPlayerInfo(page);
+        expect(info?.currentGroup && info.originalGroup && info.role, 'player info during Selection').toBeTruthy();
+        snap.push({ originalGroup: info!.originalGroup!, currentGroup: info!.currentGroup!, role: info!.role! });
+      }
+      return snap;
+    };
+    // The preregistered constraint: in every three-person current group, one of
+    // the two listeners is from the speaker's original group and one is not.
+    const checkComposition = (snap: Snap) => {
+      const byGroup: Record<string, Snap> = {};
+      for (const s of snap) (byGroup[s.currentGroup] ??= []).push(s);
+      for (const [group, members] of Object.entries(byGroup)) {
+        const speakers = members.filter((m) => m.role === 'speaker');
+        expect(speakers.length, `group ${group} should have exactly one speaker`).toBe(1);
+        if (members.length !== 3) continue; // constraint applies to full groups only
+        const inGroup = members.filter((m) => m.role === 'listener' && m.originalGroup === speakers[0].originalGroup);
+        expect(inGroup.length, `group ${group} should have exactly one in-group listener: ${JSON.stringify(members)}`).toBe(1);
+      }
+    };
+    const differs = (a: Snap, b: Snap) => a.some((m, i) => m.currentGroup !== b[i].currentGroup);
 
+    let prev: Snap | null = null;
+    let transitions = 0;
+    let changed = 0;
     for (let block = 0; block < PHASE_2_BLOCKS; block++) {
-      // For blocks after the first, wait for the game to advance to the new block
-      if (block > 0) {
-        const waitStart = Date.now();
-        while (Date.now() - waitStart < 60_000) {
-          const info = await getPlayerInfo(active[0]);
-          if (info && info.block === block && info.stageName === 'Selection') break;
-          await active[0].waitForTimeout(1000);
-        }
-      }
-
-      // Record current groups at start of each block (first round only)
-      blockGroupAssignments[block] = {};
-      for (let i = 0; i < active.length; i++) {
-        const info = await getPlayerInfo(active[i]);
-        if (info?.currentGroup) {
-          blockGroupAssignments[block][i] = info.currentGroup;
-        }
-      }
-
-      // Play rounds within this block (groups may change every trial)
       for (let round = 0; round < ROUNDS_PER_BLOCK; round++) {
+        expect(await waitForStage(active[0], 'Selection', 60_000), 'expected a Selection stage').toBe(true);
+        const snap = await snapshot();
+        checkComposition(snap);
+        if (prev) {
+          transitions++;
+          if (differs(prev, snap)) changed++;
+        }
+        prev = snap;
         await playRound(active);
       }
     }
 
-    // Verify that groups changed between at least some block boundaries
-    // (with per-trial reshuffling, consecutive blocks should almost certainly differ)
-    if (PHASE_2_BLOCKS > 1) {
-      let anyGroupChanged = false;
-      for (let i = 0; i < active.length; i++) {
-        if (
-          blockGroupAssignments[0]?.[i] &&
-          blockGroupAssignments[1]?.[i] &&
-          blockGroupAssignments[0][i] !== blockGroupAssignments[1][i]
-        ) {
-          anyGroupChanged = true;
-          break;
-        }
-      }
-      expect.soft(anyGroupChanged, 'Expected group reshuffling between blocks (extremely unlikely to be same)').toBe(true);
-    }
+    // Groups are re-randomized at every trial; identical consecutive
+    // assignments happen with probability about 1/24 each, so a large majority
+    // of transitions must show a change.
+    expect(transitions).toBeGreaterThan(0);
+    expect(changed / transitions, `only ${changed} of ${transitions} trial transitions changed groups`).toBeGreaterThan(0.5);
   });
 
   test('(d) no social guess UI during Phase 2', async () => {

@@ -12,7 +12,8 @@
     "test:group4:fast": "IDLE_TEST_TIMING=true playwright test --project=setup-4 --project=group-4 --no-deps",
     "test:holistic": "playwright test --project=setup-5 --project=group-holistic --no-deps --reporter=list",
     "test:unit": "npm run test --prefix server",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "test:smoke": "playwright test --grep @smoke --project=setup-1 --project=group-1 --no-deps"
   },
   "keywords": [],
   "author": "",

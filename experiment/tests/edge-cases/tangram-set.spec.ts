@@ -8,7 +8,7 @@ import { PlayerManager } from '../helpers/player-manager';
  * set 1, and all nine players must see the same round target (the per-block
  * target order is shared by the three groups).
  */
-test.describe.serial('Edge case: tangram set treatment factor', () => {
+test.describe.serial('Edge case: tangram set treatment factor', { tag: '@smoke' }, () => {
   let pm: PlayerManager;
 
   test.beforeAll(async ({ browser }) => {

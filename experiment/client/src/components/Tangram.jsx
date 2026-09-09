@@ -154,14 +154,14 @@ export function Tangram(props) {
     }
 
     return (
-      <div onClick={handleClick} style={mystyle}>
+      <div onClick={handleClick} style={mystyle} data-tangram-id={tangram}>
         <div className="feedback"> {feedback}</div>
       </div>
     );
   }
 
   // Old Phase 2 (Production) and Phase 3 (Comprehension) are removed in new experiment design
-  
+
   // default case
-  return <div style={mystyle}></div>;
+  return <div style={mystyle} data-tangram-id={tangram}></div>;
 }

@@ -3,7 +3,7 @@ import { createBatch } from '../helpers/admin';
 import { QUIZ_FAILED_SCREEN, SORRY_SCREEN } from '../helpers/selectors';
 
 // TEST_PLAN 4.2: Player fails comprehension quiz 3 times and is shown failure screen
-test.describe.serial('Lobby: quiz failure after 3 attempts', () => {
+test.describe.serial('Lobby: quiz failure after 3 attempts', { tag: '@smoke' }, () => {
   test('player sees quiz-failed screen after 3 wrong attempts', async ({ browser }) => {
     // Create a batch so the experiment is active
     const adminContext = await browser.newContext();

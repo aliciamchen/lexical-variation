@@ -5,8 +5,10 @@
  * Create just 3 players for a 9-player game, wait for lobby timeout,
  * verify they see the correct code.
  *
- * NOTE: This test is skipped by default because it requires waiting for the
- * actual lobby timeout (5+ minutes) and specific lobby timeout settings.
+ * The only lobby configuration offered in production is the 10-minute shared
+ * "fail" lobby (.empirica/lobbies.yaml), so this test has to wait out those ten
+ * minutes. It is skipped unless LOBBY_TESTS=true so a routine run stays fast:
+ *   LOBBY_TESTS=true npx playwright test reset-server.setup tests/compensation/lobby-timeout-pay.spec.ts --project=setup-4 --project=group-4 --no-deps
  */
 import { test, expect } from '@playwright/test';
 import { createBatch } from '../helpers/admin';
@@ -15,11 +17,11 @@ import { PROLIFIC_CODES, LOBBY_TIMEOUT_PAY } from '../helpers/constants';
 import { SORRY_SCREEN, PROLIFIC_CODE } from '../helpers/selectors';
 
 test.describe.serial('Compensation: Lobby Timeout (TEST_PLAN 10.4)', () => {
-  test.skip(true, 'Requires specific lobby timeout settings; takes 5+ minutes to run');
+  test.skip(process.env.LOBBY_TESTS !== 'true', 'waits out the 10-minute production lobby; run with LOBBY_TESTS=true');
 
   test('players see CMZUY3MK code when game cannot start', async ({ browser }) => {
-    // Increase timeout since we need to wait for lobby timeout (5 minutes)
-    test.setTimeout(600_000);
+    // The lobby times out after 10 minutes; allow for that plus the intro.
+    test.setTimeout(15 * 60_000);
 
     // Create batch requiring 9 players
     const adminContext = await browser.newContext();
@@ -48,10 +50,10 @@ test.describe.serial('Compensation: Lobby Timeout (TEST_PLAN 10.4)', () => {
       await completeIntro(playerPages[i], `lobby_timeout_player${i + 1}`);
     }
 
-    // Players should now be in the lobby waiting for more players.
-    // Wait for the lobby timeout (up to 6 minutes to allow buffer beyond 5-minute config).
+    // Players are now in the lobby waiting for more players. Wait for the
+    // 10-minute lobby timeout (plus a buffer).
     for (const page of playerPages) {
-      const exitInfo = await waitForExitScreen(page, 360_000);
+      const exitInfo = await waitForExitScreen(page, 12 * 60_000);
       expect(exitInfo).not.toBeNull();
     }
 
@@ -66,7 +68,7 @@ test.describe.serial('Compensation: Lobby Timeout (TEST_PLAN 10.4)', () => {
 
       // Also verify the page content mentions the code
       const content = await page.textContent('body');
-      expect(content).toContain('CMZUY3MK');
+      expect(content).toContain(PROLIFIC_CODES.lobbyTimeout);
 
       // Verify that the compensation amount is mentioned ($2 for lobby timeout)
       expect(content).toContain(`$${LOBBY_TIMEOUT_PAY.toFixed(2)}`);

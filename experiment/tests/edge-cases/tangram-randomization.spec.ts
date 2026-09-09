@@ -11,12 +11,14 @@
  * - Read each player's target index
  * - Verify that not all players have identical grid orderings
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { PlayerManager } from '../helpers/player-manager';
 import { createBatch } from '../helpers/admin';
 import {
   getPlayerInfo,
   getActivePlayers,
+  playRound,
+  waitForStage,
 } from '../helpers/game-actions';
 import {
   expectPlayerInGame,
@@ -107,64 +109,48 @@ test.describe.serial('Edge Case: Tangram Randomization (TEST_PLAN 9.2-9.3)', () 
     ).toBeGreaterThan(1);
   });
 
-  test('target index varies across players within same group', async () => {
+  // Grid order as the sequence of tangram ids the player sees
+  async function gridOrder(page: Page): Promise<string[]> {
+    return page.evaluate(() =>
+      Array.from(document.querySelectorAll('.tangrams.grid > div')).map(
+        (t) => (t as HTMLElement).dataset.tangramId ?? '',
+      ),
+    );
+  }
+
+  test('all group members share the round target, and each target index points at it in that player\'s own grid', async () => {
     const pages = pm.getPages();
 
-    // Get player info for all players in the first round
-    const playerInfos: { index: number; group: string; targetIndex: number; role: string }[] = [];
+    const perGroupTargets: Record<string, Set<string>> = {};
+    for (const page of pages) {
+      const info = await getPlayerInfo(page);
+      expect(info).not.toBeNull();
+      const target = await page.locator('.task').getAttribute('data-target');
+      expect(target, 'the task exposes the round target').toMatch(/^page/);
+      (perGroupTargets[info!.currentGroup!] ??= new Set()).add(target!);
 
+      // data-target-index is the position of the target in THIS player's grid
+      const order = await gridOrder(page);
+      expect(order.length).toBe(NUM_DISPLAY_TANGRAMS);
+      expect(info!.targetIndex).toBeGreaterThanOrEqual(0);
+      expect(order[info!.targetIndex], `page's target index should point at ${target}`).toBe(target);
+    }
+    // Everyone in a group describes and selects the same tangram
+    for (const [group, targets] of Object.entries(perGroupTargets)) {
+      expect(targets.size, `group ${group} should share one target`).toBe(1);
+    }
+  });
+
+  test('each player\'s grid order stays fixed from one round to the next', async () => {
+    const pages = pm.getPages();
+    const before = await Promise.all(pages.map((p) => gridOrder(p)));
+
+    await playRound(pages);
+    expect(await waitForStage(pages[0], 'Selection', 60_000), 'expected the next Selection stage').toBe(true);
+
+    const after = await Promise.all(pages.map((p) => gridOrder(p)));
     for (let i = 0; i < pages.length; i++) {
-      const info = await getPlayerInfo(pages[i]);
-      if (info) {
-        playerInfos.push({
-          index: i,
-          group: info.currentGroup!,
-          targetIndex: info.targetIndex,
-          role: info.role!,
-        });
-      }
-    }
-
-    expect(playerInfos.length).toBe(PLAYER_COUNT);
-
-    // Group players by their current group
-    const groups: Record<string, typeof playerInfos> = {};
-    for (const p of playerInfos) {
-      if (!groups[p.group]) groups[p.group] = [];
-      groups[p.group].push(p);
-    }
-
-    // Within each group, all players share the same target tangram,
-    // but because grids are shuffled differently for each player,
-    // the target tangram may appear at different positions (indices) in the grid.
-    // The data-target-index reflects which position in THIS player's grid
-    // the target tangram is at.
-    //
-    // However, data-target-index may actually represent the tangram ID
-    // (not the position). Let's check: if all players in a group have the
-    // same target-index, that's fine (same target tangram). But across
-    // groups, target tangrams should differ.
-    //
-    // The key test for 9.3 is that the GRID ORDER is different per player
-    // (tested above). Here we additionally verify that across all players,
-    // we don't see uniform target indices - there should be variation because
-    // different groups have different targets.
-    const allTargetIndices = playerInfos.map(p => p.targetIndex);
-    const uniqueTargets = new Set(allTargetIndices);
-
-    // With 3 groups, we expect at least 2 different target indices
-    // (unless by chance two groups got the same target, which is possible
-    // but at least we verify the system is functional)
-    expect(uniqueTargets.size).toBeGreaterThanOrEqual(1);
-
-    // Verify each group has a defined target
-    for (const [groupName, members] of Object.entries(groups)) {
-      // The speaker should have a valid target index
-      const speaker = members.find(m => m.role === 'speaker');
-      if (speaker) {
-        expect(speaker.targetIndex).toBeGreaterThanOrEqual(0);
-        expect(speaker.targetIndex).toBeLessThan(NUM_DISPLAY_TANGRAMS);
-      }
+      expect(after[i], `grid order of page ${i} changed between rounds`).toEqual(before[i]);
     }
   });
 

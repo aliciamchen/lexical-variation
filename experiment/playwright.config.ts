@@ -11,8 +11,8 @@ const isTestMode = process.env.TEST_MODE !== 'false';
  * state accumulation from previous test groups. This keeps the server fast and
  * prevents batch contamination between groups.
  *
- * By default, tests run in TEST_MODE (3+2 blocks, 120s selection, 5 idle rounds).
- * Run with TEST_MODE=false for production timing (6+6 blocks, 45s/25s selection, 3 idle rounds):
+ * By default, tests run in TEST_MODE: 3+2 blocks with PRODUCTION timers (45s/25s
+ * selection, 3 idle rounds). TEST_MODE=false plays the full 6+6 blocks:
  *   TEST_MODE=false npx playwright test
  *
  * | Group   | Categories                                        |
@@ -29,7 +29,8 @@ const isTestMode = process.env.TEST_MODE !== 'false';
  * group first. For selective runs, use the npm scripts (package.json), which
  * pair each group with its server-reset setup and pass --no-deps:
  *   npm run test:group4
- *   npm run test:group4:fast   (IDLE_TEST_TIMING=true - short timers for idle suites)
+ *   npm run test:group4:fast   (IDLE_TEST_TIMING=true - 30s timers, 2 idle rounds for idle suites)
+ *   npm run test:smoke         (tests tagged @smoke: a few minutes)
  *   npm run test:holistic      (production timing)
  * Single file (setup + file, skipping earlier groups):
  *   npx playwright test reset-server.setup tests/idle-detection/speaker-idle.spec.ts \
@@ -54,7 +55,8 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    // Traces already capture failures; video for 9-15 contexts per test is large and slow.
+    video: 'off',
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },
