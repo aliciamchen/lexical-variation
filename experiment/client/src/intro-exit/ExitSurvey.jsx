@@ -28,7 +28,11 @@ export function ExitSurvey({ next }) {
   const [fair, setFair] = useState("");
   const [feedback, setFeedback] = useState("");
 
-  // "required" = page 1 done, "optional" = page 2 done
+  // "required" = page 1 (group questions), "optional" = page 2 (demographics
+  // and the felt-human check), "done" = confirmation with the completion code.
+  // Every player who reaches the survey answers both pages: demographics feed
+  // the attrition report and the felt-human item is an AI-use signal, so
+  // removed players answer them too and are then routed to the Sorry page.
   const [page, setPage] = useState("required");
 
   // Use exitReason (our custom attribute) first — Empirica can overwrite
@@ -66,11 +70,7 @@ export function ExitSurvey({ next }) {
       groupLanguage,
       strategy,
     });
-    if (isDisbanded) {
-      next();
-    } else {
-      setPage("optional");
-    }
+    setPage("optional");
   }
 
   const page2RequiredComplete = feltHuman && age && gender;
@@ -87,7 +87,13 @@ export function ExitSurvey({ next }) {
       fair,
       feedback,
     });
-    setPage("done");
+    if (isDisbanded) {
+      // Players removed at the accuracy check (or whose group disbanded) get
+      // their prorated pay and partial-completion code on the Sorry page.
+      next();
+    } else {
+      setPage("done");
+    }
   }
 
   // Build the header alert based on whether game ended normally or was disbanded

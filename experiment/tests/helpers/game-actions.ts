@@ -452,8 +452,8 @@ export async function completeExitSurvey(page: Page): Promise<void> {
   // The ExitSurvey component (client/src/intro-exit/ExitSurvey.jsx) is a
   // three-page flow: page 1 required questions ("Next"), page 2 demographics
   // ("Submit"), page 3 confirmation with the Prolific code ("Finish").
-  // Disbanded players skip page 2 — page 1's submit calls next() directly,
-  // sending them straight to the Sorry screen.
+  // Removed (disbanded / low-accuracy) players answer both pages too, but
+  // page 2's submit sends them to the Sorry screen instead of page 3.
 
   // ── Page 1: required questions (gates the "Next" button) ──
   await page.locator('input[name="understood"][value="yes"]').click();
@@ -471,19 +471,9 @@ export async function completeExitSurvey(page: Page): Promise<void> {
   // state update that enables it.
   await page.getByRole('button', { name: /^next$/i }).click();
 
-  // Normal players advance to page 2 (the age field renders). Disbanded
-  // players are sent to the Sorry screen instead. Wait for whichever appears.
-  const ageInput = page.locator('input[name="age"]');
-  const sorry = page.locator(SORRY_SCREEN);
-  await Promise.race([
-    ageInput.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {}),
-    sorry.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {}),
-  ]);
-
-  // Disbanded flow: no page 2, already navigated away from the survey.
-  if ((await ageInput.count()) === 0) return;
-
   // ── Page 2: demographics (age, gender, feltHuman gate the "Submit" button) ──
+  const ageInput = page.locator('input[name="age"]');
+  await ageInput.waitFor({ state: 'visible', timeout: 10_000 });
   await ageInput.fill('25');
   await ageInput.dispatchEvent('input'); // ensure React onChange fires (gates Submit)
   await page.locator('select[name="gender"]').selectOption('prefer-not-to-say');
@@ -496,8 +486,15 @@ export async function completeExitSurvey(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^submit$/i }).click();
 
   // ── Page 3: confirmation with the Prolific code and a Finish button ──
+  // Removed players are routed to the Sorry screen here instead; wait for
+  // whichever appears and only click Finish when the confirmation rendered.
   const finishButton = page.getByRole('button', { name: /finish/i });
-  await finishButton.waitFor({ state: 'visible', timeout: 10_000 });
+  const sorry = page.locator(SORRY_SCREEN);
+  await Promise.race([
+    finishButton.waitFor({ state: 'visible', timeout: 10_000 }),
+    sorry.waitFor({ state: 'visible', timeout: 10_000 }),
+  ]);
+  if ((await sorry.count()) > 0) return;
   await finishButton.click();
 }
 
