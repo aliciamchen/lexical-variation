@@ -17,11 +17,7 @@ import {
   waitForStage,
 } from '../helpers/game-actions';
 import { expectPlayerInGame } from '../helpers/assertions';
-import {
-  PHASE_1_BLOCKS,
-  PHASE_2_BLOCKS,
-  ROUNDS_PER_BLOCK,
-} from '../helpers/constants';
+import { PHASE_1_BLOCKS, PHASE_2_BLOCKS, ROUNDS_PER_BLOCK, PROLIFIC_CODES } from '../helpers/constants';
 
 test.describe.serial('Compensation: Full Completion (TEST_PLAN 10.1)', () => {
   let pm: PlayerManager;
@@ -112,8 +108,31 @@ test.describe.serial('Compensation: Full Completion (TEST_PLAN 10.1)', () => {
       }
     }
 
-    // Complete exit survey for all players
-    for (const page of pages) {
+    // The confirmation page (after page 2) shows the completion code. Check it
+    // on the first player by driving the survey to that page ourselves, then
+    // let the shared helper finish everyone.
+    const first = pages[0];
+    await first.locator('input[name="understood"][value="yes"]').click();
+    await first.locator('input[name="groupIdentification"][value="5"]').click();
+    await first.locator('input[name="groupCloseness"][value="5"]').click();
+    await first.locator('input[name="groupLanguage"][value="yes"]').click();
+    const strategy = first.locator('textarea[name="strategy"]');
+    await strategy.fill('Test strategy');
+    await strategy.dispatchEvent('input');
+    await first.getByRole('button', { name: /^next$/i }).click();
+    const age = first.locator('input[name="age"]');
+    await age.waitFor({ state: 'visible', timeout: 10_000 });
+    await age.fill('25');
+    await age.dispatchEvent('input');
+    await first.locator('select[name="gender"]').selectOption('prefer-not-to-say');
+    await first.locator('input[name="feltHuman"][value="yes"]').click();
+    await first.getByRole('button', { name: /^submit$/i }).click();
+    await expect(first.getByRole('button', { name: /finish/i })).toBeVisible({ timeout: 10_000 });
+    await expect(first.locator('body')).toContainText(PROLIFIC_CODES.completion);
+    await first.getByRole('button', { name: /finish/i }).click();
+
+    // Complete exit survey for the remaining players
+    for (const page of pages.slice(1)) {
       await completeExitSurvey(page);
     }
   });

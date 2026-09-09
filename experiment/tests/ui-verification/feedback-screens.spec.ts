@@ -1,16 +1,13 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { PlayerManager } from '../helpers/player-manager';
 import { createBatch } from '../helpers/admin';
-import {
-  getPlayerInfo,
-  playRound,
-} from '../helpers/game-actions';
+import { getPlayerInfo, playRound, waitForFeedback } from '../helpers/game-actions';
 import {
   expectPlayerInGame,
   expectFeedbackVisible,
 } from '../helpers/assertions';
 import { FEEDBACK_INDICATOR } from '../helpers/selectors';
-import { GROUP_NAMES } from '../helpers/constants';
+import { GROUP_NAMES, LISTENER_CORRECT_POINTS } from '../helpers/constants';
 
 /**
  * TEST_PLAN 5.4: Feedback stage shows correct/incorrect messages.
@@ -43,56 +40,43 @@ test.describe.serial('UI Verification: Feedback Screens (5.4)', () => {
     await pm.cleanup();
   });
 
-  test('feedback shows correct message for correct listener', async () => {
+  // Feedback lasts FEEDBACK_DURATION seconds, so each check below reads one
+  // page per role and fails if that role is not found in Feedback.
+  async function pagesInFeedbackByRole(pages: Page[]) {
+    const found: Record<string, Page> = {};
+    for (const page of pages) {
+      const info = await getPlayerInfo(page);
+      if (!info) continue;
+      expect(info.stageName, 'every player should be in the Feedback stage').toBe('Feedback');
+      if (info.role && !found[info.role]) found[info.role] = page;
+      if (found.listener && found.speaker) break;
+    }
+    expect(found.listener, 'expected at least one listener in Feedback').toBeTruthy();
+    expect(found.speaker, 'expected at least one speaker in Feedback').toBeTruthy();
+    return found as { listener: Page; speaker: Page };
+  }
+
+  test('feedback shows correct message for correct listener and points message for speaker', async () => {
     const pages = pm.getPages();
 
     // Play one round with all groups answering correctly
     await playRound(pages);
+    expect(await waitForFeedback(pages[0], 30_000), 'expected the Feedback stage').toBe(true);
 
-    // Wait for feedback stage
-    await pages[0].waitForTimeout(2000);
-
-    // Check that we are in Feedback stage
-    for (const page of pages) {
-      const info = await getPlayerInfo(page);
-      if (info?.stageName === 'Feedback' && info.role === 'listener') {
-        const bodyText = await page.textContent('body');
-        // Correct listener should see "Correct! You earned 2 points"
-        expect(bodyText).toContain('Correct!');
-        expect(bodyText).toContain('2 points');
-        break;
-      }
-    }
-  });
-
-  test('feedback shows speaker points message', async () => {
-    const pages = pm.getPages();
-
-    // Check speaker feedback from the round we just played
-    for (const page of pages) {
-      const info = await getPlayerInfo(page);
-      if (info?.stageName === 'Feedback' && info.role === 'speaker') {
-        const bodyText = await page.textContent('body');
-        // Speaker should see "You earned X points this round"
-        expect(bodyText).toContain('You earned');
-        expect(bodyText).toContain('points');
-        break;
-      }
-    }
+    const { listener, speaker } = await pagesInFeedbackByRole(pages);
+    // Correct listener sees "Correct! You earned 2 points"
+    await expect(listener.locator('body')).toContainText('Correct!');
+    await expect(listener.locator('body')).toContainText(`${LISTENER_CORRECT_POINTS} points`);
+    // Speaker sees "You earned X points this round"
+    await expect(speaker.locator('body')).toContainText('You earned');
+    await expect(speaker.locator('body')).toContainText('points');
   });
 
   test('feedback indicator element is visible during Feedback stage', async () => {
     const pages = pm.getPages();
-
-    for (const page of pages) {
-      const info = await getPlayerInfo(page);
-      if (info?.stageName === 'Feedback') {
-        const feedbackEl = page.locator(FEEDBACK_INDICATOR);
-        await expect(feedbackEl).toBeVisible({ timeout: 5_000 });
-        await expectFeedbackVisible(page);
-        break;
-      }
-    }
+    const { listener } = await pagesInFeedbackByRole(pages);
+    await expect(listener.locator(FEEDBACK_INDICATOR)).toBeVisible({ timeout: 5_000 });
+    await expectFeedbackVisible(listener);
   });
 
   test('feedback shows "Ooops" for incorrect listener', async () => {
@@ -102,9 +86,7 @@ test.describe.serial('UI Verification: Feedback Screens (5.4)', () => {
     // Pick the first group name to be wrong
     const wrongGroup = GROUP_NAMES[0];
     await playRound(pages, { wrongGroups: [wrongGroup] });
-
-    // Wait for feedback stage
-    await pages[0].waitForTimeout(2000);
+    expect(await waitForFeedback(pages[0], 30_000), 'expected the Feedback stage').toBe(true);
 
     // Find a listener from the wrong group and check for "Ooops"
     let foundWrongFeedback = false;
@@ -139,14 +121,7 @@ test.describe.serial('UI Verification: Feedback Screens (5.4)', () => {
 
   test('Continue button is present during Feedback stage', async () => {
     const pages = pm.getPages();
-
-    for (const page of pages) {
-      const info = await getPlayerInfo(page);
-      if (info?.stageName === 'Feedback') {
-        const continueBtn = page.getByRole('button', { name: /continue/i });
-        await expect(continueBtn).toBeVisible({ timeout: 5_000 });
-        break;
-      }
-    }
+    const { listener } = await pagesInFeedbackByRole(pages);
+    await expect(listener.getByRole('button', { name: /continue/i })).toBeVisible({ timeout: 5_000 });
   });
 });

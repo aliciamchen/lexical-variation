@@ -1,5 +1,6 @@
 import { Page, expect } from '@playwright/test';
-import { GAME_CONTAINER, SORRY_SCREEN, QUIZ_FAILED_SCREEN, EXIT_SURVEY, SOCIAL_GUESS_CONTAINER } from './selectors';
+import { GAME_CONTAINER, SORRY_SCREEN, QUIZ_FAILED_SCREEN, EXIT_SURVEY, SOCIAL_GUESS_CONTAINER, PLAYER_GROUP_DISPLAY } from './selectors';
+import { PLAYER_NAMES } from './constants';
 import { getPlayerInfo, getExitInfo } from './game-actions';
 
 /**
@@ -83,20 +84,17 @@ export async function expectGroupUnchanged(pages: Page[]): Promise<void> {
  * Assert identity is masked (player shows "Player" name)
  */
 export async function expectIdentityMasked(page: Page): Promise<void> {
-  const content = await page.textContent('body');
-  // In mixed Phase 2, players should see "Player (Speaker)" or "Player (Listener)"
-  // but not real names like "Repi", "Minu", etc.
-  const playerNames = ['Repi', 'Minu', 'Laju', 'Hera', 'Zuda', 'Bavi', 'Lika', 'Felu', 'Nori'];
-  for (const name of playerNames) {
-    // Name should not appear in player display area (it can still appear in profile)
-    const playerGroup = page.locator('.player-group');
-    if (await playerGroup.count() > 0) {
-      const groupText = await playerGroup.textContent();
-      // Other players should show as "Player", not their real names
-      // The current player shows "(You)" so their name might still appear
-      // Just check that "Player" appears in the group display
-      expect(groupText).toContain('Player');
-    }
+  // In mixed Phase 2 the group display shows other members as "Player"; none of
+  // the real display names may appear there. The current player may still see
+  // their own name (marked "(You)"), so that one name is exempt.
+  const display = page.locator(PLAYER_GROUP_DISPLAY).first();
+  await expect(display, 'group display should render').toBeVisible({ timeout: 10_000 });
+  const ownName = (await getPlayerInfo(page))?.name ?? null;
+  const text = (await display.textContent()) ?? '';
+  expect(text, 'masked members should be labelled "Player"').toContain('Player');
+  for (const name of PLAYER_NAMES) {
+    if (name === ownName) continue;
+    expect(text, `real name "${name}" must not appear in the group display in mixed Phase 2`).not.toContain(name);
   }
 }
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { PlayerManager } from '../helpers/player-manager';
 import { createBatch } from '../helpers/admin';
 import {
@@ -40,6 +40,15 @@ import { EXIT_SURVEY } from '../helpers/selectors';
  * merges the demographics and shows the completion code once page 2's required
  * fields are set.
  */
+/** The first page currently showing the Phase 1 to Phase 2 transition screen; fails if none is. */
+async function transitionPage(pages: Page[]): Promise<{ page: Page; bodyText: string }> {
+  for (const page of pages) {
+    const bodyText = (await page.textContent('body')) ?? '';
+    if (bodyText.includes('End of Phase 1')) return { page, bodyText };
+  }
+  throw new Error('No player is on the Phase 2 transition screen');
+}
+
 test.describe.serial('UI Verification: Endgame — Transition & Exit Survey (5.5, 5.6)', () => {
   let pm: PlayerManager;
 
@@ -85,80 +94,50 @@ test.describe.serial('UI Verification: Endgame — Transition & Exit Survey (5.5
 
     // At least one page should show the transition content
     let foundTransition = false;
-    for (const page of pages) {
-      const bodyText = await page.textContent('body');
-      if (bodyText?.includes('End of Phase 1')) {
-        foundTransition = true;
-        break;
-      }
-    }
+    const { page, bodyText } = await transitionPage(pages);
+    foundTransition = true;
     expect(foundTransition).toBe(true);
   });
 
   test('(5.5) transition screen mentions Phase 2', async () => {
     const pages = pm.getPages();
 
-    for (const page of pages) {
-      const bodyText = await page.textContent('body');
-      if (bodyText?.includes('End of Phase 1')) {
-        expect(bodyText).toContain('Phase 2');
-        break;
-      }
-    }
+    const { page, bodyText } = await transitionPage(pages);
+    expect(bodyText).toContain('Phase 2');
   });
 
   test('(5.5) refer_separated transition mentions "same group members"', async () => {
     const pages = pm.getPages();
 
-    for (const page of pages) {
-      const bodyText = await page.textContent('body');
-      if (bodyText?.includes('End of Phase 1')) {
-        // refer_separated should mention staying with the same group
-        expect(bodyText).toContain('same group members');
-        break;
-      }
-    }
+    const { page, bodyText } = await transitionPage(pages);
+    // refer_separated should mention staying with the same group
+    expect(bodyText).toContain('same group members');
   });
 
   test('(5.5) transition screen shows scoring reminder', async () => {
     const pages = pm.getPages();
 
-    for (const page of pages) {
-      const bodyText = await page.textContent('body');
-      if (bodyText?.includes('End of Phase 1')) {
-        // Scoring section should be present
-        expect(bodyText).toContain('Scoring');
-        expect(bodyText).toContain('points');
-        break;
-      }
-    }
+    const { page, bodyText } = await transitionPage(pages);
+    // Scoring section should be present
+    expect(bodyText).toContain('Scoring');
+    expect(bodyText).toContain('points');
   });
 
   test('(5.5) transition screen shows block count for Phase 2', async () => {
     const pages = pm.getPages();
 
-    for (const page of pages) {
-      const bodyText = await page.textContent('body');
-      if (bodyText?.includes('End of Phase 1')) {
-        // Should mention the number of Phase 2 blocks
-        expect(bodyText).toContain(`${PHASE_2_BLOCKS} blocks`);
-        expect(bodyText).toContain(`${NUM_TANGRAMS} rounds`);
-        break;
-      }
-    }
+    const { page, bodyText } = await transitionPage(pages);
+    // Should mention the number of Phase 2 blocks
+    expect(bodyText).toContain(`${PHASE_2_BLOCKS} blocks`);
+    expect(bodyText).toContain(`${NUM_TANGRAMS} rounds`);
   });
 
   test('(5.5) transition screen has Continue button', async () => {
     const pages = pm.getPages();
 
-    for (const page of pages) {
-      const bodyText = await page.textContent('body');
-      if (bodyText?.includes('End of Phase 1')) {
-        const continueBtn = page.getByRole('button', { name: /continue/i });
-        await expect(continueBtn).toBeVisible({ timeout: 5_000 });
-        break;
-      }
-    }
+    const { page, bodyText } = await transitionPage(pages);
+    const continueBtn = page.getByRole('button', { name: /continue/i });
+    await expect(continueBtn).toBeVisible({ timeout: 5_000 });
   });
 
   test('(5.5) clicking Continue advances past transition', async () => {

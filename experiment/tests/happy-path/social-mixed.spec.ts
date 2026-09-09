@@ -85,15 +85,12 @@ test.describe.serial('Happy Path: social_mixed', () => {
     }
 
     // Wait for transition stage to appear
-    const transitionReached = await waitForStage(pages[0], 'Phase 2 transition', 30_000);
-    if (transitionReached) {
-      const content = await pages[0].textContent('body');
-      // Transition should mention the social guessing task or Phase 2
-      expect(
-        content?.includes('group') || content?.includes('guess') ||
-        content?.includes('Phase 2') || content?.includes('Continue'),
-      ).toBe(true);
-    }
+    const transitionReached = await waitForStage(pages[0], 'Phase 2 transition', 60_000);
+    expect(transitionReached, 'expected the Phase 2 transition stage').toBe(true);
+    const content = (await pages[0].textContent('body')) ?? '';
+    expect(content).toContain('End of Phase 1');
+    // The social conditions explain the group-identification task here
+    expect(content).toMatch(/group/i);
 
     // Complete the transition (submit for all players)
     await handleTransition(pages);
@@ -200,15 +197,9 @@ test.describe.serial('Happy Path: social_mixed', () => {
     }
 
     // Wait for Bonus info stage
-    await waitForStage(active[0], 'Bonus info', 120_000);
-
-    const content = await active[0].textContent('body');
-    // Bonus info for social_mixed should include social guessing info
-    expect(
-      content?.includes('bonus') || content?.includes('score') ||
-      content?.includes('social') || content?.includes('guess') ||
-      content?.includes('End of Game'),
-    ).toBe(true);
+    expect(await waitForStage(active[0], 'Bonus info', 120_000), 'expected the Bonus info stage').toBe(true);
+    const content = (await active[0].textContent('body')) ?? '';
+    expect(content).toMatch(/bonus/i);
 
     // Click Continue for each player after they reach Bonus info
     for (const page of active) {

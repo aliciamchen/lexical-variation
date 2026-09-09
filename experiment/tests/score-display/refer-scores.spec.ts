@@ -7,14 +7,10 @@
  * display shows a non-zero value in the Profile section of the page.
  */
 import { test, expect } from '@playwright/test';
+import { LISTENER_CORRECT_POINTS, SPEAKER_MAX_POINTS_PER_ROUND } from '../helpers/constants';
 import { PlayerManager } from '../helpers/player-manager';
 import { createBatch } from '../helpers/admin';
-import {
-  getPlayerInfo,
-  playRound,
-  getActivePlayers,
-  waitForFeedback,
-} from '../helpers/game-actions';
+import { getPlayerInfo, playRound, getActivePlayers, waitForFeedback, readScore } from '../helpers/game-actions';
 import { expectPlayerInGame } from '../helpers/assertions';
 
 test.describe.serial('Score Display: Refer Scores (TEST_PLAN 11.1)', () => {
@@ -49,61 +45,35 @@ test.describe.serial('Score Display: Refer Scores (TEST_PLAN 11.1)', () => {
 
   test('scores start at zero before any rounds', async () => {
     const pages = pm.getPages();
-
-    // Verify all players start with score 0
     for (const page of pages) {
-      // The Profile component renders score in a div with text "Score" label
-      // and a numeric value below it. Check the page for the score display.
-      const scoreText = await page.locator('[data-player-name]').textContent();
-      // The score element is a sibling in the Profile component
-      const profileSection = page.locator('[data-player-name]');
-      await expect(profileSection).toBeVisible();
+      await expect(page.locator('[data-player-name]')).toBeVisible();
+      expect(await readScore(page)).toBe(0);
     }
   });
 
-  test('scores update after a correct round', async () => {
+  test('scores update after a correct round: listeners and speakers earn exactly their points', async () => {
     const pages = pm.getPages();
 
-    // Play one round where listeners click the correct tangram (default behavior)
-    await playRound(pages);
+    // Roles for the round about to be played
+    const roles: Record<number, string | null> = {};
+    for (let i = 0; i < pages.length; i++) {
+      roles[i] = (await getPlayerInfo(pages[i]))?.role ?? null;
+    }
+    expect(Object.values(roles).filter((r) => r === 'speaker').length).toBe(3);
 
-    // Wait for Feedback stage where scores are updated
+    // All listeners click the correct tangram
+    await playRound(pages);
     const feedbackReached = await waitForFeedback(pages[0], 30_000);
     expect(feedbackReached).toBe(true);
-    await pages[0].waitForTimeout(2000);
 
-    // Check that at least some players now have non-zero scores
-    // Listeners who clicked correctly get LISTENER_CORRECT_POINTS (2)
-    // Speakers get points based on proportion of correct listeners
-    let foundNonZeroScore = false;
-
-    for (const page of pages) {
-      // Look for the score display in the Profile section
-      // Profile.jsx renders: <div className="text-3xl font-semibold !leading-none tabular-nums">{score}</div>
-      // Use page.evaluate to find the score more reliably
-      const score = await page.evaluate(() => {
-        // Find by the "Score" label and get the adjacent numeric value
-        const scoreLabel = Array.from(document.querySelectorAll('div'))
-          .find(el => el.textContent?.trim() === 'Score');
-        if (scoreLabel) {
-          const parent = scoreLabel.parentElement;
-          if (parent) {
-            const numEl = parent.querySelector('.tabular-nums');
-            if (numEl) return parseInt(numEl.textContent || '0', 10);
-          }
-        }
-        // Fallback: find by class
-        const el = document.querySelector('.tabular-nums');
-        return el ? parseInt(el.textContent || '0', 10) : 0;
-      });
-
-      if (score > 0) {
-        foundNonZeroScore = true;
-        break;
-      }
+    // Every listener earns LISTENER_CORRECT_POINTS; every speaker earns the full
+    // speaker share because both listeners were correct.
+    for (let i = 0; i < pages.length; i++) {
+      const expected = roles[i] === 'speaker' ? SPEAKER_MAX_POINTS_PER_ROUND : LISTENER_CORRECT_POINTS;
+      await expect
+        .poll(() => readScore(pages[i]), { timeout: 15_000, message: `score of page ${i} (${roles[i]})` })
+        .toBe(expected);
     }
-
-    expect(foundNonZeroScore, 'At least one player should have a non-zero score after a correct round').toBe(true);
   });
 
   test('scores continue to increment after additional rounds', async () => {

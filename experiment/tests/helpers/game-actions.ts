@@ -1,6 +1,6 @@
 import { Page } from '@playwright/test';
-import { GAME_CONTAINER, TASK, SORRY_SCREEN, QUIZ_FAILED_SCREEN, EXIT_SURVEY, TANGRAM_ITEMS, SIMULTANEOUS_SUBMIT } from './selectors';
-import { SELECTION_DURATION, PHASE2_SELECTION_DURATION, FEEDBACK_DURATION } from './constants';
+import { GAME_CONTAINER, TASK, SORRY_SCREEN, QUIZ_FAILED_SCREEN, EXIT_SURVEY, TANGRAM_ITEMS, SIMULTANEOUS_SUBMIT, CHAT_MESSAGES } from './selectors';
+import { SELECTION_DURATION, PHASE2_SELECTION_DURATION, FEEDBACK_DURATION, ROUNDS_PER_BLOCK } from './constants';
 
 // ============ TYPES ============
 
@@ -159,18 +159,19 @@ export async function completeIntro(page: Page, options?: string | { playerName?
 
 // ============ GAME ACTIONS ============
 
-export async function speakerSendMessage(page: Page, message: string): Promise<boolean> {
+export async function speakerSendMessage(page: Page, message: string, timeout = 10_000): Promise<boolean> {
+  // The chat renders once the page is in Selection and the group has not all
+  // responded; wait for it rather than checking once, so a stage-propagation
+  // lag between browser contexts is not mistaken for a missing chat.
   try {
     const input = page.getByRole('textbox', { name: 'Say something' });
-    if (await input.count() > 0) {
-      await input.fill(message);
-      await input.press('Enter');
-      return true;
-    }
+    await input.waitFor({ state: 'visible', timeout });
+    await input.fill(message);
+    await input.press('Enter');
+    return true;
   } catch {
-    // Chat not available
+    return false;
   }
-  return false;
 }
 
 export async function listenerClickTangram(page: Page, index: number): Promise<boolean> {
@@ -208,6 +209,17 @@ export async function clickContinue(page: Page, timeout = 1000): Promise<boolean
   }
 }
 
+/**
+ * Read the score shown in the player's Profile card.
+ */
+export async function readScore(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const label = Array.from(document.querySelectorAll('div')).find((el) => el.textContent?.trim() === 'Score');
+    const numEl = label?.parentElement?.querySelector('.tabular-nums') ?? document.querySelector('.tabular-nums');
+    return numEl ? parseInt(numEl.textContent || '0', 10) : 0;
+  });
+}
+
 // ============ ROUND HELPERS ============
 
 /**
@@ -236,28 +248,50 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
     }
   }
 
-  // Wait for Selection stage to ensure we're in the right state
-  await waitForStage(monitorPage, 'Selection', 15_000);
+  // Wait for the Selection stage. If none arrives (transition, Bonus info, or
+  // the game is over) there is no round to play: return without touching the
+  // pages, so callers that loop "until the game moves on" do not burn stage time.
+  const inSelection = await waitForStage(monitorPage, 'Selection', 15_000);
+  if (!inSelection) return;
 
-  // Build group → target mapping from speakers
+  // Build group → target mapping from speakers, and remember which groups'
+  // speakers actually spoke (a skipped speaker leaves its listeners unable to act)
   const groupTargets: Record<string, number> = {};
+  const speakerSpoke: Record<string, boolean> = {};
 
-  // Speakers send messages
+  // Speakers send messages (each page must itself have reached Selection first)
   for (let i = 0; i < pages.length; i++) {
     if (skipIndices.includes(i)) continue;
+    if (!(await isInGame(pages[i]))) continue;
+    // Other pages may lag the monitor page by a moment when the stage changes
+    await waitForStage(pages[i], 'Selection', 5_000);
     const info = await getPlayerInfo(pages[i]);
     if (info?.role === 'speaker' && info.targetIndex >= 0) {
       groupTargets[info.currentGroup!] = info.targetIndex;
-      await speakerSendMessage(pages[i], message);
+      const sent = await speakerSendMessage(pages[i], message);
+      if (!sent) {
+        throw new Error(
+          `playRound: speaker on page ${i} (group ${info.currentGroup}) could not send a chat message`,
+        );
+      }
+      speakerSpoke[info.currentGroup!] = true;
     }
   }
-  await pages[0]?.waitForTimeout(500);
 
-  // Listeners send messages and click tangrams
+  // Listeners: wait for their speaker's message, then click.
   for (let i = 0; i < pages.length; i++) {
     if (skipIndices.includes(i)) continue;
     const info = await getPlayerInfo(pages[i]);
     if (info?.role === 'listener') {
+      // The client ignores tangram clicks until the speaker's message has arrived,
+      // so a listener whose speaker was skipped (idle tests) cannot act this round.
+      if (!speakerSpoke[info.currentGroup!]) continue;
+      await pages[i]
+        .locator(CHAT_MESSAGES)
+        .getByText(message, { exact: false })
+        .first()
+        .waitFor({ state: 'visible', timeout: 15_000 });
+
       // Listener sends a chat message before clicking
       await speakerSendMessage(pages[i], 'ok');
 
@@ -269,7 +303,12 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
         clickIdx = (clickIdx + 6) % 12;
       }
 
-      await listenerClickTangram(pages[i], clickIdx);
+      const clicked = await listenerClickTangram(pages[i], clickIdx);
+      if (!clicked) {
+        throw new Error(
+          `playRound: listener on page ${i} (group ${info.currentGroup}) could not click tangram ${clickIdx}`,
+        );
+      }
 
       // Social guess if needed (simultaneous mode: click Submit after both selections)
       if (doSocialGuess) {
@@ -336,7 +375,7 @@ export async function playRound(pages: Page[], options: CompleteRoundOptions = {
  */
 export async function playBlock(
   pages: Page[],
-  numRounds = 6,
+  numRounds = ROUNDS_PER_BLOCK,
   options: CompleteRoundOptions = {},
 ): Promise<void> {
   for (let r = 0; r < numRounds; r++) {

@@ -141,25 +141,18 @@ test.describe.serial('Communication: chat with masked identities in refer_mixed'
 
     // Also have a listener send a message and verify it shows "Player (Listener)"
     const listenerChatbox = listenerPages[0].getByRole(CHAT_TEXTBOX.role, { name: CHAT_TEXTBOX.name });
-    if (await listenerChatbox.count() > 0) {
-      await listenerChatbox.fill('the tall one?');
-      await listenerChatbox.press('Enter');
-      await listenerPages[0].waitForTimeout(1000);
+    await expect(listenerChatbox, 'listeners can chat during Selection').toBeVisible({ timeout: 10_000 });
+    await listenerChatbox.fill('the tall one?');
+    await listenerChatbox.press('Enter');
 
-      // Verify on the speaker's chat that it shows "Player (Listener)"
-      const speakerChatArea = speakerPage!.locator('.chat-messages').first();
-      await expect(speakerChatArea.getByText('the tall one?')).toBeVisible({ timeout: 5_000 });
-      await expect(speakerChatArea.getByText('Player (Listener)').first()).toBeVisible({ timeout: 5_000 });
-    }
+    // Verify on the speaker's chat that it shows "Player (Listener)"
+    const speakerChatArea = speakerPage!.locator('.chat-messages').first();
+    await expect(speakerChatArea.getByText('the tall one?')).toBeVisible({ timeout: 5_000 });
+    await expect(speakerChatArea.getByText('Player (Listener)').first()).toBeVisible({ timeout: 5_000 });
 
-    // Check the player-group display area for masked identities
+    // The group display must show "Player" and none of the other players' real names
     for (const page of active) {
-      const playerGroupDisplay = page.locator(PLAYER_GROUP_DISPLAY);
-      if (await playerGroupDisplay.count() > 0) {
-        const groupText = await playerGroupDisplay.textContent();
-        // In Phase 2 mixed conditions, other players should show as "Player"
-        expect(groupText).toContain('Player');
-      }
+      await expectIdentityMasked(page);
     }
   });
 });

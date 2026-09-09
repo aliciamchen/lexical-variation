@@ -148,24 +148,19 @@ test.describe.serial('Happy Path: refer_separated', () => {
     // There may be a timing gap from the previous test, so the game might already
     // be past Feedback or even past Bonus info.
 
-    // Click Continue to submit any pending stage (Feedback or Bonus info)
-    for (const page of active) {
-      await clickContinue(page, 5000);
-    }
-
-    // Check current state - might be at Bonus info, past it, or still in Feedback
+    // If players are still on the last Feedback, advance them; do not click
+    // Continue on Bonus info itself, since that would end the game before the
+    // check below.
     const info = await getPlayerInfo(active[0]);
-    if (info && info.stageName !== 'Bonus info') {
-      // Wait for Bonus info to appear (may take up to FEEDBACK_DURATION if still in Feedback)
-      const found = await waitForStage(active[0], 'Bonus info', 30_000);
-      if (found) {
-        const content = await active[0].textContent('body');
-        expect(
-          content?.includes('bonus') || content?.includes('score') || content?.includes('End of Game'),
-        ).toBe(true);
+    if (info?.stageName !== 'Bonus info') {
+      for (const page of active) {
+        await clickContinue(page, 5000);
       }
-      // If not found, the game may have already ended (which is OK)
+      const found = await waitForStage(active[0], 'Bonus info', 60_000);
+      expect(found, 'expected the Bonus info stage after the last round').toBe(true);
     }
+    const content = (await active[0].textContent('body')) ?? '';
+    expect(content).toMatch(/bonus/i);
 
     // Click Continue on Bonus info for all players (if they're still there)
     for (const page of active) {

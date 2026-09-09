@@ -43,6 +43,10 @@ async function waitForAdminReady(page: Page, timeout = 15_000): Promise<'empty' 
 async function stopRunningBatches(page: Page): Promise<void> {
   const MAX_CLICKS = 10; // Safety limit to prevent infinite loops
 
+  // Stopping a batch asks for confirmation in a browser dialog; Playwright
+  // dismisses dialogs by default, which silently cancelled every Stop.
+  page.on('dialog', (dialog) => dialog.accept().catch(() => {}));
+
   // First pass: click all visible stop buttons
   for (let clicks = 0; clicks < MAX_CLICKS; clicks++) {
     const stopButtons = page.getByRole('button', { name: 'Stop' });
@@ -146,5 +150,15 @@ export async function createBatch(page: Page, condition: TreatmentKey): Promise<
       await stopBtns.first().click();
       await page.waitForTimeout(1000);
     }
+  }
+
+  // Fail here, with a clear message, rather than letting every player later
+  // time out in the lobby because no batch is running. (Earlier batches from
+  // previous specs may still be listed with a Stop button, so only require
+  // that at least one batch is running.)
+  await page.waitForTimeout(500);
+  const running = await page.getByRole('button', { name: 'Stop' }).count();
+  if (running === 0) {
+    throw new Error('createBatch: no running batch after creation');
   }
 }

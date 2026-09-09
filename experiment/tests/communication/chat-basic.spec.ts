@@ -11,7 +11,7 @@ import { expectPlayerInGame } from '../helpers/assertions';
 import { CHAT_TEXTBOX } from '../helpers/selectors';
 
 // TEST_PLAN 2.1-2.3: Basic chat communication tests in refer_separated
-test.describe.serial('Communication: basic chat in refer_separated', () => {
+test.describe.serial('Communication: basic chat in refer_separated', { tag: '@smoke' }, () => {
   let pm: PlayerManager;
 
   test.beforeAll(async ({ browser }) => {
@@ -113,43 +113,33 @@ test.describe.serial('Communication: basic chat in refer_separated', () => {
 
     // Now have the listener send a message so we can verify "(Listener)" label
     const listenerChatbox = listenerPage!.getByRole(CHAT_TEXTBOX.role, { name: CHAT_TEXTBOX.name });
-    if (await listenerChatbox.count() > 0) {
-      await listenerChatbox.fill('which one do you mean?');
-      await listenerChatbox.press('Enter');
-      await listenerPage!.waitForTimeout(1000);
+    await expect(listenerChatbox, 'listeners can chat during Selection').toBeVisible({ timeout: 10_000 });
+    await listenerChatbox.fill('which one do you mean?');
+    await listenerChatbox.press('Enter');
 
-      // Verify the listener message shows "(Listener)" label in the speaker's chat
-      await expect(speakerPage!.getByText('(Listener)').first()).toBeVisible({ timeout: 10_000 });
-      await expect(speakerPage!.getByText('which one do you mean?')).toBeVisible({ timeout: 10_000 });
-    }
+    // Verify the listener message shows "(Listener)" label in the speaker's chat
+    await expect(speakerPage!.getByText('(Listener)').first()).toBeVisible({ timeout: 10_000 });
+    await expect(speakerPage!.getByText('which one do you mean?')).toBeVisible({ timeout: 10_000 });
   });
 
   test('2.3: chat input is available during Selection stage', async () => {
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
-    // Check that chat textbox is available for players currently in Selection stage
+    // No group has fully responded yet (listeners have not clicked), so the chat
+    // must be available to every player who is in Selection.
+    let checked = 0;
     for (const page of active) {
       const info = await getPlayerInfo(page);
-      if (info?.stageName === 'Selection') {
-        const chatbox = page.getByRole(CHAT_TEXTBOX.role, { name: CHAT_TEXTBOX.name });
-        const chatboxCount = await chatbox.count();
-
-        // Chat should be visible during Selection stage (before all group members respond)
-        // It may not be visible if all group members have already responded
-        if (chatboxCount > 0) {
-          await expect(chatbox).toBeEnabled();
-
-          // Verify we can type into it
-          await chatbox.fill('test message');
-          const value = await chatbox.inputValue();
-          expect(value).toBe('test message');
-
-          // Clear the field without sending
-          await chatbox.fill('');
-          break;
-        }
-      }
+      if (info?.stageName !== 'Selection') continue;
+      const chatbox = page.getByRole(CHAT_TEXTBOX.role, { name: CHAT_TEXTBOX.name });
+      await expect(chatbox).toBeEnabled({ timeout: 10_000 });
+      await chatbox.fill('test message');
+      expect(await chatbox.inputValue()).toBe('test message');
+      await chatbox.fill('');
+      checked++;
+      if (checked >= 3) break;
     }
+    expect(checked, 'expected players in the Selection stage').toBeGreaterThan(0);
   });
 });

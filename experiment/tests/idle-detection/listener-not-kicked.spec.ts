@@ -145,16 +145,16 @@ test.describe.serial('Idle Detection: Listener Not Kicked When Speaker Idles (TE
     // (only 1 listener left after speaker kicked from group of 3 -> 2 remain,
     // which is >= MIN_GROUP_SIZE=2), game continues. Play a few more rounds
     // to confirm listeners are not at risk of being kicked.
-    if (active.length >= 2) {
-      // Play 2 more rounds normally with all active players participating
-      for (let r = 0; r < 2; r++) {
-        await playRound(active);
-      }
+    expect(active.length, 'the game should continue with the remaining players').toBeGreaterThanOrEqual(2);
 
-      // Verify no additional players were kicked for timeout
-      const removed = await getRemovedPlayers(pages);
-      const timedOut = removed.filter(r => r.info.exitReason === 'player timeout');
-      expect(timedOut.length).toBe(1); // Still only the original speaker
+    // Play 2 more rounds normally with all active players participating
+    for (let r = 0; r < 2; r++) {
+      await playRound(active);
     }
+
+    // Verify no additional players were kicked for timeout
+    const removed = await getRemovedPlayers(pages);
+    const timedOut = removed.filter(r => r.info.exitReason === 'player timeout');
+    expect(timedOut.length).toBe(1); // Still only the original speaker
   });
 });

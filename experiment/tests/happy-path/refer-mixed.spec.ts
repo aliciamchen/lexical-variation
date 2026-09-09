@@ -88,11 +88,12 @@ test.describe.serial('Happy Path: refer_mixed', () => {
     // Wait for transition stage to appear
     await pages[0].waitForTimeout(3000);
 
-    // The transition screen should show some text about the next phase
-    const content = await pages[0].textContent('body');
-    expect(
-      content?.includes('shuffle') || content?.includes('mixed') || content?.includes('anonymous') || content?.includes('Phase 2') || content?.includes('Phase 1') || content?.includes('Continue'),
-    ).toBe(true);
+    // The transition screen must announce the end of Phase 1 and describe Phase 2
+    const transitionReached = await waitForStage(pages[0], 'Phase 2 transition', 60_000);
+    expect(transitionReached, 'expected the Phase 2 transition stage').toBe(true);
+    const content = (await pages[0].textContent('body')) ?? '';
+    expect(content).toContain('End of Phase 1');
+    expect(content).toContain('Phase 2');
 
     await handleTransition(pages);
   });
@@ -129,20 +130,43 @@ test.describe.serial('Happy Path: refer_mixed', () => {
     }
   });
 
-  test('Phase 2: groups are reshuffled', async () => {
+  test('Phase 2: groups are reshuffled between consecutive trials', async () => {
     test.slow();
     const pages = pm.getPages();
     const active = await getActivePlayers(pages);
 
-    // Record current groups at start of Phase 2
-    const phase2Groups: Record<number, string> = {};
-    for (let i = 0; i < active.length; i++) {
-      const info = await getPlayerInfo(active[i]);
-      if (info?.currentGroup) phase2Groups[i] = info.currentGroup;
-    }
+    const snapshot = async () => {
+      const groups: Record<number, string> = {};
+      for (let i = 0; i < active.length; i++) {
+        const info = await getPlayerInfo(active[i]);
+        if (info?.currentGroup) groups[i] = info.currentGroup;
+      }
+      return groups;
+    };
+    const changedBetween = (a: Record<number, string>, b: Record<number, string>) =>
+      Object.keys(a).filter((k) => b[+k] !== undefined && a[+k] !== b[+k]).length;
 
-    // Play Phase 2
-    for (let block = 0; block < PHASE_2_BLOCKS; block++) {
+    // Groups are reshuffled at the start of every Phase 2 trial. Compare two
+    // consecutive transitions; an identical assignment twice in a row has
+    // probability well under one in a hundred.
+    await waitForStage(active[0], 'Selection', 60_000);
+    const t0 = await snapshot();
+    await playRound(active);
+    await waitForStage(active[0], 'Selection', 60_000);
+    const t1 = await snapshot();
+    await playRound(active);
+    await waitForStage(active[0], 'Selection', 60_000);
+    const t2 = await snapshot();
+
+    expect(Object.keys(t0).length).toBe(active.length);
+    expect(
+      changedBetween(t0, t1) + changedBetween(t1, t2),
+      `expected current groups to change between consecutive trials; got ${JSON.stringify([t0, t1, t2])}`,
+    ).toBeGreaterThan(0);
+
+    // Finish Phase 2 (two rounds of the first block already played)
+    for (let r = 2; r < ROUNDS_PER_BLOCK; r++) await playRound(active);
+    for (let block = 1; block < PHASE_2_BLOCKS; block++) {
       await playBlock(active, ROUNDS_PER_BLOCK);
     }
   });

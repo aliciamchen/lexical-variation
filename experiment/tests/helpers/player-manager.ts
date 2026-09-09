@@ -47,15 +47,26 @@ export class PlayerManager {
 
       // Wait for the first screen to render: the custom consent page ("I consent")
       // or, if consent was already given in this context, the identifier textbox.
-      // (The old loop looked for Empirica's disabled "I AGREE" button and always
-      // ran its full 15 s: about 2 minutes of dead time per 9-player spec.)
+      // The first page load after a server restart can take a long time while
+      // Vite compiles the client, so the first player gets a generous wait and
+      // one reload; later players get a short one. Failing here gives a clear
+      // error instead of a half-registered batch that poisons later specs.
       if (success) {
         const firstScreen = page
           .getByRole('button', { name: /consent/i })
-          .or(page.getByRole('textbox'));
-        await firstScreen.first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {
-          // completeIntro will report a clear error if the page never rendered
-        });
+          .or(page.getByRole('textbox'))
+          .first();
+        const timeout = i === 0 ? 90_000 : 20_000;
+        try {
+          await firstScreen.waitFor({ state: 'visible', timeout });
+        } catch {
+          await page.reload({ waitUntil: 'load' }).catch(() => {});
+          await firstScreen.waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {
+            throw new Error(
+              `Player ${i}: the consent page did not render within ${timeout / 1000 + 30} s (is the client dev server up?)`,
+            );
+          });
+        }
       }
 
       await page.waitForTimeout(300);

@@ -100,16 +100,16 @@ test.describe.serial('UI Verification: Refgame Selection (5.2, 5.3)', () => {
   test('(5.2c) chat input visible during Selection stage', async () => {
     const pages = pm.getPages();
 
-    // Find a page that is in Selection stage
+    // Every page is in Selection at this point; the chat input must be visible
+    let checked = 0;
     for (const page of pages) {
       const info = await getPlayerInfo(page);
-      if (info?.stageName === 'Selection') {
-        // Chat textarea should be visible
-        const chatInput = page.getByRole('textbox', { name: 'Say something' });
-        await expect(chatInput).toBeVisible({ timeout: 10_000 });
-        break;
-      }
+      if (info?.stageName !== 'Selection') continue;
+      await expect(page.getByRole('textbox', { name: 'Say something' })).toBeVisible({ timeout: 10_000 });
+      checked++;
+      if (checked >= 3) break;
     }
+    expect(checked, 'expected players in the Selection stage').toBeGreaterThan(0);
   });
 
   test('(5.2d) player group display shows player names and avatars', async () => {
@@ -287,18 +287,15 @@ test.describe.serial('UI Verification: Refgame Selection (5.2, 5.3)', () => {
       }
     }
 
-    if (incompleteGroup && listenerPages.length > 0) {
-      // Have just ONE listener in this group click
-      const firstListener = listenerPages[0];
-      const targetIdx = groupTargets[incompleteGroup] ?? 0;
-      await listenerClickTangram(firstListener.page, targetIdx);
-      await firstListener.page.waitForTimeout(1000);
+    expect(incompleteGroup, 'expected a group whose listeners have not all responded').not.toBeNull();
+    expect(listenerPages.length).toBeGreaterThan(0);
 
-      // This listener should see a waiting message for the remaining group members
-      const bodyText = await firstListener.page.textContent('body');
-      const hasWaiting = bodyText?.includes('Waiting for') ||
-        bodyText?.includes('All players');
-      expect(hasWaiting).toBe(true);
-    }
+    // Have just ONE listener in this group click
+    const firstListener = listenerPages[0];
+    const targetIdx = groupTargets[incompleteGroup!] ?? 0;
+    expect(await listenerClickTangram(firstListener.page, targetIdx)).toBe(true);
+
+    // This listener should see a waiting message for the remaining group members
+    await expect(firstListener.page.locator('body')).toContainText(/Waiting for|All players/, { timeout: 10_000 });
   });
 });
