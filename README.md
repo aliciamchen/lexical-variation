@@ -27,7 +27,8 @@
 │   ├── llm_simulation/       # LLM Phase 1 benchmark simulation
 │   └── power_analysis/       # Power analysis for sample size justification
 ├── figures/                  # Generated & design assets
-├── paper/                    # Manuscript (gitignored; synced via Overleaf)
+├── writing/                  # Overleaf projects, one per manuscript (gitignored; synced via Overleaf)
+│   └── preregistration/      # The Stage 1 manuscript that serves as the preregistration
 ```
 
 ## Setup
@@ -189,13 +190,13 @@ quarto render analysis/llm_simulation/SI_llm_simulation.qmd      # LLM benchmark
 
 | Notebook | Generates | Output |
 |----------|-----------|--------|
-| `SI_pilot.qmd` | Pilot data analyses | `figures/pilots/` + `paper/stats/pilot.tex` |
-| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark | `figures/llm_plots/` + `paper/stats/llm.tex` |
+| `SI_pilot.qmd` | Pilot data analyses | `figures/pilots/` + `writing/preregistration/stats/pilot.tex` |
+| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark | `figures/llm_plots/` + `writing/preregistration/stats/llm.tex` |
 
-The stats are written as `\newcommand` definitions to `paper/stats/*.tex`, which the manuscript `\input`s. Sync figures to the paper before pushing to Overleaf:
+The stats are written as `\newcommand` definitions to `writing/preregistration/stats/*.tex`, which the manuscript `\input`s. Sync figures to the paper before pushing to Overleaf:
 
 ```bash
-bash figures/sync_figures.sh   # copies SI_*.pdf into paper/figures/
+bash figures/sync_figures.sh   # copies SI_*.pdf into writing/preregistration/figures/
 ```
 
 ### Notebooks for the full sample

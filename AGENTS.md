@@ -4,7 +4,7 @@ This file holds durable, agent-facing context for this repository and is read by
 
 ## Project status
 
-This is a multiplayer reference game built with Empirica for studying lexical variation and social signaling: nine players in three groups of three describe tangram images, and four between-subjects conditions vary whether groups stay separate or are mixed in Phase 2 and whether players are rewarded for identifying each other's group. The pilot is complete, and the manuscript in `paper/main.tex` was written as a Stage 1 registered report. That manuscript now serves as the preregistration. The next phase is to collect the full sample, run the preregistered analyses (`analysis/00`–`05_*.qmd`), and submit the result as a regular article. `full-sample-todos.md` is the checklist for getting there; do not treat pilot-only assumptions (dataset paths, `PILOT_RUNS`, cached RDS fits) as permanent.
+This is a multiplayer reference game built with Empirica for studying lexical variation and social signaling: nine players in three groups of three describe tangram images, and four between-subjects conditions vary whether groups stay separate or are mixed in Phase 2 and whether players are rewarded for identifying each other's group. The pilot is complete, and the manuscript in `writing/preregistration/main.tex` was written as a Stage 1 registered report. That manuscript now serves as the preregistration. The next phase is to collect the full sample, run the preregistered analyses (`analysis/00`–`05_*.qmd`), and submit the result as a regular article. `full-sample-todos.md` is the checklist for getting there; do not treat pilot-only assumptions (dataset paths, `PILOT_RUNS`, cached RDS fits) as permanent.
 
 ## Experimental design
 
@@ -18,12 +18,12 @@ This is a multiplayer reference game built with Empirica for studying lexical va
 - Game configuration (player counts, blocks, timing, scoring) is `experiment/shared/constants.js`; `experiment/tests/helpers/constants.ts` must mirror it.
 - Game logic is `experiment/server/src/callbacks.js`; scoring, reshuffling, compensation, idle classification, the Phase 1 accuracy screen, and tangram-set assignment are importable modules (`scoring.js`, `reshuffling.js`, `compensation.js`, `idle.js`, `accuracy.js`, `tangrams.js`) with vitest unit tests beside them. Treatments are in `experiment/.empirica/treatments.yaml`: two per condition, one per tangram set, so sets are counterbalanced by alternating treatments across sessions.
 - `analysis/config.R` defines dataset paths, palettes, and the ggplot theme; every notebook sources it, and all ggplots use its scales and theme. `analysis/plot_style.py` is the Python counterpart.
-- `paper/main.tex` describes the design and analysis plan. Statistics reach it only through `\newcommand` macros written by the notebooks to `paper/stats/*.tex`; never hardcode a computed value in the manuscript.
+- `writing/preregistration/main.tex` describes the design and analysis plan. Statistics reach it only through `\newcommand` macros written by the notebooks to `writing/preregistration/stats/*.tex`; never hardcode a computed value in the manuscript.
 - Local, gitignored audit notes are in `reviews/` (dated files; the July 2026 full audit and the September 2026 manuscript-alignment check are the current ones). They record verified-correct behavior and open findings; check them before re-investigating game logic or the analysis joins.
 
 ## Repository boundaries
 
-- `paper/` is gitignored and synced with Overleaf through Dropbox. Read and edit it locally when asked to work on the manuscript, and run `bash figures/sync_figures.sh` to copy SI figures into `paper/figures/`.
+- `writing/` holds one directory per Overleaf project, each gitignored and mirrored to Overleaf through Dropbox: `writing/preregistration/` is the Stage 1 manuscript that serves as the preregistration, and the full-sample manuscript will be `writing/manuscript/`, a separate Overleaf project cloned from it. Read and edit them locally when asked to work on a manuscript, and run `bash figures/sync_figures.sh [writing/<project>]` to copy SI figures into a project's `figures/`.
 - `experiment/data/` holds raw Empirica export zips with identifiable participant data and is gitignored. `data/runs/` (per-run extracts) is gitignored too. Only the anonymized outputs in `data/<dataset>/` (`data/pilots/` for the pilot) are committed; `analysis/extract_run.py` strips the sensitive columns and a pre-commit hook blocks anything that looks like a participant identifier.
 - `reviews/` holds local audit and design notes and is gitignored; do not reference it from public docs.
 - `.env` holds the production hostname, Sentry DSN, and organization. Never read or print it; `.env.example` documents the variables.
@@ -33,7 +33,7 @@ This is a multiplayer reference game built with Empirica for studying lexical va
 ```text
 experiment (Empirica) -> copy_tajriba.sh -> experiment/data/<ts>/*.zip
   -> extract_run.py -> combine_runs.py -> process_data.py -> data/<dataset>/, analysis/derived/<dataset>/
-  -> Quarto notebooks -> figures/<dataset>/ + paper/stats/*.tex -> paper/main.tex
+  -> Quarto notebooks -> figures/<dataset>/ + writing/preregistration/stats/*.tex -> writing/preregistration/main.tex
 ```
 
 The pipeline is keyed by a dataset name (`DATASET`, default `pilots`; `analysis/dataset_paths.py` and `analysis/config.R` define the layout). The full sample will be a second dataset beside the pilot, not an edit of the pilot paths.

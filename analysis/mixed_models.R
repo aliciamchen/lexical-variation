@@ -1,6 +1,6 @@
 # Mixed-effects model fitting with the preregistered simplification procedure.
 #
-# The preregistration (paper/main.tex, "Analysis plan") commits to the maximal
+# The preregistration (writing/preregistration/main.tex, "Analysis plan") commits to the maximal
 # random-effects structure supported by the design, simplified only when a
 # model fails to converge: first by removing the correlations between random
 # effects, then by removing random slopes starting with the smallest variance

@@ -23,7 +23,8 @@ lexical-variation*/
 reviews/
 analysis/outputs
 raw
-paper
+# Writing projects (each an Overleaf project mirrored through Dropbox)
+writing/
 *.ai
 
 # Analysis pipeline outputs

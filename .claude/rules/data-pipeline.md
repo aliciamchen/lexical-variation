@@ -126,8 +126,8 @@ All notebooks source `config.R`, which sets `data_dir`, `derived_dir`, and `figu
 
 | Notebook | Generates |
 |----------|-----------|
-| `SI_pilot.qmd` | Pilot data analyses → `figures/pilots/` + `paper/stats/pilot.tex` |
-| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark → `figures/llm_plots/` + `paper/stats/llm.tex` |
+| `SI_pilot.qmd` | Pilot data analyses → `figures/pilots/` + `writing/preregistration/stats/pilot.tex` |
+| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark → `figures/llm_plots/` + `writing/preregistration/stats/llm.tex` |
 
 **For the full sample** (the preregistered analyses; `make notebooks DATASET=<name>` renders all of them, and they default to the pilot data until the full sample exists):
 
@@ -142,18 +142,18 @@ All notebooks source `config.R`, which sets `data_dir`, `derived_dir`, and `figu
 
 ## Stats → LaTeX pipeline
 
-Analysis notebooks write statistics as `\newcommand` definitions to `paper/stats/*.tex`, which are `\input`'d by `paper/main.tex`. This keeps numbers in sync between the analysis and the manuscript.
+Analysis notebooks write statistics as `\newcommand` definitions to `writing/preregistration/stats/*.tex`, which are `\input`'d by `writing/preregistration/main.tex`. This keeps numbers in sync between the analysis and the manuscript.
 
-After re-rendering a notebook, commit the updated `paper/stats/*.tex` file so the paper picks up the new numbers. The generated files have a `% AUTO-GENERATED` header to discourage manual edits.
+After re-rendering a notebook, commit the updated `writing/preregistration/stats/*.tex` file so the paper picks up the new numbers. The generated files have a `% AUTO-GENERATED` header to discourage manual edits.
 
-**Note:** The `paper/` directory is in `.gitignore` (it's synced via Overleaf, not this repo). The stats files live inside `paper/stats/` and are managed on the Overleaf side.
+**Note:** `writing/` is in `.gitignore`: each project directory is a clone of its Overleaf project's git remote, so it is versioned on the Overleaf side, not in this repo. The stats files live inside `writing/preregistration/stats/` and are managed on the Overleaf side.
 
 ## Figures → manuscript
 
-Figures are generated in `figures/<name>/` (`figures/pilots/` for the SI) and `figures/llm_plots/`. The manuscript references them from `figures/` (relative to `paper/`). Run the sync script to copy them:
+Figures are generated in `figures/<name>/` (`figures/pilots/` for the SI) and `figures/llm_plots/`. The manuscript references them from `figures/` (relative to `writing/preregistration/`). Run the sync script to copy them:
 
 ```bash
 bash figures/sync_figures.sh
 ```
 
-This copies all `SI_*.pdf` files into `paper/figures/`. Overleaf doesn't support paths outside the project root, so figures must live inside `paper/`. `SI_group_specificity.pdf` in the manuscript was hand-adjusted in Illustrator; `SI_pilot.qmd` writes the generated version as `SI_group_specificity_generated.pdf` so the two can be compared without overwriting the edited one.
+This copies all `SI_*.pdf` files into `writing/preregistration/figures/`. Overleaf doesn't support paths outside the project root, so figures must live inside `writing/preregistration/`. `SI_group_specificity.pdf` in the manuscript was hand-adjusted in Illustrator; `SI_pilot.qmd` writes the generated version as `SI_group_specificity_generated.pdf` so the two can be compared without overwriting the edited one.

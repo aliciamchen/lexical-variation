@@ -42,6 +42,14 @@ use_dataset <- function(name = Sys.getenv("DATASET", unset = DEFAULT_DATASET)) {
 
 use_dataset()
 
+# ── Writing projects ─────────────────────────────────────────
+# Each manuscript is its own Overleaf project under writing/ (gitignored,
+# mirrored to Overleaf through Dropbox). The SI notebooks write their stats
+# macros and figures into the preregistration; the full-sample notebooks will
+# write into the manuscript once it exists.
+prereg_dir <- here("writing", "preregistration")
+manuscript_dir <- here("writing", "manuscript")
+
 # ── Color palettes (match analysis/plot_style.py) ────────────
 
 CONDITION_COLORS <- c(
