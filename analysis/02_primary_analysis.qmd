@@ -711,3 +711,19 @@ if (!has_pairwise || !all(c("length1", "length2") %in% names(pairwise_sim))) {
   }
 }
 ```
+
+## Complete nine-player games
+
+The complete-games restriction from the paper's dropout-handling section
+(`complete_games()` in `analysis/R/attrition.R`).
+
+```{r robustness-complete-games}
+if (exists("gs_combined")) {
+  complete <- complete_games(players, games)
+  cat(sprintf("%d of %d games kept all nine players.\n", length(complete), sum(!is.na(games$condition))))
+  robustness_rerun(complete, "complete nine-player games",
+                   gs = gs_combined, primary_contrasts = contrasts, h4 = h4_specs)
+} else {
+  cat("Skipping: no group-specificity estimates.\n")
+}
+```

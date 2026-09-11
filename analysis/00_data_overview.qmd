@@ -181,3 +181,45 @@ if (nrow(excluded_groups) > 0) {
   cat("\nNo groups flagged for exclusion.\n")
 }
 ```
+
+# Attrition
+
+The preregistration commits to reporting attrition rates by condition and
+testing whether dropout is differential across conditions (paper, "Dropout
+handling"). A player counts as removed when the server took them out of the
+game (idle for three rounds, low Phase 1 accuracy, a disbanded group, or too few
+groups left). A game ran to completion when at least two groups reached the
+end; a complete nine-player game kept every player. The Phase 2 analyses are
+rerun on complete games in `02_primary_analysis.qmd`. The last column counts
+players flagged for a Phase 1 description-length increase (the AI-use trigger).
+
+```{r attrition}
+pa <- player_attrition(players, games)
+status <- game_status(players, games)
+
+cat("Players by condition:\n")
+print(knitr::kable(attrition_by_condition(pa), digits = 2))
+
+cat("\nGames by condition:\n")
+print(knitr::kable(games_by_condition(status), digits = 2))
+
+if (any(pa$removed)) {
+  cat("\nRemoved players:\n")
+  print(knitr::kable(pa |> filter(removed) |> select(condition, gameId, originalGroup, reason, idleRounds) |>
+                       mutate(gameId = substr(gameId, 1, 10)) |> arrange(condition)))
+}
+
+tests <- differential_dropout_tests(pa, status)
+if (length(tests) == 0) {
+  cat("\nNo dropout to test: no player was removed, or every player was.\n")
+} else {
+  if (!is.null(tests$players)) {
+    cat("\nPlayers removed by condition (chi-square; players are clustered in games, so treat as descriptive):\n")
+    print(tests$players)
+  }
+  if (!is.null(tests$games)) {
+    cat("\nComplete nine-player games by condition (Fisher's exact test; the game is the unit):\n")
+    print(tests$games)
+  }
+}
+```

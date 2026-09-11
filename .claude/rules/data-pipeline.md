@@ -76,6 +76,8 @@ Quarto notebooks and animations are run separately (see below).
 | `R/contrasts.R` | `fit_h12_wls()` (the H1/H2 weighted regression and planned contrasts), `pairwise_weights()`, `contrast_table()`, and `robustness_rerun()` for the subset-of-games checks |
 | `R/bayes_factors.R` | brms/bridgesampling Bayes factors for non-significant planned contrasts; `maybe_bayes_factor()` applies the `BAYES_FACTORS=auto\|always\|never` decision; packages load on first use |
 | `R/effects.R` | `report_effect_sizes()`, `cohens_d_games()`, `fmt_pval()` |
+| `R/attrition.R` | `player_attrition()`, `game_status()`, `complete_games()`, and the differential-dropout tests reported in `00_data_overview.qmd` |
+| `R/survey.R` | `exit_survey_responses()`, `has_field()`, `felt_human_flags()`, `likert_by_condition()` for `05_exit_survey.qmd` (handles the pilot's pre-revamp fields) |
 | `R/stats_tex.R` | `write_stats_tex()` / `write_stats_lines()`: statistics as `\newcommand` macros with letters-only name checks |
 | `R/plots.R` | Condition and group scales, Phase 2 layers, `save_fig()` into the dataset's figures directory |
 | `tests/` | Plain `stopifnot` tests of the R helpers on simulated data, one file per helper (`Rscript analysis/tests/run_all.R`, also run by `make test` and the pre-commit hook) |
