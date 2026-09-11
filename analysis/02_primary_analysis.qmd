@@ -13,26 +13,13 @@ library(emmeans)
 library(tidyboot)
 library(patchwork)
 source(here::here("analysis", "config.R"))
+list2env(load_tables(), envir = globalenv())
 
-games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
-trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
-speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
-social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
-
-has_pairwise <- file.exists(file.path(derived_dir, "pairwise_similarities.csv"))
+has_pairwise <- has_rows(pairwise_sim)
+has_block_pairwise <- has_rows(block_pairwise_sim)
 if (!has_pairwise) {
   cat("WARNING: pairwise_similarities.csv not found. Run compute_derived.py first.\n")
   cat("Most analyses in this notebook will be skipped.\n")
-  pairwise_sim <- tibble()
-} else {
-  pairwise_sim <- read_csv(file.path(derived_dir, "pairwise_similarities.csv"), show_col_types = FALSE)
-}
-
-has_block_pairwise <- file.exists(file.path(derived_dir, "block_pairwise_similarities.csv"))
-block_pairwise_sim <- if (has_block_pairwise) {
-  read_csv(file.path(derived_dir, "block_pairwise_similarities.csv"), show_col_types = FALSE)
-} else {
-  tibble()
 }
 ```
 
@@ -44,34 +31,19 @@ For each game, fit:
 Extract the `sameGroup` coefficient as the group-specificity score.
 
 ```{r fit-group-specificity}
-source(here::here("analysis", "group_specificity.R"))
-
-if (!has_pairwise || nrow(pairwise_sim) == 0) {
+if (!has_pairwise) {
   cat("Skipping group-specificity analysis: no pairwise similarity data.\n")
 } else {
-# Phase 1 final
-gs_p1 <- pairwise_sim |>
-  filter(window == "phase1_final") |>
-  fit_group_specificity() |>
-  rename(gs_phase1 = coefficient, se_phase1 = std_error) |>
-  select(gameId, gs_phase1, se_phase1)
+  # game_specificity_table() (analysis/R/group_specificity.R) is the one place
+  # the per-game estimates are fit; gs_wide() gives one row per game with the
+  # Phase 1 and Phase 2 estimates and the inverse-variance weights.
+  gs_table <- game_specificity_table(pairwise_sim, games)
+  gs_combined <- gs_wide(gs_table)
 
-# Phase 2 final
-gs_p2 <- pairwise_sim |>
-  filter(window == "phase2_final") |>
-  fit_group_specificity() |>
-  rename(gs_phase2 = coefficient, se_phase2 = std_error) |>
-  select(gameId, gs_phase2, se_phase2)
-
-# Combine
-gs_combined <- gs_p1 |>
-  inner_join(gs_p2, by = "gameId") |>
-  left_join(games |> select(gameId, condition), by = "gameId")
-
-cat("Group-specificity estimates:\n")
-gs_combined |>
-  knitr::kable(digits = 4, caption = "Group-specificity by game and phase")
-} # end has_pairwise
+  cat("Group-specificity estimates:\n")
+  print(knitr::kable(gs_combined |> select(gameId, condition, gs_phase1, se_phase1, gs_phase2, se_phase2),
+                     digits = 4, caption = "Group-specificity by game and phase"))
+}
 ```
 
 # Weighted least squares regression
@@ -92,34 +64,19 @@ the descriptive plots below.
 if (!exists("gs_combined")) {
   cat("Skipping: no group-specificity data.\n")
 } else {
-gs_combined <- gs_combined |>
-  mutate(
-    weight = 1 / se_phase2^2,
-    condition = factor(condition, levels = CONDITION_ORDER)
-  )
-
-# H1/H2 model: only the conditions with an identical Phase 1 (see above)
-H12_CONDITIONS <- c("refer_separated", "refer_mixed", "social_mixed")
-gs_h12 <- gs_combined |>
-  filter(condition %in% H12_CONDITIONS) |>
-  mutate(condition = factor(condition, levels = H12_CONDITIONS))
-
-n_conditions <- n_distinct(gs_h12$condition)
-
-if (n_conditions >= 2) {
-  wls_model <- lm(
-    gs_phase2 ~ condition + gs_phase1,
-    data = gs_h12,
-    weights = weight
-  )
-  summary(wls_model)
-  report_effect_sizes(wls_model)
-} else {
-  cat(sprintf("Only %d H1/H2 condition(s) in data (%s). Need ≥2 for WLS model.\n",
-              n_conditions, paste(unique(gs_h12$condition), collapse = ", ")))
-  wls_model <- NULL
+  # fit_h12_wls() (analysis/R/contrasts.R) restricts to H12_CONDITIONS and
+  # returns the data, the lm, and the planned contrasts
+  h12 <- fit_h12_wls(gs_combined)
+  gs_h12 <- h12$data
+  wls_model <- h12$model
+  contrasts <- h12$contrasts
+  if (is.null(wls_model)) {
+    cat(sprintf("Skipping the H1/H2 model: %s.\n", h12$note))
+  } else {
+    print(summary(wls_model))
+    report_effect_sizes(wls_model)
+  }
 }
-} # end exists("gs_combined")
 ```
 
 # Planned contrasts
@@ -130,17 +87,11 @@ Two-tailed tests at α = 0.05.
 - **H2:** `social_mixed > refer_mixed`
 
 ```{r planned-contrasts}
-if (!is.null(wls_model) && n_conditions == length(H12_CONDITIONS)) {
-  em <- emmeans(wls_model, "condition")
-  # Order: refer_separated, refer_mixed, social_mixed
-  contrasts <- contrast(em, list(
-    H1_sep_vs_mixed = c(1, -1, 0),    # refer_separated - refer_mixed
-    H2_social_vs_mixed = c(0, -1, 1)  # social_mixed - refer_mixed
-  ))
-  summary(contrasts, infer = c(TRUE, TRUE))
+if (exists("contrasts") && !is.null(contrasts)) {
+  print(summary(contrasts, infer = c(TRUE, TRUE)))
 } else {
-  cat("Skipping contrasts: need all three H1/H2 conditions.\n")
   contrasts <- NULL
+  cat("Skipping contrasts: need all three H1/H2 conditions.\n")
 }
 ```
 
@@ -163,24 +114,16 @@ standardized estimates, Cauchy(0, sqrt(2)/2) prior on the effect size; see
 Phase 1 covariate and the inverse-variance weights.
 
 ```{r bayes-factors-h1-h2}
-if (!is.null(contrasts) && BAYES_FACTORS != "never") {
-  ct <- as.data.frame(summary(contrasts, infer = c(TRUE, TRUE)))
-  if (any(is.na(ct$p.value))) {
-    # One game per condition saturates the WLS model, so the contrast p-values
-    # are undefined on pilot data; the full sample will not hit this branch.
-    cat("Contrast p-values are undefined (saturated model); Bayes factors skipped.\n")
-  } else if (BAYES_FACTORS == "always" || any(ct$p.value >= 0.05)) {
-    source(here::here("analysis", "bayes_factors.R"))
-    bf_cache <- file.path(derived_dir, "bayes_factors")
-    report_bf(bf_wls_contrast(gs_h12, "gs_phase2", levels = c("refer_mixed", "refer_separated"),
-                              covariates = "gs_phase1", weights = "weight",
-                              name = "H1", cache_dir = bf_cache), "H1 refer_separated vs refer_mixed")
-    report_bf(bf_wls_contrast(gs_h12, "gs_phase2", levels = c("refer_mixed", "social_mixed"),
-                              covariates = "gs_phase1", weights = "weight",
-                              name = "H2", cache_dir = bf_cache), "H2 social_mixed vs refer_mixed")
-  } else {
-    cat("All planned contrasts significant; Bayes factors not required.\n")
-  }
+if (!is.null(contrasts)) {
+  p <- as.data.frame(summary(contrasts, infer = c(TRUE, TRUE)))$p.value
+  maybe_bayes_factor(p[1], "H1 refer_separated vs refer_mixed", function() {
+    bf_wls_contrast(gs_h12, "gs_phase2", levels = c("refer_mixed", "refer_separated"),
+                    covariates = "gs_phase1", weights = "weight", name = "H1")
+  })
+  maybe_bayes_factor(p[2], "H2 social_mixed vs refer_mixed", function() {
+    bf_wls_contrast(gs_h12, "gs_phase2", levels = c("refer_mixed", "social_mixed"),
+                    covariates = "gs_phase1", weights = "weight", name = "H2")
+  })
 }
 ```
 
@@ -333,27 +276,21 @@ if (!exists("gs_combined")) {
       data = gs_social,
       weights = weight_p1
     )
-    summary(wls_h3a)
+    print(summary(wls_h3a))
     report_effect_sizes(wls_h3a)
 
     em_h3a <- emmeans(wls_h3a, "condition")
     contrast_h3a <- contrast(em_h3a, list(
       H3a_socialfirst_gt_socialmixed = c(-1, 1)  # social_first - social_mixed
     ))
-    summary(contrast_h3a, infer = c(TRUE, TRUE))
+    print(summary(contrast_h3a, infer = c(TRUE, TRUE)))
 
     print(cohens_d_games(gs_social, "gs_phase1", "condition", "social_first", "social_mixed"))
 
-    if (BAYES_FACTORS != "never") {
-      p_h3a <- as.data.frame(summary(contrast_h3a, infer = c(TRUE, TRUE)))$p.value
-      if (BAYES_FACTORS == "always" || any(p_h3a >= 0.05)) {
-        source(here::here("analysis", "bayes_factors.R"))
-        report_bf(bf_wls_contrast(gs_social, "gs_phase1", levels = c("social_mixed", "social_first"),
-                                  weights = "weight_p1", name = "H3a",
-                                  cache_dir = file.path(derived_dir, "bayes_factors")),
-                  "H3a social_first vs social_mixed")
-      }
-    }
+    p_h3a <- as.data.frame(summary(contrast_h3a, infer = c(TRUE, TRUE)))$p.value
+    maybe_bayes_factor(p_h3a, "H3a social_first vs social_mixed", function() {
+      bf_wls_contrast(gs_social, "gs_phase1", levels = SOCIAL_CONDITIONS, weights = "weight_p1", name = "H3a")
+    })
   } else {
     cat("Insufficient data for H3a (need both social conditions).\n")
   }
@@ -388,19 +325,8 @@ and condition is between-game so cannot have a random slope within game or group
 if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
   cat("Skipping H3b: block_pairwise_similarities.csv not found. Run compute_derived.py first.\n")
 } else {
-  # Filter to Phase 1, within-group pairs, social conditions
-  p1_within_social <- block_pairwise_sim |>
-    filter(phaseNum == 1, sameGroup == 1) |>
-    left_join(games |> select(gameId, condition), by = "gameId") |>
-    filter(condition %in% c("social_mixed", "social_first")) |>
-    mutate(
-      blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
-      condition = factor(condition, levels = c("social_mixed", "social_first"))
-    )
-
-  # Derive group ID for within-group pairs (group1 == group2 since sameGroup == 1)
-  p1_within_social <- p1_within_social |>
-    mutate(group = paste0(gameId, "_", group1))
+  # Phase 1, within-group pairs, social conditions, game-qualified group id
+  p1_within_social <- within_group_block_pairs(block_pairwise_sim, games, phase = 1, conditions = SOCIAL_CONDITIONS)
 
   if (nrow(p1_within_social) > 0 && n_distinct(p1_within_social$condition) >= 2) {
     # Group is the natural unit of replication for within-group similarity.
@@ -409,7 +335,7 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
       similarity ~ condition * blockNum_c + (blockNum_c | group) + (blockNum_c | target),
       data = p1_within_social
     )
-    summary(m_h3b)
+    print(summary(m_h3b))
     report_effect_sizes(m_h3b)
   } else {
     cat("Insufficient data for H3b convergence analysis.\n")
@@ -464,28 +390,11 @@ length > 1 are retained as *content words*.
   Common words score higher (e.g., "the" ≈ 7.7); rare words score lower.
 
 ```{r h3c-description-properties}
-has_desc_props <- file.exists(file.path(derived_dir, "description_properties.csv"))
-has_lex_uniq <- file.exists(file.path(derived_dir, "lexical_uniqueness.csv"))
-
-if (!has_desc_props || !has_lex_uniq) {
+if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
   cat("Missing H3c data files. Run compute_description_properties() and compute_lexical_uniqueness() first.\n")
 } else {
-  desc_props <- read_csv(file.path(derived_dir, "description_properties.csv"), show_col_types = FALSE)
-  lex_uniq <- read_csv(file.path(derived_dir, "lexical_uniqueness.csv"), show_col_types = FALSE)
-
-  # Merge, filter to final Phase 1 block, social conditions only
-  p1_final_social <- desc_props |>
-    left_join(
-      lex_uniq |> select(gameId, playerId, target, blockNum, phaseNum, uniqueness),
-      by = c("gameId", "playerId", "target", "blockNum", "phaseNum")
-    ) |>
-    filter(phaseNum == 1) |>
-    left_join(games |> select(gameId, condition), by = "gameId") |>
-    filter(condition %in% c("social_mixed", "social_first")) |>
-    group_by(gameId, playerId, target) |>
-    filter(blockNum == max(blockNum)) |>
-    ungroup() |>
-    mutate(condition = factor(condition, levels = c("social_mixed", "social_first")))
+  # Each speaker's final Phase 1 description of each tangram, social conditions
+  p1_final_social <- final_phase1_properties(desc_props, lex_uniq, games, SOCIAL_CONDITIONS)
 
   if (nrow(p1_final_social) > 0 && n_distinct(p1_final_social$condition) >= 2) {
     # Concreteness
@@ -496,7 +405,7 @@ if (!has_desc_props || !has_lex_uniq) {
         concreteness ~ condition + (1 | playerId) + (condition | target),
         data = p1_concrete
       )
-      summary(m_concrete)
+      print(summary(m_concrete))
       report_effect_sizes(m_concrete)
     }
 
@@ -508,7 +417,7 @@ if (!has_desc_props || !has_lex_uniq) {
         uniqueness ~ condition + (1 | playerId) + (condition | target),
         data = p1_unique
       )
-      summary(m_uniqueness)
+      print(summary(m_uniqueness))
       report_effect_sizes(m_uniqueness)
     }
 
@@ -520,7 +429,7 @@ if (!has_desc_props || !has_lex_uniq) {
         mean_zipf_freq ~ condition + (1 | playerId) + (condition | target),
         data = p1_freq
       )
-      summary(m_freq)
+      print(summary(m_freq))
       report_effect_sizes(m_freq)
     }
   } else {
@@ -595,14 +504,7 @@ if (nrow(social_guesses) > 0) {
   # a roundId is shared across all groups in a game, so joining on
   # (gameId, blockNum, target) would match three speakers (one per group)
   # and, because blockNum resets per phase, Phase 1 speakers too
-  social_h4 <- social_guesses |>
-    left_join(games |> select(gameId, condition), by = "gameId") |>
-    filter(condition %in% c("social_mixed", "social_first")) |>
-    mutate(
-      correct = as.numeric(socialGuessCorrect == TRUE | socialGuessCorrect == "true"),
-      condition = factor(condition, levels = c("social_mixed", "social_first")),
-      blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
-    )
+  social_h4 <- social_guess_trials(social_guesses, games, SOCIAL_CONDITIONS)
 
   if (n_distinct(social_h4$condition) >= 2 && nrow(social_h4) > 0) {
     m_h4a <- fit_progressively(
@@ -610,7 +512,7 @@ if (nrow(social_guesses) > 0) {
       data = social_h4,
       family = binomial
     )
-    summary(m_h4a)
+    print(summary(m_h4a))
     report_effect_sizes(m_h4a)
 
     if (inherits(m_h4a, "glmerMod")) {
@@ -618,18 +520,13 @@ if (nrow(social_guesses) > 0) {
       contrast_h4a <- contrast(em_h4a, list(
         H4a_socialfirst_gt_socialmixed = c(-1, 1)
       ))
-      summary(contrast_h4a, infer = c(TRUE, TRUE))
+      print(summary(contrast_h4a, infer = c(TRUE, TRUE)))
 
-      if (BAYES_FACTORS != "never") {
-        p_h4a <- as.data.frame(summary(contrast_h4a, infer = c(TRUE, TRUE)))$p.value
-        if (BAYES_FACTORS == "always" || any(p_h4a >= 0.05)) {
-          source(here::here("analysis", "bayes_factors.R"))
-          # Same formula that converged above; the null drops the fixed effect of condition
-          report_bf(bf_glmm_condition(social_h4, formula(m_h4a), levels = c("social_mixed", "social_first"),
-                                      name = "H4a", cache_dir = file.path(derived_dir, "bayes_factors")),
-                    "H4a social_first vs social_mixed")
-        }
-      }
+      p_h4a <- as.data.frame(summary(contrast_h4a, infer = c(TRUE, TRUE)))$p.value
+      # Same formula that converged above; the null drops the fixed effect of condition
+      maybe_bayes_factor(p_h4a, "H4a social_first vs social_mixed", function() {
+        bf_glmm_condition(social_h4, formula(m_h4a), levels = SOCIAL_CONDITIONS, name = "H4a")
+      })
     }
   } else {
     cat("Insufficient data for H4a (need both social conditions).\n")
@@ -673,21 +570,8 @@ Contrast: `social_mixed > social_first` (lower ref accuracy expected in social_f
 ```{r h4b-ref-accuracy}
 # One speaker per (game, round, group): the group key is required because a
 # roundId is shared across all groups in a game
-speaker_lookup <- trials |>
-  filter(role == "speaker") |>
-  select(gameId, roundId, currentGroup, speakerId = playerId) |>
-  distinct()
-
-p2_listener_social <- trials |>
-  filter(phaseNum == 2, role == "listener") |>
-  left_join(games |> select(gameId, condition), by = "gameId") |>
-  left_join(speaker_lookup, by = c("gameId", "roundId", "currentGroup")) |>
-  filter(condition %in% c("social_mixed", "social_first")) |>
-  mutate(
-    correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
-    condition = factor(condition, levels = c("social_mixed", "social_first")),
-    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
-  )
+p2_listener_social <- listener_trials(trials, games, phase = 2, conditions = SOCIAL_CONDITIONS) |>
+  attach_speaker(trials)
 
 if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 0) {
   m_h4b <- fit_progressively(
@@ -695,7 +579,7 @@ if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 
     data = p2_listener_social,
     family = binomial
   )
-  summary(m_h4b)
+  print(summary(m_h4b))
   report_effect_sizes(m_h4b)
 
   if (inherits(m_h4b, "glmerMod")) {
@@ -703,17 +587,12 @@ if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 
     contrast_h4b <- contrast(em_h4b, list(
       H4b_socialmixed_gt_socialfirst = c(1, -1)
     ))
-    summary(contrast_h4b, infer = c(TRUE, TRUE))
+    print(summary(contrast_h4b, infer = c(TRUE, TRUE)))
 
-    if (BAYES_FACTORS != "never") {
-      p_h4b <- as.data.frame(summary(contrast_h4b, infer = c(TRUE, TRUE)))$p.value
-      if (BAYES_FACTORS == "always" || any(p_h4b >= 0.05)) {
-        source(here::here("analysis", "bayes_factors.R"))
-        report_bf(bf_glmm_condition(p2_listener_social, formula(m_h4b), levels = c("social_mixed", "social_first"),
-                                    name = "H4b", cache_dir = file.path(derived_dir, "bayes_factors")),
-                  "H4b social_mixed vs social_first")
-      }
-    }
+    p_h4b <- as.data.frame(summary(contrast_h4b, infer = c(TRUE, TRUE)))$p.value
+    maybe_bayes_factor(p_h4b, "H4b social_mixed vs social_first", function() {
+      bf_glmm_condition(p2_listener_social, formula(m_h4b), levels = SOCIAL_CONDITIONS, name = "H4b")
+    })
   }
 } else {
   cat("Insufficient data for H4b (need both social conditions with Phase 2 listener trials).\n")
@@ -748,93 +627,22 @@ if (exists("p2_listener_social") && nrow(p2_listener_social) > 0) {
 The preregistration commits to two robustness checks for the Phase 2 analyses
 (H1, H2, and H4): restricting to complete nine-player games, and restricting to
 games whose Phase 1 group specificity exceeded chance in the permutation test.
-`robustness_rerun()` refits the H1/H2 weighted regression and the H4 models on
-a subset of games and prints the planned contrasts next to the primary ones. If
-the restriction excludes no games, the results are identical to the primary
-analyses by construction and nothing is refit.
+`robustness_rerun()` (analysis/R/contrasts.R) refits the H1/H2 weighted
+regression and the H4 models on a subset of games and prints the planned
+contrasts next to the primary ones. If the restriction excludes no games, the
+results are identical to the primary analyses by construction and nothing is
+refit.
 
 ```{r robustness-helper}
-H4_FORMULA <- correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) +
-  (blockNum_c | speakerId) + (condition | target)
-
-# Refit one H4 model on the games in `keep_games` and compare its planned
-# contrast with the primary model's.
-rerun_h4 <- function(data, primary_model, name, contrast_weights, keep_games, label) {
-  if (is.null(data) || is.null(primary_model)) {
-    cat(sprintf("%s: primary model not available; skipping.\n", name))
-    return(invisible(NULL))
-  }
-  sub <- data |> filter(gameId %in% keep_games)
-  if (n_distinct(sub$condition) < 2 || n_distinct(sub$gameId) < 2) {
-    cat(sprintf("%s: too few games under this restriction; skipping.\n", name))
-    return(invisible(NULL))
-  }
-  m_sub <- fit_progressively(H4_FORMULA, data = sub, family = binomial)
-  if (!inherits(m_sub, "glmerMod")) return(invisible(NULL))
-  ct_sub <- as.data.frame(summary(
-    contrast(emmeans(m_sub, "condition", type = "response"), contrast_weights),
-    infer = c(TRUE, TRUE)
-  )) |> mutate(analysis = label)
-  ct_primary <- if (inherits(primary_model, "glmerMod")) {
-    as.data.frame(summary(
-      contrast(emmeans(primary_model, "condition", type = "response"), contrast_weights),
-      infer = c(TRUE, TRUE)
-    )) |> mutate(analysis = "primary")
-  } else {
-    NULL
-  }
-  cat(sprintf("\n%s on %d games (%s):\n", name, n_distinct(sub$gameId), random_effects_structure(m_sub)))
-  # On the response scale emmeans reports the contrast as an odds ratio
-  comparison <- bind_rows(ct_primary, ct_sub) |>
-    rename(estimate = any_of(c("odds.ratio", "ratio"))) |>
-    select(analysis, contrast, estimate, SE, p.value)
-  print(knitr::kable(comparison, digits = 3))
-  invisible(m_sub)
-}
-
-robustness_rerun <- function(keep_games, label) {
-  cat(sprintf("\n=== Robustness check: %s ===\n", label))
-  if (!exists("gs_combined")) {
-    cat("No group-specificity estimates; skipping.\n")
-    return(invisible(NULL))
-  }
-  excluded <- gs_combined |> filter(!gameId %in% keep_games)
-  if (nrow(excluded) == 0) {
-    cat("No games are excluded under this restriction; the results are identical to the primary analyses.\n")
-    return(invisible(NULL))
-  }
-  cat("Excluded games by condition:\n")
-  print(knitr::kable(excluded |> count(condition, name = "excluded")))
-
-  # H1 and H2: the weighted regression on the restricted games
-  if (exists("gs_h12") && !is.null(wls_model)) {
-    gs_sub <- gs_h12 |> filter(gameId %in% keep_games)
-    if (n_distinct(gs_sub$condition) == length(H12_CONDITIONS) && all(table(gs_sub$condition) >= 2)) {
-      wls_sub <- lm(gs_phase2 ~ condition + gs_phase1, data = gs_sub, weights = weight)
-      ct_sub <- contrast(emmeans(wls_sub, "condition"), list(
-        H1_sep_vs_mixed = c(1, -1, 0),
-        H2_social_vs_mixed = c(0, -1, 1)
-      ))
-      comparison <- bind_rows(
-        if (!is.null(contrasts)) as.data.frame(summary(contrasts, infer = c(TRUE, TRUE))) |> mutate(analysis = "primary"),
-        as.data.frame(summary(ct_sub, infer = c(TRUE, TRUE))) |> mutate(analysis = label)
-      ) |> select(analysis, contrast, estimate, SE, p.value)
-      cat(sprintf("\nH1/H2 on %d games:\n", nrow(gs_sub)))
-      print(knitr::kable(comparison, digits = 3))
-    } else {
-      cat("H1/H2: too few games per condition under this restriction; skipping.\n")
-    }
-  } else {
-    cat("H1/H2: primary model not available; skipping.\n")
-  }
-
-  # H4a and H4b
-  rerun_h4(if (exists("social_h4")) social_h4 else NULL, if (exists("m_h4a")) m_h4a else NULL,
-           "H4a", list(H4a_socialfirst_gt_socialmixed = c(-1, 1)), keep_games, label)
-  rerun_h4(if (exists("p2_listener_social")) p2_listener_social else NULL, if (exists("m_h4b")) m_h4b else NULL,
-           "H4b", list(H4b_socialmixed_gt_socialfirst = c(1, -1)), keep_games, label)
-  invisible(NULL)
-}
+# The H4 models to rerun, with their planned contrast weights
+h4_specs <- list(
+  list(name = "H4a", data = if (exists("social_h4")) social_h4 else NULL,
+       model = if (exists("m_h4a")) m_h4a else NULL,
+       weights = list(H4a_socialfirst_gt_socialmixed = c(-1, 1))),
+  list(name = "H4b", data = if (exists("p2_listener_social")) p2_listener_social else NULL,
+       model = if (exists("m_h4b")) m_h4b else NULL,
+       weights = list(H4b_socialmixed_gt_socialfirst = c(1, -1)))
+)
 ```
 
 ## Games with significant Phase 1 group specificity
@@ -844,13 +652,62 @@ The permutation test is the one run for the outcome-neutral criterion
 similarities are unchanged.
 
 ```{r robustness-significant-gs}
-if (has_pairwise) {
+if (has_pairwise && exists("gs_combined")) {
   perm_p1 <- compute_group_specificity(pairwise_sim |> filter(window == "phase1_final"), derived_dir)$perm_results
   significant_games <- perm_p1 |> filter(p_value < 0.05) |> pull(gameId)
   cat(sprintf("%d of %d games have significant Phase 1 group specificity (permutation p < .05).\n",
               length(significant_games), nrow(perm_p1)))
-  robustness_rerun(significant_games, "games with significant Phase 1 group specificity")
+  robustness_rerun(significant_games, "games with significant Phase 1 group specificity",
+                   gs = gs_combined, primary_contrasts = contrasts, h4 = h4_specs)
 } else {
   cat("Skipping: no pairwise similarities.\n")
+}
+```
+
+## Description length as a covariate
+
+The paper commits to this check if description length differs across
+conditions in a way that tracks group specificity: each game's similarity model
+gets the pair's length difference and mean length as covariates, and the H1/H2
+regression is rerun on the adjusted estimates. The diagnostic and the rerun are
+both shown so the decision is visible.
+
+```{r robustness-length-covariate}
+if (!has_pairwise || !all(c("length1", "length2") %in% names(pairwise_sim))) {
+  cat("Skipping: pairwise_similarities.csv has no length1/length2 columns (regenerate with compute_derived.py).\n")
+} else if (!exists("gs_combined")) {
+  cat("Skipping: no group-specificity estimates.\n")
+} else {
+  # Diagnostic: does mean Phase 2 description length differ by condition and track gs_phase2?
+  length_by_game <- speaker_utts |>
+    filter(phaseNum == 2) |>
+    group_by(gameId) |>
+    summarise(mean_length_p2 = mean(uttLength, na.rm = TRUE), .groups = "drop")
+  diag <- gs_combined |> left_join(length_by_game, by = "gameId")
+  cat("Mean Phase 2 description length by condition:\n")
+  print(knitr::kable(diag |> group_by(condition) |>
+                       summarise(games = n(), mean_length = mean(mean_length_p2), .groups = "drop"), digits = 2))
+  if (nrow(diag) >= 4) {
+    r <- cor(diag$mean_length_p2, diag$gs_phase2, use = "complete.obs")
+    cat(sprintf("\nGame-level correlation between mean Phase 2 length and Phase 2 group specificity: r = %.2f\n", r))
+  }
+
+  # Group specificity with the pair's length difference and mean length as covariates
+  pw_len <- pairwise_sim |>
+    mutate(lengthDiff = abs(length1 - length2), meanLength = (length1 + length2) / 2)
+  gs_adj <- gs_wide(game_specificity_table(pw_len, games, covariates = c("lengthDiff", "meanLength")))
+  cat("\nGroup specificity with and without the length covariates:\n")
+  print(knitr::kable(gs_combined |> select(gameId, condition, gs_phase1, gs_phase2) |>
+                       inner_join(gs_adj |> select(gameId, gs_phase1_adj = gs_phase1, gs_phase2_adj = gs_phase2), by = "gameId") |>
+                       mutate(gameId = substr(gameId, 1, 8)), digits = 3))
+
+  h12_adj <- fit_h12_wls(gs_adj)
+  if (!is.null(h12_adj$contrasts) && all(table(h12_adj$data$condition) >= 2)) {
+    cat("\nH1/H2 with length-adjusted group specificity:\n")
+    print(knitr::kable(bind_rows(contrast_table(contrasts, "primary"),
+                                 contrast_table(h12_adj$contrasts, "length-adjusted")), digits = 3))
+  } else {
+    cat("\nH1/H2 rerun needs at least two games per condition; skipped.\n")
+  }
 }
 ```

@@ -10,19 +10,12 @@ format:
 library(lme4)
 library(lmerTest)
 library(tidyboot)
+library(emmeans)
 source(here::here("analysis", "config.R"))
-source(here::here("analysis", "group_specificity.R"))
+list2env(load_tables(), envir = globalenv())
 
-games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
-trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
-speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
-social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
-
-has_phase_change <- file.exists(file.path(derived_dir, "phase_change_similarities.csv"))
-has_pairwise <- file.exists(file.path(derived_dir, "pairwise_similarities.csv"))
-
-phase_change <- if (has_phase_change) read_csv(file.path(derived_dir, "phase_change_similarities.csv"), show_col_types = FALSE) else tibble()
-pairwise_sim <- if (has_pairwise) read_csv(file.path(derived_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
+has_phase_change <- has_rows(phase_change)
+has_pairwise <- has_rows(pairwise_sim)
 
 n_conditions <- n_distinct(games$condition)
 ```
@@ -46,8 +39,31 @@ if (n_conditions >= 2) {
     simPhase1Phase2 ~ condition + (1 | playerId) + (condition | target),
     data = phase_change
   )
-  summary(m_semantic)
+  print(summary(m_semantic))
   report_effect_sizes(m_semantic)
+
+  # Preregistered predictions: refer_separated > refer_mixed and
+  # social_mixed > refer_mixed (higher similarity = less semantic change)
+  if (all(c("refer_separated", "refer_mixed", "social_mixed") %in% phase_change$condition)) {
+    em_semantic <- emmeans(m_semantic, "condition")
+    lv <- levels(droplevels(phase_change$condition))
+    contrasts_semantic <- contrast(em_semantic, list(
+      sep_gt_mixed    = pairwise_weights(lv, "refer_separated", "refer_mixed"),
+      social_gt_mixed = pairwise_weights(lv, "social_mixed", "refer_mixed")
+    ))
+    cat("\nPlanned contrasts (positive = predicted direction):\n")
+    print(summary(contrasts_semantic, infer = c(TRUE, TRUE)))
+  } else {
+    cat("\nPlanned contrasts need refer_separated, refer_mixed, and social_mixed.\n")
+  }
+
+  # Baseline drift: refer_separated should be near ceiling
+  drift <- phase_change |> filter(condition == "refer_separated", !is.na(simPhase1Phase2))
+  if (nrow(drift) > 1) {
+    drift_ci <- tidyboot_mean(drift, simPhase1Phase2, nboot = 1000)
+    cat(sprintf("\nrefer_separated Phase 1 to Phase 2 similarity: M = %.3f, 95%% CI [%.3f, %.3f] (ceiling = 1)\n",
+                drift_ci$empirical_stat, drift_ci$ci_lower, drift_ci$ci_upper))
+  }
 } else {
   # With only 1 condition, fit without condition predictor
   m_semantic <- lmer(
@@ -56,7 +72,7 @@ if (n_conditions >= 2) {
     control = lmerControl(optimizer = "bobyqa")
   )
   cat(sprintf("Only %d condition(s). Intercept-only model:\n", n_conditions))
-  summary(m_semantic)
+  print(summary(m_semantic))
 }
 } # end has_phase_change
 ```
@@ -84,17 +100,8 @@ ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) 
 **Predictions:** Above chance (1/16), main effect of `blockNum`, ordered: separated > mixed > social_mixed.
 
 ```{r prep-accuracy}
-# Phase 2 listener accuracy — trial-level binary outcome
-p2_listener <- trials |>
-  filter(phaseNum == 2, role == "listener") |>
-  mutate(
-    correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true")
-  ) |>
-  left_join(games |> select(gameId, condition), by = "gameId") |>
-  mutate(
-    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
-    condition = factor(condition, levels = CONDITION_ORDER)
-  )
+# Phase 2 listener trials with correct, condition, and centered block
+p2_listener <- listener_trials(trials, games, phase = 2)
 ```
 
 ```{r model-accuracy}
@@ -121,6 +128,38 @@ if (n_conditions >= 2 && n_games >= 2) {
 
 summary(m_ref_accuracy)
 report_effect_sizes(m_ref_accuracy)
+```
+
+The three preregistered predictions: accuracy above chance (1/16) in every
+condition, a positive main effect of block averaged over conditions, and the
+ordering refer_separated > refer_mixed > social_mixed > social_first averaged
+over blocks.
+
+```{r accuracy-tests}
+if (inherits(m_ref_accuracy, "glmerMod") && "condition" %in% all.vars(formula(m_ref_accuracy))) {
+  em_acc <- emmeans(m_ref_accuracy, "condition")   # at the mean block (blockNum_c = 0)
+
+  cat("Above chance? One-sided test of each condition's accuracy against 1/16 (logit scale):\n")
+  print(test(em_acc, null = qlogis(1 / 16), side = ">"))
+  cat("\nEstimated accuracy by condition (response scale):\n")
+  print(summary(em_acc, type = "response"))
+
+  cat("\nBlock slope averaged over conditions (log-odds per block), then per condition:\n")
+  print(test(emtrends(m_ref_accuracy, ~ 1, var = "blockNum_c")))
+  print(test(emtrends(m_ref_accuracy, ~ condition, var = "blockNum_c")))
+
+  lv <- levels(droplevels(p2_listener$condition))
+  ordering <- list()
+  if (all(c("refer_separated", "refer_mixed") %in% lv)) ordering$sep_gt_mixed <- pairwise_weights(lv, "refer_separated", "refer_mixed")
+  if (all(c("refer_mixed", "social_mixed") %in% lv)) ordering$mixed_gt_social <- pairwise_weights(lv, "refer_mixed", "social_mixed")
+  if (all(c("social_mixed", "social_first") %in% lv)) ordering$social_gt_socialfirst <- pairwise_weights(lv, "social_mixed", "social_first")
+  if (length(ordering)) {
+    cat("\nPredicted ordering, consecutive contrasts (positive = predicted direction, log-odds):\n")
+    print(summary(contrast(em_acc, ordering), infer = c(TRUE, TRUE)))
+  }
+} else {
+  cat("Preregistered accuracy tests need the condition-by-block mixed model.\n")
+}
 ```
 
 ```{r plot-accuracy, fig.width=8, fig.height=5}
@@ -154,37 +193,36 @@ ggplot(acc_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
 Within `social_mixed` and `social_first`: do listeners understand in-group speakers better?
 
 ```{r model-ingroup}
-social_listener <- trials |>
-  filter(phaseNum == 2, role == "listener") |>
-  left_join(games |> select(gameId, condition), by = "gameId") |>
-  filter(condition %in% c("social_mixed", "social_first")) |>
-  mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"))
+# Phase 2 listener trials in the social conditions, each with its speaker and
+# in-group status (attach_speaker() joins on the listener's current group, since
+# a roundId is shared by all groups in a game). The condition factor keeps only
+# the two social levels so the random slope has no empty-level columns.
+social_listener <- listener_trials(trials, games, phase = 2, conditions = SOCIAL_CONDITIONS) |>
+  attach_speaker(trials) |>
+  filter(!is.na(inGroupSpeaker))
 
 if (nrow(social_listener) > 0) {
-  # Determine in-group status: listener's original group matches speaker's original group.
-  # The currentGroup key is required: a roundId is shared across all groups in a
-  # game, so joining on (gameId, roundId) alone would match three speakers
-  speaker_groups <- trials |>
-    filter(role == "speaker") |>
-    select(gameId, roundId, currentGroup, playerId, originalGroup) |>
-    rename(speakerId = playerId, speakerGroup = originalGroup) |>
-    distinct()
-
-  social_listener <- social_listener |>
-    left_join(speaker_groups, by = c("gameId", "roundId", "currentGroup")) |>
-    mutate(inGroupSpeaker = as.numeric(originalGroup == speakerGroup))
-
   # Paper formula: ref_correct ~ in_group_speaker * condition + (1 | speaker) + (1 | listener) + (condition | tangram)
-  social_listener <- social_listener |>
-    mutate(condition = factor(condition, levels = CONDITION_ORDER))
 
   m_ingroup <- fit_progressively(
     correct ~ inGroupSpeaker * condition + (1 | playerId) + (1 | speakerId) + (condition | target),
     data = social_listener,
     family = binomial
   )
-  summary(m_ingroup)
+  print(summary(m_ingroup))
   report_effect_sizes(m_ingroup)
+
+  if (inherits(m_ingroup, "glmerMod")) {
+    # Prediction: in-group listeners are more accurate; the interaction asks
+    # whether social_first amplifies that advantage.
+    em_ingroup <- emmeans(m_ingroup, ~ inGroupSpeaker | condition)
+    cat("\nIn-group minus out-group (log-odds) within each condition:\n")
+    print(summary(contrast(em_ingroup, "revpairwise"), infer = c(TRUE, TRUE)))
+    cat("\nAveraged over conditions:\n")
+    print(summary(contrast(emmeans(m_ingroup, ~ inGroupSpeaker), "revpairwise"), infer = c(TRUE, TRUE)))
+    cat("\nEstimated accuracy (response scale):\n")
+    print(summary(em_ingroup, type = "response"))
+  }
 } else {
   cat("No social condition listener data available.\n")
 }
@@ -196,7 +234,7 @@ if (exists("social_listener") && nrow(social_listener) > 0 &&
     n_distinct(social_listener$condition) >= 2) {
   ingroup_by_cond <- social_listener |>
     filter(!is.na(correct), !is.na(inGroupSpeaker)) |>
-    mutate(speaker_type = ifelse(inGroupSpeaker == 1, "In-group", "Out-group")) |>
+    mutate(speaker_type = ifelse(inGroupSpeaker == "in_group", "In-group", "Out-group")) |>
     group_by(condition, speaker_type) |>
     tidyboot_mean(correct, nboot = 1000)
 
@@ -223,37 +261,18 @@ Does maintaining group-specific language correlate with social identification ac
 if (!has_pairwise || nrow(pairwise_sim) == 0) {
   cat("Skipping: pairwise_similarities.csv not found. Run compute_derived.py first.\n")
 } else if (nrow(social_guesses) > 0) {
-  # Compute mean social accuracy per game
-  social_acc_by_game <- social_guesses |>
-    mutate(correct = as.numeric(
-      socialGuessCorrect == TRUE | socialGuessCorrect == "true"
-    )) |>
+  # Mean social accuracy per game
+  social_acc_by_game <- social_guess_trials(social_guesses, games) |>
     group_by(gameId) |>
     summarise(social_accuracy = mean(correct, na.rm = TRUE), .groups = "drop")
 
-  # Get Phase 2 group-specificity per game (with SE for WLS weighting)
-  gs_p2 <- pairwise_sim |>
-    filter(window == "phase2_final") |>
-    fit_group_specificity() |>
-    rename(gs_phase2 = coefficient, se_phase2 = std_error) |>
-    select(gameId, gs_phase2, se_phase2)
-
-  # Get Phase 1 group-specificity
-  gs_p1 <- pairwise_sim |>
-    filter(window == "phase1_final") |>
-    fit_group_specificity() |>
-    rename(gs_phase1 = coefficient) |>
-    select(gameId, gs_phase1)
-
-  gs_social <- gs_p2 |>
-    inner_join(gs_p1, by = "gameId") |>
+  # The same per-game estimates as the primary analysis (weight = 1 / SE^2 of Phase 2)
+  gs_social <- gs_wide(game_specificity_table(pairwise_sim, games)) |>
     inner_join(social_acc_by_game, by = "gameId")
 
   if (nrow(gs_social) >= 3) {
-    # WLS weighted by inverse variance of Phase 2 GS estimates (consistent with H1/H2)
-    gs_social <- gs_social |> mutate(weight = 1 / se_phase2^2)
     m_gs_social <- lm(gs_phase2 ~ social_accuracy + gs_phase1, data = gs_social, weights = weight)
-    summary(m_gs_social)
+    print(summary(m_gs_social))
     report_effect_sizes(m_gs_social)
   } else {
     cat(sprintf("Not enough games (%d) for regression (need ≥3).\n", nrow(gs_social)))
@@ -286,13 +305,7 @@ Does social identification improve over blocks?
 
 ```{r model-social-accuracy}
 if (nrow(social_guesses) > 0) {
-  social_guesses_model <- social_guesses |>
-    mutate(
-      correct = as.numeric(
-        socialGuessCorrect == TRUE | socialGuessCorrect == "true"
-      ),
-      blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
-    )
+  social_guesses_model <- social_guess_trials(social_guesses, games)
 
   n_social_games <- n_distinct(social_guesses_model$gameId)
   if (n_social_games >= 2) {
@@ -306,7 +319,7 @@ if (nrow(social_guesses) > 0) {
     cat("Only 1 game; using fixed-effects logistic model.\n")
   }
 
-  summary(m_social_acc)
+  print(summary(m_social_acc))
   report_effect_sizes(m_social_acc)
 
   cat(sprintf("\nOverall social accuracy: %.1f%%\n",
@@ -388,33 +401,35 @@ How does description length evolve across Phase 2 blocks by condition?
 Paper formula: `utt_length ~ condition * block_num + (1 | participant) + (1 | tangram)`
 
 ```{r model-utt-length-phase2}
-p2_utts <- speaker_utts |>
-  filter(phaseNum == 2) |>
-  left_join(games |> select(gameId, condition), by = "gameId") |>
-  mutate(
-    condition = factor(condition, levels = CONDITION_ORDER),
-    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
-  )
+p2_utts <- phase2_utterances(speaker_utts, games)
 
 n_cond <- n_distinct(p2_utts$condition)
 if (n_cond >= 2) {
   # Paper formula: utt_length ~ condition * block_num + (1 | participant) + (1 | tangram)
-  m_p2_length <- lmer(
+  m_p2_length <- fit_progressively(
     uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
-    data = p2_utts,
-    control = lmerControl(optimizer = "bobyqa")
+    data = p2_utts
   )
 } else {
-  m_p2_length <- lmer(
+  m_p2_length <- fit_progressively(
     uttLength ~ blockNum_c + (1 | playerId) + (1 | target),
-    data = p2_utts,
-    control = lmerControl(optimizer = "bobyqa")
+    data = p2_utts
   )
   cat("Only 1 condition; fitting without condition predictor.\n")
 }
 
 summary(m_p2_length)
 report_effect_sizes(m_p2_length)
+
+if (n_cond >= 2 && inherits(m_p2_length, "merMod")) {
+  # The paper's predictions are per condition: continued shortening or a
+  # plateau in refer_separated, a possible initial lengthening in refer_mixed,
+  # short descriptions in the social conditions.
+  cat("\nBlock slope (words per block) by condition:\n")
+  print(test(emtrends(m_p2_length, ~ condition, var = "blockNum_c")))
+  cat("\nMean Phase 2 description length by condition (at the mean block):\n")
+  print(summary(emmeans(m_p2_length, "condition")))
+}
 ```
 
 ```{r plot-utt-length-phase2, fig.width=8, fig.height=5}
