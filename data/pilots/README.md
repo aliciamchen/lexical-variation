@@ -15,6 +15,8 @@ One row per game session.
 | `activeGroups` | Number of groups that remained active throughout the game |
 | `phase1Blocks` | Number of blocks in Phase 1 |
 | `phase2Blocks` | Number of blocks in Phase 2 |
+| `ended` | Whether Empirica marked the game as ended |
+| `endedReason` | Why the game ended: `end of game` when it ran to completion, `all players removed` when it terminated early |
 
 ## players.csv
 
@@ -31,15 +33,25 @@ One row per player.
 | `bonus` | Monetary bonus (score × bonus rate) |
 | `isActive` | Whether the player remained active throughout |
 | `idleRounds` | Number of rounds the player was idle |
+| `exitReason` | Why a player left early: `player timeout` (idle for three rounds), `low accuracy` (failed the Phase 1 accuracy check), `group disbanded`, `insufficient groups after accuracy check`, or `quiz failed`; empty for players who finished |
+| `ended` | Empirica's end status for the player (`game ended`, or the removal reason) |
+| `gameStartTime`, `gameEndTime` | Timestamps (ms since epoch) of the player's start and, for removed players, removal; the difference gives the time-prorated base pay |
+| `partialPay`, `partialBasePay`, `partialBonus` | Compensation of a removed player: total, the time-prorated base pay, and the bonus (zero for idle removals); empty for players who finished |
 | `phase1LengthChange` | Mean word count of the player's descriptions in their last Phase 1 block as speaker minus that in their first (from the unfiltered utterances); empty if they spoke in fewer than two Phase 1 blocks |
 | `lengthIncreaseFlag` | Whether `phase1LengthChange` exceeds 5 words. Lengthening descriptions are the signature of the simulated LLM agents, so flagged players' chat logs are inspected for AI use; the flag is a trigger for inspection, not an exclusion by itself. No pilot player is flagged |
+| `exitSurvey_understood` | Understood the instructions (`yes`/`no`) |
+| `exitSurvey_groupIdentification` | "How much did you feel a sense of being a part of your Phase 1 group?" (1-7); full sample only |
+| `exitSurvey_groupCloseness` | "How close did you feel to the people in your Phase 1 group?" (1-7); full sample only |
+| `exitSurvey_groupLanguage` | Noticed the group developing its own way of describing the pictures (`yes`/`no`); full sample only |
+| `exitSurvey_strategy` | Free-text: their strategy in the game (the pilot stored this as `exitSurvey_strength`) |
+| `exitSurvey_feltHuman` | Felt they were playing with other humans (`yes`/`no`); full sample only. Games with any `no` are flagged for inspection |
 | `exitSurvey_age` | Self-reported age |
-| `exitSurvey_gender` | Self-reported gender |
-| `exitSurvey_education` | Self-reported education level |
-| `exitSurvey_understood` | Free-text: did they understand the game |
-| `exitSurvey_fair` | Free-text: was the game fair |
-| `exitSurvey_strength` | Free-text: their communication strategy |
+| `exitSurvey_gender` | Self-reported gender (`male`, `female`, `non-binary`, `other`, `prefer-not-to-say`) |
+| `exitSurvey_education` | Self-reported education level (`high-school`, `bachelor`, `master`, `other`) |
+| `exitSurvey_fair` | Free-text: was the pay fair |
 | `exitSurvey_feedback` | Free-text: additional comments |
+
+The survey was revamped after the pilot (2026-03): the pilot data have `exitSurvey_strength` and none of the group or felt-human items. Players removed at the Phase 1 accuracy check complete both survey pages too, so the demographics are available for the attrition report.
 
 ## trials.csv
 
@@ -134,6 +146,10 @@ Listener guesses about whether the speaker belongs to their original group. Only
 | `originalGroup` | Listener's initial group |
 | `blockNum` | Block number |
 | `phase` | Always `refgame` |
+| `phaseNum` | Always 2 (social guesses are made in Phase 2) |
+| `roundId` | Round identifier, shared by all groups in a game |
+| `currentGroup` | The listener's group in this round (groups are reshuffled every Phase 2 trial) |
+| `speakerId` | The speaker the guess was about: the speaker of the listener's current group in that round |
 | `target` | Target tangram being described |
 | `socialGuess` | `same_group` or `different_group` |
 | `socialGuessCorrect` | Whether the guess was correct |

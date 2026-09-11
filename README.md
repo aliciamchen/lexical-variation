@@ -239,8 +239,8 @@ The script auto-detects the project from your gcloud config. You can override wi
 # Run simulation (quick test)
 bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 2 --blocks 2
 
-# Full run for paper
-bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 20 --temperature 0
+# Full run as in the paper: 20 groups with nucleus sampling (temperature 1.0, top-p 0.95, the script's default)
+bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 20
 
 # Process results → CSVs, then render analysis notebook
 uv run python analysis/llm_simulation/process_llm_results.py

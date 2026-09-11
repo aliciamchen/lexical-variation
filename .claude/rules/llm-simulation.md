@@ -14,7 +14,7 @@ All LLM simulation code lives in `analysis/llm_simulation/`. Simulates groups of
 |------|---------|
 | `llm_simulation.py` | Run one group simulation (3 players, 16 tangrams) |
 | `llm_prompts.yaml` | Speaker/listener prompt templates |
-| `run_llm_simulation.sh` | Orchestrate N groups with configurable model/temperature |
+| `run_llm_simulation.sh` | Orchestrate N groups with configurable model and sampling. The paper's run (`llm_results_nucleus_20260323_012900`) used gemini-3.1-pro-preview with temperature 1.0 and top-p 0.95, recorded in its `config.json`; `--temperature 0` is greedy decoding, not what the paper reports |
 | `process_llm_results.py` | Convert group JSONs → analysis CSVs + SBERT similarity |
 | `SI_llm_simulation.qmd` | R Quarto notebook: plots, exclusion criterion, draft SI paragraph |
 | `tangram_images.py` | SVG-to-PNG conversion utility |
@@ -22,7 +22,7 @@ All LLM simulation code lives in `analysis/llm_simulation/`. Simulates groups of
 ```bash
 # 1. Run simulation
 bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 2 --blocks 2  # quick test
-bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 20 --temperature 0  # full run
+bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 20  # full run as in the paper: nucleus sampling, temperature 1.0, top-p 0.95
 
 # 2. Process JSONs → CSVs
 uv run python analysis/llm_simulation/process_llm_results.py
