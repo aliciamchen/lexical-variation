@@ -741,3 +741,116 @@ if (exists("p2_listener_social") && nrow(p2_listener_social) > 0) {
     theme(legend.position = "none")
 }
 ```
+
+
+# Robustness: Phase 2 results on a subset of games
+
+The preregistration commits to two robustness checks for the Phase 2 analyses
+(H1, H2, and H4): restricting to complete nine-player games, and restricting to
+games whose Phase 1 group specificity exceeded chance in the permutation test.
+`robustness_rerun()` refits the H1/H2 weighted regression and the H4 models on
+a subset of games and prints the planned contrasts next to the primary ones. If
+the restriction excludes no games, the results are identical to the primary
+analyses by construction and nothing is refit.
+
+```{r robustness-helper}
+H4_FORMULA <- correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) +
+  (blockNum_c | speakerId) + (condition | target)
+
+# Refit one H4 model on the games in `keep_games` and compare its planned
+# contrast with the primary model's.
+rerun_h4 <- function(data, primary_model, name, contrast_weights, keep_games, label) {
+  if (is.null(data) || is.null(primary_model)) {
+    cat(sprintf("%s: primary model not available; skipping.\n", name))
+    return(invisible(NULL))
+  }
+  sub <- data |> filter(gameId %in% keep_games)
+  if (n_distinct(sub$condition) < 2 || n_distinct(sub$gameId) < 2) {
+    cat(sprintf("%s: too few games under this restriction; skipping.\n", name))
+    return(invisible(NULL))
+  }
+  m_sub <- fit_progressively(H4_FORMULA, data = sub, family = binomial)
+  if (!inherits(m_sub, "glmerMod")) return(invisible(NULL))
+  ct_sub <- as.data.frame(summary(
+    contrast(emmeans(m_sub, "condition", type = "response"), contrast_weights),
+    infer = c(TRUE, TRUE)
+  )) |> mutate(analysis = label)
+  ct_primary <- if (inherits(primary_model, "glmerMod")) {
+    as.data.frame(summary(
+      contrast(emmeans(primary_model, "condition", type = "response"), contrast_weights),
+      infer = c(TRUE, TRUE)
+    )) |> mutate(analysis = "primary")
+  } else {
+    NULL
+  }
+  cat(sprintf("\n%s on %d games (%s):\n", name, n_distinct(sub$gameId), random_effects_structure(m_sub)))
+  # On the response scale emmeans reports the contrast as an odds ratio
+  comparison <- bind_rows(ct_primary, ct_sub) |>
+    rename(estimate = any_of(c("odds.ratio", "ratio"))) |>
+    select(analysis, contrast, estimate, SE, p.value)
+  print(knitr::kable(comparison, digits = 3))
+  invisible(m_sub)
+}
+
+robustness_rerun <- function(keep_games, label) {
+  cat(sprintf("\n=== Robustness check: %s ===\n", label))
+  if (!exists("gs_combined")) {
+    cat("No group-specificity estimates; skipping.\n")
+    return(invisible(NULL))
+  }
+  excluded <- gs_combined |> filter(!gameId %in% keep_games)
+  if (nrow(excluded) == 0) {
+    cat("No games are excluded under this restriction; the results are identical to the primary analyses.\n")
+    return(invisible(NULL))
+  }
+  cat("Excluded games by condition:\n")
+  print(knitr::kable(excluded |> count(condition, name = "excluded")))
+
+  # H1 and H2: the weighted regression on the restricted games
+  if (exists("gs_h12") && !is.null(wls_model)) {
+    gs_sub <- gs_h12 |> filter(gameId %in% keep_games)
+    if (n_distinct(gs_sub$condition) == length(H12_CONDITIONS) && all(table(gs_sub$condition) >= 2)) {
+      wls_sub <- lm(gs_phase2 ~ condition + gs_phase1, data = gs_sub, weights = weight)
+      ct_sub <- contrast(emmeans(wls_sub, "condition"), list(
+        H1_sep_vs_mixed = c(1, -1, 0),
+        H2_social_vs_mixed = c(0, -1, 1)
+      ))
+      comparison <- bind_rows(
+        if (!is.null(contrasts)) as.data.frame(summary(contrasts, infer = c(TRUE, TRUE))) |> mutate(analysis = "primary"),
+        as.data.frame(summary(ct_sub, infer = c(TRUE, TRUE))) |> mutate(analysis = label)
+      ) |> select(analysis, contrast, estimate, SE, p.value)
+      cat(sprintf("\nH1/H2 on %d games:\n", nrow(gs_sub)))
+      print(knitr::kable(comparison, digits = 3))
+    } else {
+      cat("H1/H2: too few games per condition under this restriction; skipping.\n")
+    }
+  } else {
+    cat("H1/H2: primary model not available; skipping.\n")
+  }
+
+  # H4a and H4b
+  rerun_h4(if (exists("social_h4")) social_h4 else NULL, if (exists("m_h4a")) m_h4a else NULL,
+           "H4a", list(H4a_socialfirst_gt_socialmixed = c(-1, 1)), keep_games, label)
+  rerun_h4(if (exists("p2_listener_social")) p2_listener_social else NULL, if (exists("m_h4b")) m_h4b else NULL,
+           "H4b", list(H4b_socialmixed_gt_socialfirst = c(1, -1)), keep_games, label)
+  invisible(NULL)
+}
+```
+
+## Games with significant Phase 1 group specificity
+
+The permutation test is the one run for the outcome-neutral criterion
+(`01_outcome_neutral.qmd`); its cached results are reused when the pairwise
+similarities are unchanged.
+
+```{r robustness-significant-gs}
+if (has_pairwise) {
+  perm_p1 <- compute_group_specificity(pairwise_sim |> filter(window == "phase1_final"), derived_dir)$perm_results
+  significant_games <- perm_p1 |> filter(p_value < 0.05) |> pull(gameId)
+  cat(sprintf("%d of %d games have significant Phase 1 group specificity (permutation p < .05).\n",
+              length(significant_games), nrow(perm_p1)))
+  robustness_rerun(significant_games, "games with significant Phase 1 group specificity")
+} else {
+  cat("Skipping: no pairwise similarities.\n")
+}
+```
