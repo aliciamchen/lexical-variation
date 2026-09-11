@@ -79,6 +79,8 @@ def test_latest_utterance_is_chosen_by_block_not_row_order():
     assert len(out) == 1
     assert out.iloc[0]["similarity"] == 1.0  # used p1's block-5 utterance
     assert out.iloc[0]["sameGroup"] == 0
+    # word counts of the two chosen descriptions ("late" and "late")
+    assert (out.iloc[0]["length1"], out.iloc[0]["length2"]) == (1, 1)
 
 
 def test_block_trajectory_starts_once_two_participants_per_group_have_spoken():

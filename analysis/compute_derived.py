@@ -73,6 +73,14 @@ def compute_adjacent_similarities(
     return result
 
 
+def _word_count(row) -> int:
+    """Word count of an utterance row: uttLength when present, else counted."""
+    n = row.get("uttLength") if hasattr(row, "get") else None
+    if n is not None and not pd.isna(n):
+        return int(n)
+    return len(str(row.get("utterance", "") or "").split())
+
+
 def compute_pairwise_similarities(
     utterances: pd.DataFrame,
     embeddings: np.ndarray,
@@ -123,6 +131,11 @@ def compute_pairwise_similarities(
                 "similarity": sim,
                 "participantPair": participant_pair,
                 "window": window_name,
+                # Word counts of the two descriptions, for the preregistered
+                # robustness check that adds description length to the
+                # group-specificity models
+                "length1": _word_count(s1_data),
+                "length2": _word_count(s2_data),
             })
 
     return pd.DataFrame(rows)
