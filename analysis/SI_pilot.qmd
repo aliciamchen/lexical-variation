@@ -17,19 +17,10 @@ source(here::here("analysis", "config.R"))
 
 # This notebook documents the pilot sessions, whatever DATASET is set to.
 use_dataset("pilots")
+list2env(load_tables(), envir = globalenv())
 
-games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
-players <- read_csv(file.path(data_dir, "players.csv"), show_col_types = FALSE)
-trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
-messages <- read_csv(file.path(data_dir, "messages.csv"), show_col_types = FALSE)
-speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
-social_guesses <- read_csv(file.path(data_dir, "social_guesses.csv"), show_col_types = FALSE)
-
-has_adjacent <- file.exists(file.path(derived_dir, "adjacent_similarities.csv"))
-has_pairwise <- file.exists(file.path(derived_dir, "pairwise_similarities.csv"))
-
-adjacent_sim <- if (has_adjacent) read_csv(file.path(derived_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
-pairwise_sim <- if (has_pairwise) read_csv(file.path(derived_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
+has_adjacent <- has_rows(adjacent_sim)
+has_pairwise <- has_rows(pairwise_sim)
 ```
 
 # 1. Sample description
@@ -178,52 +169,12 @@ if (nrow(idle_players) > 0) {
 ## Data preparation
 
 ```{r prep-data}
-# Phase 1 speaker utterances
-p1_utts <- speaker_utts |>
-  filter(phaseNum == 1) |>
-  mutate(
-    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
-    participant = playerId,
-    # Group labels A/B/C repeat across games; combine with gameId so each
-    # group gets a globally unique id
-    group = paste(gameId, originalGroup),
-    tangram = target
-  )
-
-# Phase 1 listener accuracy
-p1_listener <- trials |>
-  filter(phaseNum == 1, role == "listener") |>
-  mutate(
-    correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
-    # Group labels A/B/C repeat across games; combine with gameId so each
-    # group gets a globally unique id
-    group = paste(gameId, originalGroup),
-    tangram = target
-  )
-
-p1_ref_accuracy <- p1_listener |>
-  group_by(gameId, roundId, blockNum, tangram, group) |>
-  summarise(
-    ref_accuracy = mean(correct, na.rm = TRUE),
-    .groups = "drop"
-  ) |>
-  mutate(
-    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
-  )
-
-# Phase 1 adjacent similarities
-if (has_adjacent) {
-  p1_adjacent <- adjacent_sim |>
-    filter(phaseNum == 1) |>
-    mutate(
-      blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
-      participant = playerId,
-      # Group labels A/B/C repeat across games; combine with gameId so each
-    # group gets a globally unique id
-    group = paste(gameId, originalGroup),
-      tangram = target
-    )
-}
+# Shared preparation (analysis/R/prepare.R): Phase 1 only, game-qualified
+# group ids, block centered within each table
+p1_utts <- phase1_utterances(speaker_utts)
+p1_listener <- phase1_listener_trials(trials)
+p1_ref_accuracy <- phase1_round_accuracy(trials)
+if (has_adjacent) p1_adjacent <- phase1_adjacent(adjacent_sim)
 ```
 
 ## 2a. Description length decreases
@@ -313,7 +264,6 @@ if (has_adjacent) {
 ## 2d. Group-specificity exceeds chance
 
 ```{r compute-group-specificity, warning=FALSE}
-source(here::here("analysis", "group_specificity.R"))
 
 if (!has_pairwise) {
   cat("Skipping: pairwise_similarities.csv not found.\n")
@@ -678,14 +628,8 @@ NOTE: I couldnt figure out how to use patchwork right for the dimensions here so
 
 ```{r si-fig-phase-comparison, fig.width=6.5, fig.height=3.5}
 if (has_pairwise) {
-  # Fit group-specificity model per game per window
-  gs_by_window <- map_dfr(c("phase1_final", "phase2_final"), function(w) {
-    pw_w <- pairwise_sim |> filter(window == w)
-    gs <- fit_group_specificity(pw_w)
-    gs$window <- w
-    gs
-  }) |>
-    left_join(games |> select(gameId, condition), by = "gameId") |>
+  # The same per-game estimates as the primary analysis
+  gs_by_window <- game_specificity_table(pairwise_sim, games) |>
     mutate(
       phase = ifelse(window == "phase1_final", "Phase 1\n(final 3 blocks)",
                      "Phase 2\n(final 3 blocks)"),
@@ -1006,28 +950,11 @@ to verify the H3c analysis pipeline and give a qualitative sense of the patterns
 ```{r si-prep-h3c-data}
 # All three H3c measures are precomputed in Python with consistent tokenization
 # (same stopwords and content-word extraction). See compute_derived.py.
-has_desc_props <- file.exists(file.path(derived_dir, "description_properties.csv"))
-has_lex_uniq <- file.exists(file.path(derived_dir, "lexical_uniqueness.csv"))
-
-if (!has_desc_props || !has_lex_uniq) {
+if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
   cat("Missing H3c data files. Run compute_description_properties() and compute_lexical_uniqueness() first.\n")
 } else {
-  desc_props <- read_csv(file.path(derived_dir, "description_properties.csv"), show_col_types = FALSE)
-  lex_uniq <- read_csv(file.path(derived_dir, "lexical_uniqueness.csv"), show_col_types = FALSE)
-
-  # Merge properties + uniqueness, filter to final Phase 1 block, social conditions
-  p1_final_social <- desc_props |>
-    left_join(
-      lex_uniq |> select(gameId, playerId, target, blockNum, phaseNum, uniqueness),
-      by = c("gameId", "playerId", "target", "blockNum", "phaseNum")
-    ) |>
-    filter(phaseNum == 1) |>
-    left_join(games |> select(gameId, condition), by = "gameId") |>
-    filter(condition %in% c("social_mixed", "social_first")) |>
-    group_by(gameId, playerId, target) |>
-    filter(blockNum == max(blockNum)) |>
-    ungroup() |>
-    mutate(condition = factor(condition, levels = c("social_mixed", "social_first")))
+  # Each speaker's final Phase 1 description of each tangram, social conditions
+  p1_final_social <- final_phase1_properties(desc_props, lex_uniq, games, SOCIAL_CONDITIONS)
 }
 ```
 
@@ -1232,7 +1159,6 @@ Write all statistics as `\newcommand` definitions for `\input` in the paper.
 
 ```{r write-stats-tex}
 stats_dir <- file.path(prereg_dir, "stats")
-dir.create(stats_dir, showWarnings = FALSE, recursive = TRUE)
 
 cmds <- c()
 cmd <- function(name, value) paste0("\\newcommand{\\", name, "}{", value, "}")
@@ -1320,7 +1246,5 @@ cmds <- c(cmds,
   cmd("pilotNSurveyRespondents", n_survey_respondents)
 )
 
-header <- "% AUTO-GENERATED by analysis/SI_pilot.qmd — do not edit by hand."
-writeLines(c(header, cmds), file.path(stats_dir, "pilot.tex"))
-cat("Wrote", length(cmds), "commands to", file.path(stats_dir, "pilot.tex"), "\n")
+write_stats_lines(cmds, file.path(stats_dir, "pilot.tex"), source = "analysis/SI_pilot.qmd")
 ```

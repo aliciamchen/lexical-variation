@@ -33,7 +33,7 @@
 #   simplification_log(m)      # data frame of the steps taken
 #   summary(m)
 #
-# Tests: Rscript analysis/test_mixed_models.R
+# Tests: analysis/tests/test_mixed_models.R (Rscript analysis/tests/run_all.R)
 
 suppressPackageStartupMessages({
   library(lme4)

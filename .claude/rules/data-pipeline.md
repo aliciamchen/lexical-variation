@@ -69,15 +69,20 @@ Quarto notebooks and animations are run separately (see below).
 | Script | Purpose |
 |--------|---------|
 | `dataset_paths.py` | Dataset layout and the `--dataset` / `DATASET` resolution shared by the Python scripts and tests |
-| `config.R` | Shared paths (`use_dataset()`), palettes, ggplot theme (sourced by all .qmd notebooks) |
-| `group_specificity.R` | Group-specificity estimation with permutation testing (called by notebooks; caches RDS keyed by an input hash in `analysis/derived/<name>/`) |
+| `config.R` | The one file a notebook sources: dataset paths (`use_dataset()`), writing-project paths, design constants, palettes, ggplot theme, and it sources every helper in `analysis/R/` |
+| `R/prepare.R` | `load_tables()` and the shared data preparation (`phase1_utterances()`, `listener_trials()`, `attach_speaker()`, `social_guess_trials()`, `final_phase1_properties()`, ...): the recodes every notebook used to repeat |
+| `R/group_specificity.R` | Per-game group-specificity fits (`game_specificity_table()`, `gs_wide()`, optional covariates) and the seeded permutation test with a hash-keyed RDS cache in `analysis/derived/<name>/` |
+| `R/mixed_models.R` | `fit_progressively()`: the preregistered random-effects simplification (maximal model, then drop correlations, then slopes by smallest variance); `simplification_log()` and `random_effects_structure()` report what was fit |
+| `R/contrasts.R` | `fit_h12_wls()` (the H1/H2 weighted regression and planned contrasts), `pairwise_weights()`, `contrast_table()`, and `robustness_rerun()` for the subset-of-games checks |
+| `R/bayes_factors.R` | brms/bridgesampling Bayes factors for non-significant planned contrasts; `maybe_bayes_factor()` applies the `BAYES_FACTORS=auto\|always\|never` decision; packages load on first use |
+| `R/effects.R` | `report_effect_sizes()`, `cohens_d_games()`, `fmt_pval()` |
+| `R/stats_tex.R` | `write_stats_tex()` / `write_stats_lines()`: statistics as `\newcommand` macros with letters-only name checks |
+| `R/plots.R` | Condition and group scales, Phase 2 layers, `save_fig()` into the dataset's figures directory |
+| `tests/` | Plain `stopifnot` tests of the R helpers on simulated data, one file per helper (`Rscript analysis/tests/run_all.R`, also run by `make test` and the pre-commit hook) |
 | `plot_style.py` | Shared Python plotting constants (imported, not run directly) |
 | `test_data_integrity.py` | Pytest validation of `data/<name>/` CSV structure for the active dataset |
 | `test_compute_derived.py` | Pytest unit tests for the derived-metric definitions (latest-utterance selection, trajectory start rule, lexical uniqueness) |
 | `test_preprocessing.py` | Pytest unit tests for `preprocessing.flag_length_increase` (the AI-use trigger in `players.csv`) and `filter_nonreferential.build_filtered_utterances` (rounds with no referential message are dropped, not emptied) |
-| `mixed_models.R` | `fit_progressively()`: the preregistered random-effects simplification (maximal model, then drop correlations, then slopes by smallest variance); sourced by `config.R`; `simplification_log()` and `random_effects_structure()` report what was fit |
-| `test_mixed_models.R` | Plain `stopifnot` tests of the simplification procedure on simulated data (`Rscript analysis/test_mixed_models.R`, also run by `make test`) |
-| `bayes_factors.R` | brms/bridgesampling Bayes factors for non-significant planned contrasts (called from `02_primary_analysis.qmd`; `BAYES_FACTORS=auto\|always\|never`) |
 
 ## Processing new data
 
@@ -120,7 +125,7 @@ DATASET=full uv run pytest analysis/test_data_integrity.py -v
 
 ## Quarto notebooks
 
-All notebooks source `config.R`, which sets `data_dir`, `derived_dir`, and `figures_dir` for the active dataset (`DATASET`, default `pilots`). A notebook tied to one dataset calls `use_dataset("<name>")` after sourcing it; `SI_pilot.qmd` does this so it always documents the pilot.
+All notebooks source `config.R`, which sets `data_dir`, `derived_dir`, and `figures_dir` for the active dataset (`DATASET`, default `pilots`) and sources the helpers in `analysis/R/`; `list2env(load_tables(), envir = globalenv())` then loads every data and derived table as a variable. A notebook tied to one dataset calls `use_dataset("<name>")` before loading; `SI_pilot.qmd` does this so it always documents the pilot. Data preparation goes through the functions in `R/prepare.R` rather than inline recodes, and the per-game group-specificity estimates come from `game_specificity_table()` so every notebook reports the same numbers.
 
 **For the pilot data** (these feed the preregistration manuscript) -- run after the pipeline:
 

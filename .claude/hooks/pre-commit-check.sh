@@ -93,12 +93,12 @@ Fix the failures and retry. --no-verify bypasses Git hooks, not this agent hook.
 fi
 
 # ── 3. Data integrity suite ─────────────────────────────────
-if printf '%s\n' "$staged" | grep -qE '^analysis/(mixed_models|test_mixed_models)\.R$'; then
+if printf '%s\n' "$staged" | grep -qE '^analysis/(R/|tests/|config\.R$)'; then
   if command -v Rscript >/dev/null 2>&1; then
     log=$(mktemp)
-    if ! Rscript analysis/test_mixed_models.R >"$log" 2>&1; then
-      deny "Commit blocked: R model tests failed (Rscript analysis/test_mixed_models.R).
-$(tail -n 20 "$log")"
+    if ! Rscript analysis/tests/run_all.R >"$log" 2>&1; then
+      deny "Commit blocked: R helper tests failed (Rscript analysis/tests/run_all.R).
+$(tail -n 30 "$log")"
     fi
   fi
 fi

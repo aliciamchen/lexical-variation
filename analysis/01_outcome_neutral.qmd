@@ -14,66 +14,19 @@ library(lme4)
 library(lmerTest)
 library(tidyboot)
 source(here::here("analysis", "config.R"))
+list2env(load_tables(), envir = globalenv())
 
-games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
-speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
-trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
-
-has_adjacent <- file.exists(file.path(derived_dir, "adjacent_similarities.csv"))
-has_pairwise <- file.exists(file.path(derived_dir, "pairwise_similarities.csv"))
-
-adjacent_sim <- if (has_adjacent) read_csv(file.path(derived_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
-pairwise_sim <- if (has_pairwise) read_csv(file.path(derived_dir, "pairwise_similarities.csv"), show_col_types = FALSE) else tibble()
+has_adjacent <- has_rows(adjacent_sim)
+has_pairwise <- has_rows(pairwise_sim)
 ```
 
 ```{r prep-data}
-# Phase 1 speaker utterances only
-p1_utts <- speaker_utts |>
-  filter(phaseNum == 1) |>
-  mutate(
-    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
-    participant = playerId,
-    # Group labels A/B/C repeat across games; combine with gameId so each
-    # group gets a globally unique id
-    group = paste(gameId, originalGroup),
-    tangram = target
-  )
-
-# Phase 1 listener trials: compute per-trial accuracy
-p1_listener <- trials |>
-  filter(phaseNum == 1, role == "listener") |>
-  mutate(
-    correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true"),
-    # Group labels A/B/C repeat across games; combine with gameId so each
-    # group gets a globally unique id
-    group = paste(gameId, originalGroup),
-    tangram = target
-  )
-
-# Aggregate to per-round accuracy (proportion of listeners correct)
-p1_ref_accuracy <- p1_listener |>
-  group_by(gameId, roundId, blockNum, tangram, group) |>
-  summarise(
-    ref_accuracy = mean(correct, na.rm = TRUE),
-    .groups = "drop"
-  ) |>
-  mutate(
-    blockNum_c = blockNum - mean(blockNum, na.rm = TRUE)
-  )
-
-# Phase 1 adjacent similarities (phaseNum is in the CSV)
-if (has_adjacent) {
-  p1_adjacent <- adjacent_sim |>
-    filter(phaseNum == 1) |>
-    mutate(
-      blockNum_c = blockNum - mean(blockNum, na.rm = TRUE),
-      participant = playerId,
-      # Group labels A/B/C repeat across games; combine with gameId so each
-    # group gets a globally unique id
-    group = paste(gameId, originalGroup),
-      tangram = target
-    )
-}
+# Shared preparation (analysis/R/prepare.R): Phase 1 only, game-qualified
+# group ids, block centered within each table
+p1_utts <- phase1_utterances(speaker_utts)
+p1_listener <- phase1_listener_trials(trials)
+p1_ref_accuracy <- phase1_round_accuracy(trials)
+if (has_adjacent) p1_adjacent <- phase1_adjacent(adjacent_sim)
 ```
 
 # 1. Description length decreases over blocks
@@ -214,7 +167,6 @@ if (has_adjacent && exists("p1_adjacent_valid")) {
 **Criterion:** ≥80% of games show significant group-specificity (p < .05 via permutation test).
 
 ```{r compute-group-specificity, warning=FALSE}
-source(here::here("analysis", "group_specificity.R"))
 
 if (!has_pairwise) {
   cat("Skipping: pairwise_similarities.csv not found. Run compute_derived.py first.\n")

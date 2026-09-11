@@ -27,10 +27,34 @@
 # Controlled by BAYES_FACTORS in config.R: "auto" (only when a contrast has
 # p >= .05), "always", or "never" (skip, e.g. for quick renders).
 
-suppressPackageStartupMessages({
-  library(brms)
-  library(bridgesampling)
-})
+# brms and bridgesampling are attached on first use, not when this file is
+# sourced, so notebooks that never compute a Bayes factor do not pay for them.
+.load_bf_packages <- function() {
+  suppressPackageStartupMessages({
+    library(brms)
+    library(bridgesampling)
+  })
+}
+
+bf_cache_dir <- function() file.path(derived_dir, "bayes_factors")
+
+# The preregistered decision: compute a Bayes factor when a planned contrast
+# is non-significant (or always / never, per BAYES_FACTORS). `p_values` are the
+# contrast p-values, `fit` a function that returns the bf_* result. Undefined
+# p-values (a saturated model, as on pilot data) are reported and skipped.
+maybe_bayes_factor <- function(p_values, label, fit) {
+  if (BAYES_FACTORS == "never") return(invisible(NULL))
+  if (length(p_values) == 0 || any(is.na(p_values))) {
+    cat(sprintf("%s: contrast p-value undefined; Bayes factor skipped.\n", label))
+    return(invisible(NULL))
+  }
+  if (BAYES_FACTORS == "always" || any(p_values >= 0.05)) {
+    report_bf(fit(), label)
+  } else {
+    cat(sprintf("%s: contrast significant; Bayes factor not required.\n", label))
+    invisible(NULL)
+  }
+}
 
 EFFECT_SIZE_PRIOR <- "cauchy(0, 0.7071068)"  # sqrt(2)/2
 
@@ -80,8 +104,9 @@ fit_bf_pair <- function(formula_full, formula_null, data, family, priors_full,
 #   weights    column with inverse-variance weights (rescaled to mean 1)
 bf_wls_contrast <- function(data, outcome, condition = "condition", levels,
                             covariates = character(), weights = NULL,
-                            name = "contrast", cache_dir = NULL,
+                            name = "contrast", cache_dir = bf_cache_dir(),
                             iter = 10000, warmup = 2000, chains = 4, seed = 67) {
+  .load_bf_packages()
   d <- data[data[[condition]] %in% levels, , drop = FALSE]
   if (nrow(d) < 4 || any(table(d[[condition]]) < 2)) {
     return(list(bf10 = NA_real_, interpretation = "not computed (fewer than two games per condition)"))
@@ -112,8 +137,9 @@ bf_wls_contrast <- function(data, outcome, condition = "condition", levels,
 # frequentist analysis (e.g. formula(m_h4a)); the null drops the fixed effect
 # of `condition` and keeps the random-effects structure.
 bf_glmm_condition <- function(data, formula_full, condition = "condition",
-                              levels, name = "contrast", cache_dir = NULL,
+                              levels, name = "contrast", cache_dir = bf_cache_dir(),
                               iter = 6000, warmup = 2000, chains = 4, seed = 67) {
+  .load_bf_packages()
   d <- data[data[[condition]] %in% levels, , drop = FALSE]
   if (nrow(d) == 0 || any(table(d[[condition]]) == 0)) {
     return(list(bf10 = NA_real_, interpretation = "not computed (a condition has no trials)"))

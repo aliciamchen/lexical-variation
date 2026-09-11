@@ -3,22 +3,11 @@
 # Plain stopifnot checks on simulated data so no test framework is needed.
 #
 # Run with:
-#   Rscript analysis/test_mixed_models.R
+#   Rscript analysis/tests/run_all.R          # all R tests
+#   Rscript analysis/tests/test_mixed_models.R
 
-suppressPackageStartupMessages({
-  library(lme4)
-})
-source(file.path(
-  dirname(sub("--file=", "", grep("--file=", commandArgs(), value = TRUE)[1])),
-  "mixed_models.R"
-))
-
-check <- function(label, cond) {
-  if (!isTRUE(cond)) {
-    stop(sprintf("FAILED: %s", label), call. = FALSE)
-  }
-  cat(sprintf("ok: %s\n", label))
-}
+if (!exists("fit_progressively")) source(here::here("analysis", "config.R"))
+if (!exists("check")) source(here::here("analysis", "tests", "check.R"))
 
 set.seed(2026)
 

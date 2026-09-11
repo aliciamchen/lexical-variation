@@ -10,41 +10,25 @@ format:
 library(tidyboot)
 library(patchwork)
 source(here::here("analysis", "config.R"))
+list2env(load_tables(), envir = globalenv())
 
-games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
-speaker_utts <- read_csv(file.path(data_dir, utterances_file), show_col_types = FALSE)
-trials <- read_csv(file.path(data_dir, "trials.csv"), show_col_types = FALSE)
-
-has_adjacent <- file.exists(file.path(derived_dir, "adjacent_similarities.csv"))
-adjacent_sim <- if (has_adjacent) read_csv(file.path(derived_dir, "adjacent_similarities.csv"), show_col_types = FALSE) else tibble()
+has_adjacent <- has_rows(adjacent_sim)
 ```
 
 ```{r prep-data}
-# Add condition and compute global block number (blockNum resets per phase)
-utts_with_condition <- speaker_utts |>
-  left_join(games |> select(gameId, condition, phase1Blocks), by = "gameId") |>
-  mutate(
-    condition = factor(condition, levels = CONDITION_ORDER),
-    globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
-  )
+# Add condition and a block number that runs across both phases (blockNum
+# resets per phase; add_global_block() uses each game's own Phase 1 length)
+utts_with_condition <- speaker_utts |> add_condition(games) |> add_global_block(games)
 
-listener_trials <- trials |>
+listeners_with_condition <- trials |>
   filter(role == "listener") |>
-  mutate(correct = as.numeric(clickedCorrect == TRUE | clickedCorrect == "true")) |>
+  mutate(correct = as_correct(clickedCorrect)) |>
   filter(!is.na(correct)) |>
-  left_join(games |> select(gameId, condition, phase1Blocks), by = "gameId") |>
-  mutate(
-    condition = factor(condition, levels = CONDITION_ORDER),
-    globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
-  )
+  add_condition(games) |>
+  add_global_block(games)
 
-if (has_adjacent && nrow(adjacent_sim) > 0) {
-  adj_with_condition <- adjacent_sim |>
-    left_join(games |> select(gameId, condition, phase1Blocks), by = "gameId") |>
-    mutate(
-      condition = factor(condition, levels = CONDITION_ORDER),
-      globalBlock = ifelse(phaseNum == 1, blockNum, blockNum + phase1Blocks)
-    )
+if (has_adjacent) {
+  adj_with_condition <- adjacent_sim |> add_condition(games) |> add_global_block(games)
 }
 ```
 
@@ -73,7 +57,7 @@ p_length <- ggplot(length_all, aes(x = globalBlock, y = empirical_stat, color = 
   theme(legend.position = "bottom")
 
 # Plot 16a: Referential accuracy over all blocks
-acc_all <- listener_trials |>
+acc_all <- listeners_with_condition |>
   filter(!is.na(correct)) |>
   group_by(condition, globalBlock) |>
   tidyboot_mean(correct, nboot = 1000)

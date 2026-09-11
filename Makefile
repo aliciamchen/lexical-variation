@@ -75,9 +75,9 @@ process: ## Run full pipeline (preprocess → filter → derived)
 process-no-filter: ## Run pipeline skipping filter (no Vertex AI needed)
 	uv run python analysis/process_data.py --dataset $(DATASET) --skip-filter
 
-test: ## Validate processed data against the integrity suite and run the R model tests
+test: ## Validate processed data against the integrity suite and run the R helper tests
 	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py -q
-	Rscript analysis/test_mixed_models.R
+	Rscript analysis/tests/run_all.R
 
 # ── LLM simulation ─────────────────────────────────────────
 
