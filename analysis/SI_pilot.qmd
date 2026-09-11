@@ -344,8 +344,24 @@ if (!has_pairwise) {
     cat(sprintf("\nGames with significant group-specificity: %d / %d (%.0f%%)\n",
                 sum(perm_results$p_value < 0.05), nrow(perm_results),
                 prop_significant * 100))
-    cat(sprintf("Criterion (≥80%%): %s\n",
-                ifelse(prop_significant >= 0.8, "PASS", "FAIL")))
+    # The criterion is evaluated within each condition (the paper's "16/20 per
+    # condition"); the study-level check passes only if every condition passes.
+    perm_by_condition <- perm_results |>
+      left_join(games |> select(gameId, condition), by = "gameId") |>
+      mutate(condition = factor(condition, levels = CONDITION_ORDER)) |>
+      group_by(condition) |>
+      summarise(
+        games = n(),
+        significant = sum(p_value < 0.05),
+        proportion = significant / games,
+        criterion = ifelse(proportion >= 0.8, "PASS", "FAIL"),
+        .groups = "drop"
+      )
+    cat("\nPermutation criterion by condition (>= 80% of games with p < .05):\n")
+    print(knitr::kable(perm_by_condition, digits = 2))
+    all_conditions_pass <- all(perm_by_condition$criterion == "PASS")
+    cat(sprintf("\nOverall criterion: %s (every condition must pass)\n",
+                ifelse(all_conditions_pass, "PASS", "FAIL")))
   }
 }
 ```
