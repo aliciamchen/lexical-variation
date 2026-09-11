@@ -727,3 +727,46 @@ if (exists("gs_combined")) {
   cat("Skipping: no group-specificity estimates.\n")
 }
 ```
+
+## Tangram set as a covariate
+
+The paper notes that set-level differences in difficulty are absorbed by the
+tangram random effects and the game-level residual, and commits to confirming
+that results are unchanged with tangram set as a covariate. The two sets are
+counterbalanced across games within each condition.
+
+```{r robustness-tangram-set}
+if (!exists("gs_combined")) {
+  cat("Skipping: no group-specificity estimates.\n")
+} else if (n_distinct(games$tangramSet[!is.na(games$condition)]) < 2) {
+  cat("Only one tangram set in this dataset; the covariate is not estimable (the pilot used set 0 throughout).\n")
+} else {
+  gs_ts <- gs_combined |>
+    left_join(games |> select(gameId, tangramSet), by = "gameId") |>
+    mutate(tangramSet = factor(tangramSet))
+  cat("Games per condition and tangram set:\n")
+  print(knitr::kable(gs_ts |> count(condition, tangramSet)))
+
+  h12_ts <- fit_h12_wls(gs_ts, covariate = "gs_phase1 + tangramSet")
+  if (!is.null(h12_ts$contrasts)) {
+    cat("\nH1/H2 with tangram set as a covariate:\n")
+    print(knitr::kable(bind_rows(contrast_table(contrasts, "primary"),
+                                 contrast_table(h12_ts$contrasts, "with tangram set")), digits = 3))
+  } else {
+    cat("\nH1/H2 rerun not possible:", h12_ts$note, "\n")
+  }
+
+  for (spec in h4_specs) {
+    if (is.null(spec$data) || is.null(spec$model) || !"tangramSet" %in% names(spec$data)) next
+    d <- spec$data |> mutate(tangramSet = factor(tangramSet))
+    if (n_distinct(d$tangramSet) < 2) next
+    m_ts <- fit_progressively(update(H4_FORMULA, . ~ . + tangramSet), data = d, family = binomial)
+    if (!inherits(m_ts, "glmerMod")) next
+    cat(sprintf("\n%s with tangram set as a covariate (%s):\n", spec$name, random_effects_structure(m_ts)))
+    print(knitr::kable(bind_rows(
+      if (inherits(spec$model, "glmerMod")) contrast_table(contrast(emmeans(spec$model, "condition", type = "response"), spec$weights), "primary"),
+      contrast_table(contrast(emmeans(m_ts, "condition", type = "response"), spec$weights), "with tangram set")
+    ), digits = 3))
+  }
+}
+```

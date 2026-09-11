@@ -203,11 +203,12 @@ within_group_block_pairs <- function(
 
 # The H3c measures (concreteness, word frequency, lexical uniqueness) for each
 # speaker's final Phase 1 description of each tangram
-final_phase1_properties <- function(
+final_phase_properties <- function(
   desc_props,
   lex_uniq,
   games,
-  conditions = SOCIAL_CONDITIONS
+  phase = 1,
+  conditions = CONDITION_ORDER
 ) {
   if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
     return(tibble())
@@ -218,9 +219,19 @@ final_phase1_properties <- function(
         select(gameId, playerId, target, blockNum, phaseNum, uniqueness),
       by = c("gameId", "playerId", "target", "blockNum", "phaseNum")
     ) |>
-    filter(phaseNum == 1) |>
+    filter(phaseNum == .env$phase) |>
     add_condition(games, conditions) |>
     group_by(gameId, playerId, target) |>
     filter(blockNum == max(blockNum)) |>
     ungroup()
+}
+
+# The H3c comparison: final Phase 1 descriptions in the social conditions
+final_phase1_properties <- function(
+  desc_props,
+  lex_uniq,
+  games,
+  conditions = SOCIAL_CONDITIONS
+) {
+  final_phase_properties(desc_props, lex_uniq, games, phase = 1, conditions = conditions)
 }

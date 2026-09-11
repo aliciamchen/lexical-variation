@@ -135,3 +135,27 @@ check(
   "social_guess_trials returns an empty tibble for empty input",
   nrow(social_guess_trials(tibble(), games)) == 0
 )
+
+# ── final_phase_properties ───────────────────────────────────────────────────
+
+props <- tibble(
+  gameId = c("g1", "g1", "g1", "g2"), playerId = c("s1", "s1", "s1", "s3"), target = "t1",
+  phaseNum = c(1, 1, 2, 2), blockNum = c(2, 4, 5, 3), phase = "refgame",
+  concreteness = c(0.5, 0.25, 0.1, 0.6), mean_zipf_freq = c(5, 4, 3, 4.5)
+)
+uniq <- props |> select(gameId, playerId, target, blockNum, phaseNum) |> mutate(uniqueness = c(0.1, 0.2, 0.9, 0.4))
+p1 <- final_phase_properties(props, uniq, games, phase = 1)
+check(
+  "final_phase_properties keeps each speaker's last description of the phase",
+  nrow(p1) == 1 && p1$blockNum == 4 && p1$uniqueness == 0.2 && p1$gameId == "g1"
+)
+p2 <- final_phase_properties(props, uniq, games, phase = 2)
+check(
+  "phase 2 covers every condition by default",
+  nrow(p2) == 2 && identical(levels(p2$condition), CONDITION_ORDER)
+)
+check(
+  "final_phase1_properties is the social-conditions Phase 1 case",
+  nrow(final_phase1_properties(props, uniq, games)) == 1 &&
+    identical(levels(final_phase1_properties(props, uniq, games)$condition), SOCIAL_CONDITIONS)
+)

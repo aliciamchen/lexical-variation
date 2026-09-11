@@ -454,3 +454,62 @@ if (nrow(p2_utts) > 0) {
     )
 }
 ```
+
+# 7. Utterance properties across the four conditions
+
+The paper's "Utterance properties" paragraph: the H3c measures (concreteness,
+lexical uniqueness, word frequency; see `compute_derived.py`) applied to all
+four conditions, to explore whether group-specific language maintained
+passively (refer_separated) differs from language maintained under a
+social-signaling goal (social_mixed). Each measure is modeled on each speaker's
+final description of each tangram within a phase, with the H3c formula
+`measure ~ condition + (1 | participant) + (condition | tangram)`. The named
+contrast is refer_separated minus social_mixed; all pairwise comparisons follow
+(Tukey-adjusted). Exploratory.
+
+```{r utterance-properties-all-conditions}
+PROPERTY_LABELS <- c(concreteness = "Concreteness", uniqueness = "Lexical uniqueness",
+                     mean_zipf_freq = "Word frequency (Zipf)")
+
+if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
+  cat("Skipping: description_properties.csv or lexical_uniqueness.csv not found.\n")
+} else {
+  property_summaries <- list()
+  for (ph in c(1, 2)) {
+    props <- final_phase_properties(desc_props, lex_uniq, games, phase = ph)
+    if (nrow(props) == 0 || n_distinct(props$condition) < 2) {
+      cat(sprintf("Phase %d: not enough conditions with data.\n", ph))
+      next
+    }
+    for (measure in names(PROPERTY_LABELS)) {
+      d <- props |> filter(!is.na(.data[[measure]]))
+      if (nrow(d) == 0) next
+      cat(sprintf("\n=== Phase %d: %s ===\n", ph, PROPERTY_LABELS[[measure]]))
+      f <- as.formula(sprintf("%s ~ condition + (1 | playerId) + (condition | target)", measure))
+      m <- fit_progressively(f, data = d)
+      em <- emmeans(m, "condition")
+      property_summaries[[length(property_summaries) + 1]] <- as.data.frame(summary(em)) |>
+        mutate(phase = paste("Phase", ph), measure = PROPERTY_LABELS[[measure]])
+      lv <- levels(droplevels(d$condition))
+      if (all(c("refer_separated", "social_mixed") %in% lv)) {
+        cat("Passive vs active maintenance (refer_separated minus social_mixed):\n")
+        print(summary(contrast(em, list(passive_minus_active = pairwise_weights(lv, "refer_separated", "social_mixed"))),
+                      infer = c(TRUE, TRUE)))
+      }
+      cat("All pairwise comparisons (Tukey):\n")
+      print(summary(pairs(em)))
+    }
+  }
+  if (length(property_summaries)) {
+    property_plot <- bind_rows(property_summaries)
+    print(
+      ggplot(property_plot, aes(x = condition, y = emmean, color = condition)) +
+        geom_pointrange(aes(ymin = lower.CL, ymax = upper.CL)) +
+        facet_grid(measure ~ phase, scales = "free_y") +
+        scale_color_condition() +
+        labs(x = "Condition", y = "Estimated marginal mean (95% CI)") +
+        theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1))
+    )
+  }
+}
+```
