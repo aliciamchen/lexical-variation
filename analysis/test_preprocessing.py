@@ -9,8 +9,9 @@ Run with:
 
 import numpy as np
 import pandas as pd
+import pytest
 
-from filter_nonreferential import build_filtered_utterances
+from filter_nonreferential import BatchParseError, build_filtered_utterances, parse_batch_labels
 from preprocessing import flag_length_increase
 
 
@@ -125,3 +126,30 @@ def test_rounds_with_only_non_referential_messages_are_dropped_not_emptied():
     assert utterances["utterance"].tolist() == ["the dancer"]
     assert utterances["uttLength"].tolist() == [2]
     assert (utterances["utterance"].str.strip() != "").all()
+
+
+def test_batch_labels_are_matched_by_message_number_not_line_position():
+    text = "3: NR\n1: R\n\n2: R\n"
+    assert parse_batch_labels(text, 3) == ["R", "R", "NR"]
+
+
+def test_batch_labels_accept_common_formatting_variants():
+    text = "**1**: R\n2. NR\n3) r\n4 - **NR** (a greeting)"
+    assert parse_batch_labels(text, 4) == ["R", "NR", "R", "NR"]
+
+
+def test_batch_labels_fail_loudly_when_a_message_is_unlabeled():
+    with pytest.raises(BatchParseError, match=r"no label for message\(s\) \[2\]"):
+        parse_batch_labels("1: R\n3: NR", 3)
+
+
+def test_batch_labels_fail_loudly_on_extra_or_conflicting_numbers():
+    with pytest.raises(BatchParseError, match="outside the batch"):
+        parse_batch_labels("1: R\n2: R\n3: NR", 2)
+    with pytest.raises(BatchParseError, match="conflicting"):
+        parse_batch_labels("1: R\n1: NR\n2: R", 2)
+
+
+def test_batch_labels_ignore_prose_lines_without_a_number():
+    text = "Here are the labels:\n1: R\n2: NR\nDone."
+    assert parse_batch_labels(text, 2) == ["R", "NR"]

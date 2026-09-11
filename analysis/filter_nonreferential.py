@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -94,14 +95,57 @@ def get_client(project: str | None = None) -> genai.Client:
     return genai.Client(vertexai=True, project=project, location=location)
 
 
+class BatchParseError(ValueError):
+    """The classifier's response does not label every message exactly once."""
+
+
+_LABEL_LINE = re.compile(r"^\s*\*{0,2}(\d+)\*{0,2}\s*[:.)\-]\s*\*{0,2}(NR|R)\b", re.IGNORECASE)
+
+
+def parse_batch_labels(text: str, n_messages: int) -> list[str]:
+    """Parse "N: R" / "N: NR" lines into labels ordered by message number.
+
+    Labels are matched to messages by the number the model echoes back, not
+    by line position, so a skipped or reordered line cannot shift every later
+    label. Any message without exactly one label, or a number outside the
+    batch, raises BatchParseError instead of being silently defaulted.
+    """
+    found: dict[int, str] = {}
+    conflicts: list[int] = []
+    for line in text.splitlines():
+        m = _LABEL_LINE.match(line)
+        if not m:
+            continue
+        idx, label = int(m.group(1)), m.group(2).upper()
+        if idx in found and found[idx] != label:
+            conflicts.append(idx)
+        found[idx] = label
+    expected = set(range(1, n_messages + 1))
+    missing = sorted(expected - set(found))
+    extra = sorted(set(found) - expected)
+    if missing or extra or conflicts:
+        problems = []
+        if missing:
+            problems.append(f"no label for message(s) {missing}")
+        if extra:
+            problems.append(f"labels for numbers outside the batch {extra}")
+        if conflicts:
+            problems.append(f"conflicting labels for message(s) {sorted(set(conflicts))}")
+        raise BatchParseError("; ".join(problems) + f". Response was:\n{text[:2000]}")
+    return [found[i] for i in range(1, n_messages + 1)]
+
+
 def classify_batch(
     client: genai.Client,
     model_name: str,
     messages: list[str],
+    retries: int = 1,
 ) -> list[str]:
     """Classify a batch of messages as R or NR.
 
-    Returns list of labels ('R' or 'NR') aligned with input messages.
+    Returns labels aligned with the input messages. A response that does not
+    label every message exactly once is retried `retries` times and then
+    raised, so a malformed batch can never be padded with defaults.
     """
     from google.genai import types
 
@@ -109,29 +153,20 @@ def classify_batch(
     for i, msg in enumerate(messages, 1):
         prompt += f"  {i}: {msg}\n"
 
-    response = client.models.generate_content(
-        model=model_name,
-        contents=prompt,
-        config=types.GenerateContentConfig(temperature=0),
+    last_error: Exception | None = None
+    for _attempt in range(retries + 1):
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0),
+        )
+        try:
+            return parse_batch_labels(response.text or "", len(messages))
+        except BatchParseError as e:
+            last_error = e
+    raise BatchParseError(
+        f"Batch of {len(messages)} messages could not be parsed after {retries + 1} attempt(s): {last_error}"
     )
-    text = response.text.strip()
-
-    # Parse response lines
-    labels = []
-    for line in text.split("\n"):
-        line = line.strip()
-        if not line:
-            continue
-        if "NR" in line.upper():
-            labels.append("NR")
-        elif "R" in line.upper():
-            labels.append("R")
-
-    # Pad if response is short (shouldn't happen, but be safe)
-    while len(labels) < len(messages):
-        labels.append("R")  # default to referential if unparseable
-
-    return labels[:len(messages)]
 
 
 # ---------- subcommands ----------
