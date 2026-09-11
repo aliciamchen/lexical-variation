@@ -6,110 +6,170 @@ format:
     code-fold: true
 ---
 
+The post-test survey (paper, "Post-test survey and group identification
+check") asks whether the instructions were understood, how much participants
+identified with and felt close to their Phase 1 group (7-point items), whether
+they noticed their group developing its own way of describing the pictures,
+their strategy, and, on a second page, whether they felt they were playing with
+other humans, plus age, gender, education, pay fairness, and open feedback.
+Players removed at the Phase 1 accuracy check complete the survey too.
+
+The pilot predates the revamped survey: it has the strategy question (as
+`strength`) and the demographics but none of the group or felt-human items, so
+those sections report "not collected" on the pilot data.
+
 ```{r setup, message=FALSE, warning=FALSE}
 source(here::here("analysis", "config.R"))
+list2env(load_tables(), envir = globalenv())
+
+survey <- exit_survey_responses(players, games)
+cat("Respondents (any survey field answered):", nrow(survey), "of",
+    nrow(players |> semi_join(games |> filter(!is.na(condition)), by = "gameId")), "players in real games\n")
 ```
 
-# Load & clean
+# Who responded
 
-```{r load-data}
-players_raw <- read_csv(
-  file.path(data_dir, "players.csv"),
-  show_col_types = FALSE
-)
+```{r response-summary}
+if (nrow(survey) == 0) {
+  cat("No survey responses in this dataset.\n")
+} else {
+  print(knitr::kable(
+    survey |>
+      group_by(condition, respondent, .drop = FALSE) |>
+      summarise(
+        respondents = n(),
+        page2 = if (has_field(survey, "age")) sum(!is.na(age)) else NA_integer_,
+        .groups = "drop"
+      ) |>
+      filter(respondents > 0),
+    caption = "Respondents by condition and whether they completed the game (page2: also answered the demographics page)"
+  ))
+}
+```
 
-games <- read_csv(
-  file.path(data_dir, "games.csv"),
-  show_col_types = FALSE
-)
+# Group identification and closeness
 
-# Keep only players from real games (non-NA condition) with survey data
-real_game_ids <- games |> filter(!is.na(condition)) |> pull(gameId)
+The two 7-point items (1 = not at all, 7 = very much). Descriptive by
+condition with a Kruskal-Wallis test across conditions; the paper treats these
+as a manipulation check, not a hypothesis test.
 
-survey <- players_raw |>
-  filter(gameId %in% real_game_ids) |>
-  filter(!is.na(exitSurvey_age)) |>
-  left_join(games |> select(gameId, condition), by = "gameId") |>
-  rename_with(~ str_remove(., "^exitSurvey_")) |>
-  mutate(gender = str_to_lower(gender))
+```{r likert-items, fig.width=8, fig.height=4}
+likert_items <- c(groupIdentification = "Sense of being part of the Phase 1 group",
+                  groupCloseness = "Closeness to the Phase 1 group")
+present <- names(likert_items)[vapply(names(likert_items), function(f) has_field(survey, f), logical(1))]
+if (length(present) == 0) {
+  cat("Not collected in this dataset (the group items were added after the pilot).\n")
+} else {
+  for (item in present) {
+    cat(sprintf("\n=== %s ===\n", likert_items[[item]]))
+    print(knitr::kable(likert_by_condition(survey, item), digits = 2))
+    d <- survey |> filter(!is.na(.data[[item]]))
+    if (n_distinct(d$condition) >= 2) print(kruskal.test(d[[item]] ~ d$condition))
+  }
+  long <- survey |>
+    select(condition, respondent, all_of(present)) |>
+    pivot_longer(all_of(present), names_to = "item", values_to = "rating") |>
+    filter(!is.na(rating)) |>
+    mutate(item = likert_items[item])
+  ggplot(long, aes(x = condition, y = rating, color = condition)) +
+    geom_jitter(width = 0.15, height = 0.1, alpha = 0.4, size = 1.5) +
+    stat_summary(fun.data = mean_cl_normal, color = "black", size = 0.6) +
+    facet_wrap(~item) +
+    scale_color_condition() +
+    scale_y_continuous(breaks = 1:7, limits = c(0.8, 7.2)) +
+    labs(x = "Condition", y = "Rating (1-7)") +
+    theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1))
+}
+```
 
-cat("Players with survey data:", nrow(survey), "\n")
-cat("Conditions:", paste(unique(survey$condition), collapse = ", "), "\n")
+# Awareness of group-specific language
+
+```{r group-language}
+if (!has_field(survey, "groupLanguage")) {
+  cat("Not collected in this dataset.\n")
+} else {
+  gl <- survey |>
+    filter(!is.na(groupLanguage)) |>
+    group_by(condition, .drop = FALSE) |>
+    summarise(n = n(), yes = sum(groupLanguage == "yes"), prop_yes = yes / n, .groups = "drop") |>
+    filter(n > 0)
+  print(knitr::kable(gl, digits = 2, caption = "Noticed the group developing its own way of describing the pictures"))
+  d <- survey |> filter(!is.na(groupLanguage))
+  if (n_distinct(d$condition) >= 2 && n_distinct(d$groupLanguage) >= 2) {
+    print(suppressWarnings(chisq.test(table(droplevels(d$condition), d$groupLanguage))))
+  }
+}
+```
+
+# Felt they were playing with humans
+
+Games in which any respondent answered "no" are flagged for detailed
+inspection of their chat logs (paper, "AI detection").
+
+```{r felt-human}
+if (!has_field(survey, "feltHuman")) {
+  cat("Not collected in this dataset (the item was added after the pilot).\n")
+} else {
+  fh <- survey |>
+    filter(!is.na(feltHuman)) |>
+    group_by(condition, .drop = FALSE) |>
+    summarise(n = n(), said_no = sum(feltHuman == "no"), prop_no = said_no / n, .groups = "drop") |>
+    filter(n > 0)
+  print(knitr::kable(fh, digits = 2, caption = "Respondents who did not feel they were playing with humans"))
+  flags <- felt_human_flags(survey)
+  if (nrow(flags) == 0) {
+    cat("\nNo game flagged: every respondent felt they were playing with humans.\n")
+  } else {
+    cat(sprintf("\n%d game(s) flagged for inspection:\n", nrow(flags)))
+    print(knitr::kable(flags |> mutate(gameId = substr(gameId, 1, 10))))
+  }
+}
+```
+
+# Comprehension and pay fairness
+
+```{r comprehension-fairness}
+if (has_field(survey, "understood")) {
+  print(knitr::kable(survey |> filter(!is.na(understood)) |> count(condition, understood),
+                     caption = "Understood the instructions"))
+}
+if (has_field(survey, "fair")) {
+  print(knitr::kable(survey |> filter(!is.na(fair), fair != "") |>
+                       select(condition, originalGroup, respondent, fair) |> arrange(condition, originalGroup),
+                     caption = "Was the pay fair (free text)"))
+}
 ```
 
 # Demographics
 
-```{r age-summary}
-survey |>
-  group_by(condition) |>
-  summarise(
-    n = n(),
-    mean = mean(age),
-    median = median(age),
-    min = min(age),
-    max = max(age),
-    .groups = "drop"
-  ) |>
-  knitr::kable(caption = "Age summary by condition")
+```{r demographics}
+if (has_field(survey, "age")) {
+  print(knitr::kable(survey |> filter(!is.na(age)) |> group_by(condition, .drop = FALSE) |>
+                       summarise(n = n(), mean = mean(age), median = median(age), min = min(age), max = max(age), .groups = "drop") |>
+                       filter(n > 0), digits = 1, caption = "Age by condition"))
+}
+if (has_field(survey, "gender")) {
+  print(knitr::kable(survey |> filter(!is.na(gender)) |> count(condition, gender), caption = "Gender by condition"))
+}
+if (has_field(survey, "education")) {
+  print(knitr::kable(survey |> filter(!is.na(education)) |> count(condition, education), caption = "Education by condition"))
+}
+if (!any(vapply(c("age", "gender", "education"), function(f) has_field(survey, f), logical(1)))) {
+  cat("No demographics in this dataset.\n")
+}
 ```
 
-```{r gender}
-survey |>
-  count(condition, gender) |>
-  knitr::kable(caption = "Gender distribution by condition")
+# Strategies and open feedback
 
-ggplot(survey, aes(x = gender, fill = originalGroup)) +
-  geom_bar() +
-  scale_fill_group() +
-  facet_wrap(~condition) +
-  labs(title = "Gender by group", x = "Gender", y = "Count", fill = "Group")
-```
-
-```{r education}
-survey |>
-  count(condition, education) |>
-  knitr::kable(caption = "Education distribution by condition")
-
-ggplot(survey, aes(x = education, fill = originalGroup)) +
-  geom_bar() +
-  scale_fill_group() +
-  facet_wrap(~condition) +
-  labs(title = "Education by group", x = "Education", y = "Count", fill = "Group")
-```
-
-# Comprehension & pay fairness
-
-```{r comprehension-fairness}
-survey |>
-  select(condition, playerId, originalName, originalGroup, understood, fair) |>
-  arrange(condition, originalGroup) |>
-  knitr::kable(caption = "Comprehension and pay fairness")
-```
-
-# Strategy
-
-```{r strategy}
-survey |>
-  select(condition, playerId, originalName, originalGroup, strength) |>
-  arrange(condition, originalGroup) |>
-  knitr::kable(caption = "Strategy descriptions")
-```
-
-# Open feedback
-
-```{r feedback}
-survey |>
-  select(condition, playerId, originalName, originalGroup, feedback) |>
-  arrange(condition, originalGroup) |>
-  knitr::kable(caption = "Open feedback")
-```
-
-# Full response table
-
-```{r full-table}
-survey |>
-  select(condition, playerId, originalName, originalGroup, age, gender, education,
-         understood, fair, strength, feedback) |>
-  arrange(condition, originalGroup) |>
-  knitr::kable(caption = "All exit survey responses")
+```{r free-text}
+if (has_field(survey, "strategy")) {
+  print(knitr::kable(survey |> filter(!is.na(strategy), strategy != "") |>
+                       select(condition, originalGroup, respondent, strategy) |> arrange(condition, originalGroup),
+                     caption = "Strategy (free text)"))
+}
+if (has_field(survey, "feedback")) {
+  print(knitr::kable(survey |> filter(!is.na(feedback), feedback != "") |>
+                       select(condition, originalGroup, respondent, feedback) |> arrange(condition, originalGroup),
+                     caption = "Open feedback"))
+}
 ```
