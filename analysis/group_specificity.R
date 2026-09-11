@@ -111,8 +111,20 @@ compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
                                       force = FALSE) {
   gs_cache <- file.path(cache_dir, "gs_results.rds")
   perm_cache <- file.path(cache_dir, "perm_results.rds")
+  key_file <- file.path(cache_dir, "group_specificity_cache_key.txt")
 
-  if (!force && file.exists(gs_cache) && file.exists(perm_cache)) {
+  # The cache is keyed by a hash of the input data and the permutation count,
+  # so a change to the pairwise similarities (or a different dataset) can never
+  # silently reuse stale fits. Force = TRUE recomputes regardless.
+  key <- rlang::hash(list(
+    pairwise_df[order(pairwise_df$gameId, pairwise_df$target,
+                      pairwise_df$speaker1, pairwise_df$speaker2), ],
+    n_perm
+  ))
+  cached_key <- if (file.exists(key_file)) readLines(key_file, n = 1, warn = FALSE) else ""
+
+  if (!force && file.exists(gs_cache) && file.exists(perm_cache) &&
+      identical(cached_key, key)) {
     cat("Loading cached group-specificity results from", cache_dir, "\n")
     return(list(
       gs_results = readRDS(gs_cache),
@@ -120,12 +132,17 @@ compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
     ))
   }
 
+  if (file.exists(gs_cache) && !identical(cached_key, key)) {
+    cat("Cached group-specificity results do not match the current data; recomputing.\n")
+  }
   cat("Computing group-specificity (this may take a few minutes)...\n")
   gs_results <- fit_group_specificity(pairwise_df)
   perm_results <- permutation_test(pairwise_df, n_perm = n_perm)
 
+  dir.create(cache_dir, showWarnings = FALSE, recursive = TRUE)
   saveRDS(gs_results, gs_cache)
   saveRDS(perm_results, perm_cache)
+  writeLines(key, key_file)
   cat("Cached results to", cache_dir, "\n")
 
   list(gs_results = gs_results, perm_results = perm_results)
