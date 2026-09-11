@@ -81,10 +81,11 @@ if (has_adjacent) {
 **Criterion:** Significant negative main effect of `blockNum`.
 
 ```{r model-utt-length}
-m_length <- lmer(
+# Maximal structure from the preregistration; fit_progressively() simplifies
+# it only if it fails to converge and prints the steps it took.
+m_length <- fit_progressively(
   uttLength ~ blockNum_c + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram),
-  data = p1_utts,
-  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+  data = p1_utts
 )
 
 summary(m_length)
@@ -121,10 +122,9 @@ ggplot(length_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
 **Criterion:** Significant positive main effect of `blockNum`.
 
 ```{r model-accuracy}
-m_accuracy <- lmer(
+m_accuracy <- fit_progressively(
   ref_accuracy ~ blockNum_c + (blockNum_c | group) + (blockNum_c | tangram),
-  data = p1_ref_accuracy,
-  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+  data = p1_ref_accuracy
 )
 
 summary(m_accuracy)
@@ -170,10 +170,9 @@ ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
 if (has_adjacent) {
   p1_adjacent_valid <- p1_adjacent |> filter(!is.na(simAdjacent))
 
-  m_adjacent <- lmer(
+  m_adjacent <- fit_progressively(
     simAdjacent ~ blockNum_c + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram),
-    data = p1_adjacent_valid,
-    control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+    data = p1_adjacent_valid
   )
 
   summary(m_adjacent)
@@ -302,7 +301,13 @@ criteria <- tibble(
     "simAdjacent ~ blockNum + REs",
     "Permutation test"
   ),
-  `Expected Direction` = c("Negative", "Positive", "Positive", "p < .05")
+  `Expected Direction` = c("Negative", "Positive", "Positive", "p < .05"),
+  `Random effects fitted` = c(
+    random_effects_structure(m_length),
+    random_effects_structure(m_accuracy),
+    if (exists("m_adjacent")) random_effects_structure(m_adjacent) else "not fit",
+    "n/a"
+  )
 )
 
 knitr::kable(criteria, caption = "Outcome-neutral criteria checklist")

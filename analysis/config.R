@@ -172,52 +172,15 @@ cohens_d_games <- function(df, value, condition, a, b) {
 # them for every planned contrast, "never" skips them (fast renders).
 BAYES_FACTORS <- Sys.getenv("BAYES_FACTORS", unset = "auto")
 
-# ── Model fitting with progressive simplification ─────────
+# ── Model fitting with the preregistered simplification ────
 #
-# Tries a list of model formulas in order. For each formula, catches errors
-# and checks for singularity (lmer/glmer). Falls through to the next formula
-# on failure. Returns the first model that fits without error or singularity.
+# fit_progressively(formula, data, family) fits the maximal random-effects
+# structure and simplifies it the way the preregistration states (drop
+# correlations, then slopes from the smallest variance component). It is
+# defined in mixed_models.R together with simplification_log() and
+# random_effects_structure(), which notebooks use to report what was fit.
 
-fit_progressively <- function(formulas, data, family = NULL,
-                              control = NULL, verbose = TRUE) {
-  for (i in seq_along(formulas)) {
-    f <- formulas[[i]]
-    label <- if (!is.null(names(formulas)[i])) names(formulas)[i] else paste("step", i)
-
-    model <- tryCatch({
-      if (is.null(family)) {
-        lmer(f, data = data, control = control %||% lmerControl(optimizer = "bobyqa"))
-      } else {
-        glmer(f, data = data, family = family,
-              control = control %||% glmerControl(optimizer = "bobyqa"))
-      }
-    }, error = function(e) {
-      if (verbose) cat(sprintf("[%s] failed: %s\n", label, e$message))
-      NULL
-    })
-
-    if (is.null(model)) next
-
-    is_mixed <- inherits(model, "lmerMod") || inherits(model, "glmerMod")
-    if (is_mixed && isSingular(model)) {
-      if (verbose) cat(sprintf("[%s] singular, trying next.\n", label))
-      next
-    }
-
-    if (verbose && i > 1) cat(sprintf("[%s] converged.\n", label))
-    return(model)
-  }
-
-  # Last resort: strip random effects and fit fixed-effects only
-  if (verbose) cat("All mixed models failed; fitting fixed-effects model.\n")
-  f_last <- formulas[[length(formulas)]]
-  f_fixed <- lme4::nobars(f_last)
-  if (is.null(family)) {
-    lm(f_fixed, data = data)
-  } else {
-    glm(f_fixed, data = data, family = family)
-  }
-}
+source(here("analysis", "mixed_models.R"))
 
 save_fig <- function(p, filename, width = 8, height = 5, dpi = 150) {
   dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)

@@ -43,10 +43,7 @@ phase_change <- phase_change |>
 
 if (n_conditions >= 2) {
   m_semantic <- fit_progressively(
-    list(
-      maximal    = simPhase1Phase2 ~ condition + (1 | playerId) + (condition | target),
-      intercepts = simPhase1Phase2 ~ condition + (1 | playerId) + (1 | target)
-    ),
+    simPhase1Phase2 ~ condition + (1 | playerId) + (condition | target),
     data = phase_change
   )
   summary(m_semantic)
@@ -106,21 +103,14 @@ n_games <- n_distinct(p2_listener$gameId)
 if (n_conditions >= 2 && n_games >= 2) {
   # Paper formula: condition * blockNum slopes on tangram, blockNum on game/player
   m_ref_accuracy <- fit_progressively(
-    list(
-      maximal      = correct ~ condition * blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (condition * blockNum_c | target),
-      drop_cond_tg = correct ~ condition * blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | target),
-      intercepts   = correct ~ condition * blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target)
-    ),
+    correct ~ condition * blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (condition * blockNum_c | target),
     data = p2_listener,
     family = binomial
   )
 } else if (n_games >= 2) {
   cat("Only 1 condition; fitting without condition predictor.\n")
   m_ref_accuracy <- fit_progressively(
-    list(
-      slopes     = correct ~ blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | target),
-      intercepts = correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target)
-    ),
+    correct ~ blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | target),
     data = p2_listener,
     family = binomial
   )
@@ -189,10 +179,7 @@ if (nrow(social_listener) > 0) {
     mutate(condition = factor(condition, levels = CONDITION_ORDER))
 
   m_ingroup <- fit_progressively(
-    list(
-      maximal    = correct ~ inGroupSpeaker * condition + (1 | playerId) + (1 | speakerId) + (condition | target),
-      intercepts = correct ~ inGroupSpeaker * condition + (1 | playerId) + (1 | speakerId) + (1 | target)
-    ),
+    correct ~ inGroupSpeaker * condition + (1 | playerId) + (1 | speakerId) + (condition | target),
     data = social_listener,
     family = binomial
   )
@@ -310,9 +297,7 @@ if (nrow(social_guesses) > 0) {
   n_social_games <- n_distinct(social_guesses_model$gameId)
   if (n_social_games >= 2) {
     m_social_acc <- fit_progressively(
-      list(
-        mixed = correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target)
-      ),
+      correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target),
       data = social_guesses_model,
       family = binomial
     )

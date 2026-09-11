@@ -31,3 +31,6 @@ analysis/*_files/
 data/runs/
 data/old_pilots/
 full-sample-todos.md
+
+# brms fit caches for the Bayes factors (76 MB per dataset, reproducible from the notebooks)
+analysis/derived/*/bayes_factors/

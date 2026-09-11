@@ -24,7 +24,7 @@ The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pil
 | `figures/<name>/` | Notebook figures (`figures/pilots/` holds the SI figures from `SI_pilot.qmd`) | Yes |
 | `figures/llm_plots/` | SI PDF figures from `SI_llm_simulation.qmd` | Yes |
 
-Cached fits are keyed to their inputs: `group_specificity.R` stores a hash of the pairwise data next to `gs_results.rds` and recomputes when it differs, and `bayes_factors.R` names each fit by a hash of data and formula. A stale cache can therefore not be reused silently, but recomputing the permutation test takes several minutes.
+Cached fits are keyed to their inputs: `group_specificity.R` stores a hash of the pairwise data next to `gs_results.rds` and recomputes when it differs, and `bayes_factors.R` names each fit by a hash of data and formula. A stale cache can therefore not be reused silently, but recomputing the permutation test takes several minutes. The brms fits under `analysis/derived/<name>/bayes_factors/` are gitignored (tens of megabytes, reproducible); the group-specificity RDS files are committed.
 
 ## Data
 
@@ -75,6 +75,8 @@ Quarto notebooks and animations are run separately (see below).
 | `test_data_integrity.py` | Pytest validation of `data/<name>/` CSV structure for the active dataset |
 | `test_compute_derived.py` | Pytest unit tests for the derived-metric definitions (latest-utterance selection, trajectory start rule, lexical uniqueness) |
 | `test_preprocessing.py` | Pytest unit tests for `preprocessing.flag_length_increase` (the AI-use trigger in `players.csv`) and `filter_nonreferential.build_filtered_utterances` (rounds with no referential message are dropped, not emptied) |
+| `mixed_models.R` | `fit_progressively()`: the preregistered random-effects simplification (maximal model, then drop correlations, then slopes by smallest variance); sourced by `config.R`; `simplification_log()` and `random_effects_structure()` report what was fit |
+| `test_mixed_models.R` | Plain `stopifnot` tests of the simplification procedure on simulated data (`Rscript analysis/test_mixed_models.R`, also run by `make test`) |
 | `bayes_factors.R` | brms/bridgesampling Bayes factors for non-significant planned contrasts (called from `02_primary_analysis.qmd`; `BAYES_FACTORS=auto\|always\|never`) |
 
 ## Processing new data

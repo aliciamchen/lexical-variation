@@ -229,10 +229,11 @@ if (has_adjacent) {
 ## 2a. Description length decreases
 
 ```{r model-length}
-m_length <- lmer(
+# Maximal structure from the preregistration, simplified by fit_progressively()
+# only if it fails to converge (the steps are printed).
+m_length <- fit_progressively(
   uttLength ~ blockNum_c + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram),
-  data = p1_utts,
-  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+  data = p1_utts
 )
 
 s <- summary(m_length)
@@ -259,10 +260,9 @@ cat(sprintf("Last block: M = %.1f words (SD = %.1f)\n",
 ## 2b. Listener accuracy increases
 
 ```{r model-accuracy}
-m_accuracy <- lmer(
+m_accuracy <- fit_progressively(
   ref_accuracy ~ blockNum_c + (blockNum_c | group) + (blockNum_c | tangram),
-  data = p1_ref_accuracy,
-  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+  data = p1_ref_accuracy
 )
 
 s <- summary(m_accuracy)
@@ -292,10 +292,9 @@ cat(sprintf("Chance level: %.4f (1/16)\n", 1/16))
 if (has_adjacent) {
   p1_adjacent_valid <- p1_adjacent |> filter(!is.na(simAdjacent), blockNum > 0)
 
-  m_adjacent <- lmer(
+  m_adjacent <- fit_progressively(
     simAdjacent ~ blockNum_c + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram),
-    data = p1_adjacent_valid,
-    control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+    data = p1_adjacent_valid
   )
 
   s <- summary(m_adjacent)

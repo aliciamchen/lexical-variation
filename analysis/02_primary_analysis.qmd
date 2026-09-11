@@ -406,10 +406,7 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
     # Group is the natural unit of replication for within-group similarity.
     # Condition is between-game, so it cannot have a random slope within group.
     m_h3b <- fit_progressively(
-      list(
-        maximal    = similarity ~ condition * blockNum_c + (blockNum_c | group) + (blockNum_c | target),
-        intercepts = similarity ~ condition * blockNum_c + (1 | group) + (1 | target)
-      ),
+      similarity ~ condition * blockNum_c + (blockNum_c | group) + (blockNum_c | target),
       data = p1_within_social
     )
     summary(m_h3b)
@@ -496,10 +493,7 @@ if (!has_desc_props || !has_lex_uniq) {
     if (nrow(p1_concrete) > 0) {
       cat("=== Concreteness ===\n")
       m_concrete <- fit_progressively(
-        list(
-          maximal    = concreteness ~ condition + (1 | playerId) + (condition | target),
-          intercepts = concreteness ~ condition + (1 | playerId) + (1 | target)
-        ),
+        concreteness ~ condition + (1 | playerId) + (condition | target),
         data = p1_concrete
       )
       summary(m_concrete)
@@ -511,10 +505,7 @@ if (!has_desc_props || !has_lex_uniq) {
     if (nrow(p1_unique) > 0) {
       cat("\n=== Lexical Uniqueness ===\n")
       m_uniqueness <- fit_progressively(
-        list(
-          maximal    = uniqueness ~ condition + (1 | playerId) + (condition | target),
-          intercepts = uniqueness ~ condition + (1 | playerId) + (1 | target)
-        ),
+        uniqueness ~ condition + (1 | playerId) + (condition | target),
         data = p1_unique
       )
       summary(m_uniqueness)
@@ -526,10 +517,7 @@ if (!has_desc_props || !has_lex_uniq) {
     if (nrow(p1_freq) > 0) {
       cat("\n=== Word Frequency ===\n")
       m_freq <- fit_progressively(
-        list(
-          maximal    = mean_zipf_freq ~ condition + (1 | playerId) + (condition | target),
-          intercepts = mean_zipf_freq ~ condition + (1 | playerId) + (1 | target)
-        ),
+        mean_zipf_freq ~ condition + (1 | playerId) + (condition | target),
         data = p1_freq
       )
       summary(m_freq)
@@ -618,11 +606,7 @@ if (nrow(social_guesses) > 0) {
 
   if (n_distinct(social_h4$condition) >= 2 && nrow(social_h4) > 0) {
     m_h4a <- fit_progressively(
-      list(
-        maximal    = correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (condition | target),
-        drop_cond  = correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (1 | target),
-        intercepts = correct ~ condition + blockNum_c + (1 | gameId) + (1 | playerId) + (1 | speakerId) + (1 | target)
-      ),
+      correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (condition | target),
       data = social_h4,
       family = binomial
     )
@@ -707,11 +691,7 @@ p2_listener_social <- trials |>
 
 if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 0) {
   m_h4b <- fit_progressively(
-    list(
-      maximal    = correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (condition | target),
-      drop_cond  = correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (1 | target),
-      intercepts = correct ~ condition + blockNum_c + (1 | gameId) + (1 | playerId) + (1 | speakerId) + (1 | target)
-    ),
+    correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (condition | target),
     data = p2_listener_social,
     family = binomial
   )
