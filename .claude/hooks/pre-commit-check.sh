@@ -9,7 +9,7 @@
 #    committed by accident; this makes that a hard stop.
 # 2. Server unit tests. If staged files touch experiment/server/src/, runs
 #    `npm run test:unit` (vitest on scoring.js and reshuffling.js; seconds).
-# 3. Analysis tests. If staged files touch analysis/*.py or data/pilots/,
+# 3. Analysis tests. If staged files touch analysis/*.py or data/<dataset>/,
 #    runs the data integrity suite and the derived-metric unit tests
 #    (`uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py`,
 #    about seven seconds on the pilot data).
@@ -93,7 +93,7 @@ Fix the failures and retry. --no-verify bypasses Git hooks, not this agent hook.
 fi
 
 # ── 3. Data integrity suite ─────────────────────────────────
-if printf '%s\n' "$staged" | grep -qE '^(analysis/[^/]+\.py|data/pilots/)'; then
+if printf '%s\n' "$staged" | grep -qE '^(analysis/[^/]+\.py|data/[^/]+/)'; then
   if command -v uv >/dev/null 2>&1; then
     log=$(mktemp)
     if ! uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py -q >"$log" 2>&1; then

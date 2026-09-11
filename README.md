@@ -20,9 +20,10 @@
 │   ├── tests/                # Playwright end-to-end tests
 │   └── .empirica/            # Treatments, lobbies, config
 ├── data/
-│   ├── pilots/               # Pilot dataset (committed)
-│   └── pilot_runs/           # Per-run outputs from extract_run.py (gitignored)
+│   ├── pilots/               # Pilot dataset (committed); the full sample will sit beside it
+│   └── runs/                 # Per-run outputs from extract_run.py (gitignored)
 ├── analysis/                 # Analysis code & outputs
+│   ├── derived/              # Derived metrics per dataset (derived/pilots/ committed)
 │   ├── llm_simulation/       # LLM Phase 1 benchmark simulation
 │   └── power_analysis/       # Power analysis for sample size justification
 ├── figures/                  # Generated & design assets
@@ -127,25 +128,40 @@ The filter step requires Vertex AI (see [LLM simulation](#llm-simulation)) and c
 
 The `make test` target runs the data integrity suite on the processed CSVs together with unit tests for the derived-metric definitions (`analysis/test_compute_derived.py`) and for the preprocessing rules that the preregistration states precisely, such as the description-length flag and the treatment of trials with no referential message (`analysis/test_preprocessing.py`). The primary-analysis notebook computes Bayes factors for non-significant planned contrasts with `brms`, which takes several minutes per contrast; set the environment variable `BAYES_FACTORS=never` before rendering to skip them, or `BAYES_FACTORS=always` to compute them for every contrast.
 
+### Datasets
+
+The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pilots`, and the full sample will be a second dataset beside it rather than an edit of the pilot paths. Every dataset follows the same layout, which is defined once in `analysis/dataset_paths.py` for the Python scripts and mirrored in `analysis/config.R` for the notebooks:
+
+| Path | Contents |
+|------|----------|
+| `data/<name>/runs.txt` | The Empirica export timestamps that make up the dataset, one per line |
+| `data/<name>/raw_anonymized/` | The anonymized raw Empirica CSVs, stacked across those runs |
+| `data/<name>/*.csv` | The preprocessed analysis-ready CSVs |
+| `analysis/derived/<name>/` | Derived metrics (embeddings, similarities, UMAP) and cached model fits |
+| `figures/<name>/` | Figures written by the notebooks |
+
+The active dataset is chosen with the `DATASET` environment variable, or the `--dataset` flag on the individual scripts, and defaults to `pilots`. For example, `make all DATASET=full` runs the whole pipeline on a dataset named `full`, and `DATASET=full quarto render analysis/02_primary_analysis.qmd` renders a notebook against it. Per-run extracts are shared across datasets in `data/runs/`.
+
 ### Data processing scripts
 
 There are three scripts that should be run in order. Each reads the previous script's output:
 
 | Script | Reads from | Writes to |
 |--------|-----------|-----------|
-| `extract_run.py <zip>` | Empirica export zip in `experiment/data/` | `data/pilot_runs/{timestamp}/raw/` + `bonuses.csv`. Strips Prolific IDs and other PII from player.csv. |
-| `combine_runs.py <runs>` | `data/pilot_runs/*/raw/` | `data/pilots/raw_anonymized/` + `manifest.json` |
-| `process_data.py` | `data/pilots/raw_anonymized/` | `data/pilots/*.csv` + `analysis/pilot_derived/` |
-| ↳ `preprocessing.py` | `data/pilots/raw_anonymized/` | `data/pilots/*.csv` |
-| ↳ `filter_nonreferential.py` | `data/pilots/messages.csv` | `data/pilots/speaker_utterances_filtered.csv` (requires Vertex AI; `--skip-filter`) |
-| ↳ `compute_derived.py` | `data/pilots/*.csv` | `analysis/pilot_derived/` (`--skip-derived`) |
+| `extract_run.py <zip>` | Empirica export zip in `experiment/data/` | `data/runs/{timestamp}/raw/` + `bonuses.csv`. Strips Prolific IDs and other PII from player.csv. |
+| `combine_runs.py [--dataset NAME] [runs]` | `data/runs/*/raw/` for the runs in `data/<name>/runs.txt` | `data/<name>/raw_anonymized/` + `manifest.json` |
+| `process_data.py [--dataset NAME]` | `data/<name>/raw_anonymized/` | `data/<name>/*.csv` + `analysis/derived/<name>/` |
+| ↳ `preprocessing.py` | `data/<name>/raw_anonymized/` | `data/<name>/*.csv` |
+| ↳ `filter_nonreferential.py` | `data/<name>/messages.csv` | `data/<name>/speaker_utterances_filtered.csv` (requires Vertex AI; `--skip-filter`) |
+| ↳ `compute_derived.py` | `data/<name>/*.csv` | `analysis/derived/<name>/` (`--skip-derived`) |
 
 ### Processing new data
 
-Raw Empirica exports (`.zip` files) are in `experiment/data/` via `empirica export` or the backup script. (Note: these are not committed because they contain identifiable participant data). To process: 
+Raw Empirica exports (`.zip` files) are in `experiment/data/` via `empirica export` or the backup script. (Note: these are not committed because they contain identifiable participant data). Register each export's timestamp in the dataset's `runs.txt`, then process:
 
 ```bash
-make all    # extract zips → combine → process → render notebooks
+make all                 # pilot: extract zips → combine → process → test → render notebooks
+make all DATASET=full    # the same for a dataset named full (data/full/runs.txt)
 ```
 
 Or step by step:
@@ -155,11 +171,11 @@ Or step by step:
 uv run python analysis/extract_run.py experiment/data/20260301_132907/empirica-export-20260301_132907.zip
 uv run python analysis/extract_run.py experiment/data/20260301_214147/empirica-export-20260301_214147.zip
 
-# 2. Combine runs (stack raw CSVs into data/pilots/raw_anonymized/)
-uv run python analysis/combine_runs.py 20260301_132907 20260301_214147
+# 2. Combine the runs listed in data/pilots/runs.txt into data/pilots/raw_anonymized/
+uv run python analysis/combine_runs.py --dataset pilots
 
 # 3. Run the pipeline (preprocess → filter → derived metrics)
-uv run python analysis/process_data.py
+uv run python analysis/process_data.py --dataset pilots
 ```
 
 ### Notebooks for the pilot data
@@ -173,7 +189,7 @@ quarto render analysis/llm_simulation/SI_llm_simulation.qmd      # LLM benchmark
 
 | Notebook | Generates | Output |
 |----------|-----------|--------|
-| `SI_pilot.qmd` | Pilot data analyses | `figures/pilot_plots/` + `paper/stats/pilot.tex` |
+| `SI_pilot.qmd` | Pilot data analyses | `figures/pilots/` + `paper/stats/pilot.tex` |
 | `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark | `figures/llm_plots/` + `paper/stats/llm.tex` |
 
 The stats are written as `\newcommand` definitions to `paper/stats/*.tex`, which the manuscript `\input`s. Sync figures to the paper before pushing to Overleaf:
@@ -184,7 +200,7 @@ bash figures/sync_figures.sh   # copies SI_*.pdf into paper/figures/
 
 ### Notebooks for the full sample
 
-These run the preregistered analyses. The full sample has not been collected yet, so the notebooks currently read the pilot data from `data/pilots/` and `analysis/pilot_derived/`; the paths in `config.R` will be switched to the full-sample directories once data collection is complete.
+These run the preregistered analyses on whichever dataset `DATASET` names, and default to the pilot data (`data/pilots/` and `analysis/derived/pilots/`) because the full sample has not been collected yet. Once it has, `make notebooks DATASET=<name>` renders all of them against it.
 
 | Notebook | Purpose |
 |----------|---------|

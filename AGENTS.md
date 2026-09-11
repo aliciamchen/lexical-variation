@@ -24,7 +24,7 @@ This is a multiplayer reference game built with Empirica for studying lexical va
 ## Repository boundaries
 
 - `paper/` is gitignored and synced with Overleaf through Dropbox. Read and edit it locally when asked to work on the manuscript, and run `bash figures/sync_figures.sh` to copy SI figures into `paper/figures/`.
-- `experiment/data/` holds raw Empirica export zips with identifiable participant data and is gitignored. `data/pilot_runs/` (per-run extracts) is gitignored too. Only the anonymized outputs in `data/pilots/` are committed; `analysis/extract_run.py` strips the sensitive columns and a pre-commit hook blocks anything that looks like a participant identifier.
+- `experiment/data/` holds raw Empirica export zips with identifiable participant data and is gitignored. `data/runs/` (per-run extracts) is gitignored too. Only the anonymized outputs in `data/<dataset>/` (`data/pilots/` for the pilot) are committed; `analysis/extract_run.py` strips the sensitive columns and a pre-commit hook blocks anything that looks like a participant identifier.
 - `reviews/` holds local audit and design notes and is gitignored; do not reference it from public docs.
 - `.env` holds the production hostname, Sentry DSN, and organization. Never read or print it; `.env.example` documents the variables.
 
@@ -32,9 +32,11 @@ This is a multiplayer reference game built with Empirica for studying lexical va
 
 ```text
 experiment (Empirica) -> copy_tajriba.sh -> experiment/data/<ts>/*.zip
-  -> extract_run.py -> combine_runs.py -> process_data.py -> data/pilots/, analysis/pilot_derived/
-  -> Quarto notebooks -> figures/*_plots/ + paper/stats/*.tex -> paper/main.tex
+  -> extract_run.py -> combine_runs.py -> process_data.py -> data/<dataset>/, analysis/derived/<dataset>/
+  -> Quarto notebooks -> figures/<dataset>/ + paper/stats/*.tex -> paper/main.tex
 ```
+
+The pipeline is keyed by a dataset name (`DATASET`, default `pilots`; `analysis/dataset_paths.py` and `analysis/config.R` define the layout). The full sample will be a second dataset beside the pilot, not an edit of the pilot paths.
 
 ```bash
 uv sync                       # Python; run scripts with `uv run python ...`

@@ -15,14 +15,8 @@ library(lmerTest)
 library(tidyboot)
 source(here::here("analysis", "config.R"))
 
-# config.R already points data_dir at data/pilots and derived_dir at pilot_derived
-
-# Re-resolve utterances file for the pilot data dir
-utterances_file <- if (file.exists(file.path(data_dir, "speaker_utterances_filtered.csv"))) {
-  "speaker_utterances_filtered.csv"
-} else {
-  "speaker_utterances.csv"
-}
+# This notebook documents the pilot sessions, whatever DATASET is set to.
+use_dataset("pilots")
 
 games <- read_csv(file.path(data_dir, "games.csv"), show_col_types = FALSE)
 players <- read_csv(file.path(data_dir, "players.csv"), show_col_types = FALSE)
@@ -727,9 +721,12 @@ if (exists("fig_within_between") && exists("fig_specificity_trajectory") && exis
           plot.tag.position = c(0, 1.07))
 
   print(fig_specificity)
-  # save_fig(fig_specificity, "SI_group_specificity.pdf",
-  #          width = 12.5, height = 7.7)
-  # i edited spacing and stuff in illustrator so this part is commented out for now
+  # The manuscript's SI_group_specificity.pdf was hand-adjusted in Illustrator
+  # (spacing), so the generated version is saved under a separate name rather
+  # than overwriting it. When the data change, regenerate the manuscript figure
+  # from this file or rename it over SI_group_specificity.pdf.
+  save_fig(fig_specificity, "SI_group_specificity_generated.pdf",
+           width = 12.5, height = 7.7)
 }
 ```
 

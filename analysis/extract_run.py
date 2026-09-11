@@ -1,5 +1,5 @@
 """
-Extract an Empirica export zip into data/pilot_runs/{timestamp}/.
+Extract an Empirica export zip into data/runs/{timestamp}/.
 
 Unzips, extracts bonuses (with Prolific IDs), and saves anonymized raw CSVs.
 
@@ -24,8 +24,8 @@ import pandas as pd
 SUBCOMMANDS = {"list", "bonuses", "early-ended"}
 TIMESTAMP_DIR_PATTERN = re.compile(r"^\d{8}_\d{6}$")
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RUNS_DIR = PROJECT_ROOT / "data" / "pilot_runs"
+from dataset_paths import PROJECT_ROOT, RUNS_DIR
+
 EXPERIMENT_DATA_DIR = PROJECT_ROOT / "experiment" / "data"
 
 ZIP_PATTERN = re.compile(r"empirica-export-(\d{8}_\d{6})\.zip")
@@ -146,7 +146,7 @@ def anonymize_raw(unzipped_dir: Path, raw_dir: Path) -> None:
 
 
 def find_timestamped_dirs() -> list[Path]:
-    """Find all timestamped run directories under data/pilot_runs/."""
+    """Find all timestamped run directories under data/runs/."""
     if not RUNS_DIR.is_dir():
         return []
     dirs = []
@@ -160,9 +160,9 @@ def cmd_list():
     """List all extracted runs."""
     dirs = find_timestamped_dirs()
     if not dirs:
-        print("No runs found in data/pilot_runs/.")
+        print(f"No runs found in {RUNS_DIR}.")
         return
-    print(f"\nExtracted runs (data/pilot_runs/):")
+    print(f"\nExtracted runs ({RUNS_DIR}):")
     print(f"{'─' * 90}")
     for d in dirs:
         has_bonuses = "yes" if (d / "bonuses.csv").exists() else "no"

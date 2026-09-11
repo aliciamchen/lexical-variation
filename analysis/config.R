@@ -10,18 +10,37 @@ library(tidyverse)
 library(here)
 
 # ── Paths ────────────────────────────────────────────────────
+# Every dataset follows the same layout (mirrored in analysis/dataset_paths.py):
+#   data/<name>/               preprocessed CSVs (+ raw_anonymized/, runs.txt)
+#   analysis/derived/<name>/   derived metrics and model caches
+#   figures/<name>/            notebook figures
+# The active dataset comes from the DATASET environment variable (default
+# "pilots"); a notebook that is tied to one dataset, such as SI_pilot.qmd,
+# calls use_dataset("pilots") after sourcing this file.
 
-data_dir <- here("data", "pilots")
-derived_dir <- here("analysis", "pilot_derived")
-figures_dir <- here("figures", "pilot_plots")
-dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
+DEFAULT_DATASET <- "pilots"
 
-# Prefer filtered utterances when available
-utterances_file <- if (file.exists(file.path(data_dir, "speaker_utterances_filtered.csv"))) {
-  "speaker_utterances_filtered.csv"
-} else {
-  "speaker_utterances.csv"
+use_dataset <- function(name = Sys.getenv("DATASET", unset = DEFAULT_DATASET)) {
+  stopifnot(is.character(name), length(name) == 1, nzchar(name), !grepl("/", name))
+  DATASET <<- name
+  data_dir <<- here("data", name)
+  derived_dir <<- here("analysis", "derived", name)
+  figures_dir <<- here("figures", name)
+  dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
+  dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
+  # Prefer filtered utterances when available
+  utterances_file <<- if (file.exists(file.path(data_dir, "speaker_utterances_filtered.csv"))) {
+    "speaker_utterances_filtered.csv"
+  } else {
+    "speaker_utterances.csv"
+  }
+  if (!file.exists(file.path(data_dir, "games.csv"))) {
+    warning(sprintf("No processed data for dataset '%s' at %s", name, data_dir), call. = FALSE)
+  }
+  invisible(name)
 }
+
+use_dataset()
 
 # ── Color palettes (match analysis/plot_style.py) ────────────
 

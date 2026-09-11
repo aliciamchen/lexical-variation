@@ -6,7 +6,7 @@ phase-change), term retention/dominance, description properties, lexical
 uniqueness, UMAP projections, and other derived CSVs.
 
 Usage:
-    uv run python analysis/compute_derived.py data/pilots/ --output analysis/pilot_derived/
+    uv run python analysis/compute_derived.py data/pilots/ --output analysis/derived/pilots/
 """
 
 import argparse

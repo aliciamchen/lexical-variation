@@ -1,18 +1,20 @@
 """
 Data integrity tests for preprocessed experiment data.
 
-Validates the preprocessed CSV files in data/pilots/ against the
-preregistered specifications and the experiment's server-side logic.
+Validates the preprocessed CSV files of one dataset (data/<dataset>/, the
+pilot sessions by default) against the preregistered specifications and the
+experiment's server-side logic.
 
 Run with:
     uv run pytest analysis/test_data_integrity.py -v
+    DATASET=full uv run pytest analysis/test_data_integrity.py -v
 """
-
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
+
+from dataset_paths import dataset_dirs
 
 # ============ CONSTANTS (from experiment design) ============
 
@@ -36,20 +38,30 @@ LISTENER_CORRECT_POINTS = 2
 SPEAKER_MAX_POINTS_PER_ROUND = 2
 SOCIAL_GUESS_CORRECT_POINTS = 6
 SOCIAL_SPEAKER_POINTS_PER_CORRECT = 6
-# The pilot runs were collected with BONUS_PER_POINT = 0.05; production now
-# uses 0.0556 (experiment/shared/constants.js). Update this constant when
-# validating full-sample data collected at the new rate.
-BONUS_PER_POINT = 0.05
+# Data directory for the dataset under test ($DATASET, default pilots)
+DATASET = dataset_dirs()
+DATA_DIR = DATASET.data
+
+# The pilot runs were collected with BONUS_PER_POINT = 0.05; every later
+# dataset uses the production rate in experiment/shared/constants.js.
+BONUS_PER_POINT = 0.05 if DATASET.name == "pilots" else 0.0556
 BONUS_PER_POINT_SOCIAL = 0.023
 
 # Names from constants.js
 VALID_NAMES = {"Repi", "Minu", "Laju", "Hera", "Zuda", "Bavi", "Lika", "Felu", "Nori"}
 
-# Data directory
-DATA_DIR = Path(__file__).parent.parent / "data" / "pilots"
-
 
 # ============ FIXTURES ============
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _dataset_present():
+    if not (DATA_DIR / "games.csv").exists():
+        pytest.exit(
+            f"No processed data for dataset '{DATASET.name}' at {DATA_DIR}; "
+            "run the pipeline first (make process DATASET=<name>).",
+            returncode=1,
+        )
 
 
 @pytest.fixture(scope="session")

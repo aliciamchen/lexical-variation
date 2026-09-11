@@ -1,11 +1,14 @@
 """
 Analysis pipeline: raw CSVs → preprocessed data → derived metrics.
 
-Operates on data/pilots/. The raw CSVs in data/pilots/raw_anonymized/ must already exist
-(either committed, or produced by extract_run.py + combine_runs.py).
+Operates on one dataset (see dataset_paths.py for the layout): the raw CSVs in
+data/<dataset>/raw_anonymized/ must already exist (either committed, or
+produced by extract_run.py + combine_runs.py), and the outputs go to
+data/<dataset>/ and analysis/derived/<dataset>/.
 
 Usage:
-    uv run python analysis/process_data.py                          # run full pipeline
+    uv run python analysis/process_data.py                          # run full pipeline on $DATASET (default pilots)
+    uv run python analysis/process_data.py --dataset full           # another dataset
     uv run python analysis/process_data.py --skip-filter            # skip Vertex AI step
     uv run python analysis/process_data.py --skip-derived           # skip SBERT step
 """
@@ -15,9 +18,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+from dataset_paths import PROJECT_ROOT, add_dataset_argument, dataset_dirs
+
 ANALYSIS_DIR = PROJECT_ROOT / "analysis"
-PILOTS_DIR = PROJECT_ROOT / "data" / "pilots"
 
 
 def step_preprocess(raw_dir: Path, data_dir: Path) -> None:
@@ -63,23 +66,26 @@ def step_compute_derived(data_dir: Path, output_dir: Path) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run the analysis pipeline on data/pilots/",
+        description="Run the analysis pipeline on one dataset (data/<dataset>/)",
     )
+    add_dataset_argument(parser)
     parser.add_argument("--skip-filter", action="store_true",
                         help="Skip non-referential message filtering (requires Vertex AI)")
     parser.add_argument("--skip-derived", action="store_true",
                         help="Skip computing derived metrics (SBERT, similarities, UMAP)")
     args = parser.parse_args()
 
-    raw_dir = PILOTS_DIR / "raw_anonymized"
-    data_dir = PILOTS_DIR
-    derived_dir = ANALYSIS_DIR / "pilot_derived"
+    dirs = dataset_dirs(args.dataset)
+    raw_dir = dirs.raw
+    data_dir = dirs.data
+    derived_dir = dirs.derived
+    print(f"Dataset: {dirs.name}")
 
     if not raw_dir.is_dir():
         print(f"Error: {raw_dir} does not exist.", file=sys.stderr)
         print("Either the raw data is not committed, or you need to run:", file=sys.stderr)
         print("  uv run python analysis/extract_run.py <zip>", file=sys.stderr)
-        print("  uv run python analysis/combine_runs.py <runs...>", file=sys.stderr)
+        print(f"  uv run python analysis/combine_runs.py --dataset {dirs.name} <runs...>", file=sys.stderr)
         sys.exit(1)
 
     step_preprocess(raw_dir, data_dir)

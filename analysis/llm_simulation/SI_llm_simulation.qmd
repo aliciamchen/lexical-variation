@@ -53,7 +53,7 @@ config <- fromJSON(file.path(results_dir, "llm_config.json"))
 
 # -- Load pilot data for comparison overlay --
 pilot_data_dir <- here::here("data", "pilots")
-pilot_derived_dir <- here::here("analysis", "pilot_derived")
+pilot_derived_dir <- here::here("analysis", "derived", "pilots")
 has_pilot <- file.exists(file.path(pilot_data_dir, "trials.csv"))
 if (has_pilot) {
   pilot_utts_file <- if (file.exists(file.path(pilot_data_dir, "speaker_utterances_filtered.csv"))) {

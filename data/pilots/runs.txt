@@ -1,0 +1,4 @@
+# Empirica export timestamps combined into data/pilots/ (one per line).
+# Each export is a cumulative snapshot of one server; keep only the latest per server.
+20260301_132907
+20260301_214147

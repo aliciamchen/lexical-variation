@@ -1,10 +1,13 @@
 """
-Combine raw CSVs from multiple extracted runs into data/pilots/raw_anonymized/.
+Combine raw CSVs from extracted runs into data/<dataset>/raw_anonymized/.
 
 Stacks the raw Empirica CSVs, filters out failed games (lobby timeouts),
-and writes a manifest.json with provenance info.
+and writes a manifest.json with provenance info. The runs default to the
+timestamps listed in data/<dataset>/runs.txt.
 
 Usage:
+    uv run python analysis/combine_runs.py                       # runs from data/pilots/runs.txt
+    uv run python analysis/combine_runs.py --dataset full        # runs from data/full/runs.txt
     uv run python analysis/combine_runs.py 20260301_132907 20260301_214147
 """
 
@@ -17,12 +20,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_paths import RUNS_DIR, add_dataset_argument, dataset_dirs
 from extract_run import SENSITIVE_COLUMNS
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-RUNS_DIR = DATA_DIR / "pilot_runs"
-PILOTS_DIR = DATA_DIR / "pilots"
 
 TIMESTAMP_DIR_PATTERN = re.compile(r"^\d{8}_\d{6}$")
 
@@ -155,7 +154,7 @@ def filter_failed_games(
 def enforce_anonymization(combined: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Strip sensitive Prolific columns if any slipped through extraction.
 
-    The output directory (data/pilots/raw_anonymized/) is committed to the
+    The output directory (data/<dataset>/raw_anonymized/) is committed to the
     repo, so anonymization must be guaranteed here regardless of how the
     per-run raw/ files were produced -- runs extracted before anonymization
     was added to extract_run.py still carry these columns.
@@ -208,15 +207,24 @@ def write_manifest(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Combine raw CSVs from multiple extracted runs into data/pilots/raw_anonymized/"
+        description="Combine raw CSVs from extracted runs into data/<dataset>/raw_anonymized/"
     )
     parser.add_argument(
-        "runs", nargs="+",
-        help="Run timestamps (e.g. 20260301_132907 20260301_214147)"
+        "runs", nargs="*",
+        help="Run timestamps (default: the entries of data/<dataset>/runs.txt)"
     )
+    add_dataset_argument(parser)
     args = parser.parse_args()
 
-    output_raw = PILOTS_DIR / "raw_anonymized"
+    dirs = dataset_dirs(args.dataset)
+    if not args.runs:
+        args.runs = dirs.read_runs()
+        if not args.runs:
+            print(f"Error: no runs given and {dirs.runs_file} is missing or empty.", file=sys.stderr)
+            sys.exit(1)
+        print(f"Runs from {dirs.runs_file}: {' '.join(args.runs)}")
+    output_raw = dirs.raw
+    print(f"Dataset: {dirs.name} -> {output_raw}")
 
     print("Validating runs...")
     if len(set(args.runs)) != len(args.runs):
@@ -243,7 +251,7 @@ def main():
     print("\nWriting combined raw CSVs...")
     write_combined_raw(combined, output_raw)
 
-    write_manifest(PILOTS_DIR, args.runs, combined, input_counts, failed_game_ids)
+    write_manifest(dirs.data, args.runs, combined, input_counts, failed_game_ids)
 
     game_df = combined["game.csv"]
     print(f"\nCombine complete: {len(game_df)} games from {len(args.runs)} runs")

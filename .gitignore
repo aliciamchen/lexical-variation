@@ -28,6 +28,6 @@ paper
 
 # Analysis pipeline outputs
 analysis/*_files/
-data/pilot_runs/
+data/runs/
 data/old_pilots/
 full-sample-todos.md
