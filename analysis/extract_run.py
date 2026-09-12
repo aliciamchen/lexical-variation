@@ -24,7 +24,7 @@ import pandas as pd
 SUBCOMMANDS = {"list", "bonuses", "early-ended"}
 TIMESTAMP_DIR_PATTERN = re.compile(r"^\d{8}_\d{6}$")
 
-from dataset_paths import PROJECT_ROOT, RUNS_DIR
+from dataset_paths import PROJECT_ROOT, RUNS_DIR, dataset_dirs
 
 EXPERIMENT_DATA_DIR = PROJECT_ROOT / "experiment" / "data"
 
@@ -116,9 +116,17 @@ def extract_bonuses(unzipped_dir: Path, output_dir: Path) -> None:
     print(bonus_df.to_string(index=False))
 
     if len(early) > 0:
-        early_df = early[["participantIdentifier", "partialPay"]].copy()
-        early_df.columns = ["prolific_id", "partial_pay"]
+        # exitReason travels with the Prolific ID here because it is stripped from
+        # the anonymized raw CSVs, and operations/session.py needs the pairing to
+        # word the return request and partial-payment note for each participant.
+        early_cols = ["participantIdentifier", "partialPay"]
+        if "exitReason" in early.columns:
+            early_cols.append("exitReason")
+        early_df = early[early_cols].copy()
+        early_df.columns = ["prolific_id", "partial_pay", "exit_reason"][: len(early_cols)]
         early_df["partial_pay"] = early_df["partial_pay"].fillna(0).round(2)
+        if "exit_reason" in early_df.columns:
+            early_df["exit_reason"] = early_df["exit_reason"].fillna("")
         early_path = output_dir / "early_ended.csv"
         early_df.to_csv(early_path, index=False)
         print(f"\n  Wrote {early_path} ({len(early_df)} early-ended players)")
@@ -218,8 +226,8 @@ def cmd_early_ended(run_name: str | None = None):
     print()
 
 
-def cmd_extract(zip_path_arg: str | None):
-    """Extract a single zip."""
+def cmd_extract(zip_path_arg: str | None, dataset: str | None = None):
+    """Extract a single zip and register it in the dataset's runs.txt."""
     if zip_path_arg:
         zip_path = Path(zip_path_arg).resolve()
         if not zip_path.exists():
@@ -246,6 +254,13 @@ def cmd_extract(zip_path_arg: str | None):
     print(f"\nDone. Raw CSVs in {raw_dir}")
     print(f"Bonuses in {output_dir / 'bonuses.csv'}")
 
+    dirs = dataset_dirs(dataset)
+    if dirs.register_run(datetime_str):
+        print(f"Registered {datetime_str} in {dirs.runs_file}")
+    else:
+        print(f"Already registered in {dirs.runs_file}")
+    print(f"Next: uv run python analysis/combine_runs.py --dataset {dirs.name}")
+
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] in SUBCOMMANDS:
@@ -269,8 +284,15 @@ def main():
         return
 
     # Default: extract a zip
-    zip_path_arg = sys.argv[1] if len(sys.argv) > 1 else None
-    cmd_extract(zip_path_arg)
+    dataset = None
+    argv = sys.argv[1:]
+    if "--dataset" in argv:
+        idx = argv.index("--dataset")
+        if idx + 1 < len(argv):
+            dataset = argv[idx + 1]
+        argv = argv[:idx] + argv[idx + 2:]
+    zip_path_arg = argv[0] if argv else None
+    cmd_extract(zip_path_arg, dataset)
 
 
 if __name__ == "__main__":

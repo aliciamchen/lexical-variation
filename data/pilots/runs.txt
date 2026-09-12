@@ -1,4 +1,5 @@
 # Empirica export timestamps combined into data/pilots/ (one per line).
-# Each export is a cumulative snapshot of one server; keep only the latest per server.
+# Exports are cumulative snapshots; combine_runs.py unions them on record id and keeps the
+# newest version of each record, so listing several exports from one server is safe.
 20260301_132907
 20260301_214147

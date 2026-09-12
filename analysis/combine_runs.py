@@ -90,39 +90,52 @@ def stack_raw_csvs(
     return combined, input_counts
 
 
-def check_duplicate_ids(combined: dict[str, pd.DataFrame]):
-    """Hard-fail if any record id appears more than once in the stacked tables.
+def deduplicate_ids(
+    combined: dict[str, pd.DataFrame], run_ids: list[str]
+) -> dict[str, dict[str, int]]:
+    """Collapse records that appear in more than one export, keeping the newest.
 
-    `empirica export` dumps the entire cumulative state of a server, so two
-    exports taken from the same server overlap, and combining them would
-    silently double-count every game, player, round, and message. Separate
-    deployments use ULIDs, so their ids never collide; any duplicate therefore
-    means the same records were passed in twice (overlapping exports, or a run
-    listed twice).
+    `empirica export` dumps the entire cumulative state of a server, so exports
+    taken from the same server overlap: the later one contains everything the
+    earlier one did. Stacking them naively would double-count every game,
+    player, round and message.
+
+    Because each export is a snapshot rather than an increment, the right way to
+    combine a set of them is a union keyed on record id, keeping the version from
+    the latest export. That is correct whether `runs.txt` lists one export or
+    every export from a server, and it also repairs a subtler case: a mid-session
+    backup captures rounds still in progress, while the final export has them
+    completed, so the newest version is the one to keep.
+
+    Separate deployments use ULIDs, so their ids never collide; a duplicate
+    therefore always means overlapping snapshots of the same server. That is
+    legitimate, but it is reported so an unintended overlap -- the wrong server,
+    say -- is still visible.
     """
-    errors = []
+    # Runs are ordered oldest-first (timestamps sort lexically), so the last
+    # occurrence of an id is the one from the newest export.
+    order = {run_id: i for i, run_id in enumerate(run_ids)}
+    collapsed: dict[str, dict[str, int]] = {}
     for csv_name, df in combined.items():
-        if "id" not in df.columns:
+        if "id" not in df.columns or df["id"].duplicated().sum() == 0:
             continue
-        dups = df.loc[df["id"].duplicated(keep=False), ["id", "_sourceRun"]]
-        if dups.empty:
-            continue
-        n_ids = dups["id"].nunique()
-        runs = sorted(dups["_sourceRun"].unique())
-        examples = ", ".join(dups["id"].astype(str).unique()[:3])
-        errors.append(
-            f"  {csv_name}: {n_ids} duplicated id(s) "
-            f"(runs involved: {', '.join(runs)}; e.g. {examples})"
+        dup_ids = df.loc[df["id"].duplicated(keep=False), "id"]
+        runs_involved = sorted(
+            df.loc[df["id"].isin(set(dup_ids)), "_sourceRun"].unique(),
+            key=lambda r: order.get(r, 0),
         )
-    if errors:
-        print(
-            "Error: duplicate record ids detected — the same data appears more "
-            "than once (overlapping cumulative exports, or a run listed twice):",
-            file=sys.stderr,
+        before = len(df)
+        ranked = df.assign(_runOrder=df["_sourceRun"].map(order)).sort_values(
+            "_runOrder", kind="stable"
         )
-        for err in errors:
-            print(err, file=sys.stderr)
-        sys.exit(1)
+        deduped = ranked.drop_duplicates(subset="id", keep="last").drop(columns="_runOrder")
+        combined[csv_name] = deduped.reset_index(drop=True)
+        collapsed[csv_name] = {
+            "duplicate_ids": int(dup_ids.nunique()),
+            "rows_dropped": before - len(deduped),
+            "runs": runs_involved,
+        }
+    return collapsed
 
 
 def filter_failed_games(
@@ -187,6 +200,7 @@ def write_manifest(
     combined: dict[str, pd.DataFrame],
     input_counts: dict[str, dict[str, int]],
     failed_game_ids: list[str],
+    collapsed: dict[str, dict[str, int]] | None = None,
 ):
     """Write manifest.json with provenance info."""
     game_df = combined["game.csv"]
@@ -198,6 +212,8 @@ def write_manifest(
         "row_counts": {name: len(df) for name, df in combined.items()},
         "input_row_counts": input_counts,
         "filtered_failed_games": failed_game_ids,
+        # Records seen in more than one export, collapsed to the newest version.
+        "collapsed_duplicates": collapsed or {},
     }
     manifest_path = output_dir / "manifest.json"
     with open(manifest_path, "w") as f:
@@ -230,6 +246,11 @@ def main():
     if len(set(args.runs)) != len(args.runs):
         print("Error: the same run is listed more than once", file=sys.stderr)
         sys.exit(1)
+    # Sorted oldest-first because deduplicate_ids keeps the record from the last
+    # run it sees, and export timestamps (YYYYMMDD_HHMMSS) sort chronologically.
+    if args.runs != sorted(args.runs):
+        print("  Reordered runs oldest-first so the newest export wins on overlap")
+        args.runs = sorted(args.runs)
     raw_dirs = validate_runs(args.runs)
 
     print("\nStacking raw CSVs...")
@@ -238,9 +259,21 @@ def main():
         total = sum(input_counts[run_id].values())
         print(f"  {run_id}: {total} input rows across {len(input_counts[run_id])} files")
 
-    print("\nChecking for duplicate records across runs...")
-    check_duplicate_ids(combined)
-    print("  OK: all record ids unique")
+    print("\nCollapsing records that appear in more than one export...")
+    collapsed = deduplicate_ids(combined, args.runs)
+    if not collapsed:
+        print("  No overlap: every record id appears in exactly one export")
+    else:
+        for csv_name, info in collapsed.items():
+            print(
+                f"  {csv_name}: kept the newest of {info['duplicate_ids']} id(s) "
+                f"seen in more than one export, dropping {info['rows_dropped']} row(s) "
+                f"(runs: {', '.join(info['runs'])})"
+            )
+        print(
+            "  This is expected when runs.txt lists several exports from the same server.\n"
+            "  If those runs should not overlap, you may be combining the wrong exports."
+        )
 
     print("\nFiltering failed games...")
     combined, failed_game_ids = filter_failed_games(combined)
@@ -251,7 +284,7 @@ def main():
     print("\nWriting combined raw CSVs...")
     write_combined_raw(combined, output_raw)
 
-    write_manifest(dirs.data, args.runs, combined, input_counts, failed_game_ids)
+    write_manifest(dirs.data, args.runs, combined, input_counts, failed_game_ids, collapsed)
 
     game_df = combined["game.csv"]
     print(f"\nCombine complete: {len(game_df)} games from {len(args.runs)} runs")

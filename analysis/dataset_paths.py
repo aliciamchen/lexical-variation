@@ -63,6 +63,28 @@ class DatasetDirs:
                 runs.append(line)
         return runs
 
+    def register_run(self, run_id: str) -> bool:
+        """Add an export timestamp to runs.txt, returning whether it was new.
+
+        Safe to call for every export: `combine_runs.py` unions the registered
+        runs on record id and keeps the newest version of each record, so
+        listing several cumulative exports from one server is correct rather
+        than double-counting.
+        """
+        if run_id in self.read_runs():
+            return False
+        self.data.mkdir(parents=True, exist_ok=True)
+        if not self.runs_file.exists():
+            self.runs_file.write_text(
+                f"# Empirica export timestamps combined into data/{self.name}/ "
+                "(one per line).\n"
+            )
+        existing = self.runs_file.read_text()
+        separator = "" if existing.endswith("\n") or not existing else "\n"
+        with open(self.runs_file, "a") as handle:
+            handle.write(f"{separator}{run_id}\n")
+        return True
+
     def __repr__(self) -> str:
         return f"DatasetDirs({self.name!r})"
 
