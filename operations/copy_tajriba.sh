@@ -3,12 +3,12 @@
 # copy_tajriba.sh — Back up experiment data from the production server
 #
 # Runs `empirica export` on the server to produce a CSV zip, then
-# copies it into a timestamped local directory under data/.
+# copies it into a timestamped directory under experiment/data/.
 #
 # Usage:
-#   bash copy_tajriba.sh            # loop every 5 minutes (default)
-#   bash copy_tajriba.sh --once     # single backup and exit
-#   bash copy_tajriba.sh --help     # show this help
+#   bash operations/copy_tajriba.sh            # loop every 5 minutes (default)
+#   bash operations/copy_tajriba.sh --once     # single backup and exit
+#   bash operations/copy_tajriba.sh --help     # show this help
 #
 # Requires SSH access to the production server.
 # Set EMPIRICA_SERVER in .env or environment (see .env.example).
@@ -37,8 +37,12 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
 fi
 
 # --- setup ---
+# Anchored to the repository rather than the working directory: the analysis
+# pipeline reads exports from experiment/data/<timestamp>/, so the destination
+# must not depend on where this script is invoked from.
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 current_datetime=$(date +"%Y%m%d_%H%M%S")
-dest="data/$current_datetime"
+dest="$REPO_ROOT/experiment/data/$current_datetime"
 mkdir -p "$dest"
 
 consecutive_failures=0

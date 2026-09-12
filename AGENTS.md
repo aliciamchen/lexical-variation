@@ -26,12 +26,13 @@ This is a multiplayer reference game built with Empirica for studying lexical va
 - `writing/` holds one directory per Overleaf project, each gitignored and mirrored to Overleaf through Dropbox: `writing/preregistration/` is the Stage 1 manuscript that serves as the preregistration, and the full-sample manuscript will be `writing/manuscript/`, a separate Overleaf project cloned from it. Read and edit them locally when asked to work on a manuscript, and run `bash figures/sync_figures.sh [writing/<project>]` to copy SI figures into a project's `figures/`.
 - `experiment/data/` holds raw Empirica export zips with identifiable participant data and is gitignored. `data/runs/` (per-run extracts) is gitignored too. Only the anonymized outputs in `data/<dataset>/` (`data/pilots/` for the pilot) are committed; `analysis/extract_run.py` strips the sensitive columns and a pre-commit hook blocks anything that looks like a participant identifier.
 - `reviews/` holds local audit and design notes and is gitignored; do not reference it from public docs.
-- `.env` holds the production hostname, Sentry DSN, and organization. Never read or print it; `.env.example` documents the variables.
+- `operations/` holds the tooling for running a data-collection session, separate from the Empirica app: `session.py` (the Prolific API client for recruitment, messaging, and payment), `copy_tajriba.sh` (export backups), `messages/` (participant message templates), and `procedures.md` (the session runbook). Every `session.py` command that changes anything prints its plan and asks before acting (`--yes` skips the prompt); ids are shared between steps through `--session <name>`.
+- `.env` holds the production hostname, Sentry DSN, organization, and Prolific API token. Never read or print it; `.env.example` documents the variables.
 
 ## Workflow and commands
 
 ```text
-experiment (Empirica) -> copy_tajriba.sh -> experiment/data/<ts>/*.zip
+experiment (Empirica) -> operations/copy_tajriba.sh -> experiment/data/<ts>/*.zip
   -> extract_run.py -> combine_runs.py -> process_data.py -> data/<dataset>/, analysis/derived/<dataset>/
   -> Quarto notebooks -> figures/<dataset>/ + writing/preregistration/stats/*.tex -> writing/preregistration/main.tex
 ```

@@ -9,7 +9,19 @@ roughly twice the number of players you need.
 
 The full procedure, the messages sent to participants on Prolific, the per-session show-up
 numbers from the pilots, and the operational gotchas are in
-[`recruitment-procedures.md`](recruitment-procedures.md).
+[`operations/procedures.md`](../operations/procedures.md).
+
+`session.py` drives the Prolific side of a session through the API -- reading the screening
+survey, building the allowlist group from the eligible respondents, sending the reminder,
+and publishing the study at the announced time. It needs `PROLIFIC_TOKEN` and
+`PROLIFIC_WORKSPACE` in the repository-root `.env`, and every command that changes anything
+prints its plan and asks before acting.
+
+```bash
+uv run python operations/session.py --help              # the seven session steps, in order
+uv run python operations/session.py surveys --counts    # survey ids, with response counts
+uv run python operations/session.py studies             # study ids, newest first
+```
 
 
 
@@ -57,24 +69,27 @@ empirica serve empirica.tar.zst
 
 ### Running an experiment session
 
-1. **Verify the server is running**: SSH in and check the `empirica` process is alive
-2. **Open the admin panel**: `https://$EMPIRICA_SERVER/admin`
-3. **Open Sentry**: `https://$SENTRY_ORG.sentry.io/` (monitors client errors, replays, performance)
-4. **Create a batch**: click "New Batch", select the treatment, use default lobby config. There are two treatments per condition, one for each tangram set (the names without a suffix use set 0; the "tangram set 1" variants use set 1). Alternate the two sets across sessions within each condition so that the sets are counterbalanced (10 games per set per condition in the full sample)
-5. **Start the batch**: click the play button
-6. **Share the player URL**: `https://$EMPIRICA_SERVER/` (participants arrive via Prolific)
-7. **Monitor**: watch the admin panel for player arrivals and game progress
-8. **Start `copy_tajriba.sh`** locally to back up data every 5 minutes (see below)
+The step-by-step runbook for a session, from creating the screening survey through paying
+bonuses, is in [`operations/procedures.md`](../operations/procedures.md). The Empirica side of
+it is: verify the server process is alive, open the admin panel at
+`https://$EMPIRICA_SERVER/admin` and Sentry at `https://$SENTRY_ORG.sentry.io/`, create and
+start the batch before any participant can arrive, and run `operations/copy_tajriba.sh` locally to back
+up data every five minutes (see below). Participants reach the game through Prolific rather
+than a shared link.
+
+When creating the batch, pick the treatment for the session: there are two per condition, one
+per tangram set (names without a suffix use set 0, the "tangram set 1" variants use set 1).
+Alternate the sets across sessions within a condition so they are counterbalanced, 10 games
+per set per condition in the full sample.
 
 ## Copying data locally
 
 The `copy_tajriba.sh` script SSHs into the production server, runs `empirica export` to produce a CSV zip, and copies it into `experiment/data/<timestamp>/`. It is safe to run while the experiment is live. To process the exported zip, run `analysis/extract_run.py`.
 
 ```bash
-cd experiment
-bash copy_tajriba.sh            # loop every 5 minutes (default)
-bash copy_tajriba.sh --once     # single backup and exit
-bash copy_tajriba.sh --help     # show usage
+bash operations/copy_tajriba.sh            # loop every 5 minutes (default)
+bash operations/copy_tajriba.sh --once     # single backup and exit
+bash operations/copy_tajriba.sh --help     # show usage
 ```
 
 The script exits automatically after 3 consecutive failures. Press Ctrl-C to stop the loop.

@@ -1,0 +1,7 @@
+Hello, and thank you for taking part in our study today.
+
+Unfortunately the other players in your group left the game, so your session could not continue. Nothing went wrong on your end -- this kind of study needs everyone in a group to stay online together for the whole game.
+
+We have sent you a partial payment of ${amount} through Prolific for the time you spent. You will also see a request to return the submission, since the study was not completed. Returning it does not affect the partial payment.
+
+Thank you again for your time, and sorry for the inconvenience.

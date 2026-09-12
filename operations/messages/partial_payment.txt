@@ -1,0 +1,7 @@
+Hello, and thank you for taking part in our study today.
+
+Unfortunately the session ended before the game could be completed. This kind of study needs enough players to stay online together for the whole game, so sessions sometimes end early.
+
+We have sent you a partial payment of ${amount} through Prolific for the time you spent. You will also see a request to return the submission, since the study was not completed. Returning it does not affect the partial payment.
+
+Thank you again for your time, and sorry for the inconvenience.

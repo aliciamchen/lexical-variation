@@ -62,7 +62,7 @@ Configure environment variables (needed for building and running the experiment,
 cp .env.example .env   # then fill in values
 ```
 
-The single `.env` file at the repository root is read only on your own machine: `empirica bundle` compiles the Sentry DSN into the client bundle and refuses to build a production bundle without it, and `experiment/copy_tajriba.sh` uses the server hostname to pull backups. The Google Cloud project for the Gemini-based filter can also be set there, but the scripts fall back to your `gcloud` default project. Keep real hostnames and organization names in `.env`, never in committed files.
+The single `.env` file at the repository root is read only on your own machine: `empirica bundle` compiles the Sentry DSN into the client bundle and refuses to build a production bundle without it, and `operations/copy_tajriba.sh` uses the server hostname to pull backups. The Google Cloud project for the Gemini-based filter can also be set there, but the scripts fall back to your `gcloud` default project. Keep real hostnames and organization names in `.env`, never in committed files.
 
 ## Running the experiment
 

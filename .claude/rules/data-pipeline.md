@@ -3,7 +3,7 @@ paths:
   - "analysis/**"
   - "data/**"
   - "experiment/data/**"
-  - "experiment/copy_tajriba.sh"
+  - "operations/copy_tajriba.sh"
 ---
 
 # Data and analysis pipeline
@@ -14,7 +14,7 @@ The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pil
 
 | Directory | Contents | Committed? |
 |-----------|----------|------------|
-| `experiment/data/<timestamp>/` | Raw Empirica export zips from `copy_tajriba.sh` | No |
+| `experiment/data/<timestamp>/` | Raw Empirica export zips from `operations/copy_tajriba.sh` | No |
 | `data/runs/<timestamp>/` | Per-run extracts (raw/, bonuses.csv), shared across datasets | No (gitignored) |
 | `data/<name>/runs.txt` | The export timestamps combined into the dataset, one per line | Yes |
 | `data/<name>/raw_anonymized/` | Anonymized raw Empirica CSVs stacked across those runs | Yes |
@@ -32,10 +32,9 @@ Cached fits are keyed to their inputs: `group_specificity.R` stores a hash of th
   - Export to CSVs by running `empirica export`
 - Backup from production server:
   ```bash
-  cd experiment
-  bash copy_tajriba.sh            # loop every 5 minutes (default)
-  bash copy_tajriba.sh --once     # single backup and exit
-  bash copy_tajriba.sh --help     # show usage
+  bash operations/copy_tajriba.sh            # loop every 5 minutes (default)
+  bash operations/copy_tajriba.sh --once     # single backup and exit
+  bash operations/copy_tajriba.sh --help     # show usage
   ```
   The script SSHs into the production server (set via `EMPIRICA_SERVER` in `.env`), runs `empirica export` in `~/empirica` to produce a CSV zip, then copies it locally into `experiment/data/<timestamp>/`. Safe to run while the experiment is live. Exits automatically after 3 consecutive failures.
 
@@ -88,13 +87,13 @@ Quarto notebooks and animations are run separately (see below).
 
 ## Processing new data
 
-Raw Empirica exports land in `experiment/data/` via `empirica export` or the backup script. Each export is a cumulative snapshot of one server, so keep only the latest export per server in `runs.txt`.
+Raw Empirica exports land in `experiment/data/` via `empirica export` or the backup script. Each export is a cumulative snapshot of one server; `combine_runs.py` unions the registered exports on record id and keeps the newest version of each record, so overlapping exports are safe to list.
 
 ```bash
 # 1. Extract each zip
 uv run python analysis/extract_run.py experiment/data/20260301_132907/empirica-export-20260301_132907.zip
 
-# 2. Register the timestamp in data/<name>/runs.txt, then combine
+# 2. Combine (extract_run.py registered the timestamp in data/<name>/runs.txt already)
 uv run python analysis/combine_runs.py --dataset pilots
 
 # 3. Run the pipeline (preprocess → filter → derived metrics)

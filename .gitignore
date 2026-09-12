@@ -35,3 +35,6 @@ full-sample-todos.md
 
 # brms fit caches for the Bayes factors (76 MB per dataset, reproducible from the notebooks)
 analysis/derived/*/bayes_factors/
+
+# Local session state written by operations/session.py
+operations/.sessions/
