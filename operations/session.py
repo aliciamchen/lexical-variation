@@ -631,6 +631,13 @@ def retime_text(text, old_time, new_time):
 
 def cmd_setup(args, token):
     """Create the screening survey, its study, and the game study draft."""
+    if args.rehearsal:
+        # A rehearsal is invisible to real participants by construction: both
+        # studies are allowlisted to the one test participant and hold one place.
+        args.places = 1
+        args.survey_places = 1
+        args.internal_name = args.internal_name or f"REHEARSAL {datetime.now():%Y-%m-%d %H:%M}"
+        print(f"REHEARSAL: both studies will be visible only to participant {args.rehearsal}, 1 place each.\n")
     template_survey = pick_template_survey(token, args.template_survey)
     detail = api("GET", f"/surveys/{template_survey['_id']}", token)
     sections, retimed = retime_sections(detail.get("sections") or [], args.time)
@@ -676,6 +683,8 @@ def cmd_setup(args, token):
         f"{args.condition} set {args.set} {datetime.now():%Y-%m-%d}"
     )
     game_payload["total_available_places"] = args.places
+    if args.rehearsal:
+        game_payload["filters"] = [{"filter_id": "custom_allowlist", "selected_values": [args.rehearsal]}]
     print(f"\nGame study draft: {game_payload['internal_name']}")
     for field in ("reward", "estimated_completion_time", "device_compatibility",
                   "prolific_id_option", "total_available_places"):
@@ -698,6 +707,8 @@ def cmd_setup(args, token):
                     "selected_values": [args.blocklist_group],
                 }
             )
+        if args.rehearsal:
+            filters.append({"filter_id": "custom_allowlist", "selected_values": [args.rehearsal]})
         print("\nScreening study filters:")
         for f in filters:
             print(f"  {f['filter_id']:32s} {f.get('selected_values')}")
@@ -1235,6 +1246,11 @@ def main():
     p.add_argument("--study-name", default="Group communication game")
     p.add_argument("--internal-name", help="internal name for the game study draft")
     p.add_argument("--workspace", help="workspace id (default: PROLIFIC_WORKSPACE in .env)")
+    p.add_argument(
+        "--rehearsal",
+        metavar="TEST_PARTICIPANT_ID",
+        help="make a rehearsal: both studies allowlisted to this test participant only, 1 place each",
+    )
     yes(p)
 
     p = sub.add_parser("open", help="2. publish the screening survey")

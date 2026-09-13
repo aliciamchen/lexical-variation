@@ -72,6 +72,55 @@ pilot session, and because `empirica export` is cumulative, the first full-sampl
 would otherwise carry that pilot game into `data/full/`. The pilot is already exported and
 committed, so nothing is lost.
 
+**5. [CLI + Prolific] Rehearse once with a test participant.** Four of the commands publish
+or spend -- `open`, `publish`, `approve`, `pay` -- and the only safe way to exercise them is
+against a participant who is you. Prolific provides one: `POST /api/v1/researchers/participants/`
+with an email address that is not yet registered creates a participant tied to your
+researcher account that skips onboarding and fraud checks and cannot cash out. The feature
+has to be enabled on the workspace; ask Prolific support if the call is refused.
+
+```bash
+# once: make the test participant (any unregistered email you control)
+curl -s -X POST -H "Authorization: Token $PROLIFIC_TOKEN" -H "Content-Type: application/json" \
+     -d '{"email": "you+prolifictest@example.edu"}' https://api.prolific.com/api/v1/researchers/participants/
+# → {"participant_id": "…"}   keep this id
+```
+
+Then run a whole session against it. `--rehearsal` makes both studies visible to that one
+participant only, with one place each, so no real participant can ever see them:
+
+```bash
+S=rehearsal
+uv run python operations/session.py setup --session $S --rehearsal <test_participant_id> \
+    --time "6pm PT / 9pm ET" --title-time "9pm ET" --condition refer_mixed --set 0 --places 1
+uv run python operations/session.py open --session $S
+# [Prolific, logged in as the test participant] take the screening survey, answer Yes ×3
+uv run python operations/session.py prepare --session $S          # 1 eligible → group of 1
+uv run python operations/session.py message --session $S          # arrives in the test inbox
+uv run python operations/session.py publish --session $S          # visible to the test participant only
+# [Prolific, as the test participant] accept the study and click through to the game
+```
+
+With one player the game never forms, so after ten minutes the lobby times out and the
+participant reaches the `CMZUY3MK` code: that exercises the return-request action and the
+`$2` path. To rehearse the finisher path instead, have the test participant submit the
+finished code by hand at `https://app.prolific.com/submissions/complete?cc=C2I8XDMC`, then:
+
+```bash
+uv run python operations/session.py approve --session $S          # approves the one submission
+mkdir -p data/runs/rehearsal && printf 'prolific_id,bonus\n<test_participant_id>,0.05\n' > data/runs/rehearsal/bonuses.csv
+uv run python operations/session.py pay --session $S --run rehearsal   # set up → cost preview → pay
+```
+
+Add an `early_ended.csv` (`prolific_id,partial_pay,exit_reason`) the same way to rehearse
+the partial-payment notes. Afterwards delete `data/runs/rehearsal/` and leave the rehearsal
+studies as they are; they hold no real data.
+
+What this costs is not documented: Prolific says the test participant cannot cash out, but
+not whether your wallet is charged for its rewards, so assume the $12 base reward plus the
+$0.30 survey and cents of bonus are spent. That is the price of knowing every write path
+works before thirty real people are waiting on it.
+
 ## The session, step by step
 
 ### Lead time: almost none
