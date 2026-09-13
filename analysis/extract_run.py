@@ -12,6 +12,7 @@ Usage:
 """
 
 import argparse
+import os
 import re
 import shutil
 import sys
@@ -228,6 +229,16 @@ def cmd_early_ended(run_name: str | None = None):
 
 def cmd_extract(zip_path_arg: str | None, dataset: str | None = None):
     """Extract a single zip and register it in the dataset's runs.txt."""
+    # The pilot dataset is complete and committed. Registering a new export into
+    # it by default -- which is what happens when neither --dataset nor DATASET is
+    # given -- would fold full-sample games into the pilot on the next combine.
+    if not dataset and not os.environ.get("DATASET"):
+        print(
+            "Refusing to extract into the default dataset 'pilots', which is frozen.\n"
+            "Pass --dataset full (or export DATASET=full) for full-sample sessions.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     if zip_path_arg:
         zip_path = Path(zip_path_arg).resolve()
         if not zip_path.exists():
@@ -239,6 +250,16 @@ def cmd_extract(zip_path_arg: str | None, dataset: str | None = None):
     datetime_str = extract_datetime(zip_path)
     output_dir = RUNS_DIR / datetime_str
     raw_dir = output_dir / "raw"
+
+    dirs = dataset_dirs(dataset)
+    if dirs.name == "pilots" and datetime_str not in dirs.read_runs():
+        print(
+            f"Refusing to add run {datetime_str} to the pilot dataset, which is frozen: "
+            f"only the runs already in {dirs.runs_file} may be re-extracted.\n"
+            "Pass --dataset full for a full-sample session.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     print(f"Zip: {zip_path}")
     print(f"Output: {output_dir}")
@@ -254,7 +275,6 @@ def cmd_extract(zip_path_arg: str | None, dataset: str | None = None):
     print(f"\nDone. Raw CSVs in {raw_dir}")
     print(f"Bonuses in {output_dir / 'bonuses.csv'}")
 
-    dirs = dataset_dirs(dataset)
     if dirs.register_run(datetime_str):
         print(f"Registered {datetime_str} in {dirs.runs_file}")
     else:
