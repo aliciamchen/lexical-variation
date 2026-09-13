@@ -67,7 +67,10 @@ export DATASET=full
 ```
 
 **4. [Empirica] Deploy the current bundle** to the server (`README.md`, "Deploying a new
-build").
+build"), and **wipe the server's `tajriba.json` first**. The server still holds the final
+pilot session, and because `empirica export` is cumulative, the first full-sample export
+would otherwise carry that pilot game into `data/full/`. The pilot is already exported and
+committed, so nothing is lost.
 
 ## The session, step by step
 

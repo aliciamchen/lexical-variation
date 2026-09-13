@@ -568,6 +568,9 @@ def retime_sections(sections, time_text):
             title = question.get("title") or ""
             # Only the availability question names a time.
             if re.search(r"available at ", title, re.I):
+                found = re.search(r"available at (.*?) to participate", title, re.I)
+                if found:
+                    retime_sections.old_time = found.group(1).strip()
                 new_title = re.sub(
                     r"available at .*? to participate",
                     f"available at {time_text} to participate",
@@ -614,6 +617,18 @@ def with_group_action(completion_codes, group_id):
     return codes
 
 
+def retime_text(text, old_time, new_time):
+    """Replace the template session's time wherever it appears in participant-facing text.
+
+    The screening study's description names the start time twice; copying it
+    verbatim would tell participants the previous session's time.
+    """
+    if not text or not old_time or old_time == new_time:
+        return text, 0
+    count = text.count(old_time)
+    return text.replace(old_time, new_time), count
+
+
 def cmd_setup(args, token):
     """Create the screening survey, its study, and the game study draft."""
     template_survey = pick_template_survey(token, args.template_survey)
@@ -623,6 +638,18 @@ def cmd_setup(args, token):
 
     screening_template = find_survey_study(token, template_survey["_id"])
     game_template = pick_template_study(token, args.study_name, args.template_study)
+
+    # Participant-facing descriptions are copied from the templates, so any
+    # mention of the previous session's time has to be swapped for the new one.
+    old_time = getattr(retime_sections, "old_time", None)
+    screening_description, n_screen = retime_text(
+        (screening_template or {}).get("description"), old_time, args.time)
+    game_description, n_game = retime_text(game_template.get("description"), old_time, args.time)
+    if screening_template is not None:
+        screening_template = {**screening_template, "description": screening_description}
+    game_template = {**game_template, "description": game_description}
+    print(f"Retimed descriptions: {n_screen} mention(s) in the screening study, {n_game} in the game study"
+          + (f" ('{old_time}' -> '{args.time}')" if old_time else ""))
 
     print(f"Template survey:  {template_survey.get('title')}  ({template_survey['_id']})")
     print(f"Template study:   {game_template.get('internal_name') or game_template.get('name')}"
@@ -1001,11 +1028,25 @@ def cmd_approve(args, token):
 
 
 def newest_run():
-    runs_dir = PROJECT_ROOT / "data" / "runs"
-    if not runs_dir.is_dir():
+    """The most recent run registered in the active dataset's runs.txt.
+
+    Deliberately not the newest directory under data/runs/: a stale re-export
+    of an old server can sit there, and paying against it would pay past
+    participants a second time. DATASET defaults to `full` here, never to the
+    frozen pilot.
+    """
+    import os
+
+    dataset = os.environ.get("DATASET") or "full"
+    runs_file = PROJECT_ROOT / "data" / dataset / "runs.txt"
+    if not runs_file.exists():
         return None
-    dirs = sorted(d.name for d in runs_dir.iterdir() if d.is_dir())
-    return dirs[-1] if dirs else None
+    runs = [
+        line.split("#", 1)[0].strip()
+        for line in runs_file.read_text().splitlines()
+    ]
+    runs = sorted(r for r in runs if r)
+    return runs[-1] if runs else None
 
 
 def setup_payment(token, run_path, population, study_id, rows, ledger, max_each, max_total):
@@ -1052,7 +1093,7 @@ def cmd_pay(args, token):
         sys.exit("Give --study, or --session NAME.")
     run = args.run or (read_session(args.session).get("run") if args.session else None) or newest_run()
     if not run:
-        sys.exit("No extracted runs under data/runs/. Run analysis/extract_run.py first.")
+        sys.exit("No run registered in the active dataset. Run analysis/extract_run.py --dataset full first, or pass --run.")
     run_path = run_dir(run)
     if args.session:
         write_session(args.session, run=run)
