@@ -945,8 +945,10 @@ length > 1 are retained as *content words*.
   *leg*), positional (e.g., *left*, *right*, *top*), and posture (e.g.,
   *kick*, *kneel*, *stand*).
 - **Lexical uniqueness**: the proportion of content words in a description
-  that do not appear in any other group's descriptions for the same tangram
-  in the same game.
+  that do not appear in any other original group's descriptions of the same
+  tangram, pooled across games. The comparison vocabulary is restricted to the
+  same phase, so labels that other groups borrow in Phase 2 cannot
+  retroactively make a Phase 1 word non-unique.
 - **Word frequency**: the mean Zipf frequency of content words, computed via
   the `wordfreq` Python package (which draws on SUBTLEX and other corpora).
   Common words score higher (e.g., "the" ≈ 7.7); rare words score lower.

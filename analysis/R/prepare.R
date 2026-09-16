@@ -137,6 +137,25 @@ convention_check_data <- function(speaker_utts, trials, adjacent_sim, games) {
   list(all_conditions = all_conditions, shared_phase1 = shared_phase1)
 }
 
+# Turn the `window` column of a similarity table into an ordered display
+# factor. An unrecognized window is an error rather than a silent relabel: the
+# three windows differ substantively, and folding phase2_early into the
+# Phase 2 bars had previously gone unnoticed in a descriptive figure.
+label_window <- function(df, windows = names(WINDOW_LABELS)) {
+  if (!has_rows(df)) return(df)
+  unknown <- setdiff(unique(df$window), names(WINDOW_LABELS))
+  if (length(unknown)) {
+    stop("Unknown similarity window: ", paste(unknown, collapse = ", "),
+         call. = FALSE)
+  }
+  df |>
+    filter(window %in% windows) |>
+    mutate(window_label = factor(
+      unname(WINDOW_LABELS[window]),
+      levels = unname(WINDOW_LABELS[windows])
+    ))
+}
+
 # ── Trial-level tables with condition ────────────────────────────────────────
 
 # Listener trials of one phase with correct, condition, and centered block.

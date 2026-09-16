@@ -162,6 +162,36 @@ check(
     nrow(no_adjacent$shared_phase1$accuracy) == 6
 )
 
+# ── label_window ────────────────────────────────────────────────────────────
+
+win_df <- tibble(
+  window = c("phase1_final", "phase2_early", "phase2_final"),
+  similarity = c(0.1, 0.2, 0.3)
+)
+labelled <- label_window(win_df)
+check(
+  "each window keeps its own label rather than collapsing into two phases",
+  nrow(labelled) == 3 &&
+    identical(as.character(labelled$window_label),
+              c("Phase 1 final", "Phase 2 early", "Phase 2 final")) &&
+    identical(levels(labelled$window_label), unname(WINDOW_LABELS))
+)
+two_windows <- label_window(win_df, windows = c("phase1_final", "phase2_final"))
+check(
+  "restricting to the H1/H2 windows drops phase2_early instead of relabelling it",
+  nrow(two_windows) == 2 &&
+    !("Phase 2 early" %in% levels(two_windows$window_label))
+)
+check(
+  "an unrecognized window is an error, not a silent relabel",
+  inherits(try(label_window(tibble(window = "phase3_final")), silent = TRUE),
+           "try-error")
+)
+check(
+  "an empty similarity table passes through label_window",
+  nrow(label_window(tibble())) == 0
+)
+
 # ── add_condition on a table that already has condition ──────────────────────
 
 pc <- tibble(

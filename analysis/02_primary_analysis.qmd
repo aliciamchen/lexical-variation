@@ -240,16 +240,16 @@ if (!is.null(wls_model)) {
 if (!has_pairwise || nrow(pairwise_sim) == 0) {
   cat("Skipping plot: no pairwise similarity data.\n")
 } else {
-# Plot 9: Within- vs between-group similarity by condition
+# Plot 9: Within- vs between-group similarity by condition. All three
+# windows are shown separately; phase2_early is descriptive and is not part
+# of the H1/H2 comparison, which uses the two final windows.
 pw_summary <- pairwise_sim |>
   left_join(games |> select(gameId, condition), by = "gameId") |>
-  mutate(
-    groupType = ifelse(sameGroup == 1, "Within-group", "Between-group"),
-    phase = ifelse(window == "phase1_final", "Phase 1 final", "Phase 2 final")
-  )
+  label_window() |>
+  mutate(groupType = ifelse(sameGroup == 1, "Within-group", "Between-group"))
 
 pw_means <- pw_summary |>
-  group_by(condition, phase, groupType) |>
+  group_by(condition, window_label, groupType) |>
   summarise(
     mean_sim = mean(similarity, na.rm = TRUE),
     se_sim = sd(similarity, na.rm = TRUE) / sqrt(n()),
@@ -262,7 +262,7 @@ ggplot(pw_means, aes(x = condition, y = mean_sim, fill = groupType)) +
     aes(ymin = mean_sim - se_sim, ymax = mean_sim + se_sim),
     position = position_dodge(0.8), width = 0.2
   ) +
-  facet_wrap(~phase) +
+  facet_wrap(~window_label) +
   scale_fill_brewer(palette = "Pastel1") +
   labs(
     x = "Condition",
@@ -466,8 +466,10 @@ length > 1 are retained as *content words*.
   *kick*, *kneel*, *stand*). Prefix matching means *squar* matches both
   *square* and *squares*.
 - **Lexical uniqueness**: the proportion of content words in a description
-  that do not appear in any other group's descriptions for the same tangram
-  across games.
+  that do not appear in any other original group's descriptions of the same
+  tangram, pooled across games. The comparison vocabulary is restricted to the
+  same phase, so labels that other groups borrow in Phase 2 cannot
+  retroactively make a Phase 1 word non-unique.
 - **Word frequency**: the mean Zipf frequency of content words, computed via
   the `wordfreq` Python package (which draws on SUBTLEX and other corpora).
   Common words score higher (e.g., "the" ≈ 7.7); rare words score lower.

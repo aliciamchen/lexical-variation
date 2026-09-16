@@ -84,6 +84,16 @@ H12_CONDITIONS <- c("refer_separated", "refer_mixed", "social_mixed")
 
 GROUP_ORDER <- c("A", "B", "C")
 
+# The analysis windows compute_derived.py writes on the pairwise similarities.
+# The primary H1/H2 comparison uses the two final windows; phase2_early is
+# descriptive. Named here so a plot cannot quietly fold one window into
+# another (see label_window() in R/prepare.R).
+WINDOW_LABELS <- c(
+  phase1_final = "Phase 1 final",
+  phase2_early = "Phase 2 early",
+  phase2_final = "Phase 2 final"
+)
+
 # Blocks are 1-indexed in plots: Phase 1 = 1-6, Phase 2 = 7-12
 PHASE_BOUNDARY <- 6.5
 PHASE2_OFFSET <- 6
