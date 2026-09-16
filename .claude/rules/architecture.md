@@ -5,7 +5,7 @@
 - **constants.js**: Central configuration - player counts, phase blocks, scoring, avatar generation (DiceBear API)
 - **callbacks.js**: Game logic via Empirica callbacks:
   - `onGameStart`: Player/group assignment, round/stage creation
-  - `onRoundStart`: Role assignment, group reshuffling (mixed conditions), identity masking
+  - `onRoundStart`: Group reshuffling in mixed Phase 2 (`reshuffling.js` enumerates every one-player-per-index assignment, keeps the best under the one-in-group-listener rule, and the outcome is recorded on the round as `reshuffle_mode` and counts), role assignment (each player-round gets `speaker_id`, `group_size`, `speaker_reassigned`, and for listeners `in_group_listener`), identity masking
   - `onStageEnded`: Scoring at the end of Selection (snapshotting which listeners had clicked); idle detection, late-click flagging, and group viability checks at the end of Feedback
 
 ## Client (`experiment/client/src/`)
@@ -43,4 +43,4 @@ In `refer_mixed` and `social_mixed`, groups are reshuffled every trial (not per-
 ### Group Tracking
 
 - `original_group`: Persists throughout game (A, B, C)
-- `current_group`: Changes each block in mixed conditions
+- `current_group`: Changes every trial in Phase 2 of the mixed conditions

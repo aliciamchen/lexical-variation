@@ -2,7 +2,7 @@
  * TEST_PLAN 3.6: Dropout During Phase 2 Mixed Conditions
  *
  * Goal: When a player is kicked during Phase 2 in refer_mixed,
- * remaining players should be redistributed (mid-block reshuffle if needed)
+ * remaining players should be redistributed when the next trial reshuffles
  * and the game should continue.
  *
  * Condition: refer_mixed (reshuffled groups in Phase 2, identity masking)

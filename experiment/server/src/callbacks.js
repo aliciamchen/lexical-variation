@@ -38,7 +38,7 @@ import { resolveTangramSet } from "./tangrams";
 import { classifyIdle, isLateClick, isLateSocialGuess, updateIdleRounds } from "./idle";
 import { accuracyCheckBlocks, evaluateGroupAccuracy, playerAccuracyOverBlocks } from "./accuracy";
 import { selectSpeaker } from "./roles";
-import { gameCanContinue, hasUndersizedCurrentGroup, strandedPlayers, viableOriginalGroups } from "./viability";
+import { gameCanContinue, strandedPlayers, viableOriginalGroups } from "./viability";
 
 Empirica.onGameStart(({ game }) => {
   console.log(`Game ${game.id} started`);
@@ -258,13 +258,20 @@ Empirica.onRoundStart(({ round }) => {
     const players = game.players.filter((p) => p.get("is_active"));
     const blockNum = round.get("block_num");
 
-    // In Phase 2 with mixed conditions, reshuffle groups at start of each trial
+    // In Phase 2 with mixed conditions, reshuffle groups at the start of each
+    // trial and record what the assignment achieved (see reshuffling.js), so
+    // the export can tell a trial where every group met the one-in-group-
+    // listener rule from one played with a reduced roster.
     const targetNum = round.get("target_num");
-    if (
-      phase_num === 2 &&
-      isMixedCondition(condition)
-    ) {
-      reshuffleGroups(game, players, blockNum);
+    if (phase_num === 2 && isMixedCondition(condition)) {
+      const info = reshuffleGroups(game, players, blockNum);
+      if (info) {
+        round.set("reshuffle_mode", info.mode);
+        round.set("reshuffle_groups", info.nGroups);
+        round.set("reshuffle_trios", info.nTrios);
+        round.set("reshuffle_trios_ok", info.nTriosOk);
+        round.set("reshuffle_pairs", info.nPairs);
+      }
     }
 
     // Set roles for each group
@@ -296,12 +303,6 @@ Empirica.onRoundStart(({ round }) => {
         console.log(
           `  -> Reassigning to ${speaker.get("name")} (index ${speaker.get("player_index")}) for remaining trials in block ${blockNum}`,
         );
-
-        // Track that speaker was reassigned (useful for debugging)
-        game.set(
-          `speaker_reassigned_block_${blockNum}_group_${groupName}`,
-          true,
-        );
       }
 
       const isMixedPhase2 =
@@ -332,8 +333,19 @@ Empirica.onRoundStart(({ round }) => {
           player.set("name", player.get("original_name"));
         }
 
-        // Assign speaker/listener roles based on player_index matching
+        // Assign speaker/listener roles based on player_index matching, and
+        // record the group's speaker, size, and whether the designated speaker
+        // had to be replaced, so the trial table carries the network directly.
         player.round.set("role", player === speaker ? "speaker" : "listener");
+        player.round.set("speaker_id", speaker.id);
+        player.round.set("group_size", groupPlayers.length);
+        player.round.set("speaker_reassigned", reassigned);
+        if (player !== speaker) {
+          player.round.set(
+            "in_group_listener",
+            player.get("original_group") === speaker.get("original_group"),
+          );
+        }
       });
     });
 
@@ -521,17 +533,13 @@ Empirica.onStageEnded(({ stage }) => {
   }
 });
 
-// Helper function to check if groups are still viable
+// Helper function to check if groups are still viable. Runs at the end of the
+// Feedback stage, after idle detection. In Phase 2 of the mixed conditions a
+// removal can leave a current group short for the rest of that trial only:
+// the next onRoundStart reshuffles the remaining players.
 function checkGroupViability(game) {
   const players = game.players;
   const activeGroups = game.get("active_groups") || GROUP_NAMES;
-  const condition = game.get("condition");
-
-  // Get current phase from the current round
-  const currentRound = game.rounds.find((r) => !r.get("ended"));
-  const phase_num = currentRound?.get("phase_num") || 1;
-  const isMixedPhase2 =
-    phase_num === 2 && isMixedCondition(condition);
 
   // Original groups with at least MIN_GROUP_SIZE active members (see viability.js)
   const viableGroups = viableOriginalGroups(players, activeGroups);
@@ -584,42 +592,9 @@ function checkGroupViability(game) {
     game.set("gameTerminated", true);
     game.end("ended", "all players removed");
     console.log("Game marked as terminated - remaining rounds will be skipped");
-    return; // Exit early, no need to check for solo players
+    return;
   }
 
-  // ============ PHASE 2 MIXED: CHECK FOR SOLO PLAYERS IN CURRENT GROUPS ============
-  // After original group disbanding, some current (shuffled) groups might have only 1 player.
-  // Trigger immediate reshuffling so no one plays alone for the rest of the block.
-  if (isMixedPhase2) {
-    const activePlayers = players.filter((p) => p.get("is_active"));
-
-    // Any current (reshuffled) group below MIN_GROUP_SIZE? (see viability.js)
-    if (hasUndersizedCurrentGroup(activePlayers)) {
-      // Only reshuffle if we have enough players to form at least one viable group
-      if (activePlayers.length >= MIN_GROUP_SIZE) {
-        console.log(
-          `MID-BLOCK RESHUFFLE: Solo player detected in Phase 2 mixed, triggering immediate reshuffling`,
-        );
-        console.log(
-          `  -> ${activePlayers.length} active players will be redistributed`,
-        );
-
-        // Track that we did a mid-block reshuffle (for data analysis)
-        const currentBlock = currentRound?.get("block_num") || 0;
-        const currentTarget = currentRound?.get("target_num") || 0;
-        game.set(
-          `midBlockReshuffle_block${currentBlock}_target${currentTarget}`,
-          true,
-        );
-
-        reshuffleGroups(game, activePlayers, currentBlock);
-      } else {
-        console.log(
-          `Cannot reshuffle: only ${activePlayers.length} players remaining (need ${MIN_GROUP_SIZE})`,
-        );
-      }
-    }
-  }
 }
 
 // Helper function to check Phase 1 accuracy threshold and remove underperforming groups

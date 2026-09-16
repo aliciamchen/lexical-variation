@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { viableOriginalGroups, strandedPlayers, gameCanContinue, hasUndersizedCurrentGroup } from "./viability.js";
+import { viableOriginalGroups, strandedPlayers, gameCanContinue } from "./viability.js";
 import { MIN_GROUP_SIZE } from "./constants.js";
 
 const P = (originalGroup, currentGroup = originalGroup, isActive = true) => ({
@@ -42,17 +42,5 @@ describe("gameCanContinue", () => {
     expect(gameCanContinue(1, 1)).toBe(true);
     expect(gameCanContinue(0, 1)).toBe(false);
     expect(gameCanContinue(1, undefined)).toBe(true);
-  });
-});
-
-describe("hasUndersizedCurrentGroup", () => {
-  it("detects a reshuffled group left with a single player", () => {
-    const players = [P("A", "X"), P("B", "X"), P("C", "Y")];
-    expect(hasUndersizedCurrentGroup(players)).toBe(true);
-  });
-  it("is false when every current group has at least the minimum", () => {
-    const players = [P("A", "X"), P("B", "X"), P("C", "Y"), P("A", "Y")];
-    expect(hasUndersizedCurrentGroup(players)).toBe(false);
-    expect(hasUndersizedCurrentGroup([])).toBe(false);
   });
 });
