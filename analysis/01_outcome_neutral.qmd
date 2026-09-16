@@ -1,18 +1,35 @@
 ---
-title: "01: Outcome-neutral criteria"
+title: "01: Convention-formation checks"
 format:
   html:
     toc: true
     code-fold: true
 ---
 
-These models must pass before proceeding to full data collection.
-All models use Phase 1 data only, pooled across conditions.
+These checks inform whether H1/H2 can be interpreted as convergence or
+preservation of established group-specific conventions. Trend models pool
+Phase 1 data from `refer_separated`, `refer_mixed`, and `social_mixed`, whose
+Phase 2 manipulations have not yet been disclosed. `social_first` is excluded
+from those models because its manipulation precedes Phase 1, but remains in
+the condition-specific descriptive plots and game-level summaries.
+
+No trend, permutation p-value, or proportion of significant games determines
+whether primary analyses are run or reported. If initial differentiation is
+not convincingly established, H1/H2 contrasts still estimate Phase 2 condition
+differences, but do not establish erosion or preservation of pre-existing
+conventions. Non-significance in that setting does not establish resistance
+to mixing or failure of social incentives to preserve conventions. The checks
+do not gate H3/H4, trigger recruitment, or change primary-analysis eligibility.
+The separate eligibility and robustness-analysis rules remain unchanged.
+
+Gray trajectories below show individual game means; bold trajectories show
+the arithmetic mean across available games in each condition and block.
+These descriptive plots have no inferential pass/fail threshold. Historical
+four-condition pilot models are preserved separately in `SI_pilot.qmd`.
 
 ```{r setup, message=FALSE, warning=FALSE}
 library(lme4)
 library(lmerTest)
-library(tidyboot)
 source(here::here("analysis", "config.R"))
 list2env(load_tables(), envir = globalenv())
 
@@ -21,17 +38,23 @@ has_pairwise <- has_rows(pairwise_sim)
 ```
 
 ```{r prep-data}
-# Shared preparation (analysis/R/prepare.R): Phase 1 only, game-qualified
-# group ids, block centered within each table
-p1_utts <- phase1_utterances(speaker_utts)
-p1_listener <- phase1_listener_trials(trials)
-p1_ref_accuracy <- phase1_round_accuracy(trials)
-if (has_adjacent) p1_adjacent <- phase1_adjacent(adjacent_sim)
+# Keep all conditions in descriptive reporting and only the common Phase 1
+# procedure in trend models. Block is recentered after the restriction.
+check_data <- convention_check_data(speaker_utts, trials, adjacent_sim, games)
+p1_utts <- check_data$shared_phase1$utterances
+p1_ref_accuracy <- check_data$shared_phase1$accuracy
+p1_adjacent <- check_data$shared_phase1$adjacent
+p1_utts_all <- check_data$all_conditions$utterances
+p1_ref_accuracy_all <- check_data$all_conditions$accuracy
+p1_adjacent_all <- check_data$all_conditions$adjacent
+
+cat("Pooled trend-model conditions:", paste(H12_CONDITIONS, collapse = ", "), "\n")
 ```
 
 # 1. Description length decreases over blocks
 
-**Criterion:** Significant negative main effect of `blockNum`.
+**Expected pattern:** A negative block effect in the shared Phase 1 procedure.
+Report the estimate and uncertainty; significance is not required to proceed.
 
 ```{r model-utt-length}
 # Maximal structure from the preregistration; fit_progressively() simplifies
@@ -45,34 +68,36 @@ summary(m_length)
 report_effect_sizes(m_length)
 ```
 
-```{r plot-utt-length, fig.width=7, fig.height=4}
-# Plot 1: Description length over blocks (by blockNum, not repNum)
-length_by_group <- p1_utts |>
-  group_by(gameId, group, blockNum) |>
+```{r plot-utt-length, fig.width=11, fig.height=7}
+length_by_game <- p1_utts_all |>
+  filter(is.finite(uttLength)) |>
+  group_by(gameId, condition, blockNum) |>
   summarise(mean_length = mean(uttLength, na.rm = TRUE), .groups = "drop")
 
-length_by_block <- p1_utts |>
-  group_by(blockNum) |>
-  tidyboot_mean(uttLength, nboot = 1000)
+length_by_block <- length_by_game |>
+  group_by(condition, blockNum) |>
+  summarise(mean_length = mean(mean_length), .groups = "drop")
 
-ggplot(length_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
-  geom_line(data = length_by_group,
-            aes(x = blockNum + 1, y = mean_length, group = interaction(gameId, group)),
+ggplot(length_by_block, aes(x = blockNum + 1, y = mean_length)) +
+  geom_line(data = length_by_game,
+            aes(group = gameId),
             color = "gray70", alpha = 0.5, linewidth = 0.4) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = "black") +
   geom_line(color = "black", linewidth = 1) +
   geom_point(color = "black", size = 2) +
+  facet_wrap(~condition, ncol = 2, labeller = as_labeller(CONDITION_LABELS)) +
   labs(
     x = "Block",
     y = "Mean word count",
-    title = "Description length decreases over blocks"
+    title = "Phase 1 description length by condition",
+    subtitle = "Social-first is descriptive here, not part of the shared-Phase-1 trend model."
   ) +
   scale_x_continuous(breaks = 1:6)
 ```
 
 # 2. Listener accuracy increases over blocks
 
-**Criterion:** Significant positive main effect of `blockNum`.
+**Expected pattern:** A positive block effect in the shared Phase 1 procedure.
+High and stable accuracy is also informative; an increase is not mandatory.
 
 ```{r model-accuracy}
 m_accuracy <- fit_progressively(
@@ -84,32 +109,31 @@ summary(m_accuracy)
 report_effect_sizes(m_accuracy)
 ```
 
-```{r plot-accuracy, fig.width=7, fig.height=4}
-# Plot 2: Listener accuracy over blocks
-acc_by_group <- p1_ref_accuracy |>
-  filter(!is.na(ref_accuracy)) |>
-  group_by(gameId, group, blockNum) |>
+```{r plot-accuracy, fig.width=11, fig.height=7}
+acc_by_game <- p1_ref_accuracy_all |>
+  filter(is.finite(ref_accuracy)) |>
+  group_by(gameId, condition, blockNum) |>
   summarise(mean_acc = mean(ref_accuracy, na.rm = TRUE), .groups = "drop")
 
-acc_by_block <- p1_ref_accuracy |>
-  filter(!is.na(ref_accuracy), !is.na(blockNum)) |>
-  group_by(blockNum) |>
-  tidyboot_mean(ref_accuracy, nboot = 1000)
+acc_by_block <- acc_by_game |>
+  group_by(condition, blockNum) |>
+  summarise(mean_acc = mean(mean_acc), .groups = "drop")
 
-ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
-  geom_line(data = acc_by_group,
-            aes(x = blockNum + 1, y = mean_acc, group = interaction(gameId, group)),
+ggplot(acc_by_block, aes(x = blockNum + 1, y = mean_acc)) +
+  geom_line(data = acc_by_game,
+            aes(group = gameId),
             color = "gray70", alpha = 0.5, linewidth = 0.4) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = "black") +
   geom_line(color = "black", linewidth = 1) +
   geom_point(color = "black", size = 2) +
+  facet_wrap(~condition, ncol = 2, labeller = as_labeller(CONDITION_LABELS)) +
   geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
   annotate("text", x = 6, y = 1/16 + 0.02,
-           label = "Chance (1/16)", hjust = 1, color = "gray50", size = 3) +
+           label = "Blind-grid baseline (1/16)", hjust = 1, color = "gray50", size = 3) +
   labs(
     x = "Block",
     y = "Proportion correct",
-    title = "Listener accuracy increases over blocks"
+    title = "Phase 1 referential accuracy by condition",
+    subtitle = "Social-first is descriptive here, not part of the shared-Phase-1 trend model."
   ) +
   scale_x_continuous(breaks = 1:6) +
   scale_y_continuous(limits = c(0, 1))
@@ -117,10 +141,11 @@ ggplot(acc_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
 
 # 3. Conventions are stable (increasing adjacent similarity)
 
-**Criterion:** Significant positive main effect of `blockNum`.
+**Expected pattern:** A positive block effect in the shared Phase 1 procedure.
+Interpret the trajectory alongside its level, not as a necessary significance test.
 
 ```{r model-adjacent-sim}
-if (has_adjacent) {
+if (has_rows(p1_adjacent)) {
   p1_adjacent_valid <- p1_adjacent |> filter(!is.na(simAdjacent))
 
   m_adjacent <- fit_progressively(
@@ -131,40 +156,45 @@ if (has_adjacent) {
   summary(m_adjacent)
   report_effect_sizes(m_adjacent)
 } else {
-  cat("Skipping: adjacent_similarities.csv not found. Run compute_derived.py first.\n")
+  cat("Skipping: no shared-Phase-1 adjacent similarity observations.\n")
 }
 ```
 
-```{r plot-adjacent-sim, fig.width=7, fig.height=4}
-if (has_adjacent && exists("p1_adjacent_valid")) {
-  # Plot 3: Adjacent similarity over blocks
-  sim_by_group <- p1_adjacent_valid |>
-    group_by(gameId, group, blockNum) |>
+```{r plot-adjacent-sim, fig.width=11, fig.height=7}
+if (has_rows(p1_adjacent_all)) {
+  sim_by_game <- p1_adjacent_all |>
+    filter(is.finite(simAdjacent)) |>
+    group_by(gameId, condition, blockNum) |>
     summarise(mean_sim = mean(simAdjacent, na.rm = TRUE), .groups = "drop")
 
-  sim_by_block <- p1_adjacent_valid |>
-    group_by(blockNum) |>
-    tidyboot_mean(simAdjacent, nboot = 1000)
+  sim_by_block <- sim_by_game |>
+    group_by(condition, blockNum) |>
+    summarise(mean_sim = mean(mean_sim), .groups = "drop")
 
-  ggplot(sim_by_block, aes(x = blockNum + 1, y = empirical_stat)) +
-    geom_line(data = sim_by_group,
-              aes(x = blockNum + 1, y = mean_sim, group = interaction(gameId, group)),
+  ggplot(sim_by_block, aes(x = blockNum + 1, y = mean_sim)) +
+    geom_line(data = sim_by_game,
+              aes(group = gameId),
               color = "gray70", alpha = 0.5, linewidth = 0.4) +
-    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, fill = "black") +
     geom_line(color = "black", linewidth = 1) +
     geom_point(color = "black", size = 2) +
+    facet_wrap(~condition, ncol = 2, labeller = as_labeller(CONDITION_LABELS)) +
     labs(
       x = "Block",
       y = "Cosine similarity (adjacent descriptions)",
-      title = "Convention stability increases over blocks"
+      title = "Phase 1 adjacent-description similarity by condition",
+      subtitle = "Social-first is descriptive here, not part of the shared-Phase-1 trend model."
     ) +
     scale_x_continuous(breaks = 1:6)
 }
 ```
 
-# 4. Group-specificity exceeds chance
+# 4. Endpoint group-specificity
 
-**Criterion:** ≥80% of games show significant group-specificity (p < .05 via permutation test).
+Report game-level estimates and permutation p-values by condition. The shared
+Phase 1 procedure also has a pooled descriptive summary. Neither an average
+positive coefficient nor a proportion of significant games establishes that
+most games developed substantially differentiated conventions. There is no
+80% pass/fail threshold and no replacement binary support decision.
 
 ```{r compute-group-specificity, warning=FALSE}
 
@@ -180,32 +210,48 @@ if (nrow(p1_pairwise) > 0) {
   gs_results <- gs_cached$gs_results
   perm_results <- gs_cached$perm_results
 
-  cat("Group-specificity coefficients (Phase 1 final):\n")
-  print(gs_results)
+  if (!has_rows(gs_results)) {
+    gs_results <- tibble(gameId = character(), coefficient = numeric(), std_error = numeric())
+  }
+  if (!has_rows(perm_results)) {
+    perm_results <- tibble(gameId = character(), p_value = numeric())
+  }
 
-  cat("\nPermutation test results:\n")
-  perm_results |>
-    select(gameId, obs_coefficient, perm_mean, p_value) |>
-    knitr::kable(digits = 4)
+  # Retain games without estimable coefficients or permutation results as NA,
+  # rather than silently treating them as successes or failures.
+  gs_by_game <- games |>
+    select(gameId, condition) |>
+    left_join(gs_results |> select(gameId, coefficient, std_error), by = "gameId") |>
+    left_join(perm_results |> select(gameId, p_value), by = "gameId") |>
+    mutate(
+      condition = factor(condition, levels = CONDITION_ORDER),
+      shared_phase1 = condition %in% H12_CONDITIONS
+    )
+  cat("Group-specificity estimates and permutation p-values by game:\n")
+  print(knitr::kable(gs_by_game, digits = 4))
 
-  # The criterion is evaluated within each condition (the paper's "16/20 per
-  # condition"); the study-level check passes only if every condition passes.
-  perm_by_condition <- perm_results |>
-    left_join(games |> select(gameId, condition), by = "gameId") |>
-    mutate(condition = factor(condition, levels = CONDITION_ORDER)) |>
+  gs_by_condition <- gs_by_game |>
     group_by(condition) |>
     summarise(
       games = n(),
-      significant = sum(p_value < 0.05),
-      proportion = significant / games,
-      criterion = ifelse(proportion >= 0.8, "PASS", "FAIL"),
+      estimable = sum(is.finite(coefficient)),
+      mean_specificity = if (any(is.finite(coefficient))) mean(coefficient[is.finite(coefficient)]) else NA_real_,
+      median_specificity = if (any(is.finite(coefficient))) median(coefficient[is.finite(coefficient)]) else NA_real_,
       .groups = "drop"
     )
-  cat("\nPermutation criterion by condition (>= 80% of games with p < .05):\n")
-  print(knitr::kable(perm_by_condition, digits = 2))
-  all_conditions_pass <- all(perm_by_condition$criterion == "PASS")
-  cat(sprintf("\nOverall criterion: %s (every condition must pass)\n",
-              ifelse(all_conditions_pass, "PASS", "FAIL")))
+  cat("\nDescriptive group-specificity summaries by condition:\n")
+  print(knitr::kable(gs_by_condition, digits = 4))
+
+  gs_shared_summary <- gs_by_game |>
+    filter(shared_phase1) |>
+    summarise(
+      games = n(),
+      estimable = sum(is.finite(coefficient)),
+      mean_specificity = if (any(is.finite(coefficient))) mean(coefficient[is.finite(coefficient)]) else NA_real_,
+      median_specificity = if (any(is.finite(coefficient))) median(coefficient[is.finite(coefficient)]) else NA_real_
+    )
+  cat("\nShared Phase 1 procedure: descriptive summary across games, not a pass/fail test:\n")
+  print(knitr::kable(gs_shared_summary, digits = 4))
 } else {
   cat("No Phase 1 pairwise similarity data available.\n")
 }
@@ -231,34 +277,34 @@ if (exists("perm_results") && nrow(perm_results) > 0) {
 }
 ```
 
-```{r plot-group-specificity-summary, fig.width=6, fig.height=4}
+```{r plot-group-specificity-summary, fig.width=9, fig.height=5}
 # Plot 5: Group-specificity summary dot plot
-if (exists("gs_results") && nrow(gs_results) > 0) {
-  # Join condition info
-  gs_with_condition <- gs_results |>
-    left_join(games |> select(gameId, condition), by = "gameId")
+if (exists("gs_by_game") && any(is.finite(gs_by_game$coefficient))) {
+  gs_with_condition <- gs_by_game |> filter(is.finite(coefficient))
 
   ggplot(gs_with_condition, aes(x = condition, y = coefficient)) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
     geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
-    stat_summary(fun.data = mean_cl_boot, color = "red", size = 0.8) +
+    stat_summary(fun = mean, geom = "point", color = "black", size = 4) +
+    scale_x_discrete(labels = CONDITION_LABELS) +
     labs(
       x = "Condition",
       y = "Group-specificity coefficient",
-      title = "Group-specificity by condition (Phase 1)"
+      title = "Group-specificity by condition (Phase 1)",
+      caption = "Each small point is one game; large points are condition means.\nSocial-first is not part of the pooled starting-state check."
     )
 }
 ```
 
-# Summary of outcome-neutral criteria
+# Summary of convention-formation checks
 
 ```{r summary-table}
-criteria <- tibble(
-  Criterion = c(
+checks <- tibble(
+  Check = c(
     "1. Description length decreases",
     "2. Listener accuracy increases",
     "3. Convention stability increases",
-    "4. Group-specificity exceeds chance (≥80%)"
+    "4. Endpoint group-specificity"
   ),
   Model = c(
     "uttLength ~ blockNum + REs",
@@ -266,7 +312,7 @@ criteria <- tibble(
     "simAdjacent ~ blockNum + REs",
     "Permutation test"
   ),
-  `Expected Direction` = c("Negative", "Positive", "Positive", "p < .05"),
+  `Expected direction` = c("Negative", "Positive", "Positive", "Positive coefficient"),
   `Random effects fitted` = c(
     random_effects_structure(m_length),
     random_effects_structure(m_accuracy),
@@ -275,5 +321,5 @@ criteria <- tibble(
   )
 )
 
-knitr::kable(criteria, caption = "Outcome-neutral criteria checklist")
+knitr::kable(checks, caption = "Convention-formation diagnostics, not analysis gates")
 ```

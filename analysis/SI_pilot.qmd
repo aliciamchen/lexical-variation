@@ -164,7 +164,13 @@ if (nrow(idle_players) > 0) {
 }
 ```
 
-# 2. Outcome-neutral criteria
+# 2. Historical pilot convention-formation checks
+
+These historical analyses pool all four pilot conditions. Their original
+80% permutation pass/fail summary is retained below as a record of the pilot
+protocol, not as a full-sample gate. The current full-sample checks are in
+`01_outcome_neutral.qmd`: trend models pool only the three shared-Phase-1
+conditions and inform H1/H2 interpretation without blocking primary analyses.
 
 ## Data preparation
 
@@ -429,8 +435,9 @@ To build a null distribution, we permute the group labels of speakers 1,000
 times and refit the model each time. The histograms show these null
 distributions; the red vertical line marks the observed coefficient. The
 p-value is the proportion of permuted coefficients that equal or exceed the
-observed value. We require ≥80% of games to show significant group-specificity
-(p < .05) to satisfy the outcome-neutral criterion.
+observed value. The original pilot protocol required ≥80% of games to show
+significant group-specificity (p < .05). This historical threshold is not a
+pass/fail gate for the full-sample analyses.
 
 ```{r si-fig-permutation-test, fig.width=12, fig.height=3}
 if (exists("perm_results") && nrow(perm_results) > 0) {
@@ -616,7 +623,7 @@ These plots correspond directly to the paper's primary analyses, which compare
 the final three blocks of Phase 1 (baseline) to the final three blocks of
 Phase 2 (post-manipulation). Group-specificity is computed from pairwise
 cosine similarity between speaker descriptions within the same window, using
-the model described in the outcome-neutral criteria (similarity ~ same_group +
+the model described in the convention-formation checks (similarity ~ same_group +
 random effects for tangram and speakers).
 
 Group-specificity coefficient (the same_group effect from the pairwise

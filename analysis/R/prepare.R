@@ -79,7 +79,7 @@ add_global_block <- function(df, games) {
     )
 }
 
-# ── Phase 1 tables for the outcome-neutral models ────────────────────────────
+# ── Phase 1 tables for convention-formation checks ───────────────────────────
 
 phase1_utterances <- function(speaker_utts) {
   speaker_utts |>
@@ -113,6 +113,28 @@ phase1_adjacent <- function(adjacent_sim) {
     center_block() |>
     add_group_id() |>
     mutate(participant = playerId, tangram = target)
+}
+
+# Keep all four conditions for descriptive reporting, but only the shared
+# Phase 1 procedure for the H1/H2 starting-state trend checks. No check outcome
+# determines eligibility here. Historical pilot preparation remains unchanged.
+convention_check_data <- function(speaker_utts, trials, adjacent_sim, games) {
+  all_conditions <- list(
+    utterances = phase1_utterances(speaker_utts) |> add_condition(games),
+    accuracy = phase1_round_accuracy(trials) |> add_condition(games),
+    adjacent = if (has_rows(adjacent_sim)) {
+      phase1_adjacent(adjacent_sim) |> add_condition(games)
+    } else {
+      tibble()
+    }
+  )
+  shared_phase1 <- lapply(all_conditions, function(df) {
+    if (!has_rows(df)) return(df)
+    df |>
+      add_condition(games, H12_CONDITIONS) |>
+      center_block()
+  })
+  list(all_conditions = all_conditions, shared_phase1 = shared_phase1)
 }
 
 # ── Trial-level tables with condition ────────────────────────────────────────
@@ -199,6 +221,24 @@ within_group_block_pairs <- function(
     add_condition(games, conditions) |>
     center_block() |>
     mutate(group = paste0(gameId, "_", group1))
+}
+
+# One mean per group, tangram, and block, rather than treating overlapping
+# speaker pairs as independent observations. Blocks retain their exported
+# 1-based numbering. Missing means are omitted, never filled from another block.
+within_group_block_means <- function(
+  block_pairwise_sim,
+  games,
+  phase = 1,
+  conditions = SOCIAL_CONDITIONS
+) {
+  pairs <- within_group_block_pairs(block_pairwise_sim, games, phase, conditions)
+  if (!has_rows(pairs)) return(tibble())
+  pairs |>
+    filter(is.finite(similarity)) |>
+    group_by(gameId, condition, group, target, blockNum) |>
+    summarise(similarity = mean(similarity), n_pairs = n(), .groups = "drop") |>
+    mutate(group_target = interaction(group, target, drop = TRUE))
 }
 
 # The H3c measures (concreteness, word frequency, lexical uniqueness) for each

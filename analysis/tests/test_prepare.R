@@ -106,6 +106,62 @@ check(
     all(c("participant", "group", "tangram", "blockNum_c") %in% names(p1u))
 )
 
+# ── Convention-formation checks ─────────────────────────────────────────────
+
+check_games <- tibble(
+  gameId = paste0("check", seq_along(CONDITION_ORDER)),
+  condition = CONDITION_ORDER
+)
+check_utts <- tibble(
+  gameId = rep(check_games$gameId, each = 3),
+  playerId = rep(paste0("speaker", seq_along(CONDITION_ORDER)), each = 3),
+  originalGroup = "A",
+  phaseNum = rep(c(1, 1, 2), length(CONDITION_ORDER)),
+  blockNum = c(rep(c(0, 5, 0), 3), 4, 5, 0),
+  target = "t1",
+  # Lengthening descriptions are retained, not screened for a favorable trend.
+  uttLength = rep(c(1, 20, 10), length(CONDITION_ORDER))
+)
+check_trials <- check_utts |>
+  mutate(roundId = paste0("r", row_number()), role = "listener", clickedCorrect = FALSE)
+check_adjacent <- check_utts |> mutate(simAdjacent = 0.1)
+convention_data <- convention_check_data(check_utts, check_trials, check_adjacent, check_games)
+
+check(
+  "convention checks retain all conditions for descriptive reporting",
+  all(vapply(convention_data$all_conditions, function(d) {
+    nrow(d) == 8 && setequal(as.character(d$condition), CONDITION_ORDER)
+  }, logical(1)))
+)
+check(
+  "pooled convention checks contain exactly the three shared-Phase-1 conditions",
+  all(vapply(convention_data$shared_phase1, function(d) {
+    nrow(d) == 6 && setequal(as.character(d$condition), H12_CONDITIONS) &&
+      identical(levels(d$condition), H12_CONDITIONS)
+  }, logical(1)))
+)
+check(
+  "shared Phase 1 blocks are recentered after excluding social-first",
+  all(vapply(convention_data$shared_phase1, function(d) abs(mean(d$blockNum_c)) < 1e-12, logical(1)))
+)
+check(
+  "poor accuracy and lengthening descriptions do not exclude games from checks",
+  all(convention_data$shared_phase1$accuracy$ref_accuracy == 0) &&
+    all(c(1, 20) %in% convention_data$shared_phase1$utterances$uttLength) &&
+    all(convention_data$shared_phase1$utterances$phaseNum == 1)
+)
+check(
+  "groups in pooled convention checks remain game-qualified",
+  length(unique(convention_data$shared_phase1$accuracy$group)) == 3
+)
+no_adjacent <- convention_check_data(check_utts, check_trials, tibble(), check_games)
+check(
+  "missing adjacent similarities do not remove length or accuracy observations",
+  nrow(no_adjacent$shared_phase1$adjacent) == 0 &&
+    nrow(no_adjacent$shared_phase1$utterances) == 6 &&
+    nrow(no_adjacent$shared_phase1$accuracy) == 6
+)
+
 # ── add_condition on a table that already has condition ──────────────────────
 
 pc <- tibble(
