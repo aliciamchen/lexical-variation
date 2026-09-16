@@ -19,10 +19,29 @@ suppressPackageStartupMessages({
   library(tidyverse)
 })
 
+# The two speaker random-effect structures.
+#
+# "multimembership" is the preregistered full-sample structure: one random
+# effect per speaker, shared across both pair positions with equal weights of
+# 1/2 and a common variance (see R/multimembership.R). "separate" is the
+# earlier structure, with an independent intercept for each pair position; the
+# paper records that the pilot estimates and permutation results use it, so
+# SI_pilot.qmd asks for it explicitly. Do not use it for the full sample: it
+# splits one person's effect across two variance components and makes the
+# estimate depend on an arbitrary ordering within each pair.
+SPEAKER_STRUCTURES <- c("multimembership", "separate")
+
 # `covariates` adds fixed-effect terms to every game's similarity model; the
 # preregistration uses this for the robustness check that includes description
 # length (the pair's length difference and mean length).
-fit_group_specificity <- function(pairwise_df, covariates = NULL) {
+fit_group_specificity <- function(pairwise_df, covariates = NULL,
+                                  speaker_structure = "multimembership") {
+  speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
+  if (speaker_structure == "multimembership") {
+    return(fit_group_specificity_mm(pairwise_df, covariates = covariates) |>
+             select(gameId, coefficient, std_error, t_value) |>
+             filter(!is.na(coefficient)))
+  }
   game_ids <- unique(pairwise_df$gameId)
   rhs <- paste(c("sameGroup", covariates), collapse = " + ")
   model_formula <- as.formula(paste(
@@ -56,7 +75,28 @@ fit_group_specificity <- function(pairwise_df, covariates = NULL) {
 # The permutations are drawn from their own seeded RNG stream so the p-values
 # are identical whichever notebook computes them (and the caller's RNG state is
 # left untouched).
-permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67) {
+permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67,
+                             speaker_structure = "multimembership") {
+  speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
+  # One fitter, used for both the observed model and every permutation, so
+  # the null distribution is always built from the same structure as the
+  # observed coefficient it is compared against.
+  fit_one <- function(d) {
+    if (speaker_structure == "separate") {
+      model <- lmer(
+        similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
+        data = d, control = lmerControl(optimizer = "bobyqa")
+      )
+    } else {
+      model <- lmer_multimember(
+        similarity ~ sameGroup + (1 | target) + (1 | speaker),
+        data = as.data.frame(d),
+        memberships = list(speaker = speaker_pair_weights(d$speaker1, d$speaker2))
+      )
+    }
+    coef(summary(model))["sameGroup", "Estimate"]
+  }
+
   if (!is.null(seed)) {
     had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
     old_seed <- if (had_seed) get(".Random.seed", envir = globalenv()) else NULL
@@ -74,13 +114,8 @@ permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67) {
     if (nrow(game_data) < 5) return(NULL)
     if (n_distinct(game_data$sameGroup) < 2) return(NULL)
 
-    obs_model <- tryCatch(
-      lmer(similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
-           data = game_data, control = lmerControl(optimizer = "bobyqa")),
-      error = function(e) NULL
-    )
-    if (is.null(obs_model)) return(NULL)
-    obs_coef <- coef(summary(obs_model))["sameGroup", "Estimate"]
+    obs_coef <- tryCatch(fit_one(game_data), error = function(e) NULL)
+    if (is.null(obs_coef)) return(NULL)
 
     speakers <- game_data |>
       select(speaker1, group1) |>
@@ -101,13 +136,7 @@ permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67) {
         rename(perm_group2 = perm_group) |>
         mutate(sameGroup = as.numeric(perm_group1 == perm_group2))
 
-      tryCatch({
-        perm_model <- lmer(
-          similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
-          data = perm_data, control = lmerControl(optimizer = "bobyqa")
-        )
-        coef(summary(perm_model))["sameGroup", "Estimate"]
-      }, error = function(e) NA_real_)
+      tryCatch(fit_one(perm_data), error = function(e) NA_real_)
     })
 
     p_value <- mean(perm_coefs >= obs_coef, na.rm = TRUE)
@@ -134,7 +163,9 @@ permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67) {
 #' @param force        If TRUE, recompute even if cache exists.
 #' @return A list with elements `gs_results` and `perm_results`.
 compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
-                                      force = FALSE, seed = 67) {
+                                      force = FALSE, seed = 67,
+                                      speaker_structure = "multimembership") {
+  speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
   gs_cache <- file.path(cache_dir, "gs_results.rds")
   perm_cache <- file.path(cache_dir, "perm_results.rds")
   key_file <- file.path(cache_dir, "group_specificity_cache_key.txt")
@@ -149,7 +180,10 @@ compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
   key_df <- as.data.frame(pairwise_df)[order(pairwise_df$gameId, pairwise_df$target,
                                              pairwise_df$speaker1, pairwise_df$speaker2), key_cols]
   rownames(key_df) <- NULL
-  key <- rlang::hash(list(key_df, n_perm, seed))
+  # The structure is part of the key: the two speaker structures give
+  # different coefficients, so a cache written under one must never be
+  # reused under the other.
+  key <- rlang::hash(list(key_df, n_perm, seed, speaker_structure))
   cached_key <- if (file.exists(key_file)) readLines(key_file, n = 1, warn = FALSE) else ""
 
   if (!force && file.exists(gs_cache) && file.exists(perm_cache) &&
@@ -165,8 +199,10 @@ compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
     cat("Cached group-specificity results do not match the current data; recomputing.\n")
   }
   cat("Computing group-specificity (this may take a few minutes)...\n")
-  gs_results <- fit_group_specificity(pairwise_df)
-  perm_results <- permutation_test(pairwise_df, n_perm = n_perm, seed = seed)
+  gs_results <- fit_group_specificity(pairwise_df,
+                                      speaker_structure = speaker_structure)
+  perm_results <- permutation_test(pairwise_df, n_perm = n_perm, seed = seed,
+                                   speaker_structure = speaker_structure)
 
   dir.create(cache_dir, showWarnings = FALSE, recursive = TRUE)
   saveRDS(gs_results, gs_cache)
@@ -186,10 +222,13 @@ compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
 # passes extra fixed effects (e.g. the description-length robustness check).
 game_specificity_table <- function(pairwise_sim, games,
                                    windows = c("phase1_final", "phase2_final"),
-                                   covariates = NULL) {
+                                   covariates = NULL,
+                                   speaker_structure = "multimembership") {
   if (!is.data.frame(pairwise_sim) || nrow(pairwise_sim) == 0) return(tibble())
   map_dfr(windows, function(w) {
-    fit_group_specificity(pairwise_sim |> filter(window == w), covariates = covariates) |>
+    fit_group_specificity(pairwise_sim |> filter(window == w),
+                          covariates = covariates,
+                          speaker_structure = speaker_structure) |>
       mutate(window = w)
   }) |>
     left_join(games |> select(gameId, condition), by = "gameId") |>

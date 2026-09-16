@@ -285,7 +285,13 @@ if (!has_pairwise) {
 
   if (nrow(p1_pairwise) > 0) {
     # Uses cached RDS if available; pass force = TRUE to recompute
-    gs_cached <- compute_group_specificity(p1_pairwise, derived_dir)
+    # speaker_structure = "separate" keeps the pilot on the earlier model,
+    # with an independent intercept for each pair position. The paper records
+    # that the pilot group-specificity estimates and permutation results use
+    # it; the full sample uses the shared multiple-membership speaker effect
+    # (the default). The cache is keyed by structure, so the two never mix.
+    gs_cached <- compute_group_specificity(p1_pairwise, derived_dir,
+                                           speaker_structure = "separate")
     gs_results <- gs_cached$gs_results
     perm_results <- gs_cached$perm_results
 
@@ -631,7 +637,9 @@ the final three blocks of Phase 1 (baseline) to the final three blocks of
 Phase 2 (post-manipulation). Group-specificity is computed from pairwise
 cosine similarity between speaker descriptions within the same window, using
 the model described in the convention-formation checks (similarity ~ same_group +
-random effects for tangram and speakers).
+random effects for tangram and for each pair position's speaker). These pilot
+results keep that earlier structure; the full sample uses one multiple-membership
+speaker effect shared across both positions.
 
 Group-specificity coefficient (the same_group effect from the pairwise
 similarity model) for Phase 1 final vs Phase 2 final, by condition. Lines
@@ -643,7 +651,8 @@ NOTE: I couldnt figure out how to use patchwork right for the dimensions here so
 ```{r si-fig-phase-comparison, fig.width=6.5, fig.height=3.5}
 if (has_pairwise) {
   # The same per-game estimates as the primary analysis
-  gs_by_window <- game_specificity_table(pairwise_sim, games) |>
+  gs_by_window <- game_specificity_table(pairwise_sim, games,
+                                         speaker_structure = "separate") |>
     mutate(
       phase = ifelse(window == "phase1_final", "Phase 1\n(final 3 blocks)",
                      "Phase 2\n(final 3 blocks)"),

@@ -52,9 +52,25 @@ conventions. These checks do not gate H3/H4 or primary-analysis eligibility.
 # Compute group-specificity per game per phase
 
 For each game, fit:
-`similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2)`
+`similarity ~ sameGroup + (1 | target) + (1 | speaker)`
 
 Extract the `sameGroup` coefficient as the group-specificity score.
+
+The speaker term is a multiple-membership random intercept. Each observation
+is a pair of speakers describing the same tangram, so every speaker has one
+random effect shared across both pair positions, with a common variance and
+equal weights of 1/2. This replaces the earlier
+`(1 | speaker1) + (1 | speaker2)`, which split one person's effect across two
+variance components and made the estimate depend on an arbitrary ordering
+within each pair. Fitting is by REML through lme4's modular interface
+(`analysis/R/multimembership.R`); the design-matched simulations that check
+convergence, ordering invariance, and interval calibration are in
+`analysis/simulate_mm_speaker.R`. The pilot SI keeps the earlier structure,
+as the paper records.
+
+The standard error of each game's coefficient becomes that game's
+inverse-variance weight in the H1/H2 regression, so it carries more than the
+point estimate does; the simulations assess those weights directly.
 
 ```{r fit-group-specificity}
 if (!has_pairwise) {
