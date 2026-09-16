@@ -149,7 +149,7 @@ There are three scripts that should be run in order. Each reads the previous scr
 
 | Script | Reads from | Writes to |
 |--------|-----------|-----------|
-| `extract_run.py <zip>` | Empirica export zip in `experiment/data/` | `data/runs/{timestamp}/raw/` + `bonuses.csv`. Strips Prolific IDs and other PII from player.csv. |
+| `extract_run.py <zip> [--batch ID]` | Empirica export zip in `experiment/data/` | `data/runs/{timestamp}/raw/` + `bonuses.csv`, `early_ended.csv` and `run_meta.json`. Strips Prolific IDs and other PII from player.csv. Because an Empirica export covers the whole server rather than one session, the payment files are scoped to a single batch, by default the most recent one that ran a game. |
 | `combine_runs.py [--dataset NAME] [runs]` | `data/runs/*/raw/` for the runs in `data/<name>/runs.txt` | `data/<name>/raw_anonymized/` + `manifest.json` |
 | `process_data.py [--dataset NAME]` | `data/<name>/raw_anonymized/` | `data/<name>/*.csv` + `analysis/derived/<name>/` |
 | ↳ `preprocessing.py` | `data/<name>/raw_anonymized/` | `data/<name>/*.csv` |

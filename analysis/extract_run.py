@@ -6,12 +6,15 @@ Unzips, extracts bonuses (with Prolific IDs), and saves anonymized raw CSVs.
 Usage:
     uv run python analysis/extract_run.py experiment/data/20260301_132907/empirica-export-20260301_132907.zip
     uv run python analysis/extract_run.py                    # most recent zip under experiment/data/
+    uv run python analysis/extract_run.py --batch <batch_id>  # pay a specific batch, not the newest
+    uv run python analysis/extract_run.py --all-batches       # every batch in the export (rarely right)
     uv run python analysis/extract_run.py list               # list extracted runs
     uv run python analysis/extract_run.py bonuses            # print bonuses for latest run
     uv run python analysis/extract_run.py early-ended        # print early-ended players
 """
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -94,13 +97,77 @@ def unzip(zip_path: Path) -> Path:
     return tmp_dir
 
 
-def extract_bonuses(unzipped_dir: Path, output_dir: Path) -> None:
-    """Extract bonus CSV with Prolific IDs."""
+def resolve_batch(game_df: pd.DataFrame, batch_df: pd.DataFrame, explicit: str | None):
+    """Pick the batch whose players this export should pay.
+
+    `empirica export` dumps the whole server, so an export taken after several
+    sessions contains every earlier session's games. Payments are per session,
+    so the bonus files are scoped to one batch -- by default the newest one that
+    actually ran a game. Batch ids are ULIDs, which sort lexicographically by
+    creation time, and `configLastChangedAt` is used in preference when present.
+    """
+    played = game_df[game_df["condition"].notna()]
+    batches = [b for b in played["batchID"].dropna().unique().tolist() if b]
+    if not batches:
+        return None, []
+
+    if explicit:
+        if explicit not in batches:
+            listing = "\n".join(f"    {b}" for b in sorted(batches))
+            print(
+                f"No batch {explicit!r} with games in this export. Batches present:\n{listing}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        return explicit, batches
+
+    order = {}
+    if "configLastChangedAt" in batch_df.columns:
+        for _, row in batch_df.iterrows():
+            stamp = row.get("configLastChangedAt")
+            if isinstance(stamp, str) and stamp:
+                order[row["id"]] = stamp
+    newest = max(batches, key=lambda b: (order.get(b, ""), b))
+    return newest, batches
+
+
+def extract_bonuses(
+    unzipped_dir: Path,
+    output_dir: Path,
+    batch: str | None = None,
+    all_batches: bool = False,
+) -> dict:
+    """Write bonuses.csv and early_ended.csv for one batch (one session).
+
+    Returns a small record of what was scoped, which the caller saves beside the
+    CSVs so `operations/session.py pay` can show which session it is paying.
+    """
     print("Extracting bonuses...")
     player_df = pd.read_csv(unzipped_dir / "player.csv")
     game_df = pd.read_csv(unzipped_dir / "game.csv")
+    batch_df = pd.read_csv(unzipped_dir / "batch.csv")
 
-    real_games = game_df[game_df["condition"].notna()]["id"].tolist()
+    chosen, all_present = resolve_batch(game_df, batch_df, batch)
+    played = game_df[game_df["condition"].notna()]
+    if all_batches or chosen is None:
+        if all_batches:
+            print("  --all-batches: paying every batch in this export.")
+        real_games = played["id"].tolist()
+        scope = {"batch": None, "batches_present": all_present}
+    else:
+        in_batch = played[played["batchID"] == chosen]
+        real_games = in_batch["id"].tolist()
+        skipped = len(played) - len(in_batch)
+        print(f"  Batch {chosen}: {len(in_batch)} game(s)")
+        if skipped:
+            print(
+                f"  Ignoring {skipped} game(s) from {len(all_present) - 1} earlier batch(es) "
+                "in this cumulative export -- they belong to earlier sessions and were paid then."
+            )
+            print("  Pass --batch <id> to pay a different one, or --all-batches to include them.")
+        scope = {"batch": chosen, "batches_present": all_present}
+    scope["games"] = real_games
+
     game_players = player_df[player_df["gameID"].isin(real_games)].copy()
 
     completed = game_players[game_players["is_active"] == True].copy()
@@ -134,6 +201,10 @@ def extract_bonuses(unzipped_dir: Path, output_dir: Path) -> None:
         print(early_df.to_string(index=False))
     else:
         print("  No early-ended players found.")
+
+    scope["finishers"] = len(bonus_df)
+    scope["early_ended"] = len(early)
+    return scope
 
 
 def anonymize_raw(unzipped_dir: Path, raw_dir: Path) -> None:
@@ -227,7 +298,12 @@ def cmd_early_ended(run_name: str | None = None):
     print()
 
 
-def cmd_extract(zip_path_arg: str | None, dataset: str | None = None):
+def cmd_extract(
+    zip_path_arg: str | None,
+    dataset: str | None = None,
+    batch: str | None = None,
+    all_batches: bool = False,
+):
     """Extract a single zip and register it in the dataset's runs.txt."""
     # The pilot dataset is complete and committed. Registering a new export into
     # it by default -- which is what happens when neither --dataset nor DATASET is
@@ -267,10 +343,15 @@ def cmd_extract(zip_path_arg: str | None, dataset: str | None = None):
     unzipped_dir = unzip(zip_path)
 
     try:
-        extract_bonuses(unzipped_dir, output_dir)
+        scope = extract_bonuses(unzipped_dir, output_dir, batch=batch, all_batches=all_batches)
         anonymize_raw(unzipped_dir, raw_dir)
     finally:
         shutil.rmtree(unzipped_dir, ignore_errors=True)
+
+    # Saved beside the CSVs so `session.py pay` can say which session it is
+    # paying, and so a re-export of an older server is recognizable after the fact.
+    scope["export"] = datetime_str
+    (output_dir / "run_meta.json").write_text(json.dumps(scope, indent=2) + "\n")
 
     print(f"\nDone. Raw CSVs in {raw_dir}")
     print(f"Bonuses in {output_dir / 'bonuses.csv'}")
@@ -304,15 +385,23 @@ def main():
         return
 
     # Default: extract a zip
-    dataset = None
     argv = sys.argv[1:]
-    if "--dataset" in argv:
-        idx = argv.index("--dataset")
-        if idx + 1 < len(argv):
-            dataset = argv[idx + 1]
-        argv = argv[:idx] + argv[idx + 2:]
+
+    def take_value(flag):
+        if flag not in argv:
+            return None
+        idx = argv.index(flag)
+        value = argv[idx + 1] if idx + 1 < len(argv) else None
+        del argv[idx : idx + 2]
+        return value
+
+    dataset = take_value("--dataset")
+    batch = take_value("--batch")
+    all_batches = "--all-batches" in argv
+    if all_batches:
+        argv.remove("--all-batches")
     zip_path_arg = argv[0] if argv else None
-    cmd_extract(zip_path_arg, dataset)
+    cmd_extract(zip_path_arg, dataset, batch=batch, all_batches=all_batches)
 
 
 if __name__ == "__main__":
