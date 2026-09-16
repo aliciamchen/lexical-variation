@@ -206,11 +206,37 @@ These run the preregistered analyses on whichever dataset `DATASET` names, and d
 | Notebook | Purpose |
 |----------|---------|
 | `00_data_overview.qmd` | Data overview |
-| `01_outcome_neutral.qmd` | Outcome-neutral criteria (convention formation) |
-| `02_primary_analysis.qmd` | Primary analyses (H1 & H2) |
+| `01_outcome_neutral.qmd` | Convention-formation checks for interpreting H1/H2 |
+| `02_primary_analysis.qmd` | Primary analyses (H1 through H4) |
 | `03_secondary_analysis.qmd` | Secondary analyses |
 | `04_exploratory.qmd` | Exploratory analyses |
 | `05_exit_survey.qmd` | Exit survey responses |
+
+The primary analyses evaluate each prespecified prediction separately with a
+two-tailed, unadjusted test at α = 0.05 and require the predicted direction for
+support. All results are reported, and this policy does not provide family-wise
+error control. H3a, H3b, and the three H3c description-property predictions have
+separate interpretations, without an omnibus H3 support decision.
+
+The convention-formation trend checks pool the three conditions with the
+shared Phase 1 procedure, excluding `social_first`, while descriptive plots
+show each condition and variation across games. These checks inform whether
+H1/H2 can be interpreted as convergence or preservation of established
+conventions; they do not block reporting the primary contrasts or testing
+H3/H4. There is no study-level pass/fail threshold. The historical pilot
+notebook retains its original four-condition analyses and does not define
+the full-sample policy.
+
+H3b uses a planned comparison of within-group similarity at Phase 1 block 3,
+the end of the first scheduled speaker cycle. The analysis averages overlapping
+description pairs within each group, tangram, and block, models block
+categorically, and accounts for groups nested within games. The linear slope
+comparison is secondary and does not determine H3b support. The implementation
+is in `analysis/R/convergence.R`; its tests include an early-alignment advantage
+followed by a plateau. Inferential models require at least two games per
+condition with block-3 observations, so the current pilot provides descriptive
+trajectories only for this comparison. The block-specific Bayes factor is not
+yet implemented and is reported as such by the notebook.
 
 ## LLM simulation
 

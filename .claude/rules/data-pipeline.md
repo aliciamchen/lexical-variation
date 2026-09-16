@@ -73,6 +73,7 @@ Quarto notebooks and animations are run separately (see below).
 | `R/group_specificity.R` | Per-game group-specificity fits (`game_specificity_table()`, `gs_wide()`, optional covariates) and the seeded permutation test with a hash-keyed RDS cache in `analysis/derived/<name>/` |
 | `R/mixed_models.R` | `fit_progressively()`: the preregistered random-effects simplification (maximal model, then drop correlations, then slopes by smallest variance); `simplification_log()` and `random_effects_structure()` report what was fit |
 | `R/contrasts.R` | `fit_h12_wls()` (the H1/H2 weighted regression and planned contrasts), `pairwise_weights()`, `contrast_table()`, and `robustness_rerun()` for the subset-of-games checks |
+| `R/convergence.R` | `fit_h3b()` fits the categorical-block model to group--tangram--block means and tests social-first minus social-mixed at Phase 1 block 3; the linear slope contrast is secondary. Game and nested group random effects remain in the simplification procedure. |
 | `R/bayes_factors.R` | brms/bridgesampling Bayes factors for non-significant planned contrasts; `maybe_bayes_factor()` applies the `BAYES_FACTORS=auto\|always\|never` decision; packages load on first use |
 | `R/effects.R` | `report_effect_sizes()`, `cohens_d_games()`, `fmt_pval()` |
 | `R/attrition.R` | `player_attrition()`, `game_status()`, `complete_games()`, and the differential-dropout tests reported in `00_data_overview.qmd` |
@@ -140,13 +141,20 @@ All notebooks source `config.R`, which sets `data_dir`, `derived_dir`, and `figu
 | Notebook | Purpose |
 |----------|---------|
 | `00_data_overview.qmd` | Data overview |
-| `01_outcome_neutral.qmd` | Outcome-neutral criteria (convention formation) |
-| `02_primary_analysis.qmd` | Primary analyses (H1 & H2) |
+| `01_outcome_neutral.qmd` | Convention-formation checks: shared-Phase-1 trend models, all-condition descriptive reporting, no pass/fail gate |
+| `02_primary_analysis.qmd` | Primary analyses (H1 through H4) |
 | `03_secondary_analysis.qmd` | Secondary analyses |
 | `04_exploratory.qmd` | Exploratory analyses |
 | `05_exit_survey.qmd` | Exit survey responses |
 
 ## Stats → LaTeX pipeline
+
+`convention_check_data()` in `R/prepare.R` keeps all four conditions for
+descriptive reporting but restricts the full-sample convention-formation trend
+models to `H12_CONDITIONS`. These checks inform H1/H2 interpretation and do not
+gate any primary analysis. `SI_pilot.qmd` deliberately retains its historical
+four-condition models and original pilot summaries; do not silently refit
+those models when updating the full-sample checks.
 
 Analysis notebooks write statistics as `\newcommand` definitions to `writing/preregistration/stats/*.tex`, which are `\input`'d by `writing/preregistration/main.tex`. This keeps numbers in sync between the analysis and the manuscript.
 

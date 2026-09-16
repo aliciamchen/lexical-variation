@@ -1,5 +1,5 @@
 ---
-title: "02: Primary analysis — H1 & H2"
+title: "02: Primary analyses -- H1 through H4"
 format:
   html:
     toc: true
@@ -22,6 +22,32 @@ if (!has_pairwise) {
   cat("Most analyses in this notebook will be skipped.\n")
 }
 ```
+
+# Inference and reporting policy
+
+Each prespecified prediction is evaluated separately using a two-tailed,
+unadjusted test at α = 0.05. Support requires both p < .05 and the predicted
+effect direction; a significant effect in the opposite direction is reported
+as contrary to the prediction. All planned contrasts, including non-significant
+results, are reported with estimates, pointwise 95% confidence intervals, and
+exact unadjusted p-values. This is a per-test policy, not family-wise error
+control across the collection of tests.
+
+H3a, H3b, and each of the three H3c description-property predictions have
+separate support decisions. There is no omnibus H3 support decision, and one
+significant H3c result does not establish the other description-property
+predictions. Secondary and robustness analyses do not substitute for the
+prespecified primary tests.
+
+The convention-formation checks in `01_outcome_neutral.qmd` pool the three
+conditions with the shared Phase 1 procedure for their trend models. They
+inform interpretation of H1/H2 as convergence or preservation of established
+group differences, but do not determine whether the contrasts are reported.
+If initial differentiation is not convincingly established, we will report
+Phase 2 condition differences without claiming erosion or preservation of
+pre-existing conventions; non-significant contrasts in that setting do not
+establish resistance to mixing or failure of social incentives to preserve
+conventions. These checks do not gate H3/H4 or primary-analysis eligibility.
 
 # Compute group-specificity per game per phase
 
@@ -253,6 +279,8 @@ ggplot(pw_means, aes(x = condition, y = mean_sim, fill = groupType)) +
 
 Restricted to `social_mixed` vs `social_first`. Tests whether anticipating
 a social-signaling task shapes convention formation *before* Phase 2.
+Conclusions are drawn separately for group-specificity, early within-group
+alignment, and each description property, rather than for H3 as a whole.
 
 ## H3a: Phase 1 group-specificity
 
@@ -314,43 +342,90 @@ if (exists("gs_social") && nrow(gs_social) > 0) {
 }
 ```
 
-## H3b: Within-group convergence rate
+## H3b: Early within-group alignment
 
-`within_group_similarity ~ condition * block + (block | group) + (block | tangram)`,
-restricted to Phase 1, within-group pairs, social conditions only.
-Group (not game) is the natural unit of replication for within-group similarity,
-and condition is between-game so cannot have a random slope within game or group.
+The primary contrast is `social_first > social_mixed` at Phase 1 block 3,
+when all three original group members have had one scheduled speaker turn.
+Within-group pairwise similarities are averaged within group, tangram, and
+block. Available pairs contribute equally; means with no valid pairs are
+omitted, without substituting another block for a missing block-3 observation.
+
+The model uses categorical block and its interaction with condition, with
+random effects for game, group nested within game, tangram, and repeated
+group--tangram observations. The starting formula is `H3B_FORMULA` in
+`analysis/R/convergence.R`; random effects follow the shared simplification
+procedure. Game-level replication is required for the condition comparison.
+
+H3b is supported by a positive block-3 contrast with a two-tailed p-value below
+.05, with its raw similarity difference and 95% confidence interval reported.
+This tests greater alignment by a fixed early milestone, not the exact time
+a convention is established. Neither an omnibus interaction nor a linear
+slope difference is a prerequisite or an alternative support criterion.
 
 ```{r h3b-convergence}
 if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
   cat("Skipping H3b: block_pairwise_similarities.csv not found. Run compute_derived.py first.\n")
 } else {
-  # Phase 1, within-group pairs, social conditions, game-qualified group id
-  p1_within_social <- within_group_block_pairs(block_pairwise_sim, games, phase = 1, conditions = SOCIAL_CONDITIONS)
-
-  if (nrow(p1_within_social) > 0 && n_distinct(p1_within_social$condition) >= 2) {
-    # Group is the natural unit of replication for within-group similarity.
-    # Condition is between-game, so it cannot have a random slope within group.
-    m_h3b <- fit_progressively(
-      similarity ~ condition * blockNum_c + (blockNum_c | group) + (blockNum_c | target),
-      data = p1_within_social
-    )
+  h3b <- fit_h3b(within_group_block_means(
+    block_pairwise_sim, games, phase = 1, conditions = SOCIAL_CONDITIONS
+  ))
+  p1_within_social <- h3b$data
+  m_h3b <- h3b$model
+  if (!is.null(m_h3b)) {
     print(summary(m_h3b))
-    report_effect_sizes(m_h3b)
+    print(h3b$summary)
+    cat("Primary block-3 support criterion met:", h3b$supported, "\n")
+    # The model-specific Bayes-factor policy remains to be finalized. Do not
+    # substitute a test that removes all condition effects across all blocks.
+    if (BAYES_FACTORS != "never" &&
+        (BAYES_FACTORS == "always" || isTRUE(h3b$summary$p.value >= 0.05))) {
+      cat("H3b block-3 Bayes factor is not yet implemented; do not interpret non-significance as evidence for the null.\n")
+    }
   } else {
-    cat("Insufficient data for H3b convergence analysis.\n")
+    cat("H3b inference skipped:", h3b$note, "\n")
   }
+}
+```
+
+### Secondary description of the linear trend
+
+This model describes differences in the average linear increase in similarity.
+It does not determine primary H3b support, including when its interaction is
+significant but the block-3 contrast is not.
+
+```{r h3b-secondary-trend}
+if (exists("h3b") && !is.null(h3b$model)) {
+  m_h3b_trend <- fit_progressively(H3B_TREND_FORMULA, data = h3b$data)
+  print(summary(m_h3b_trend))
+  slopes_h3b <- emtrends(m_h3b_trend, "condition", var = "blockNum_c",
+                         lmer.df = "satterthwaite", lmerTest.limit = Inf)
+  print(summary(contrast(slopes_h3b, list(
+    secondary_slope_socialfirst_minus_socialmixed = c(-1, 1)
+  )), infer = c(TRUE, TRUE)))
 }
 ```
 
 ```{r plot-h3b, fig.width=8, fig.height=5}
 if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
-  conv_by_block <- p1_within_social |>
-    filter(!is.na(similarity)) |>
+  # Bootstrap game means, not the overlapping pairs or groups within a game.
+  conv_games <- p1_within_social |>
+    group_by(condition, gameId, group, blockNum) |>
+    summarise(similarity = mean(similarity), .groups = "drop") |>
+    group_by(condition, gameId, blockNum) |>
+    summarise(similarity = mean(similarity), .groups = "drop")
+  conv_by_block <- conv_games |>
     group_by(condition, blockNum) |>
-    tidyboot_mean(similarity, nboot = 1000)
+    group_modify(function(d, keys) {
+      if (nrow(d) < 2L) {
+        return(tibble(empirical_stat = mean(d$similarity),
+                      ci_lower = NA_real_, ci_upper = NA_real_))
+      }
+      tidyboot_mean(d, similarity, nboot = 1000) |>
+        select(empirical_stat, ci_lower, ci_upper)
+    })
 
   ggplot(conv_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
+    geom_vline(xintercept = H3B_BLOCK, linetype = "dotted", color = "gray50") +
     geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
                 alpha = 0.15, color = NA) +
     geom_line(linewidth = 1) +
@@ -361,7 +436,9 @@ if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
       x = "Block number (Phase 1)",
       y = "Within-group cosine similarity",
       color = "Condition",
-      title = "H3b: Within-group convergence rate by social condition"
+      title = "H3b: Within-group alignment by social condition",
+      subtitle = "The primary comparison is at block 3 (dotted line).",
+      caption = "Intervals resample games; a single pilot game per condition cannot estimate between-game uncertainty."
     )
 }
 ```
@@ -370,6 +447,12 @@ if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
 
 Compare concreteness, lexical uniqueness, and word frequency of final Phase 1
 descriptions between `social_mixed` and `social_first`.
+
+These are three separate predictions: lower concreteness, higher lexical
+uniqueness, and lower word frequency in `social_first`. Each is supported only
+if its own condition contrast has a two-tailed, unadjusted p < .05 and the
+predicted direction. All three results are reported; a lower-frequency effect
+alone does not support the concreteness or lexical-uniqueness predictions.
 
 All three measures are precomputed in Python (`compute_derived.py`) with
 consistent tokenization: each utterance is lowercased, split into alphabetic
@@ -486,7 +569,9 @@ if (exists("p1_final_social") && "concreteness" %in% names(p1_final_social)) {
 
 Restricted to `social_mixed` vs `social_first` in Phase 2. Tests whether
 anticipated social goals produce a trade-off: higher social accuracy but
-lower referential accuracy. Contingent on H3a.
+lower referential accuracy. Both H4a and H4b are tested regardless of the H3
+results. These condition contrasts do not establish mediation through the
+Phase 1 convention measures.
 
 ## H4a: Social-identification accuracy
 
@@ -647,7 +732,7 @@ h4_specs <- list(
 
 ## Games with significant Phase 1 group specificity
 
-The permutation test is the one run for the outcome-neutral criterion
+The permutation test is the one reported in the convention-formation checks
 (`01_outcome_neutral.qmd`); its cached results are reused when the pairwise
 similarities are unchanged.
 
