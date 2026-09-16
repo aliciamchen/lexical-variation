@@ -75,9 +75,12 @@ process: ## Run full pipeline (preprocess → filter → derived)
 process-no-filter: ## Run pipeline skipping filter (no Vertex AI needed)
 	uv run python analysis/process_data.py --dataset $(DATASET) --skip-filter
 
-test: ## Validate processed data against the integrity suite and run the R helper tests
-	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py -q
+test: ## Validate processed data against the integrity suite and run the Python and R helper tests
+	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py operations/test_session.py -q
 	Rscript analysis/tests/run_all.R
+
+test-ops: ## Run only the Prolific session tooling tests (no API calls, no data needed)
+	uv run pytest operations/test_session.py -q
 
 # ── LLM simulation ─────────────────────────────────────────
 

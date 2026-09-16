@@ -1,0 +1,9 @@
+Hello, and thank you for signing up for our study today.
+
+Unfortunately we were not able to form a complete group at the scheduled time, so the game could not start and you were not able to take part. Nothing went wrong on your end -- this kind of study needs everyone in a group online at the same moment, and sometimes too few people arrive.
+
+We have sent you ${amount} through Prolific for the time you spent waiting. You will also see a request to return the submission, since the study itself did not run. Returning it does not affect the payment.
+
+You are still eligible for this study, and we would be glad to have you in a future session.
+
+Thank you again for your time, and sorry for the inconvenience.
