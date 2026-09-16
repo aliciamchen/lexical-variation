@@ -17,7 +17,7 @@ Facts about the suite (groups, helpers, config values) are in `.claude/rules/tes
 
 2. **Capture output to a stable file.** Always `2>&1 | tee <scratch>/test-<group>.txt`. Anything longer than about ten minutes (full suite, group 4 without fast timing, holistic) must be launched detached, `nohup npm run ... > <file> 2>&1 &`, and polled, because background shell commands are killed at the harness cap and their output files disappear.
 
-3. **Recover a dirty state before rerunning.** Free both ports with `lsof -ti :3000 -ti :8844 | xargs kill -9`, and delete `experiment/.empirica/local/tajriba.json` if a crashed run left the framework's reset undone.
+3. **Recover a dirty state before rerunning, and only when nothing else is running.** `pgrep -fl "playwright test"` must show no other run: runs share ports 3000 and 8844 and reset the same server, and the harness refuses to start while another run holds `experiment/.empirica/local/playwright-run.lock` (a lock left by a dead process is cleared automatically). Then free both ports with `npm run test:free-ports` (it refuses while a live run holds the lock; never use a raw `lsof ... | xargs kill -9`, which would kill that run's server), and delete `experiment/.empirica/local/tajriba.json` if a crashed run left the framework's reset undone. Do not edit files under `experiment/server/src` while a run is in progress: the dev server restarts on every change and the running stage never ends.
 
 4. **Read results from the file, not memory.** `npm run test:report` opens the HTML report; screenshots, traces, and video for failures are under `experiment/test-results/`.
 

@@ -1,4 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import { assertNoOtherRun } from './tests/helpers/run-lock';
+
+// Refuse to start while another run holds the Empirica server, before
+// Playwright clears test-results (see tests/helpers/run-lock.ts).
+assertNoOtherRun();
 
 const isTestMode = process.env.TEST_MODE !== 'false';
 
@@ -47,6 +52,7 @@ export default defineConfig({
   reporter: [['html', { open: 'never' }], ['list']],
   // Test mode: 10 min per test. Production: 90 min (72 rounds * ~55s each + overhead).
   timeout: isTestMode ? 600_000 : 5_400_000,
+  globalSetup: './tests/global-setup.ts',
   globalTeardown: './tests/global-teardown.ts',
   expect: {
     timeout: 30_000,

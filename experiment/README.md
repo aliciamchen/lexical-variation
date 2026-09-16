@@ -121,6 +121,8 @@ npx playwright install chromium
 
 The test groups are chained via Playwright project dependencies, and Playwright runs dependencies unfiltered — a bare `npx playwright test <file>` or `--project=group-N` replays every earlier group in full first. The npm scripts avoid this by pairing each group with its server-reset setup and passing `--no-deps`:
 
+Only one run can use the Empirica server at a time, because every run binds ports 3000 and 8844 and resets the server's state. The harness therefore takes a lock file (`.empirica/local/playwright-run.lock`) in its global setup and refuses to start while another run on the machine holds it; a lock left behind by a run that crashed is cleared automatically. To free the ports before a run, use `npm run test:free-ports`, which does the same check first. Avoid editing files under `server/src` while a run is in progress, since the dev server restarts on every change and the running stage never ends.
+
 ```bash
 # Full suite (test mode: 3+2 blocks at production timers)
 npm test
