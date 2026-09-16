@@ -371,7 +371,13 @@ drop_late_arrivals <- function(df, late = lateClick) {
 # in a game, so the join needs the listener's current group as well; joining on
 # (gameId, roundId) alone would match three speakers, and (gameId, blockNum,
 # target) would also match Phase 1 speakers because blockNum resets per phase.
+# trials.csv carries speakerId and inGroupSpeaker itself since September 2026
+# (same definition, computed in preprocessing.py); any such columns are dropped
+# first so this join stays the single definition the notebooks use, and the
+# data integrity suite checks the exported copies against it.
 attach_speaker <- function(listener_df, trials) {
+  listener_df <- listener_df |>
+    select(-any_of(c("speakerId", "speakerGroup", "inGroupSpeaker")))
   speakers <- trials |>
     filter(role == "speaker") |>
     select(

@@ -259,3 +259,30 @@ if (length(tests) == 0) {
   }
 }
 ```
+
+# Reshuffle health
+
+In Phase 2 of the mixed conditions the server reassigns players to groups on
+every trial so that each speaker has exactly one listener from their original
+group. With nine players that always holds; after a removal the reshuffle
+maximizes the number of trios that still meet the rule and the remaining players
+form a pair, and a block's designated speaker may have to be replaced.
+`reshuffle_health()` (analysis/R/reshuffle.R) reports what each game actually
+produced: the Phase 2 roster at the first and last round, group-trials by size,
+the share of trios that met the rule (1 whenever nine players remained), and the
+number of speaker reassignments across both phases. Games whose roster shrank
+are the ones the roster-size check in `02_primary_analysis.qmd` sets aside.
+
+```{r reshuffle-health}
+health <- reshuffle_health(trials, games, players)
+print(knitr::kable(
+  health |>
+    mutate(gameId = substr(gameId, 1, 10)) |>
+    select(
+      condition, gameId, activeGroups, phase2_players_start, phase2_players_end,
+      trios, trios_one_in_group, prop_trios_one_in_group, pairs, speaker_reassignments
+    ),
+  digits = 2
+))
+```
+

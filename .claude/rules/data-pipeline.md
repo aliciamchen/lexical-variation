@@ -75,6 +75,7 @@ Quarto notebooks and animations are run separately (see below).
 | `R/mixed_models.R` | `fit_progressively()`: the preregistered random-effects simplification (maximal model, then drop correlations, then slopes by smallest variance); `simplification_log()` and `random_effects_structure()` report what was fit |
 | `R/contrasts.R` | `fit_h12_wls()` (the H1/H2 weighted regression and planned contrasts), `pairwise_weights()`, `contrast_table()`, and `robustness_rerun()` for the subset-of-games checks |
 | `R/convergence.R` | `fit_h3b()` fits the categorical-block model to group--tangram--block means and tests social-first minus social-mixed at Phase 1 block 3; the linear slope contrast is secondary. Game and nested group random effects remain in the simplification procedure. |
+| `R/reshuffle.R` | `reshuffle_health()`: per-game summary of what the Phase 2 reshuffle produced (roster at the first and last round, trios versus pairs, share of trios with exactly one in-group listener, speaker reassignments), reported in `00_data_overview.qmd` |
 | `R/bayes_factors.R` | brms/bridgesampling Bayes factors for non-significant planned contrasts; `maybe_bayes_factor()` applies the `BAYES_FACTORS=auto\|always\|never` decision; packages load on first use |
 | `R/effects.R` | `report_effect_sizes()`, `cohens_d_games()`, `fmt_pval()` |
 | `R/attrition.R` | `player_attrition()`, `game_status()`, `complete_games()`, and the differential-dropout tests reported in `00_data_overview.qmd` |

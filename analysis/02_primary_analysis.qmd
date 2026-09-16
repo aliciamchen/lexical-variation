@@ -878,6 +878,77 @@ if (exists("gs_combined")) {
 }
 ```
 
+## Phase 2 roster size
+
+Exposure in the mixed conditions depends on how many original groups reach
+Phase 2. With three groups each player can meet six others and shares a group
+with each of them 12 times in expectation over the 36 trials; when a group was
+removed at the accuracy screen, the six remaining players reshuffle across two
+groups and every out-group pair meets twice as often. The preregistration lets
+such games contribute under the outcome-specific inclusion rules, so the Phase 2
+results are checked here with the number of active groups as a covariate and,
+as a sensitivity split, on the games that kept all three groups. `activeGroups`
+in games.csv is the number of original groups still active at the end of the
+game; the per-game roster is in `00_data_overview.qmd`.
+
+```{r robustness-roster-size}
+if (!exists("gs_combined")) {
+  cat("Skipping: no group-specificity estimates.\n")
+} else {
+  roster <- games |>
+    filter(!is.na(condition)) |>
+    select(gameId, activeGroups)
+  three_groups <- roster |> filter(activeGroups == 3) |> pull(gameId)
+  cat(sprintf("%d of %d games kept all three original groups.\n", length(three_groups), nrow(roster)))
+  robustness_rerun(three_groups, "games with three active groups",
+                   gs = gs_combined, primary_contrasts = contrasts, h4 = h4_specs)
+
+  gs_rs <- gs_combined |>
+    left_join(roster, by = "gameId") |>
+    mutate(activeGroups = factor(activeGroups))
+  if (n_distinct(gs_rs$activeGroups) < 2) {
+    cat("\nEvery game has the same number of active groups; the covariate is not estimable.\n")
+  } else {
+    cat("\nGames per condition and number of active groups:\n")
+    print(knitr::kable(gs_rs |> count(condition, activeGroups)))
+    # With few games the covariate can be nested in condition (every two-group
+    # game in one condition), which emmeans refuses to contrast; report that
+    # rather than stop the render.
+    not_estimable <- function(e) list(model = NULL, contrasts = NULL, note = conditionMessage(e))
+    h12_rs <- tryCatch(fit_h12_wls(gs_rs, covariate = "gs_phase1 + activeGroups"), error = not_estimable)
+    if (is.null(h12_rs$contrasts) || any(is.na(coef(h12_rs$model)))) {
+      cat("\nH1/H2 with the number of active groups as a covariate is not estimable in this dataset",
+          if (!is.null(h12_rs$note)) paste0(" (", h12_rs$note, ")"), ".\n", sep = "")
+    } else {
+      cat("\nH1/H2 with the number of active groups as a covariate:\n")
+      print(knitr::kable(bind_rows(contrast_table(contrasts, "primary"),
+                                   contrast_table(h12_rs$contrasts, "with active groups")), digits = 3))
+    }
+
+    for (spec in h4_specs) {
+      if (is.null(spec$data) || is.null(spec$model) || !"gameId" %in% names(spec$data)) next
+      d <- spec$data |>
+        select(-any_of("activeGroups")) |>
+        left_join(roster, by = "gameId") |>
+        mutate(activeGroups = factor(activeGroups))
+      if (n_distinct(d$activeGroups) < 2) next
+      m_rs <- fit_progressively(update(H4_FORMULA, . ~ . + activeGroups), data = d, family = binomial)
+      if (!inherits(m_rs, "glmerMod")) next
+      cat(sprintf("\n%s with the number of active groups as a covariate (%s):\n", spec$name, random_effects_structure(m_rs)))
+      rs_contrast <- tryCatch(
+        contrast_table(contrast(emmeans(m_rs, "condition", type = "response"), spec$weights), "with active groups"),
+        error = function(e) { cat("  not estimable in this dataset:", conditionMessage(e), "\n"); NULL }
+      )
+      if (is.null(rs_contrast)) next
+      print(knitr::kable(bind_rows(
+        if (inherits(spec$model, "glmerMod")) contrast_table(contrast(emmeans(spec$model, "condition", type = "response"), spec$weights), "primary"),
+        rs_contrast
+      ), digits = 3))
+    }
+  }
+}
+```
+
 ## Tangram set as a covariate
 
 The paper notes that set-level differences in difficulty are absorbed by the
