@@ -69,8 +69,9 @@ Quarto notebooks and animations are run separately (see below).
 |--------|---------|
 | `dataset_paths.py` | Dataset layout and the `--dataset` / `DATASET` resolution shared by the Python scripts and tests |
 | `config.R` | The one file a notebook sources: dataset paths (`use_dataset()`), writing-project paths, design constants, palettes, ggplot theme, and it sources every helper in `analysis/R/` |
-| `R/prepare.R` | `load_tables()` and the shared data preparation (`phase1_utterances()`, `listener_trials()`, `attach_speaker()`, `social_guess_trials()`, `final_phase1_properties()`, ...): the recodes every notebook used to repeat |
-| `R/group_specificity.R` | Per-game group-specificity fits (`game_specificity_table()`, `gs_wide()`, optional covariates) and the seeded permutation test with a hash-keyed RDS cache in `analysis/derived/<name>/` |
+| `R/prepare.R` | `load_tables()` and the shared data preparation (`phase1_utterances()`, `listener_trials()`, `attach_speaker()`, `social_guess_trials()`, `final_phase1_properties()`, ...): the recodes every notebook used to repeat. Also the response-opportunity denominator: `code_accuracy()`, `technical_exclusions()`, `response_opportunity_summary()`, `late_arrival_summary()`, and the `denominator` argument that pins the pilot SI to the earlier coding |
+| `R/group_specificity.R` | Per-game group-specificity fits (`game_specificity_table()`, `gs_wide()`, optional covariates) and the seeded permutation test with a hash-keyed RDS cache in `analysis/derived/<name>/`. `speaker_structure` picks the speaker random effect: `"multimembership"` (the preregistered default) or `"separate"` (the earlier per-pair-position structure, which only `SI_pilot.qmd` asks for). The structure is part of the cache key. |
+| `R/multimembership.R` | The shared multiple-membership speaker intercept: `speaker_pair_weights()` builds the 1/2-weighted membership matrix and `lmer_multimember()` fits it by REML through lme4's modular interface, replacing one block of `Zt`. `fit_group_specificity_mm()` is the per-game wrapper. |
 | `R/mixed_models.R` | `fit_progressively()`: the preregistered random-effects simplification (maximal model, then drop correlations, then slopes by smallest variance); `simplification_log()` and `random_effects_structure()` report what was fit |
 | `R/contrasts.R` | `fit_h12_wls()` (the H1/H2 weighted regression and planned contrasts), `pairwise_weights()`, `contrast_table()`, and `robustness_rerun()` for the subset-of-games checks |
 | `R/convergence.R` | `fit_h3b()` fits the categorical-block model to group--tangram--block means and tests social-first minus social-mixed at Phase 1 block 3; the linear slope contrast is secondary. Game and nested group random effects remain in the simplification procedure. |
@@ -84,7 +85,8 @@ Quarto notebooks and animations are run separately (see below).
 | `plot_style.py` | Shared Python plotting constants (imported, not run directly) |
 | `test_data_integrity.py` | Pytest validation of `data/<name>/` CSV structure for the active dataset |
 | `test_compute_derived.py` | Pytest unit tests for the derived-metric definitions (latest-utterance selection, trajectory start rule, lexical uniqueness) |
-| `test_preprocessing.py` | Pytest unit tests for `preprocessing.flag_length_increase` (the AI-use trigger in `players.csv`) and `filter_nonreferential.build_filtered_utterances` (rounds with no referential message are dropped, not emptied) |
+| `test_preprocessing.py` | Pytest unit tests for `preprocessing.flag_length_increase` (the AI-use trigger in `players.csv`), `filter_nonreferential.build_filtered_utterances` (rounds with no referential message are dropped, not emptied), and the response-opportunity columns (`add_response_opportunity`, the social-guess opportunity frame) |
+| `simulate_mm_speaker.R` | Design-matched simulations for the multiple-membership speaker intercept: convergence, pair-ordering invariance, interval calibration, and the inverse-variance weights in the game-level regression, under incomplete endpoint coverage and omitted pair-level dependence. Writes `analysis/derived/simulations/mm_speaker.rds` |
 
 ## Processing new data
 
@@ -146,6 +148,29 @@ All notebooks source `config.R`, which sets `data_dir`, `derived_dir`, and `figu
 | `03_secondary_analysis.qmd` | Secondary analyses |
 | `04_exploratory.qmd` | Exploratory analyses |
 | `05_exit_survey.qmd` | Exit survey responses |
+
+## Accuracy denominators
+
+Both accuracy outcomes are proportions of *eligible listener response
+opportunities*, not of submitted answers. `preprocessing.py` writes
+`hasSpeakerMessage` and `responseOpportunity` on `trials.csv`, and
+`social_guesses.csv` is an opportunity frame with one row per eligible
+Phase 2 listener rather than one row per submitted guess, so a nonresponse
+is visible instead of vanishing. `R/prepare.R` codes a correct on-time
+answer as 1 and an incorrect answer, an ordinary timeout, and a late arrival
+all as 0.
+
+Lateness is established separately for each outcome: `lateClick` for a
+tangram selection and `lateSocialGuess` for a social guess, both set by the
+server at the end of the Feedback stage from a snapshot taken at the
+Selection deadline. Documented technical failures go in
+`data/<dataset>/technical_exclusions.csv` (gameId, playerId, roundId,
+outcome, reason) and become missing rather than unsuccessful; the file is
+optional and every row needs a reason.
+
+`SI_pilot.qmd` passes `denominator = "submitted"` so the pilot keeps the
+coding its published numbers were computed with, as the manuscript states.
+Do not switch it to the default.
 
 ## Stats → LaTeX pipeline
 

@@ -227,6 +227,32 @@ H3/H4. There is no study-level pass/fail threshold. The historical pilot
 notebook retains its original four-condition analyses and does not define
 the full-sample policy.
 
+Both accuracy outcomes are proportions of eligible listener response
+opportunities rather than of submitted answers. An opportunity is an active
+listener assigned to the task on a played trial whose group's speaker sent a
+message; a correct answer received by the server's scoring cutoff counts as a
+success, and an incorrect answer, an ordinary timeout, and a late arrival all
+count as failures. Trials the listener could not have answered leave the
+denominator instead of counting against them, so `social_guesses.csv` holds
+one row per opportunity, with an empty guess where nobody answered. Lateness
+is recorded separately for each outcome, because a tangram selection and a
+social guess can arrive at different times. Failures that were documented as
+technical are listed in `data/<dataset>/technical_exclusions.csv` with a
+reason and treated as missing. The pilot supplement keeps the earlier coding,
+which is why its numbers differ from what the same data would give under this
+rule.
+
+The per-game group-specificity model gives each speaker one random intercept
+shared across both positions of a similarity pair, weighted 1/2 each, instead
+of separate intercepts for `speaker1` and `speaker2`. lme4 has no formula
+syntax for a multiple-membership term, so `analysis/R/multimembership.R`
+builds it through lme4's modular interface and fits it by REML. The
+simulations that justify it are in `analysis/simulate_mm_speaker.R`, which
+checks convergence, invariance to which speaker is listed first, and whether
+the standard errors are the right size, both per game and after they become
+inverse-variance weights in the game-level regression. They cover incomplete
+endpoint coverage and pair-level dependence the model omits.
+
 H3b uses a planned comparison of within-group similarity at Phase 1 block 3,
 the end of the first scheduled speaker cycle. The analysis averages overlapping
 description pairs within each group, tangram, and block, models block
