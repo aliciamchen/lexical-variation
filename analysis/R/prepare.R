@@ -79,6 +79,121 @@ add_global_block <- function(df, games) {
     )
 }
 
+# ── Accuracy outcomes: the response-opportunity denominator ──────────────────
+#
+# Both accuracy outcomes are proportions of *eligible listener response
+# opportunities*, not of submitted answers. An opportunity is an active
+# listener assigned to the task on a played trial with a speaker message
+# available during the response period; `responseOpportunity` is computed once
+# in the pipeline (analysis/preprocessing.py). A correct answer received by
+# the server's scoring cutoff is 1; an incorrect answer, an ordinary timeout,
+# and a late arrival are all 0. Trials with no response opportunity leave the
+# denominator rather than counting as failures, and observations made
+# unanswerable by a documented technical failure become NA.
+#
+# `denominator = "submitted"` reproduces the earlier coding, in which only
+# scored answers counted, and exists so the pilot SI can keep reporting the
+# numbers it was written with (see main.tex on the pilot retaining its earlier
+# processing). It is not the preregistered rule and must not be used for the
+# full sample. None of this touches the live Phase 1 accuracy screening in
+# experiment/server/src/accuracy.js, which is unchanged.
+
+DENOMINATOR_RULES <- c("opportunity", "submitted")
+
+# A dataset processed before the rule landed has no responseOpportunity
+# column; say so rather than silently reporting the old denominator.
+require_opportunity_columns <- function(df, needed, table_name) {
+  missing <- setdiff(needed, names(df))
+  if (length(missing)) {
+    stop(
+      table_name, " is missing ", paste(missing, collapse = ", "),
+      ". Re-run the pipeline (make process) so the response-opportunity ",
+      "columns are written.",
+      call. = FALSE
+    )
+  }
+  df
+}
+
+# Documented technical failures, one row per affected observation, recorded in
+# data/<dataset>/technical_exclusions.csv before the primary contrasts are
+# examined. Columns: gameId, playerId, roundId, outcome
+# ("referential", "social", or "both"), reason. Missing file means none.
+technical_exclusions <- function(dir = data_dir) {
+  ex <- read_table("technical_exclusions.csv", dir)
+  if (!has_rows(ex)) {
+    return(tibble(
+      gameId = character(), playerId = character(), roundId = character(),
+      outcome = character(), reason = character()
+    ))
+  }
+  require_opportunity_columns(
+    ex, c("gameId", "playerId", "roundId", "outcome", "reason"),
+    "technical_exclusions.csv"
+  )
+  bad <- setdiff(unique(ex$outcome), c("referential", "social", "both"))
+  if (length(bad)) {
+    stop("technical_exclusions.csv has unknown outcome(s): ",
+         paste(bad, collapse = ", "), call. = FALSE)
+  }
+  # A blank cell is read as NA, and nzchar(NA) is TRUE, so test for both.
+  if (any(is.na(ex$reason) | !nzchar(trimws(ex$reason)))) {
+    stop("Every technical exclusion needs a recorded reason.", call. = FALSE)
+  }
+  ex
+}
+
+# Set `correct` to NA for the observations a documented technical failure made
+# unanswerable or unrecoverable. Missing or late responses alone never qualify.
+apply_technical_exclusions <- function(df, exclusions, outcome) {
+  if (!has_rows(df) || !has_rows(exclusions)) return(df)
+  affected <- exclusions |>
+    filter(outcome %in% c(.env$outcome, "both")) |>
+    select(gameId, playerId, roundId) |>
+    distinct() |>
+    mutate(technicalFailure = TRUE)
+  df |>
+    left_join(affected, by = c("gameId", "playerId", "roundId")) |>
+    mutate(
+      technicalFailure = !is.na(technicalFailure),
+      correct = ifelse(technicalFailure, NA_real_, correct)
+    )
+}
+
+# Code one accuracy outcome from its three facts: whether an answer was
+# submitted at all, whether it was flagged as arriving after the deadline, and
+# how the server scored it.
+#
+# "On time" means received by the server's scoring cutoff, and the decisive
+# evidence for that is a score: the server scores at the deadline, so a
+# submitted answer with no score did not arrive in time. The explicit late
+# flag says the same thing, and is what identifies these rows as late
+# arrivals rather than anomalies; it is checked as well because it is the
+# recorded reason, and because pilot exports predate it.
+code_accuracy <- function(df, submitted, late, scored_correct) {
+  df |>
+    mutate(
+      submitted = {{ submitted }},
+      lateArrival = {{ late }} %in% TRUE,
+      scoredCorrect = as_correct({{ scored_correct }}),
+      onTime = submitted & !lateArrival & !is.na(scoredCorrect),
+      correct = as.numeric(onTime & scoredCorrect == 1)
+    )
+}
+
+# The pre-2026-09-16 coding, kept only so the pilot SI reports the numbers it
+# was written with: whatever the server scored, with unscored answers dropped
+# by the na.rm in each summary. Never use it for the full sample.
+code_accuracy_historical <- function(df, scored_correct) {
+  df |>
+    mutate(
+      scoredCorrect = as_correct({{ scored_correct }}),
+      onTime = !is.na(scoredCorrect),
+      lateArrival = FALSE,
+      correct = scoredCorrect
+    )
+}
+
 # ── Phase 1 tables for convention-formation checks ───────────────────────────
 
 phase1_utterances <- function(speaker_utts) {
@@ -89,18 +204,36 @@ phase1_utterances <- function(speaker_utts) {
     mutate(participant = playerId, tangram = target)
 }
 
-phase1_listener_trials <- function(trials) {
-  trials |>
+phase1_listener_trials <- function(trials, denominator = "opportunity",
+                                   exclusions = technical_exclusions()) {
+  denominator <- match.arg(denominator, DENOMINATOR_RULES)
+  out <- trials |>
     filter(phaseNum == 1, role == "listener") |>
-    mutate(correct = as_correct(clickedCorrect), tangram = target) |>
+    mutate(tangram = target) |>
     add_group_id()
+  if (denominator == "submitted") {
+    return(code_accuracy_historical(out, clickedCorrect))
+  }
+  out |>
+    require_opportunity_columns(
+      c("responseOpportunity", "lateClick", "clicked"), "trials"
+    ) |>
+    filter(responseOpportunity) |>
+    code_accuracy(!is.na(clicked), lateClick, clickedCorrect) |>
+    apply_technical_exclusions(exclusions, "referential")
 }
 
 # Proportion of listeners correct per round (the unit of the accuracy model)
-phase1_round_accuracy <- function(trials) {
-  phase1_listener_trials(trials) |>
+phase1_round_accuracy <- function(trials, denominator = "opportunity",
+                                  exclusions = technical_exclusions()) {
+  phase1_listener_trials(trials, denominator, exclusions) |>
     group_by(gameId, roundId, blockNum, tangram, group) |>
-    summarise(ref_accuracy = mean(correct, na.rm = TRUE), .groups = "drop") |>
+    summarise(
+      ref_accuracy = mean(correct, na.rm = TRUE),
+      opportunities = sum(!is.na(correct)),
+      .groups = "drop"
+    ) |>
+    filter(opportunities > 0) |>
     center_block()
 }
 
@@ -161,15 +294,77 @@ label_window <- function(df, windows = names(WINDOW_LABELS)) {
 # Listener trials of one phase with correct, condition, and centered block.
 # `conditions` restricts to a subset (e.g. SOCIAL_CONDITIONS) and sets the
 # factor levels; block is centered after that restriction.
-listener_trials <- function(trials, games, phase = 2, conditions = NULL) {
+listener_trials <- function(trials, games, phase = 2, conditions = NULL,
+                            denominator = "opportunity",
+                            exclusions = technical_exclusions()) {
+  denominator <- match.arg(denominator, DENOMINATOR_RULES)
   levels <- if (is.null(conditions)) CONDITION_ORDER else conditions
   # `.env$phase`: the trials table has its own `phase` column ("refgame"), which
   # the data mask would otherwise pick over this argument
-  trials |>
-    filter(phaseNum == .env$phase, role == "listener") |>
-    mutate(correct = as_correct(clickedCorrect)) |>
+  out <- trials |> filter(phaseNum == .env$phase, role == "listener")
+  out <- if (denominator == "submitted") {
+    code_accuracy_historical(out, clickedCorrect)
+  } else {
+    out |>
+      require_opportunity_columns(
+        c("responseOpportunity", "lateClick", "clicked"), "trials"
+      ) |>
+      filter(responseOpportunity) |>
+      code_accuracy(!is.na(clicked), lateClick, clickedCorrect) |>
+      apply_technical_exclusions(exclusions, "referential")
+  }
+  out |>
     add_condition(games, levels) |>
     center_block()
+}
+
+# ── Response-opportunity reporting ──────────────────────────────────────────
+#
+# The descriptive summaries the preregistration promises alongside each
+# accuracy outcome: opportunity counts, on-time response rates, and accuracy
+# among on-time submitted answers, by condition and phase. They separate
+# nonresponse from incorrect answers and are not alternative support criteria
+# for any hypothesis.
+response_opportunity_summary <- function(df, by = c("condition", "phaseNum")) {
+  if (!has_rows(df)) return(tibble())
+  by <- intersect(by, names(df))
+  df |>
+    group_by(across(all_of(by))) |>
+    summarise(
+      opportunities = n(),
+      excluded_technical = sum(is.na(correct)),
+      scored = sum(!is.na(correct)),
+      on_time = sum(onTime & !is.na(correct)),
+      on_time_rate = on_time / scored,
+      accuracy = mean(correct, na.rm = TRUE),
+      accuracy_on_time = mean(correct[onTime], na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+# Late arrivals, reported by condition when any are found. A late answer
+# counts as unsuccessful in the primary coding; this is what the sensitivity
+# analysis below removes. Lateness is outcome-specific, so `late` names the
+# flag for the outcome in hand (lateClick or lateSocialGuess).
+late_arrival_summary <- function(df, late = lateClick, by = "condition") {
+  if (!has_rows(df)) return(tibble())
+  by <- intersect(by, names(df))
+  df |>
+    mutate(.late = {{ late }}) |>
+    group_by(across(all_of(by))) |>
+    summarise(
+      opportunities = n(),
+      late_arrivals = sum(.late, na.rm = TRUE),
+      late_rate = late_arrivals / opportunities,
+      .groups = "drop"
+    )
+}
+
+# The sensitivity analysis: repeat a primary accuracy comparison with late
+# arrivals dropped rather than counted as unsuccessful.
+drop_late_arrivals <- function(df, late = lateClick) {
+  if (!has_rows(df)) return(df)
+  df |> mutate(.late = {{ late }}) |> filter(!.late %in% TRUE) |> select(-.late)
 }
 
 # Attach the speaker of each listener trial. A roundId is shared by all groups
@@ -202,14 +397,30 @@ attach_speaker <- function(listener_df, trials) {
 social_guess_trials <- function(
   social_guesses,
   games,
-  conditions = SOCIAL_CONDITIONS
+  conditions = SOCIAL_CONDITIONS,
+  denominator = "opportunity",
+  exclusions = technical_exclusions()
 ) {
   if (!has_rows(social_guesses)) {
     return(tibble())
   }
+  denominator <- match.arg(denominator, DENOMINATOR_RULES)
   levels <- if (is.null(conditions)) CONDITION_ORDER else conditions
-  social_guesses |>
-    mutate(correct = as_correct(socialGuessCorrect)) |>
+  out <- if (denominator == "submitted") {
+    social_guesses |>
+      filter(!is.na(socialGuess)) |>
+      code_accuracy_historical(socialGuessCorrect)
+  } else {
+    social_guesses |>
+      require_opportunity_columns(
+        c("responseOpportunity", "socialTimeout", "lateSocialGuess"),
+        "social_guesses"
+      ) |>
+      filter(responseOpportunity) |>
+      code_accuracy(!socialTimeout, lateSocialGuess, socialGuessCorrect) |>
+      apply_technical_exclusions(exclusions, "social")
+  }
+  out |>
     add_condition(games, levels) |>
     center_block()
 }

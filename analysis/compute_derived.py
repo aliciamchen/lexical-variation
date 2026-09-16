@@ -667,11 +667,21 @@ def compute_social_guess_retention(
         merged["originalGroup"] == merged["speakerOriginalGroup"]
     ).astype(int)
 
+    # social_guesses.csv is an opportunity frame, so rows where the listener
+    # never answered come through with an empty socialGuess. The eligibility
+    # and lateness columns travel with them so this table can be summarised
+    # under the same response-opportunity denominator as the primary outcome
+    # rather than silently reverting to submitted answers only.
+    carried = [
+        c
+        for c in ("socialTimeout", "lateSocialGuess", "responseOpportunity")
+        if c in merged.columns
+    ]
     result = merged[[
         "gameId", "playerId", "originalGroup", "blockNum", "target",
         "socialGuess", "socialGuessCorrect", "speakerId",
         "speakerOriginalGroup", "speakerRetention", "speakerWasSameGroup",
-    ]].copy()
+    ] + carried].copy()
     result["condition"] = result["gameId"].map(game_conditions)
     return result
 

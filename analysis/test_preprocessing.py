@@ -1,7 +1,8 @@
 """
 Unit tests for the preprocessing rules the preregistration states precisely:
-the Phase 1 description-length flag used to trigger AI-use inspection, and the
-treatment of speaker rounds whose messages were all classified non-referential.
+the Phase 1 description-length flag used to trigger AI-use inspection, the
+treatment of speaker rounds whose messages were all classified non-referential,
+and the response-opportunity denominator shared by both accuracy outcomes.
 
 Run with:
     uv run pytest analysis/test_preprocessing.py -v
@@ -12,7 +13,11 @@ import pandas as pd
 import pytest
 
 from filter_nonreferential import BatchParseError, build_filtered_utterances, parse_batch_labels
-from preprocessing import flag_length_increase
+from preprocessing import (
+    add_response_opportunity,
+    build_social_guesses,
+    flag_length_increase,
+)
 
 
 def _utt(player, phase, block, n_words, game="g1"):
@@ -153,3 +158,162 @@ def test_batch_labels_fail_loudly_on_extra_or_conflicting_numbers():
 def test_batch_labels_ignore_prose_lines_without_a_number():
     text = "Here are the labels:\n1: R\n2: NR\nDone."
     assert parse_batch_labels(text, 2) == ["R", "NR"]
+
+
+# ── Response opportunities ──────────────────────────────────────────────────
+
+
+def _trial(player, role, round_id="r1", group="A", phase=2, game="g1"):
+    return {
+        "gameId": game,
+        "playerId": player,
+        "roundId": round_id,
+        "role": role,
+        "currentGroup": group,
+        "originalGroup": group,
+        "phaseNum": phase,
+        "blockNum": 0,
+        "target": "t1",
+        # As build_trials() writes them, so the fixture matches trials.csv
+        "phase": "refgame",
+        "tangramSet": 0,
+        "lateSocialGuess": False,
+    }
+
+
+def _message(sender, role, round_id="r1", group="A", game="g1"):
+    return {
+        "gameId": game,
+        "roundId": round_id,
+        "group": group,
+        "senderId": sender,
+        "senderRole": role,
+        "text": "a description",
+    }
+
+
+class TestResponseOpportunity:
+    def test_listener_with_a_speaking_speaker_has_an_opportunity(self):
+        trials = pd.DataFrame([_trial("s1", "speaker"), _trial("l1", "listener")])
+        messages = pd.DataFrame([_message("s1", "speaker")])
+        out = add_response_opportunity(trials, messages)
+        assert out.loc[out.playerId == "l1", "responseOpportunity"].item()
+
+    def test_a_silent_speaker_leaves_the_listener_no_opportunity(self):
+        trials = pd.DataFrame([_trial("s1", "speaker"), _trial("l1", "listener")])
+        # Only a listener spoke, so the speaker never described the target.
+        messages = pd.DataFrame([_message("l1", "listener")])
+        out = add_response_opportunity(trials, messages)
+        assert not out["hasSpeakerMessage"].any()
+        assert not out["responseOpportunity"].any()
+
+    def test_opportunity_is_per_group_not_per_round(self):
+        """A roundId is shared across groups, so one group's speaker
+        speaking must not create an opportunity in another group."""
+        trials = pd.DataFrame([
+            _trial("s1", "speaker", group="A"),
+            _trial("l1", "listener", group="A"),
+            _trial("s2", "speaker", group="B"),
+            _trial("l2", "listener", group="B"),
+        ])
+        messages = pd.DataFrame([_message("s1", "speaker", group="A")])
+        out = add_response_opportunity(trials, messages).set_index("playerId")
+        assert out.loc["l1", "responseOpportunity"]
+        assert not out.loc["l2", "responseOpportunity"]
+
+    def test_speakers_are_never_opportunities(self):
+        trials = pd.DataFrame([_trial("s1", "speaker"), _trial("l1", "listener")])
+        messages = pd.DataFrame([_message("s1", "speaker")])
+        out = add_response_opportunity(trials, messages).set_index("playerId")
+        assert not out.loc["s1", "responseOpportunity"]
+
+    def test_no_messages_at_all_means_no_opportunities(self):
+        trials = pd.DataFrame([_trial("l1", "listener")])
+        out = add_response_opportunity(trials, pd.DataFrame())
+        assert not out["responseOpportunity"].any()
+
+    def test_row_count_is_unchanged(self):
+        """The merge must not duplicate trials when a speaker sent several
+        messages in the same round."""
+        trials = pd.DataFrame([_trial("s1", "speaker"), _trial("l1", "listener")])
+        messages = pd.DataFrame([
+            _message("s1", "speaker"),
+            dict(_message("s1", "speaker"), text="and another"),
+        ])
+        assert len(add_response_opportunity(trials, messages)) == len(trials)
+
+
+class TestSocialGuessOpportunityFrame:
+    @staticmethod
+    def _games():
+        return pd.DataFrame([
+            {"id": "g1", "condition": "social_mixed"},
+            {"id": "g2", "condition": "refer_mixed"},
+        ])
+
+    @staticmethod
+    def _player_rounds(guesses):
+        rows = [{
+            "gameID": "g1", "playerID": "s1", "roundID": "r1", "phase": "refgame",
+            "role": "speaker", "current_group": "A",
+            "social_guess": None, "social_guess_correct": None,
+            "social_round_score": None,
+        }]
+        for player, guess, correct in guesses:
+            rows.append({
+                "gameID": "g1", "playerID": player, "roundID": "r1",
+                "phase": "refgame", "role": "listener", "current_group": "A",
+                "social_guess": guess, "social_guess_correct": correct,
+                "social_round_score": 1 if correct else 0,
+            })
+        return pd.DataFrame(rows)
+
+    def _trials(self):
+        return add_response_opportunity(
+            pd.DataFrame([
+                _trial("s1", "speaker"),
+                _trial("l1", "listener"),
+                _trial("l2", "listener"),
+                _trial("l3", "listener", game="g2"),
+            ]),
+            pd.DataFrame([
+                _message("s1", "speaker"),
+                _message("s2", "speaker", game="g2"),
+            ]),
+        )
+
+    def test_a_listener_who_never_answered_still_gets_a_row(self):
+        out = build_social_guesses(
+            self._player_rounds([("l1", "same_group", True)]),
+            self._games(),
+            self._trials(),
+        )
+        assert set(out["playerId"]) == {"l1", "l2"}
+        l2 = out[out.playerId == "l2"].iloc[0]
+        assert pd.isna(l2["socialGuess"]) and l2["socialTimeout"]
+        l1 = out[out.playerId == "l1"].iloc[0]
+        assert l1["socialGuess"] == "same_group" and not l1["socialTimeout"]
+
+    def test_only_social_guessing_games_contribute_opportunities(self):
+        out = build_social_guesses(
+            self._player_rounds([("l1", "same_group", True)]),
+            self._games(),
+            self._trials(),
+        )
+        assert set(out["gameId"]) == {"g1"}
+
+    def test_the_speaker_is_attributed_to_every_opportunity(self):
+        out = build_social_guesses(
+            self._player_rounds([("l1", "different_group", False)]),
+            self._games(),
+            self._trials(),
+        )
+        assert (out["speakerId"] == "s1").all()
+
+    def test_eligibility_travels_with_the_opportunity(self):
+        out = build_social_guesses(
+            self._player_rounds([("l1", "same_group", True)]),
+            self._games(),
+            self._trials(),
+        )
+        assert out["responseOpportunity"].all()

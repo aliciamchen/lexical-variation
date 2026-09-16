@@ -35,7 +35,7 @@ import { reshuffleGroups } from "./reshuffling";
 import { scoreSelectionStage } from "./scoring";
 import { applyPartialPay } from "./compensation";
 import { resolveTangramSet } from "./tangrams";
-import { classifyIdle, isLateClick, updateIdleRounds } from "./idle";
+import { classifyIdle, isLateClick, isLateSocialGuess, updateIdleRounds } from "./idle";
 import { accuracyCheckBlocks, evaluateGroupAccuracy, playerAccuracyOverBlocks } from "./accuracy";
 import { selectSpeaker } from "./roles";
 import { gameCanContinue, hasUndersizedCurrentGroup, strandedPlayers, viableOriginalGroups } from "./viability";
@@ -409,6 +409,19 @@ Empirica.onStageEnded(({ stage }) => {
         console.log(`Player ${player.id} late click (after deadline) in round ${player.round.get("target_num")}`);
       }
 
+      if (
+        isLateSocialGuess({
+          role,
+          socialGuess: player.round.get("social_guess"),
+          guessedAtDeadline: player.round.get("social_guess_at_deadline"),
+        })
+      ) {
+        // Unscored like a late click. Flagged only; it does not affect
+        // idleness, which is decided by the tangram selection.
+        player.round.set("late_social_guess", true);
+        console.log(`Player ${player.id} late social guess (after deadline) in round ${player.round.get("target_num")}`);
+      }
+
       // Check if the speaker in this group sent any message
       // (listeners shouldn't be marked idle if speaker didn't send anything - they couldn't act)
       const groupPlayers = game.players.filter(
@@ -488,6 +501,13 @@ Empirica.onStageEnded(({ stage }) => {
     players.forEach((player) => {
       if (!player.get("is_active") || player.round.get("role") !== "listener") return;
       player.round.set("clicked_at_deadline", Boolean(player.round.get("clicked")));
+      // Same snapshot for the social guess, so a guess that arrives after the
+      // deadline can be told apart from one that was never submitted and from
+      // one left unscored because the round had no speaker.
+      player.round.set(
+        "social_guess_at_deadline",
+        Boolean(player.round.get("social_guess")),
+      );
     });
   }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyIdle, isLateClick, updateIdleRounds } from "./idle.js";
+import { classifyIdle, isLateClick, isLateSocialGuess, updateIdleRounds } from "./idle.js";
 import { MAX_IDLE_ROUNDS } from "./constants.js";
 
 describe("classifyIdle", () => {
@@ -29,6 +29,30 @@ describe("isLateClick", () => {
     expect(isLateClick({ role: "speaker", clicked: "page1-1", clickedAtDeadline: false })).toBe(false);
     // No snapshot recorded (e.g. player joined mid-round): not a late click
     expect(isLateClick({ role: "listener", clicked: "page1-1", clickedAtDeadline: undefined })).toBe(false);
+  });
+});
+
+describe("isLateSocialGuess", () => {
+  it("flags a listener social guess that arrived after the deadline", () => {
+    expect(isLateSocialGuess({ role: "listener", socialGuess: "same_group", guessedAtDeadline: false })).toBe(true);
+  });
+
+  it("does not flag guesses present at the deadline, missing guesses, or speakers", () => {
+    expect(isLateSocialGuess({ role: "listener", socialGuess: "same_group", guessedAtDeadline: true })).toBe(false);
+    expect(isLateSocialGuess({ role: "listener", socialGuess: null, guessedAtDeadline: false })).toBe(false);
+    expect(isLateSocialGuess({ role: "speaker", socialGuess: "same_group", guessedAtDeadline: false })).toBe(false);
+    // No snapshot recorded (e.g. a referential condition, which never snapshots)
+    expect(isLateSocialGuess({ role: "listener", socialGuess: "same_group", guessedAtDeadline: undefined })).toBe(false);
+  });
+
+  it("is independent of the tangram selection: either outcome can be late alone", () => {
+    const onTimeClickLateGuess = { role: "listener", clicked: "page1-1", clickedAtDeadline: true, socialGuess: "different_group", guessedAtDeadline: false };
+    expect(isLateClick(onTimeClickLateGuess)).toBe(false);
+    expect(isLateSocialGuess(onTimeClickLateGuess)).toBe(true);
+
+    const lateClickOnTimeGuess = { role: "listener", clicked: "page1-1", clickedAtDeadline: false, socialGuess: "different_group", guessedAtDeadline: true };
+    expect(isLateClick(lateClickOnTimeGuess)).toBe(true);
+    expect(isLateSocialGuess(lateClickOnTimeGuess)).toBe(false);
   });
 });
 

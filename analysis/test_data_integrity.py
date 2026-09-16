@@ -1094,11 +1094,68 @@ class TestSocialGuessing:
                     )
 
     def test_social_guess_values(self, social_guesses):
-        """Social guess should be 'same_group' or 'different_group'."""
-        invalid = (
-            set(social_guesses["socialGuess"].unique()) - VALID_SOCIAL_GUESSES
-        )
+        """A submitted guess is 'same_group' or 'different_group'.
+
+        social_guesses.csv is an opportunity frame, so a listener who never
+        answered is a row with an empty guess; those are the denominator's
+        unsuccessful responses, not invalid values.
+        """
+        submitted = social_guesses["socialGuess"].dropna()
+        invalid = set(submitted.unique()) - VALID_SOCIAL_GUESSES
         assert not invalid, f"Invalid social guess values: {invalid}"
+
+    def test_social_timeout_matches_missing_guess(self, social_guesses):
+        """socialTimeout is exactly the rows with no submitted guess."""
+        expected = social_guesses["socialGuess"].isna()
+        assert (social_guesses["socialTimeout"] == expected).all(), (
+            "socialTimeout disagrees with whether a guess was submitted"
+        )
+
+    def test_social_opportunities_cover_eligible_listener_trials(
+        self, social_guesses, trials, games
+    ):
+        """One row per Phase 2 listener trial of every social-guessing game.
+
+        The accuracy denominator is response opportunities, so the frame has
+        to hold every eligible listener, answered or not. A missing row would
+        silently shrink the denominator.
+        """
+        social_games = set(
+            games.loc[
+                games["condition"].isin(["social_mixed", "social_first"]), "gameId"
+            ]
+        )
+        if not social_games:
+            pytest.skip("no social-guessing games in this dataset")
+        expected = trials[
+            (trials["role"] == "listener")
+            & (trials["phaseNum"] == 2)
+            & (trials["gameId"].isin(social_games))
+        ]
+        expected_keys = set(
+            zip(expected["gameId"], expected["playerId"], expected["roundId"])
+        )
+        actual_keys = set(
+            zip(
+                social_guesses["gameId"],
+                social_guesses["playerId"],
+                social_guesses["roundId"],
+            )
+        )
+        assert actual_keys == expected_keys, (
+            f"{len(expected_keys - actual_keys)} eligible listener trials are "
+            f"missing from social_guesses.csv and "
+            f"{len(actual_keys - expected_keys)} extra rows are present"
+        )
+
+    def test_social_response_opportunity_requires_a_speaker_message(
+        self, social_guesses
+    ):
+        """responseOpportunity holds exactly where the speaker spoke."""
+        assert (
+            social_guesses["responseOpportunity"]
+            == social_guesses["hasSpeakerMessage"]
+        ).all(), "social responseOpportunity disagrees with hasSpeakerMessage"
 
     def test_social_guess_correct_is_boolean(self, social_guesses):
         """socialGuessCorrect should be boolean (NaN allowed for idle rounds where speaker didn't send a message)."""
@@ -1443,6 +1500,97 @@ class TestMessages:
 
 
 # ============ 15. IDLE PLAYER HANDLING ============
+
+
+class TestResponseOpportunities:
+    """The denominator both accuracy outcomes are computed over.
+
+    An eligible response opportunity is an active listener assigned to the
+    task on a played trial with a speaker message available during the
+    response period. These tests pin the two structural claims the rule
+    depends on: that responseOpportunity means what it says, and that a
+    removed player stops producing trial rows (which is why "after
+    participant removal" needs no separate exclusion).
+    """
+
+    def test_response_opportunity_is_listener_with_a_speaker_message(self, trials):
+        expected = (trials["role"] == "listener") & trials["hasSpeakerMessage"]
+        assert (trials["responseOpportunity"] == expected).all(), (
+            "responseOpportunity is not exactly listener & hasSpeakerMessage"
+        )
+
+    def test_speakers_are_never_response_opportunities(self, trials):
+        speakers = trials[trials["role"] == "speaker"]
+        assert not speakers["responseOpportunity"].any(), (
+            "a speaker row was marked as a listener response opportunity"
+        )
+
+    def test_has_speaker_message_matches_the_messages_table(self, trials, messages):
+        spoke = set(
+            zip(
+                messages.loc[messages["senderRole"] == "speaker", "roundId"],
+                messages.loc[messages["senderRole"] == "speaker", "group"],
+            )
+        )
+        expected = [
+            (row["roundId"], row["currentGroup"]) in spoke
+            for _, row in trials.iterrows()
+        ]
+        mismatched = (trials["hasSpeakerMessage"] != expected).sum()
+        assert mismatched == 0, (
+            f"{mismatched} trials disagree with the messages table about "
+            f"whether their group's speaker spoke"
+        )
+
+    def test_removed_players_produce_no_later_trials(self, trials, players):
+        """A removed player contributes no trial rows after their removal.
+
+        The response-opportunity rule excludes trials "after participant
+        removal or game termination" structurally rather than by a filter,
+        because Empirica only writes a playerRound record for a player who is
+        still in the game and was assigned a role. If that ever stopped being
+        true, those rows would be counted as failures instead of excluded.
+        """
+        removed = players[players["exitReason"].notna()]
+        if removed.empty:
+            pytest.skip("no removed players in this dataset")
+        for _, player in removed.iterrows():
+            own = trials[trials["playerId"] == player["playerId"]]
+            if own.empty:
+                continue
+            game_trials = trials[trials["gameId"] == player["gameId"]]
+            last_round = own["trialNum"].max()
+            # Somebody in the game played on after this player stopped, or the
+            # player simply lasted to the end; either way they must not have
+            # rows interleaved with a gap.
+            played = sorted(own["trialNum"].dropna().unique())
+            expected_run = sorted(
+                game_trials.loc[
+                    game_trials["trialNum"] <= last_round, "trialNum"
+                ]
+                .dropna()
+                .unique()
+            )
+            assert played == expected_run, (
+                f"Player {player['playerId']} ({player['exitReason']}) has "
+                f"gaps in their trials: played {len(played)} of "
+                f"{len(expected_run)} rounds up to their last"
+            )
+
+    def test_late_clicks_are_unscored(self, trials):
+        """A selection that arrived after the deadline earns no score.
+
+        The rule counts a late arrival as unsuccessful, which is only right
+        if the server really did leave it unscored.
+        """
+        late = trials[trials["lateClick"] == True]  # noqa: E712
+        if late.empty:
+            pytest.skip("no late clicks in this dataset")
+        scored = late[late["clickedCorrect"].notna()]
+        assert scored.empty, (
+            f"{len(scored)} late clicks were scored by the server; the "
+            f"analysis assumes scoring is final at the deadline"
+        )
 
 
 class TestIdlePlayerHandling:

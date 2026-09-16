@@ -176,10 +176,17 @@ conditions and inform H1/H2 interpretation without blocking primary analyses.
 
 ```{r prep-data}
 # Shared preparation (analysis/R/prepare.R): Phase 1 only, game-qualified
-# group ids, block centered within each table
+# group ids, block centered within each table.
+#
+# denominator = "submitted" pins the accuracy tables to the coding these
+# pilot results were computed and written up with. The full sample uses the
+# preregistered response-opportunity denominator instead (the default), which
+# drops trials whose speaker said nothing and counts timeouts and late
+# arrivals as unsuccessful. The paper states that the pilot summaries retain
+# their earlier processing, so do not switch this to the default here.
 p1_utts <- phase1_utterances(speaker_utts)
-p1_listener <- phase1_listener_trials(trials)
-p1_ref_accuracy <- phase1_round_accuracy(trials)
+p1_listener <- phase1_listener_trials(trials, denominator = "submitted")
+p1_ref_accuracy <- phase1_round_accuracy(trials, denominator = "submitted")
 if (has_adjacent) p1_adjacent <- phase1_adjacent(adjacent_sim)
 ```
 
@@ -782,7 +789,11 @@ len_block_all <- all_utts |>
   tidyboot_mean(uttLength, nboot = 1000) |>
   ungroup()
 
-# (c) Social-signaling accuracy — use continuous block (Phase 2 only)
+# (c) Social-signaling accuracy — use continuous block (Phase 2 only).
+# social_guesses.csv is now an opportunity frame, so it also carries rows for
+# listeners who never answered. Keeping only scored guesses reproduces the
+# pilot's original denominator; the full sample counts nonresponses as
+# unsuccessful instead (see social_guess_trials() in analysis/R/prepare.R).
 social_guesses_cond <- social_guesses |>
   filter(!is.na(socialGuessCorrect)) |>
   left_join(games |> select(gameId, condition), by = "gameId") |>

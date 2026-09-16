@@ -575,6 +575,48 @@ lower referential accuracy. Both H4a and H4b are tested regardless of the H3
 results. These condition contrasts do not establish mediation through the
 Phase 1 convention measures.
 
+## Response opportunities and nonresponse
+
+Both accuracy outcomes are proportions of eligible listener response
+opportunities: an active listener assigned to the task on a played trial with
+a speaker message available during the response period. A correct answer
+received by the server's scoring cutoff counts as 1; an incorrect answer, an
+ordinary timeout, and a late arrival all count as 0. Trials with no response
+opportunity leave the denominator rather than counting as failures, so these
+outcomes measure successful listener performance when a speaker message was
+available, not accuracy conditional on submitting an answer.
+
+The summaries below separate nonresponse from incorrect answers. They are
+descriptive and are not alternative support criteria for H4a or H4b.
+
+```{r response-opportunities}
+ref_p2 <- listener_trials(trials, games, phase = 2, conditions = SOCIAL_CONDITIONS)
+social_p2 <- social_guess_trials(social_guesses, games, SOCIAL_CONDITIONS)
+
+response_opportunity_summary(ref_p2) |>
+  knitr::kable(digits = 3, caption = "Referential accuracy (H4b outcome)")
+
+if (has_rows(social_p2)) {
+  response_opportunity_summary(social_p2) |>
+    knitr::kable(digits = 3, caption = "Social-identification accuracy (H4a outcome)")
+}
+```
+
+```{r technical-exclusions}
+# Documented technical failures are recorded in
+# data/<dataset>/technical_exclusions.csv before the primary contrasts are
+# examined, and become missing rather than unsuccessful. Missing or late
+# responses alone do not qualify.
+excl <- technical_exclusions()
+if (nrow(excl) == 0) {
+  cat("No technical failures recorded.\n")
+} else {
+  excl |>
+    count(outcome, reason, name = "observations") |>
+    knitr::kable(caption = "Recorded technical failures")
+}
+```
+
 ## H4a: Social-identification accuracy
 
 `glmer(social_correct ~ condition + block_num + (block_num | game) + (block_num | listener) + (block_num | speaker) + (condition | tangram), family = binomial)`
@@ -723,11 +765,16 @@ refit.
 ```{r robustness-helper}
 # The H4 models to rerun, with their planned contrast weights
 h4_specs <- list(
+  # `late` names the lateness flag for each outcome. Lateness is established
+  # separately per outcome: lateClick is a tangram selection that arrived
+  # after the deadline, lateSocialGuess the social-guessing analogue.
   list(name = "H4a", data = if (exists("social_h4")) social_h4 else NULL,
        model = if (exists("m_h4a")) m_h4a else NULL,
+       late = "lateSocialGuess",
        weights = list(H4a_socialfirst_gt_socialmixed = c(-1, 1))),
   list(name = "H4b", data = if (exists("p2_listener_social")) p2_listener_social else NULL,
        model = if (exists("m_h4b")) m_h4b else NULL,
+       late = "lateClick",
        weights = list(H4b_socialmixed_gt_socialfirst = c(1, -1)))
 )
 ```
@@ -855,5 +902,55 @@ if (!exists("gs_combined")) {
       contrast_table(contrast(emmeans(m_ts, "condition", type = "response"), spec$weights), "with tangram set")
     ), digits = 3))
   }
+}
+```
+
+## Late arrivals
+
+A response that reached the server after its scoring cutoff earns no points
+and counts as unsuccessful in the primary coding. Lateness is established
+separately for each outcome: `lateClick` flags a tangram selection, and
+`lateSocialGuess` the social guess, so a trial can be late for one outcome
+and on time for the other. Missing or late responses alone are not treated
+as technical failures.
+
+If any late arrivals are present, their frequency is reported by condition
+and the primary accuracy comparisons are repeated with them excluded rather
+than counted as unsuccessful.
+
+```{r robustness-late-arrivals}
+for (spec in h4_specs) {
+  if (is.null(spec$data) || !spec$late %in% names(spec$data)) next
+  late_flag <- spec$data[[spec$late]] %in% TRUE
+
+  cat(sprintf("\n%s late arrivals (%s):\n", spec$name, spec$late))
+  print(knitr::kable(
+    late_arrival_summary(spec$data, late = .data[[spec$late]]), digits = 4
+  ))
+
+  if (!any(late_flag)) {
+    cat("No late arrivals; the sensitivity analysis is not needed.\n")
+    next
+  }
+  if (is.null(spec$model) || !inherits(spec$model, "glmerMod")) {
+    cat("Primary model unavailable; cannot repeat the comparison.\n")
+    next
+  }
+
+  d_on_time <- spec$data |> filter(!late_flag)
+  m_on_time <- fit_progressively(formula(spec$model), data = d_on_time,
+                                 family = binomial)
+  if (!inherits(m_on_time, "glmerMod")) {
+    cat("Model did not converge with late arrivals excluded.\n")
+    next
+  }
+  cat(sprintf("%s with late arrivals excluded (%s):\n",
+              spec$name, random_effects_structure(m_on_time)))
+  print(knitr::kable(bind_rows(
+    contrast_table(contrast(emmeans(spec$model, "condition", type = "response"),
+                            spec$weights), "primary"),
+    contrast_table(contrast(emmeans(m_on_time, "condition", type = "response"),
+                            spec$weights), "late arrivals excluded")
+  ), digits = 3))
 }
 ```

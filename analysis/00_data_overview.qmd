@@ -75,15 +75,39 @@ cat("Total trial rows:", nrow(trials), "\n")
 cat("Unique games:", n_distinct(trials$gameId), "\n")
 cat("Unique players:", n_distinct(trials$playerId), "\n")
 
-trials |>
-  filter(role == "listener") |>
-  group_by(phaseNum) |>
-  summarise(
-    n_trials = n(),
-    accuracy = mean(clickedCorrect == TRUE | clickedCorrect == "true", na.rm = TRUE),
-    .groups = "drop"
-  ) |>
-  knitr::kable(caption = "Listener accuracy by phase")
+# Referential accuracy over eligible listener response opportunities: an
+# active listener on a played trial whose speaker sent a message. Timeouts
+# and late arrivals count as unsuccessful; trials the listener could not have
+# answered leave the denominator instead of counting against them.
+ref_opportunities <- bind_rows(
+  listener_trials(trials, games, phase = 1),
+  listener_trials(trials, games, phase = 2)
+)
+
+response_opportunity_summary(ref_opportunities, by = "phaseNum") |>
+  knitr::kable(
+    digits = 3,
+    caption = "Referential accuracy by phase, over eligible response opportunities"
+  )
+```
+
+The table separates nonresponse from incorrect answers: `on_time_rate` is the
+proportion of opportunities answered by the server's scoring cutoff, and
+`accuracy_on_time` is accuracy among those answers. `accuracy` is the primary
+outcome and counts an unanswered opportunity as unsuccessful.
+
+```{r ref-accuracy-condition}
+response_opportunity_summary(ref_opportunities) |>
+  knitr::kable(
+    digits = 3,
+    caption = "Referential accuracy by condition and phase"
+  )
+
+no_opportunity <- trials |>
+  filter(role == "listener", !responseOpportunity) |>
+  nrow()
+cat(no_opportunity, "listener trials had no speaker message and are excluded",
+    "from the accuracy denominators.\n")
 ```
 
 # Message summary
@@ -125,10 +149,18 @@ speaker_utts |>
 
 ```{r social-guess-summary}
 if (nrow(social_guesses) > 0) {
-  cat("Total social guesses:", nrow(social_guesses), "\n")
-  cat("Overall accuracy:",
-      mean(social_guesses$socialGuessCorrect == TRUE |
-           social_guesses$socialGuessCorrect == "true", na.rm = TRUE), "\n")
+  # Same denominator as referential accuracy: social_guesses.csv is an
+  # opportunity frame, so a listener who never answered is a row with an
+  # empty guess and counts as unsuccessful rather than disappearing.
+  social_opportunities <- social_guess_trials(social_guesses, games)
+  cat("Social-identification opportunities:", nrow(social_opportunities), "\n")
+  cat("Never answered:", sum(social_opportunities$socialTimeout), "\n")
+
+  response_opportunity_summary(social_opportunities) |>
+    knitr::kable(
+      digits = 3,
+      caption = "Social-identification accuracy by condition, over eligible response opportunities"
+    )
 } else {
   cat("No social guess data (expected for refer_separated and refer_mixed conditions)\n")
 }
@@ -137,19 +169,23 @@ if (nrow(social_guesses) > 0) {
 # Exclusion criteria checks
 
 ```{r exclusion-checks}
-# Groups where <2/3 participants achieved <2/3 accuracy in last 3 blocks of Phase 1
-listener_trials <- trials |>
-  filter(role == "listener", phaseNum == 1)
+# Groups where <2/3 participants achieved <2/3 accuracy in last 3 blocks of
+# Phase 1. This mirrors the live screen in experiment/server/src/accuracy.js,
+# which is unchanged: it counts only trials where the speaker sent a message
+# and treats a missing selection as incorrect, which is what the response
+# opportunity rule below reproduces. (`p1_listener` rather than
+# `listener_trials`, which is the function that builds it.)
+p1_listener <- listener_trials(trials, games, phase = 1)
 
 # Get phase1Blocks per game
 game_p1 <- games |> select(gameId, phase1Blocks)
 
-listener_accuracy <- listener_trials |>
+listener_accuracy <- p1_listener |>
   left_join(game_p1, by = "gameId") |>
   filter(blockNum >= phase1Blocks - 3) |>
   group_by(gameId, playerId, originalGroup) |>
   summarise(
-    accuracy = mean(clickedCorrect == TRUE | clickedCorrect == "true", na.rm = TRUE),
+    accuracy = mean(correct, na.rm = TRUE),
     n_trials = n(),
     .groups = "drop"
   )

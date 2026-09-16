@@ -205,6 +205,17 @@ def build_trials(
         trials["clicked"].isna() | trials["lateClick"]
     )
 
+    # Late social guesses: the social-guessing analogue of late_click, set by
+    # the server at the end of the Feedback stage. Lateness has to be
+    # established separately for each outcome, so a late tangram selection
+    # says nothing about whether the social guess was on time.
+    if "late_social_guess" in pr.columns:
+        trials["lateSocialGuess"] = (
+            pr["late_social_guess"].fillna(False).astype(bool).values
+        )
+    else:
+        trials["lateSocialGuess"] = False
+
     # Merge trialNum from round and tangramSet from game
     round_info = rd[["id", "trial_num"]].rename(
         columns={"id": "roundId", "trial_num": "trialNum"}
@@ -234,6 +245,55 @@ def build_trials(
         how="left",
     )
 
+    return trials
+
+
+# The conditions whose Phase 2 includes the social-identification task. Mirrors
+# hasSocialGuessing() in experiment/shared/constants.js.
+SOCIAL_GUESSING_CONDITIONS = ("social_mixed", "social_first")
+
+
+def add_response_opportunity(
+    trials: pd.DataFrame, messages: pd.DataFrame
+) -> pd.DataFrame:
+    """Add hasSpeakerMessage and responseOpportunity to trials.
+
+    An eligible response opportunity is an active listener assigned to the
+    task on a played trial with a speaker message available during the
+    response period. The first two conditions need no test here: Empirica
+    writes a playerRound record only for a player who is still in the game
+    and was assigned a role, so a removed player or a terminated game simply
+    contributes no rows (asserted by the integrity suite). What is left is
+    whether the speaker of the listener's own group actually said something,
+    which is why the messages table is needed.
+
+    Trials that fail the test are excluded from the accuracy denominators
+    rather than counted as failures: the listener could not have answered.
+    """
+    trials = trials.copy()
+    if messages.empty:
+        trials["hasSpeakerMessage"] = False
+    else:
+        spoke = (
+            messages[messages["senderRole"] == "speaker"][
+                ["gameId", "roundId", "group"]
+            ]
+            .drop_duplicates()
+            .assign(hasSpeakerMessage=True)
+        )
+        trials = trials.merge(
+            spoke,
+            left_on=["gameId", "roundId", "currentGroup"],
+            right_on=["gameId", "roundId", "group"],
+            how="left",
+        ).drop(columns=["group"])
+        trials["hasSpeakerMessage"] = (
+            trials["hasSpeakerMessage"].fillna(False).astype(bool)
+        )
+
+    trials["responseOpportunity"] = (trials["role"] == "listener") & trials[
+        "hasSpeakerMessage"
+    ]
     return trials
 
 
@@ -420,35 +480,71 @@ def flag_length_increase(
 
 
 def build_social_guesses(
-    player_round_df: pd.DataFrame, game_df: pd.DataFrame
+    player_round_df: pd.DataFrame, game_df: pd.DataFrame, trials: pd.DataFrame
 ) -> pd.DataFrame:
-    """Build social_guesses.csv: 1 row per listener social guess (social conditions: social_mixed and social_first)."""
-    pr = drop_last_changed_cols(player_round_df)
+    """Build social_guesses.csv: 1 row per social-identification *opportunity*.
 
-    # Filter to refgame rounds with social guess data
+    One row per eligible Phase 2 listener in a social-guessing condition,
+    whether or not a guess was submitted, because the accuracy denominator is
+    response opportunities rather than submitted answers. A listener who
+    never answered appears with socialGuess and socialGuessCorrect empty and
+    socialTimeout true; the analysis codes those as unsuccessful. Rows where
+    the speaker said nothing carry responseOpportunity false and are excluded
+    from the denominator instead of counted as failures.
+
+    socialGuessCorrect is left exactly as the server scored it: it is set only
+    for guesses that arrived by the Selection deadline, so it is empty both
+    for a nonresponse and for a late guess. Which of those a row is comes from
+    socialTimeout and lateSocialGuess, and the 0/1 outcome is built from them
+    in the analysis (analysis/R/prepare.R) rather than here.
+    """
+    pr = drop_last_changed_cols(player_round_df)
     pr = pr[pr["phase"] == "refgame"].copy()
 
-    empty_columns = [
+    columns = [
         "gameId",
         "playerId",
         "originalGroup",
-        "tangramSet",
         "blockNum",
         "phase",
         "phaseNum",
         "roundId",
         "currentGroup",
-        "speakerId",
         "target",
         "socialGuess",
         "socialGuessCorrect",
         "socialRoundScore",
+        "socialTimeout",
+        "lateSocialGuess",
+        "hasSpeakerMessage",
+        "responseOpportunity",
+        "speakerId",
+        "tangramSet",
     ]
-    if "social_guess" not in pr.columns:
-        return pd.DataFrame(columns=empty_columns)
 
-    # Speaker of each (round, group): a roundId is shared across all groups in a
-    # game, so the group is required to attribute a guess to the speaker the
+    social_games = set(
+        game_df.loc[
+            game_df["condition"]
+            .replace({"exp2_social_goal": "social_first"})
+            .isin(SOCIAL_GUESSING_CONDITIONS),
+            "id",
+        ]
+    )
+
+    # The opportunity frame: every Phase 2 listener trial of a social-guessing
+    # game. Removed players and terminated games contribute no trial rows, so
+    # this is already restricted to listeners who were in the game.
+    opportunities = trials[
+        (trials["role"] == "listener")
+        & (trials["phaseNum"] == 2)
+        & (trials["gameId"].isin(social_games))
+    ].copy()
+
+    if opportunities.empty or "social_guess" not in pr.columns:
+        return pd.DataFrame(columns=columns)
+
+    # Speaker of each (round, group): a roundId is shared across all groups in
+    # a game, so the group is required to attribute a guess to the speaker the
     # listener actually heard
     speaker_lookup = (
         pr[pr["role"] == "speaker"][["roundID", "current_group", "playerID"]]
@@ -457,53 +553,29 @@ def build_social_guesses(
         .to_dict()
     )
 
-    pr = pr[pr["social_guess"].notna() & (pr["social_guess"] != "")].copy()
+    submitted = pr[pr["social_guess"].notna() & (pr["social_guess"] != "")][
+        ["gameID", "playerID", "roundID", "social_guess", "social_guess_correct", "social_round_score"]
+    ].rename(
+        columns={
+            "gameID": "gameId",
+            "playerID": "playerId",
+            "roundID": "roundId",
+            "social_guess": "socialGuess",
+            "social_guess_correct": "socialGuessCorrect",
+            "social_round_score": "socialRoundScore",
+        }
+    )
 
-    if pr.empty:
-        return pd.DataFrame(columns=empty_columns)
-
-    guesses = pr[
-        [
-            "gameID",
-            "playerID",
-            "original_group",
-            "block_num",
-            "phase",
-            "phase_num",
-            "roundID",
-            "current_group",
-            "target",
-            "social_guess",
-            "social_guess_correct",
-            "social_round_score",
-        ]
-    ].copy()
-    guesses.columns = [
-        "gameId",
-        "playerId",
-        "originalGroup",
-        "blockNum",
-        "phase",
-        "phaseNum",
-        "roundId",
-        "currentGroup",
-        "target",
-        "socialGuess",
-        "socialGuessCorrect",
-        "socialRoundScore",
-    ]
+    guesses = opportunities.merge(
+        submitted, on=["gameId", "playerId", "roundId"], how="left"
+    )
+    guesses["socialTimeout"] = guesses["socialGuess"].isna()
     guesses["speakerId"] = [
         speaker_lookup.get((round_id, group))
         for round_id, group in zip(guesses["roundId"], guesses["currentGroup"])
     ]
 
-    # Merge tangramSet from game
-    tangram_lookup = game_df[["id", "tangram_set"]].rename(
-        columns={"id": "gameId", "tangram_set": "tangramSet"}
-    )
-    guesses = guesses.merge(tangram_lookup, on="gameId", how="left")
-
-    return guesses
+    return guesses[columns]
 
 
 def main():
@@ -537,15 +609,25 @@ def main():
     games.to_csv(output_dir / "games.csv", index=False)
     print(f"  {len(games)} games")
 
-    print("Building trials.csv...")
-    trials = build_trials(player_round_df, round_df, game_df)
-    trials.to_csv(output_dir / "trials.csv", index=False)
-    print(f"  {len(trials)} trial rows")
-
+    # Messages are built before trials because a trial's response opportunity
+    # depends on whether that group's speaker said anything.
     print("Building messages.csv...")
     messages = build_messages(player_round_df, game_df, round_df)
     messages.to_csv(output_dir / "messages.csv", index=False)
     print(f"  {len(messages)} messages")
+
+    print("Building trials.csv...")
+    trials = add_response_opportunity(
+        build_trials(player_round_df, round_df, game_df), messages
+    )
+    trials.to_csv(output_dir / "trials.csv", index=False)
+    listener_rows = int((trials["role"] == "listener").sum())
+    opportunities = int(trials["responseOpportunity"].sum())
+    print(
+        f"  {len(trials)} trial rows; {opportunities} of {listener_rows} listener "
+        f"rows are response opportunities "
+        f"({listener_rows - opportunities} had no speaker message)"
+    )
 
     print("Building speaker_utterances.csv...")
     speaker_utterances = build_speaker_utterances(messages, trials)
@@ -563,9 +645,17 @@ def main():
     print(f"  {len(players)} players, {int(players['lengthIncreaseFlag'].sum())} flagged for a Phase 1 length increase")
 
     print("Building social_guesses.csv...")
-    social_guesses = build_social_guesses(player_round_df, game_df)
+    social_guesses = build_social_guesses(player_round_df, game_df, trials)
     social_guesses.to_csv(output_dir / "social_guesses.csv", index=False)
-    print(f"  {len(social_guesses)} social guesses")
+    if social_guesses.empty:
+        print("  no social-guessing games")
+    else:
+        eligible = int(social_guesses["responseOpportunity"].sum())
+        answered = int((~social_guesses["socialTimeout"]).sum())
+        print(
+            f"  {len(social_guesses)} social-guess opportunities; {eligible} eligible, "
+            f"{answered} answered"
+        )
 
     print(f"\nAll CSVs written to {output_dir}")
 

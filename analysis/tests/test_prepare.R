@@ -18,19 +18,28 @@ games <- tibble(
 # Round r1 in g1: current groups X and Y, each with one speaker and two listeners.
 # The `phase` column is the stage name, as in the real table; it must not be
 # confused with the `phase` argument of listener_trials().
+#
+# Every listener here had a response opportunity and clicked on time, so the
+# denominator rule does not remove or recode anything; the rule itself is
+# tested in test_accuracy_denominator.R.
 trials <- tribble(
-  ~gameId , ~roundId , ~playerId , ~originalGroup , ~currentGroup , ~role      , ~phaseNum , ~blockNum , ~target , ~clickedCorrect , ~phase    ,
-  "g1"    , "r1"     , "s1"      , "A"            , "X"           , "speaker"  ,         2 ,         0 , "t1"    , NA              , "refgame" ,
-  "g1"    , "r1"     , "l1"      , "A"            , "X"           , "listener" ,         2 ,         0 , "t1"    , "true"          , "refgame" ,
-  "g1"    , "r1"     , "l2"      , "B"            , "X"           , "listener" ,         2 ,         0 , "t1"    , "false"           , "refgame" ,
-  "g1"    , "r1"     , "s2"      , "C"            , "Y"           , "speaker"  ,         2 ,         0 , "t1"    , NA              , "refgame" ,
-  "g1"    , "r1"     , "l3"      , "C"            , "Y"           , "listener" ,         2 ,         0 , "t1"    , "true"            , "refgame" ,
-  "g1"    , "r1"     , "l4"      , "A"            , "Y"           , "listener" ,         2 ,         0 , "t1"    , "false"         , "refgame" ,
-  "g1"    , "p1"     , "l1"      , "A"            , "A"           , "listener" ,         1 ,         0 , "t2"    , "true"            , "refgame" ,
-  "g1"    , "p1"     , "l4"      , "A"            , "A"           , "listener" ,         1 ,         0 , "t2"    , "false"           , "refgame" ,
-  "g2"    , "r9"     , "s3"      , "B"            , "B"           , "speaker"  ,         2 ,         3 , "t1"    , NA              , "refgame" ,
-  "g2"    , "r9"     , "l5"      , "B"            , "B"           , "listener" ,         2 ,         3 , "t1"    , "true", "refgame"
-)
+  ~gameId , ~roundId , ~playerId , ~originalGroup , ~currentGroup , ~role      , ~phaseNum , ~blockNum , ~target , ~clicked , ~clickedCorrect , ~phase    ,
+  "g1"    , "r1"     , "s1"      , "A"            , "X"           , "speaker"  ,         2 ,         0 , "t1"    , NA       , NA              , "refgame" ,
+  "g1"    , "r1"     , "l1"      , "A"            , "X"           , "listener" ,         2 ,         0 , "t1"    , "t1"     , "true"          , "refgame" ,
+  "g1"    , "r1"     , "l2"      , "B"            , "X"           , "listener" ,         2 ,         0 , "t1"    , "t2"     , "false"         , "refgame" ,
+  "g1"    , "r1"     , "s2"      , "C"            , "Y"           , "speaker"  ,         2 ,         0 , "t1"    , NA       , NA              , "refgame" ,
+  "g1"    , "r1"     , "l3"      , "C"            , "Y"           , "listener" ,         2 ,         0 , "t1"    , "t1"     , "true"          , "refgame" ,
+  "g1"    , "r1"     , "l4"      , "A"            , "Y"           , "listener" ,         2 ,         0 , "t1"    , "t2"     , "false"         , "refgame" ,
+  "g1"    , "p1"     , "l1"      , "A"            , "A"           , "listener" ,         1 ,         0 , "t2"    , "t2"     , "true"          , "refgame" ,
+  "g1"    , "p1"     , "l4"      , "A"            , "A"           , "listener" ,         1 ,         0 , "t2"    , "t1"     , "false"         , "refgame" ,
+  "g2"    , "r9"     , "s3"      , "B"            , "B"           , "speaker"  ,         2 ,         3 , "t1"    , NA       , NA              , "refgame" ,
+  "g2"    , "r9"     , "l5"      , "B"            , "B"           , "listener" ,         2 ,         3 , "t1"    , "t1"     , "true"          , "refgame"
+) |>
+  mutate(
+    lateClick = FALSE,
+    hasSpeakerMessage = TRUE,
+    responseOpportunity = role == "listener"
+  )
 
 check(
   "as_correct handles logical and string booleans and keeps NA",
@@ -123,7 +132,11 @@ check_utts <- tibble(
   uttLength = rep(c(1, 20, 10), length(CONDITION_ORDER))
 )
 check_trials <- check_utts |>
-  mutate(roundId = paste0("r", row_number()), role = "listener", clickedCorrect = FALSE)
+  mutate(
+    roundId = paste0("r", row_number()), role = "listener",
+    clicked = "t1", clickedCorrect = FALSE, lateClick = FALSE,
+    hasSpeakerMessage = TRUE, responseOpportunity = TRUE
+  )
 check_adjacent <- check_utts |> mutate(simAdjacent = 0.1)
 convention_data <- convention_check_data(check_utts, check_trials, check_adjacent, check_games)
 
@@ -207,10 +220,16 @@ check(
 
 # ── social guesses ───────────────────────────────────────────────────────────
 
+# Both listeners answered on time; the nonresponse and lateness cases are in
+# test_accuracy_denominator.R.
 sg <- tibble(
   gameId = c("g1", "g2"),
   blockNum = c(0, 1),
-  socialGuessCorrect = c("true", FALSE)
+  socialGuess = "same_group",
+  socialGuessCorrect = c("true", FALSE),
+  socialTimeout = FALSE,
+  lateSocialGuess = FALSE,
+  responseOpportunity = TRUE
 )
 sgt <- social_guess_trials(sg, games)
 check(

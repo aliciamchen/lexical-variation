@@ -23,6 +23,19 @@ export function isLateClick({ role, clicked, clickedAtDeadline }) {
   return role === "listener" && Boolean(clicked) && clickedAtDeadline === false;
 }
 
+/**
+ * A late social guess is the social-guessing analogue of a late click: the
+ * guess was absent when the Selection deadline passed
+ * (`guessedAtDeadline === false`) but has arrived since. Scoring is final at
+ * the deadline, so such a guess earns no points and `social_guess_correct` is
+ * never set for it. The analysis needs lateness established separately for
+ * each outcome, and the presence of a guess without a score is not on its own
+ * enough: a guess also goes unscored when the round had no speaker.
+ */
+export function isLateSocialGuess({ role, socialGuess, guessedAtDeadline }) {
+  return role === "listener" && Boolean(socialGuess) && guessedAtDeadline === false;
+}
+
 /** Consecutive idle-round counter: resets on any active round. */
 export function updateIdleRounds(previous, wasIdle, maxIdleRounds = MAX_IDLE_ROUNDS) {
   const idleRounds = wasIdle ? (Number(previous) || 0) + 1 : 0;
