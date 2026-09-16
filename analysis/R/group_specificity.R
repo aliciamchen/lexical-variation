@@ -29,23 +29,29 @@ suppressPackageStartupMessages({
 # SI_pilot.qmd asks for it explicitly. Do not use it for the full sample: it
 # splits one person's effect across two variance components and makes the
 # estimate depend on an arbitrary ordering within each pair.
-# "multimembership_pair" adds a random intercept for the unordered speaker
-# pair on top of the shared speaker effect. The design-matched simulations
-# (analysis/simulate_mm_speaker.R) found that the speaker effect alone leaves
-# the standard error about 25% too small when pair-level dependence is
-# present (95% intervals covering 86%), while the pair term restores nominal
-# coverage and is only mildly conservative when no such dependence exists.
-# Point estimates are the same either way, so this matters only through the
-# inverse-variance weights -- which is precisely what it matters for. It is
-# not the default because the preregistration text currently specifies the
-# tangram and speaker terms only; adopting it is a manuscript change.
-SPEAKER_STRUCTURES <- c("multimembership", "multimembership_pair", "separate")
+# "multimembership_pair" is the preregistered structure: the shared speaker
+# effect plus a random intercept for the unordered speaker pair. The three
+# random effects stand for the three sources of resemblance between two
+# descriptions that are not the effect of interest -- the tangram, the two
+# individual speakers, and the pair itself. The pair term is the one a
+# shared convention lives in, and it cannot be recovered from the speakers'
+# individual tendencies because those enter additively.
+#
+# The design-matched simulations (analysis/simulate_mm_speaker.R) are why it
+# is the default: without it the standard error runs about 25% small when
+# pair-level dependence is present (95% intervals covering 86%), and with it
+# coverage is nominal at no real cost when no such dependence exists. Point
+# estimates are the same either way, so the choice shows up only in the
+# inverse-variance weights, which is exactly what it needs to get right.
+# The pair variance sits at the boundary in many games; the term is kept
+# anyway, so the model structure never depends on the data.
+SPEAKER_STRUCTURES <- c("multimembership_pair", "multimembership", "separate")
 
 # `covariates` adds fixed-effect terms to every game's similarity model; the
 # preregistration uses this for the robustness check that includes description
 # length (the pair's length difference and mean length).
 fit_group_specificity <- function(pairwise_df, covariates = NULL,
-                                  speaker_structure = "multimembership") {
+                                  speaker_structure = "multimembership_pair") {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
   if (speaker_structure != "separate") {
     return(
@@ -92,7 +98,7 @@ fit_group_specificity <- function(pairwise_df, covariates = NULL,
 # are identical whichever notebook computes them (and the caller's RNG state is
 # left untouched).
 permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67,
-                             speaker_structure = "multimembership") {
+                             speaker_structure = "multimembership_pair") {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
   # One fitter, used for both the observed model and every permutation, so
   # the null distribution is always built from the same structure as the
@@ -187,7 +193,7 @@ permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67,
 #' @return A list with elements `gs_results` and `perm_results`.
 compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
                                       force = FALSE, seed = 67,
-                                      speaker_structure = "multimembership") {
+                                      speaker_structure = "multimembership_pair") {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
   # One set of cache files per speaker structure. They must not share a name:
   # SI_pilot.qmd asks for "separate" and the full-sample notebooks use the
@@ -253,7 +259,7 @@ compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
 game_specificity_table <- function(pairwise_sim, games,
                                    windows = c("phase1_final", "phase2_final"),
                                    covariates = NULL,
-                                   speaker_structure = "multimembership") {
+                                   speaker_structure = "multimembership_pair") {
   if (!is.data.frame(pairwise_sim) || nrow(pairwise_sim) == 0) return(tibble())
   map_dfr(windows, function(w) {
     fit_group_specificity(pairwise_sim |> filter(window == w),
