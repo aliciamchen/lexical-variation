@@ -16,6 +16,14 @@
 - **stages/Refgame.jsx**: Main game UI with tangram grid, social guessing UI
 - **components/Tangram.jsx**: Click handling with auto-submit logic
 
+## Session instrumentation (`experiment/client/src/instrumentation.js`)
+
+- `recordClientContext(player)`: called once from `Introduction.jsx`, beside the Prolific URL params. Writes the coarse device/viewport blob `client_context` and the raw `userAgent` (stripped at anonymization).
+- `useEngagementLog(player)`: mounted from `Game.jsx`, so it covers gameplay. Appends `{t, type}` to the player's `engagement_events` for tab visibility, connectivity, and debounced resize. The counting rules are in `shared/engagement.js` (cap of 200 with `engagement_log_truncated`, resize de-duplication, and the offline deferral), unit tested by the server's vitest; the hook is only the browser wiring. It returns the event count, which `Game.jsx` puts on `data-engagement-count` for the end-to-end spec.
+- Going offline writes **nothing** at the time: an append made while the socket is down never reaches the server, and an early version of this code lost exactly that event. The drop time is held and written on reconnect, ahead of the `online` event, so the length of an outage survives it. Do not "simplify" this back into an immediate write.
+- Response-time anchors: `Refgame.jsx` stamps `selection_rendered_at` once per player-round; `Tangram.jsx` and `Refgame.jsx`'s `commitLocalSelections` both write `tangram_selected_at`. Keep those two paths in step -- they are what makes the measure comparable between the referential and social conditions.
+- `Chat.jsx` stamps `composeStartedAt` on the first character of a message and flags `pasted`; both ride on the appended message object.
+
 ## Configuration (`experiment/.empirica/`)
 
 - **treatments.yaml**: Experimental factors and 4 treatment combinations

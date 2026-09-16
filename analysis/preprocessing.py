@@ -92,12 +92,24 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
     # Attrition/removal fields (exitReason, ended, timing, partial pay) are
     # needed to distinguish idle-timeout vs low-accuracy vs group-disbanded
     # removals when reporting exclusions
+    # `minutesSpent` and `gameEndTime` are set for players who finish as well
+    # as those removed early (see onGameEnded), so time on task is available
+    # for everyone. `quiz_attempts` is a comprehension covariate, and
+    # `shuffled_tangrams` is the participant's own grid layout, which nothing
+    # else records and which is what makes position-based descriptions fail.
     optional_cols = [
+        "player_index",
         "exitSurvey",
         "exitReason",
         "ended",
         "gameStartTime",
         "gameEndTime",
+        "minutesSpent",
+        "quiz_attempts",
+        "shuffled_tangrams",
+        "client_context",
+        "engagement_events",
+        "engagement_log_truncated",
         "partialPay",
         "partialBasePay",
         "partialBonus",
@@ -117,16 +129,29 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
         "bonus": "bonus",
         "is_active": "isActive",
         "idle_rounds": "idleRounds",
+        "player_index": "playerIndex",
         "exitSurvey": "exitSurvey",
         "exitReason": "exitReason",
         "ended": "ended",
         "gameStartTime": "gameStartTime",
         "gameEndTime": "gameEndTime",
+        "minutesSpent": "minutesSpent",
+        "quiz_attempts": "quizAttempts",
+        "shuffled_tangrams": "shuffledTangrams",
+        "client_context": "clientContext",
+        "engagement_events": "engagementEvents",
+        "engagement_log_truncated": "engagementLogTruncated",
         "partialPay": "partialPay",
         "partialBasePay": "partialBasePay",
         "partialBonus": "partialBonus",
     }
     players = players.rename(columns={c: rename_map[c] for c in cols})
+
+    # The speaker-rotation index (0, 1, 2) within the original group: the
+    # designated speaker of block b is the member with index b % 3, and the
+    # Phase 2 reshuffle places one player of each index in every group.
+    if "playerIndex" in players.columns:
+        players["playerIndex"] = players["playerIndex"].astype("Int64")
 
     # Parse exitSurvey JSON and flatten (if present)
     if "exitSurvey" in players.columns:
@@ -140,13 +165,201 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
         players = players.apply(parse_exit_survey, axis=1)
         players = players.drop(columns=["exitSurvey"])
 
+    # Columns that depend on the export's vintage are always present, so a
+    # notebook can reference them without first checking when the data was
+    # collected. Absent in an older export means empty, not missing.
+    for column in ("quizAttempts", "minutesSpent", "shuffledTangrams"):
+        if column not in players.columns:
+            players[column] = pd.NA
+    players["quizAttempts"] = players["quizAttempts"].astype("Int64")
+
+    players = flatten_client_context(players)
+    players = summarize_engagement(players)
+
     return players
 
 
+# Coarse device fields recorded at the start of the session, and the tidy
+# column each becomes. The raw user agent is deliberately absent: it is
+# stripped during anonymization (see analysis/extract_run.py).
+CLIENT_CONTEXT_FIELDS = {
+    "viewportWidth": "clientViewportWidth",
+    "viewportHeight": "clientViewportHeight",
+    "screenWidth": "clientScreenWidth",
+    "screenHeight": "clientScreenHeight",
+    "devicePixelRatio": "clientDevicePixelRatio",
+    "timezoneOffsetMin": "clientTimezoneOffsetMin",
+    "language": "clientLanguage",
+    "touch": "clientTouch",
+}
+
+
+def flatten_client_context(players: pd.DataFrame) -> pd.DataFrame:
+    """Expand the recorded device/viewport blob into one column per field.
+
+    Viewport size matters here because the task is a 4x4 grid of 16 tangrams,
+    so it bears on how much visual search a selection takes. The JSON column is
+    replaced by its fields; exports without it get the columns as empty, so the
+    schema does not depend on the export's vintage.
+    """
+    if "clientContext" not in players.columns:
+        for column in CLIENT_CONTEXT_FIELDS.values():
+            players[column] = pd.NA
+        return players
+
+    parsed = players["clientContext"].apply(parse_json_field)
+    for field, column in CLIENT_CONTEXT_FIELDS.items():
+        players[column] = parsed.apply(
+            lambda ctx, f=field: ctx.get(f) if isinstance(ctx, dict) else None
+        )
+    return players.drop(columns=["clientContext"])
+
+
+def summarize_engagement(players: pd.DataFrame) -> pd.DataFrame:
+    """Reduce the raw engagement log to per-player counts and hidden time.
+
+    The log records when the tab was hidden or shown and when the browser went
+    offline or came back, which is what separates a participant who was absent
+    from one who was present and did not act. The per-event list stays in the
+    raw export; the tidy table carries the summary the analysis uses.
+    """
+    summary_columns = [
+        "tabHiddenCount",
+        "tabHiddenMs",
+        "offlineCount",
+        "resizeCount",
+    ]
+    if "engagementEvents" not in players.columns:
+        for column in summary_columns:
+            players[column] = pd.NA
+        if "engagementLogTruncated" not in players.columns:
+            players["engagementLogTruncated"] = pd.NA
+        return players
+
+    summaries = players["engagementEvents"].apply(
+        lambda raw: _engagement_summary(parse_json_field(raw))
+    )
+    for column in summary_columns:
+        players[column] = summaries.apply(lambda d, c=column: d[c])
+    return players.drop(columns=["engagementEvents"])
+
+
+def _engagement_summary(events) -> dict:
+    """Counts and total hidden time for one player's engagement log.
+
+    Hidden time pairs each `hidden` with the next `visible`. A trailing
+    `hidden` with no matching `visible` -- the participant closed or abandoned
+    the tab -- contributes to the count but not to the total, since there is no
+    defensible end for it.
+    """
+    empty = {
+        "tabHiddenCount": pd.NA,
+        "tabHiddenMs": pd.NA,
+        "offlineCount": pd.NA,
+        "resizeCount": pd.NA,
+    }
+    if not isinstance(events, list):
+        return empty
+
+    hidden_count = 0
+    hidden_ms = 0
+    offline_count = 0
+    resize_count = 0
+    hidden_since = None
+
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        kind = event.get("type")
+        stamp = event.get("t")
+        if kind == "hidden":
+            hidden_count += 1
+            hidden_since = stamp
+        elif kind == "visible":
+            if hidden_since is not None and stamp is not None:
+                hidden_ms += max(0, stamp - hidden_since)
+            hidden_since = None
+        elif kind == "offline":
+            offline_count += 1
+        elif kind == "resize":
+            resize_count += 1
+
+    return {
+        "tabHiddenCount": hidden_count,
+        "tabHiddenMs": hidden_ms,
+        "offlineCount": offline_count,
+        "resizeCount": resize_count,
+    }
+
+
+def selection_stage_times(stage_df: pd.DataFrame | None) -> pd.DataFrame:
+    """Server-clock start and end of each round's Selection stage, in epoch ms.
+
+    Empirica stamps a `*LastChangedAt` on every attribute; these two are the
+    ones the analysis needs, so they are read here rather than carried through
+    every table. They are on the server's clock, unlike the participant-side
+    stamps in `trials.csv`, which makes them the reference for how long a trial
+    actually ran and a cross-check on a client whose clock drifted.
+
+    Returns an empty frame with the right columns when there is no stage table
+    or it lacks the timestamps, so callers can merge unconditionally.
+    """
+    columns = ["roundId", "selectionStartedAt", "selectionEndedAt"]
+    if stage_df is None or stage_df.empty:
+        return pd.DataFrame(columns=columns)
+
+    needed = {"roundID", "name", "startedLastChangedAt", "endedLastChangedAt"}
+    if not needed.issubset(stage_df.columns):
+        return pd.DataFrame(columns=columns)
+
+    selection = stage_df[stage_df["name"] == "Selection"].copy()
+    if selection.empty:
+        return pd.DataFrame(columns=columns)
+
+    out = pd.DataFrame(
+        {
+            "roundId": selection["roundID"].values,
+            "selectionStartedAt": _epoch_ms(selection["startedLastChangedAt"]),
+            "selectionEndedAt": _epoch_ms(selection["endedLastChangedAt"]),
+        }
+    )
+    # One Selection stage per round; guard against a re-exported duplicate.
+    return out.drop_duplicates(subset=["roundId"])
+
+
+def _epoch_ms(series: pd.Series) -> pd.Series:
+    """Parse Empirica's ISO-8601 UTC timestamps to epoch milliseconds.
+
+    Milliseconds keep the server columns in the same unit as the client-side
+    `Date.now()` stamps, so differences between them are meaningful without
+    per-column unit handling.
+    """
+    parsed = pd.to_datetime(series, format="ISO8601", utc=True, errors="coerce")
+    return (parsed.astype("int64") // 1_000_000).where(parsed.notna()).astype("Int64")
+
+
 def build_trials(
-    player_round_df: pd.DataFrame, round_df: pd.DataFrame, game_df: pd.DataFrame
+    player_round_df: pd.DataFrame,
+    round_df: pd.DataFrame,
+    game_df: pd.DataFrame,
+    player_df: pd.DataFrame | None = None,
+    stage_df: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
-    """Build trials.csv: 1 row per player per round (refgame rounds only)."""
+    """Build trials.csv: 1 row per player per round (refgame rounds only).
+
+    `player_df` supplies each player's rotation index, used to derive whether
+    the block's designated speaker was replaced in exports that predate the
+    server's own `speaker_reassigned` flag. `stage_df` supplies the Selection
+    stage's server-clock start and end; it is optional, and the timing columns
+    are empty without it.
+
+    Two clocks meet in this table. `selectionRenderedAt`, `tangramSelectedAt`,
+    `clickedAt`, and `socialGuessSelectedAt` are stamped by the participant's
+    own browser, so differences among them are valid within a participant but
+    must never be compared across participants, whose clocks are not
+    synchronized. `selectionStartedAt` and `selectionEndedAt` come from the
+    server and are comparable across everyone.
+    """
     pr = drop_last_changed_cols(player_round_df)
     rd = drop_last_changed_cols(round_df)
 
@@ -197,7 +410,36 @@ def build_trials(
         trials["lateClick"] = pr["late_click"].fillna(False).astype(bool).values
     else:
         trials["lateClick"] = False
-    trials["clickedAt"] = pr["clicked_at"].values if "clicked_at" in pr.columns else pd.NA
+    # Participant-side timing (September 2026 onward; empty for the pilot).
+    #
+    # `clickedAt` is when the selection was committed to the server, which is
+    # what the late-arrival audit needs. `tangramSelectedAt` is when the
+    # participant actually chose. The two coincide in the referential
+    # conditions, where a click commits at once, but not in the social
+    # conditions, where both answers are held locally until submit -- so
+    # `tangramSelectedAt` is the column to use for a response time, and the
+    # only one comparable across conditions.
+    for source, column in (
+        ("clicked_at", "clickedAt"),
+        ("tangram_selected_at", "tangramSelectedAt"),
+        ("selection_rendered_at", "selectionRenderedAt"),
+        ("social_guess_selected_at", "socialGuessSelectedAt"),
+    ):
+        trials[column] = (
+            pd.to_numeric(pr[source], errors="coerce").values
+            if source in pr.columns
+            else pd.NA
+        )
+
+    # Response time from the stage appearing on this participant's screen to
+    # their choice. Both ends are the same browser's clock, so clock skew
+    # between participants cannot contaminate it.
+    trials["selectionRt"] = pd.to_numeric(
+        trials["tangramSelectedAt"], errors="coerce"
+    ) - pd.to_numeric(trials["selectionRenderedAt"], errors="coerce")
+    trials["socialGuessRt"] = pd.to_numeric(
+        trials["socialGuessSelectedAt"], errors="coerce"
+    ) - pd.to_numeric(trials["selectionRenderedAt"], errors="coerce")
 
     # Listener timeout: no scored selection at the deadline (no click, or a
     # click that arrived late)
@@ -216,16 +458,44 @@ def build_trials(
     else:
         trials["lateSocialGuess"] = False
 
-    # Merge trialNum from round and tangramSet from game
-    round_info = rd[["id", "trial_num"]].rename(
-        columns={"id": "roundId", "trial_num": "trialNum"}
+    # The server's own record of whether the designated speaker was replaced
+    # (September 2026 onward); kept aside and added last so the column order
+    # does not depend on the export's vintage. Rows and `pr` are still aligned
+    # here because no merge has happened yet.
+    server_reassigned = (
+        pr["speaker_reassigned"].fillna(False).astype(bool).values
+        if "speaker_reassigned" in pr.columns
+        else None
+    )
+
+    # Merge trialNum (and the reshuffle mode the server recorded on the round,
+    # when present) from round, and tangramSet from game
+    round_cols = ["id", "trial_num"] + (
+        ["reshuffle_mode"] if "reshuffle_mode" in rd.columns else []
+    )
+    round_info = rd[round_cols].rename(
+        columns={"id": "roundId", "trial_num": "trialNum", "reshuffle_mode": "reshuffleMode"}
     )
     trials = trials.merge(round_info, on="roundId", how="left")
+    if "reshuffleMode" not in trials.columns:
+        trials["reshuffleMode"] = pd.NA
 
     tangram_lookup = game_df[["id", "tangram_set"]].rename(
         columns={"id": "gameId", "tangram_set": "tangramSet"}
     )
     trials = trials.merge(tangram_lookup, on="gameId", how="left")
+
+    # Server-clock stage boundaries: how long the trial actually ran, and the
+    # reference against which a drifting client clock shows up.
+    stage_times = selection_stage_times(stage_df)
+    if stage_times.empty:
+        trials["selectionStartedAt"] = pd.NA
+        trials["selectionEndedAt"] = pd.NA
+    else:
+        trials = trials.merge(stage_times, on="roundId", how="left")
+    trials["selectionDurationMs"] = pd.to_numeric(
+        trials["selectionEndedAt"], errors="coerce"
+    ) - pd.to_numeric(trials["selectionStartedAt"], errors="coerce")
 
     # Compute repNum: per-phase repetition count for each speaker × tangram
     # (reset to 1 at the start of each phase)
@@ -245,12 +515,74 @@ def build_trials(
         how="left",
     )
 
-    return trials
+    return add_network_columns(trials, player_df, server_reassigned)
+
+
+def add_network_columns(
+    trials: pd.DataFrame,
+    player_df: pd.DataFrame | None = None,
+    server_reassigned=None,
+) -> pd.DataFrame:
+    """Add speakerId, inGroupSpeaker, groupSize, and speakerReassigned.
+
+    The speaker of each trial's group, each listener's in-group status, and the
+    group size come from the trio membership in the table itself, which is the
+    same definition the R helper `attach_speaker()` uses. The server also
+    records `speaker_id` and `in_group_listener` since September 2026; deriving
+    them here keeps the pilot on the same definition, and the integrity suite
+    cross-checks the two where both exist.
+
+    `speakerReassigned` is the server's flag when the export has one
+    (`server_reassigned`, aligned with the rows), and otherwise is derived from
+    the speaker's rotation index in `player_df`: the designated speaker of
+    block b has index b % 3, so any other index means the role was reassigned
+    after a removal. It is missing when neither source is available.
+    """
+    trials = trials.copy()
+    speakers = (
+        trials.loc[
+            trials["role"] == "speaker",
+            ["gameId", "roundId", "currentGroup", "playerId", "originalGroup"],
+        ]
+        .drop_duplicates(["gameId", "roundId", "currentGroup"])
+        .rename(columns={"playerId": "speakerId", "originalGroup": "speakerGroup"})
+    )
+    trials = trials.merge(speakers, on=["gameId", "roundId", "currentGroup"], how="left")
+
+    is_listener = (trials["role"] == "listener") & trials["speakerId"].notna()
+    in_group = pd.Series(pd.NA, index=trials.index, dtype="boolean")
+    in_group[is_listener] = (trials["originalGroup"] == trials["speakerGroup"])[is_listener]
+    trials["inGroupSpeaker"] = in_group
+    trials["groupSize"] = trials.groupby(["gameId", "roundId", "currentGroup"])[
+        "playerId"
+    ].transform("nunique")
+
+    if server_reassigned is not None:
+        trials["speakerReassigned"] = pd.array(server_reassigned, dtype="boolean")
+    elif player_df is not None and "player_index" in player_df.columns:
+        idx = drop_last_changed_cols(player_df)[["id", "player_index"]].rename(
+            columns={"id": "speakerId", "player_index": "speakerIndex"}
+        )
+        trials = trials.merge(idx, on="speakerId", how="left")
+        derived = pd.Series(pd.NA, index=trials.index, dtype="boolean")
+        known = trials["speakerIndex"].notna()
+        derived[known] = trials.loc[known, "speakerIndex"].astype(int) != (
+            trials.loc[known, "blockNum"].astype(int) % GROUP_SIZE
+        )
+        trials["speakerReassigned"] = derived
+        trials = trials.drop(columns=["speakerIndex"])
+    else:
+        trials["speakerReassigned"] = pd.Series(pd.NA, index=trials.index, dtype="boolean")
+
+    return trials.drop(columns=["speakerGroup"])
 
 
 # The conditions whose Phase 2 includes the social-identification task. Mirrors
 # hasSocialGuessing() in experiment/shared/constants.js.
 SOCIAL_GUESSING_CONDITIONS = ("social_mixed", "social_first")
+
+# Players per group; mirrors GROUP_SIZE in experiment/shared/constants.js
+GROUP_SIZE = 3
 
 
 def add_response_opportunity(
@@ -354,6 +686,12 @@ def build_messages(
                     "senderRole": sender_role,
                     "text": msg.get("text", ""),
                     "timestamp": msg.get("timestamp"),
+                    # How the message was produced (recorded from September
+                    # 2026; absent in earlier exports, including the pilot).
+                    # Both come from the sender's own clock, so composeMs below
+                    # is a within-client interval.
+                    "composeStartedAt": msg.get("composeStartedAt"),
+                    "pasted": msg.get("pasted"),
                 }
             )
 
@@ -375,6 +713,16 @@ def build_messages(
             columns={"id": "gameId", "tangram_set": "tangramSet"}
         )
         messages = messages.merge(tangram_lookup, on="gameId", how="left")
+
+        # Composition time: from the first character typed to the moment the
+        # message was sent. A production-effort measure alongside word count,
+        # and the clearest signal of pasted text when a long message has a
+        # near-zero interval. Empty for exports that predate the instrument.
+        messages["composeMs"] = (
+            pd.to_numeric(messages["timestamp"], errors="coerce")
+            - pd.to_numeric(messages["composeStartedAt"], errors="coerce")
+        )
+        messages["pasted"] = messages["pasted"].astype("boolean")
 
     return messages
 
@@ -516,6 +864,8 @@ def build_social_guesses(
         "socialRoundScore",
         "socialTimeout",
         "lateSocialGuess",
+        "socialGuessSelectedAt",
+        "socialGuessRt",
         "hasSpeakerMessage",
         "responseOpportunity",
         "speakerId",
@@ -575,6 +925,14 @@ def build_social_guesses(
         for round_id, group in zip(guesses["roundId"], guesses["currentGroup"])
     ]
 
+    # The guess-timing columns ride along from trials.csv. They are empty for
+    # exports that predate the instrument, and absent entirely if a caller
+    # passes a trial frame built without them, so the schema is filled in here
+    # rather than assumed.
+    for column in columns:
+        if column not in guesses.columns:
+            guesses[column] = pd.NA
+
     return guesses[columns]
 
 
@@ -602,6 +960,10 @@ def main():
     player_df = pd.read_csv(input_dir / "player.csv")
     player_round_df = pd.read_csv(input_dir / "playerRound.csv")
     round_df = pd.read_csv(input_dir / "round.csv")
+    # Optional: older extracts may not carry it, and only the Selection stage's
+    # server-clock boundaries are read from it.
+    stage_path = input_dir / "stage.csv"
+    stage_df = pd.read_csv(stage_path) if stage_path.exists() else None
 
     # Build each output
     print("Building games.csv...")
@@ -618,7 +980,8 @@ def main():
 
     print("Building trials.csv...")
     trials = add_response_opportunity(
-        build_trials(player_round_df, round_df, game_df), messages
+        build_trials(player_round_df, round_df, game_df, player_df, stage_df),
+        messages,
     )
     trials.to_csv(output_dir / "trials.csv", index=False)
     listener_rows = int((trials["role"] == "listener").sum())

@@ -46,8 +46,14 @@ RAW_CSV_FILES = [
     "stage.csv",
 ]
 
-# Columns to strip from player.csv for anonymization
+# Columns to strip from player.csv for anonymization.
+# `userAgent` is recorded so a live session can be debugged against the real
+# browser, but it is a fingerprinting vector, so it is dropped here and never
+# reaches the committed data. The coarse device fields the analysis actually
+# uses are in `client_context`, which is kept.
 SENSITIVE_COLUMNS = [
+    "userAgent",
+    "userAgentLastChangedAt",
     "participantIdentifier",
     "participantIdentifierLastChangedAt",
     "prolificPid",

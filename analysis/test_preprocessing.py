@@ -14,9 +14,14 @@ import pytest
 
 from filter_nonreferential import BatchParseError, build_filtered_utterances, parse_batch_labels
 from preprocessing import (
+    add_network_columns,
+    build_messages,
+    build_players,
     add_response_opportunity,
     build_social_guesses,
+    build_trials,
     flag_length_increase,
+    selection_stage_times,
 )
 
 
@@ -317,3 +322,312 @@ class TestSocialGuessOpportunityFrame:
             self._trials(),
         )
         assert out["responseOpportunity"].all()
+
+
+# ── Network columns (speakerId, inGroupSpeaker, groupSize, speakerReassigned) ──
+
+
+def _network_fixture():
+    """One Phase 2 round: a trio with exactly one in-group listener and a pair
+    whose speaker is not the block's designated one (block 0 designates index
+    0, but C1 with index 1 speaks)."""
+    rows = [
+        ("g", "r1", "A0", "A", "X", "speaker", 0),
+        ("g", "r1", "A1", "A", "X", "listener", 0),
+        ("g", "r1", "B2", "B", "X", "listener", 0),
+        ("g", "r1", "C1", "C", "Y", "speaker", 0),
+        ("g", "r1", "B1", "B", "Y", "listener", 0),
+    ]
+    trials = pd.DataFrame(
+        rows,
+        columns=["gameId", "roundId", "playerId", "originalGroup", "currentGroup", "role", "blockNum"],
+    )
+    player_df = pd.DataFrame(
+        {"id": ["A0", "A1", "B2", "C1", "B1"], "player_index": [0, 1, 2, 1, 1]}
+    )
+    return trials, player_df
+
+
+def test_network_columns_come_from_the_trio_membership():
+    trials, player_df = _network_fixture()
+    out = add_network_columns(trials, player_df).set_index("playerId")
+    assert out.loc["A1", "speakerId"] == "A0"
+    assert out.loc["B2", "speakerId"] == "A0"
+    assert out.loc["B1", "speakerId"] == "C1"
+    assert out.loc["A0", "speakerId"] == "A0"
+    assert bool(out.loc["A1", "inGroupSpeaker"]) is True
+    assert bool(out.loc["B2", "inGroupSpeaker"]) is False
+    assert pd.isna(out.loc["A0", "inGroupSpeaker"])
+    assert out.loc["A1", "groupSize"] == 3 and out.loc["B1", "groupSize"] == 2
+    # Derived from the rotation index: A0 is block 0's designated speaker, C1 is not
+    assert bool(out.loc["A0", "speakerReassigned"]) is False
+    assert bool(out.loc["A1", "speakerReassigned"]) is False
+    assert bool(out.loc["C1", "speakerReassigned"]) is True
+    assert bool(out.loc["B1", "speakerReassigned"]) is True
+    assert "speakerGroup" not in out.columns
+
+
+def test_server_reassignment_flag_takes_precedence_and_missing_sources_give_na():
+    trials, player_df = _network_fixture()
+    flag = np.array([False, False, False, True, True])
+    out = add_network_columns(trials, player_df, server_reassigned=flag)
+    assert out["speakerReassigned"].tolist() == [False, False, False, True, True]
+    out_none = add_network_columns(trials)
+    assert out_none["speakerReassigned"].isna().all()
+    assert out_none["speakerId"].tolist() == ["A0", "A0", "A0", "C1", "C1"]
+
+
+def test_build_players_exports_the_rotation_index_as_a_nullable_integer():
+    player_df = pd.DataFrame(
+        {
+            "id": ["p1", "p2"],
+            "gameID": ["g", "g"],
+            "name": ["Repi", "Minu"],
+            "original_group": ["A", "A"],
+            "original_name": ["Repi", "Minu"],
+            "score": [4, 6],
+            "bonus": [0.2, 0.3],
+            "is_active": [True, True],
+            "idle_rounds": [0, 0],
+            "player_index": [0.0, np.nan],
+        }
+    )
+    players = build_players(player_df)
+    assert str(players["playerIndex"].dtype) == "Int64"
+    assert players["playerIndex"].tolist()[0] == 0
+    assert pd.isna(players["playerIndex"].tolist()[1])
+
+
+
+# --- Session instrumentation -------------------------------------------------
+#
+# Timing, device, and engagement records added in September 2026. Every one of
+# them has to survive an export that predates it, because the pilot has none of
+# them and still has to process unchanged.
+
+
+def _minimal_player_df(**extra):
+    """One player, with only the columns build_players requires."""
+    base = {
+        "id": ["p1"],
+        "gameID": ["g"],
+        "name": ["Repi"],
+        "original_group": ["A"],
+        "original_name": ["Repi"],
+        "score": [4],
+        "bonus": [0.2],
+        "is_active": [True],
+        "idle_rounds": [0],
+    }
+    base.update(extra)
+    return pd.DataFrame(base)
+
+
+class TestClientContext:
+    def test_the_recorded_device_blob_is_flattened_into_columns(self):
+        players = build_players(
+            _minimal_player_df(
+                client_context=[
+                    '{"viewportWidth": 1440, "viewportHeight": 900,'
+                    ' "screenWidth": 1920, "screenHeight": 1080,'
+                    ' "devicePixelRatio": 2, "timezoneOffsetMin": 300,'
+                    ' "language": "en-US", "touch": false}'
+                ]
+            )
+        )
+        assert players["clientViewportWidth"].tolist() == [1440]
+        assert players["clientScreenHeight"].tolist() == [1080]
+        assert players["clientLanguage"].tolist() == ["en-US"]
+        assert players["clientTouch"].tolist() == [False]
+        # The raw blob is replaced by its fields, not carried twice.
+        assert "clientContext" not in players.columns
+
+    def test_an_export_without_the_device_record_still_has_the_columns(self):
+        players = build_players(_minimal_player_df())
+        assert players["clientViewportWidth"].isna().all()
+        assert players["clientTouch"].isna().all()
+
+
+class TestEngagementSummary:
+    def test_hidden_time_pairs_each_hidden_with_the_next_visible(self):
+        events = (
+            '[{"t": 1000, "type": "hidden"}, {"t": 4000, "type": "visible"},'
+            ' {"t": 9000, "type": "hidden"}, {"t": 10000, "type": "visible"},'
+            ' {"t": 11000, "type": "offline"}, {"t": 12000, "type": "online"},'
+            ' {"t": 13000, "type": "resize"}]'
+        )
+        players = build_players(_minimal_player_df(engagement_events=[events]))
+        assert players["tabHiddenCount"].tolist() == [2]
+        assert players["tabHiddenMs"].tolist() == [4000]
+        assert players["offlineCount"].tolist() == [1]
+        assert players["resizeCount"].tolist() == [1]
+
+    def test_a_tab_hidden_at_the_end_counts_but_adds_no_time(self):
+        # The participant closed or abandoned the tab, so the interval has no
+        # defensible end and must not be invented.
+        events = '[{"t": 1000, "type": "hidden"}]'
+        players = build_players(_minimal_player_df(engagement_events=[events]))
+        assert players["tabHiddenCount"].tolist() == [1]
+        assert players["tabHiddenMs"].tolist() == [0]
+
+    def test_an_export_without_an_engagement_log_still_has_the_columns(self):
+        players = build_players(_minimal_player_df())
+        assert players["tabHiddenCount"].isna().all()
+        assert players["offlineCount"].isna().all()
+
+
+class TestPlayerSchemaIsStableAcrossExportVintages:
+    def test_columns_added_later_are_present_and_empty_in_an_older_export(self):
+        players = build_players(_minimal_player_df())
+        for column in ("quizAttempts", "minutesSpent", "shuffledTangrams"):
+            assert column in players.columns
+            assert players[column].isna().all()
+
+    def test_quiz_attempts_is_a_nullable_integer_when_recorded(self):
+        players = build_players(_minimal_player_df(quiz_attempts=[2]))
+        assert str(players["quizAttempts"].dtype) == "Int64"
+        assert players["quizAttempts"].tolist() == [2]
+
+
+class TestSelectionStageTimes:
+    def test_only_the_selection_stage_is_read_and_it_is_converted_to_epoch_ms(self):
+        stage_df = pd.DataFrame(
+            {
+                "roundID": ["r1", "r1"],
+                "name": ["Selection", "Feedback"],
+                "startedLastChangedAt": [
+                    "2026-03-01T17:39:43.120697707Z",
+                    "2026-03-01T17:40:26.000000000Z",
+                ],
+                "endedLastChangedAt": [
+                    "2026-03-01T17:40:25.904136542Z",
+                    "2026-03-01T17:40:41.000000000Z",
+                ],
+            }
+        )
+        times = selection_stage_times(stage_df)
+        assert times["roundId"].tolist() == ["r1"]
+        duration = times["selectionEndedAt"][0] - times["selectionStartedAt"][0]
+        assert duration == pytest.approx(42783, abs=1)
+
+    def test_a_missing_or_unusable_stage_table_yields_an_empty_frame(self):
+        expected = ["roundId", "selectionStartedAt", "selectionEndedAt"]
+        assert selection_stage_times(None).columns.tolist() == expected
+        # A table without the timestamp columns is unusable, not an error.
+        bare = pd.DataFrame({"roundID": ["r1"], "name": ["Selection"]})
+        assert selection_stage_times(bare).empty
+
+
+def _trial_inputs(**player_round_extra):
+    """The smallest playerRound/round/game trio build_trials accepts."""
+    player_round = {
+        "gameID": ["g", "g"],
+        "playerID": ["p1", "p2"],
+        "roundID": ["r1", "r1"],
+        "name": ["Repi", "Minu"],
+        "original_group": ["A", "A"],
+        "current_group": ["A", "A"],
+        "role": ["speaker", "listener"],
+        "block_num": [0, 0],
+        "phase": ["refgame", "refgame"],
+        "phase_num": [1, 1],
+        "target": ["t1", "t1"],
+        "clicked": [None, "t1"],
+        "clicked_correct": [None, True],
+        "round_score": [2, 2],
+    }
+    player_round.update(player_round_extra)
+    round_df = pd.DataFrame({"id": ["r1"], "trial_num": [0]})
+    game_df = pd.DataFrame({"id": ["g"], "tangram_set": [0]})
+    return pd.DataFrame(player_round), round_df, game_df
+
+
+class TestTrialResponseTimes:
+    def test_the_response_time_is_measured_within_the_participants_own_clock(self):
+        # Stage rendered at 1000 on this browser, tangram chosen at 3500.
+        pr, rd, gd = _trial_inputs(
+            selection_rendered_at=[1000, 1000],
+            tangram_selected_at=[None, 3500],
+            clicked_at=[None, 3600],
+        )
+        trials = build_trials(pr, rd, gd)
+        listener = trials[trials["role"] == "listener"].iloc[0]
+        assert listener["selectionRt"] == 2500
+        # The commit time is kept separately; it is what the late-arrival
+        # audit uses and it is not the response time.
+        assert listener["clickedAt"] == 3600
+
+    def test_an_export_without_the_stamps_leaves_the_timing_columns_empty(self):
+        pr, rd, gd = _trial_inputs()
+        trials = build_trials(pr, rd, gd)
+        for column in (
+            "tangramSelectedAt",
+            "selectionRenderedAt",
+            "selectionRt",
+            "selectionStartedAt",
+            "selectionDurationMs",
+        ):
+            assert column in trials.columns
+            assert trials[column].isna().all()
+
+    def test_the_server_clock_duration_comes_from_the_stage_table(self):
+        pr, rd, gd = _trial_inputs()
+        stage_df = pd.DataFrame(
+            {
+                "roundID": ["r1"],
+                "name": ["Selection"],
+                "startedLastChangedAt": ["2026-03-01T17:39:43.000000000Z"],
+                "endedLastChangedAt": ["2026-03-01T17:40:03.000000000Z"],
+            }
+        )
+        trials = build_trials(pr, rd, gd, stage_df=stage_df)
+        assert (trials["selectionDurationMs"] == 20000).all()
+
+
+class TestMessageComposition:
+    def _message_inputs(self, chat_json):
+        player_round = pd.DataFrame(
+            {
+                "gameID": ["g"],
+                "playerID": ["p1"],
+                "roundID": ["r1"],
+                "current_group": ["A"],
+                "block_num": [0],
+                "phase": ["refgame"],
+                "phase_num": [1],
+                "target": ["t1"],
+                "chat": [chat_json],
+            }
+        )
+        round_df = pd.DataFrame({"id": ["r1"], "trial_num": [0]})
+        game_df = pd.DataFrame({"id": ["g"], "tangram_set": [0]})
+        return player_round, game_df, round_df
+
+    def test_composition_time_spans_the_first_keystroke_to_the_send(self):
+        chat = (
+            '[{"id": "m1", "text": "person kneeling", "timestamp": 5000,'
+            ' "composeStartedAt": 1500, "pasted": false,'
+            ' "sender": {"id": "p1", "name": "Repi (Speaker)"}}]'
+        )
+        messages = build_messages(*self._message_inputs(chat))
+        assert messages["composeMs"].tolist() == [3500]
+        assert messages["pasted"].tolist() == [False]
+
+    def test_a_pasted_message_is_flagged(self):
+        chat = (
+            '[{"id": "m1", "text": "a long description", "timestamp": 5000,'
+            ' "composeStartedAt": 4990, "pasted": true,'
+            ' "sender": {"id": "p1", "name": "Repi (Speaker)"}}]'
+        )
+        messages = build_messages(*self._message_inputs(chat))
+        assert messages["pasted"].tolist() == [True]
+        assert messages["composeMs"].tolist() == [10]
+
+    def test_messages_from_before_the_instrument_have_no_composition_time(self):
+        chat = (
+            '[{"id": "m1", "text": "person kneeling", "timestamp": 5000,'
+            ' "sender": {"id": "p1", "name": "Repi (Speaker)"}}]'
+        )
+        messages = build_messages(*self._message_inputs(chat))
+        assert messages["composeMs"].isna().all()
+        assert messages["pasted"].isna().all()

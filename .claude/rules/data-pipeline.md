@@ -173,6 +173,45 @@ optional and every row needs a reason.
 coding its published numbers were computed with, as the manuscript states.
 Do not switch it to the default.
 
+## Session instrumentation and the two clocks
+
+Timing, device, and engagement records added in September 2026 (client code in
+`experiment/client/src/instrumentation.js`, `Chat.jsx`, `Refgame.jsx`, and
+`Tangram.jsx`). None of it exists in the pilot, so every field is optional in
+`preprocessing.py` and the pilot must keep processing byte-identically.
+
+Two clocks meet in `trials.csv`, and confusing them is the easy mistake:
+
+- **Participant clock** (`selectionRenderedAt`, `tangramSelectedAt`,
+  `clickedAt`, `socialGuessSelectedAt`, and `composeStartedAt` in
+  `messages.csv`). Valid *within* one participant, never across, because
+  browser clocks are not synchronized. The derived `selectionRt`,
+  `socialGuessRt`, and `composeMs` are all within-participant differences and
+  are therefore safe.
+- **Server clock** (`selectionStartedAt`, `selectionEndedAt`,
+  `selectionDurationMs`, read from `stage.csv` by `selection_stage_times()`).
+  Comparable across everyone.
+
+Two column pairs look redundant and are not. `clickedAt` is when a selection
+was committed to the server and is what the late-arrival audit uses;
+`tangramSelectedAt` is when the participant chose. They coincide in the
+referential conditions but not in the social ones, where both answers are held
+in local state until submit -- so `tangramSelectedAt` is the only response-time
+column comparable across conditions, and `clickedAt` is not a response time.
+
+An `offline` event carries the moment the connection dropped, but it is
+written only once the connection is back, together with the `online` that
+ended it (`shared/engagement.js`). So the two always arrive as a pair, and a
+participant who went offline and never returned leaves no `offline` record at
+all -- their absence shows up as missing data instead.
+
+`players.csv` carries the device context as flattened `client*` columns and the
+engagement log as counts (`tabHiddenCount`, `tabHiddenMs`, `offlineCount`,
+`resizeCount`, `engagementLogTruncated`); the per-event list stays in
+`raw_anonymized/player.csv`. The raw user agent is recorded during a session
+for debugging but is in `SENSITIVE_COLUMNS` in `extract_run.py`, so it is
+stripped at anonymization and never committed.
+
 ## Stats → LaTeX pipeline
 
 `convention_check_data()` in `R/prepare.R` keeps all four conditions for

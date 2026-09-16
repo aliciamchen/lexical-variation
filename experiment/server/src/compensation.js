@@ -16,6 +16,19 @@ import { BASE_PAY, EXPECTED_GAME_DURATION_MIN } from "./constants";
 const round2 = (x) => Math.round(x * 100) / 100;
 
 /**
+ * Whole minutes between two epoch timestamps, never negative. Shared by the
+ * partial-pay arithmetic and by the end-of-game record for players who finish,
+ * so time on task means the same thing however a player left.
+ *
+ * @param {number} startMs  game start time (ms since epoch)
+ * @param {number} endMs    end time (ms since epoch)
+ */
+export function minutesBetween(startMs, endMs) {
+  const elapsedMs = Math.max(0, (endMs ?? Date.now()) - (startMs ?? endMs ?? Date.now()));
+  return Math.round(elapsedMs / (1000 * 60));
+}
+
+/**
  * @param {object} opts
  * @param {number} opts.startMs   game start time (ms since epoch)
  * @param {number} opts.endMs     removal time (ms since epoch)
@@ -24,17 +37,16 @@ const round2 = (x) => Math.round(x * 100) / 100;
  */
 export function computePartialPay({ startMs, endMs, bonus = 0, includeBonus = true }) {
   const elapsedMs = Math.max(0, (endMs ?? Date.now()) - (startMs ?? endMs ?? Date.now()));
-  const minutesSpent = elapsedMs / (1000 * 60);
   const partialBasePay = Math.min(
     BASE_PAY,
-    (minutesSpent / EXPECTED_GAME_DURATION_MIN) * BASE_PAY,
+    (elapsedMs / (1000 * 60) / EXPECTED_GAME_DURATION_MIN) * BASE_PAY,
   );
   const partialBonus = includeBonus ? Number(bonus) || 0 : 0;
   return {
     partialPay: round2(partialBasePay + partialBonus),
     partialBasePay: round2(partialBasePay),
     partialBonus: round2(partialBonus),
-    minutesSpent: Math.round(minutesSpent),
+    minutesSpent: minutesBetween(startMs, endMs),
   };
 }
 

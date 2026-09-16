@@ -66,7 +66,10 @@ npm run test:group4:fast  # same as group4 with IDLE_TEST_TIMING=true (30s timer
 npm run test:smoke        # tests tagged @smoke (quiz failure, chat, tangram set): a few minutes
 npm run test:holistic     # holistic end-to-end, production timing
 
-# Server unit tests (fast, no browser or server needed)
+# Server unit tests (fast, no browser or server needed). Also runs the tests
+# in experiment/shared/, which is where client logic worth unit testing lives:
+# the client itself has no test runner, being pinned to Vite 5 while every
+# installable vitest now needs Vite 6 or later (see experiment/server/vitest.config.js).
 npm run test:unit
 
 # A single spec file: include its group's reset setup and skip earlier groups

@@ -24,7 +24,7 @@ export function Chat({
     return <Loading />;
   }
 
-  const handleNewMessage = (text) => {
+  const handleNewMessage = (text, composition = {}) => {
     const senderName = customPlayerName
       ? customPlayerName(player)
       : player.get("name") || player.id;
@@ -33,10 +33,19 @@ export function Chat({
     // longer overwrite each other (the previous read-modify-write of the whole
     // array could drop a message). The server still reads the attribute as an
     // array via stage.get(...).
+    //
+    // `composeStartedAt` and `pasted` describe how the message was produced.
+    // Both come from the sender's own clock, so the composition interval is a
+    // within-client difference and is unaffected by clock skew between
+    // participants. Composition effort is a production measure alongside word
+    // count, and a long message composed in almost no time is the clearest
+    // signal that text was pasted in from elsewhere.
     scope.append(attribute, {
       id: `${player.id}-${Date.now()}`,
       text,
       timestamp: Date.now(),
+      composeStartedAt: composition.composeStartedAt ?? null,
+      pasted: Boolean(composition.pasted),
       sender: {
         id: player.id,
         name: senderName,
@@ -204,6 +213,18 @@ function TypingIndicator({ names }) {
 function Input({ onNewMessage, setTyping }) {
   const [text, setText] = useState("");
   const typingTimeoutRef = useRef(null);
+  // When the current message started being composed, and whether any of it was
+  // pasted. Refs rather than state: they must not trigger a re-render on every
+  // keystroke, and they are read only when the message is sent. Both reset
+  // once the box is empty again, so they describe the message actually sent
+  // rather than the whole time the participant sat on the stage.
+  const composeStartedAtRef = useRef(null);
+  const pastedRef = useRef(false);
+
+  const resetComposition = () => {
+    composeStartedAtRef.current = null;
+    pastedRef.current = false;
+  };
 
   // Clean up timeout on unmount
   useEffect(() => {
@@ -234,8 +255,12 @@ function Input({ onNewMessage, setTyping }) {
       alert("Max message length is 1024");
       return;
     }
-    onNewMessage(txt);
+    onNewMessage(txt, {
+      composeStartedAt: composeStartedAtRef.current,
+      pasted: pastedRef.current,
+    });
     setText("");
+    resetComposition();
     // Clear typing state on send
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     setTyping(false);
@@ -261,10 +286,23 @@ function Input({ onNewMessage, setTyping }) {
         placeholder="Say something"
         onKeyDown={handleKeyDown}
         onKeyUp={resize}
+        onPaste={() => {
+          pastedRef.current = true;
+        }}
         value={text}
         onChange={(e) => {
-          setText(e.target.value);
-          if (e.target.value.trim()) handleTyping();
+          const value = e.target.value;
+          if (value.trim()) {
+            // First content of a new message: start the composition clock.
+            if (composeStartedAtRef.current === null) {
+              composeStartedAtRef.current = Date.now();
+            }
+            handleTyping();
+          } else {
+            // Emptied the box: whatever comes next is a fresh message.
+            resetComposition();
+          }
+          setText(value);
         }}
       />
       <button

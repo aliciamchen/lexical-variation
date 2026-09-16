@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { usePlayer, useGame } from "@empirica/core/player/classic/react";
 import * as Sentry from "@sentry/react";
 import { Button } from "../components/Button";
+import { recordClientContext } from "../instrumentation";
 import { Quiz } from "./Quiz";
 import _ from "lodash";
 import {
@@ -51,6 +52,11 @@ export function Introduction({ next }) {
       player.set("prolificPid", urlParams.get("PROLIFIC_PID") || "");
       player.set("studyId", urlParams.get("STUDY_ID") || "");
       player.set("sessionId", urlParams.get("SESSION_ID") || "");
+
+      // Device and viewport the participant is playing on (see
+      // instrumentation.js); recorded once, here, because this is where the
+      // session's other entry context is already captured.
+      recordClientContext(player);
     }
   }, [player?.id]);
 

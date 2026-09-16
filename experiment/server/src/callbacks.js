@@ -33,7 +33,7 @@ import {
 } from "./constants";
 import { reshuffleGroups } from "./reshuffling";
 import { scoreSelectionStage } from "./scoring";
-import { applyPartialPay } from "./compensation";
+import { applyPartialPay, minutesBetween } from "./compensation";
 import { resolveTangramSet } from "./tangrams";
 import { classifyIdle, isLateClick, isLateSocialGuess, updateIdleRounds } from "./idle";
 import { accuracyCheckBlocks, evaluateGroupAccuracy, playerAccuracyOverBlocks } from "./accuracy";
@@ -732,11 +732,26 @@ Empirica.onGameEnded(({ game }) => {
   const multiplier =
     hasSocialGuessing(condition) ? BONUS_PER_POINT_SOCIAL : bonus_per_point;
 
+  const endedAt = Date.now();
+
   players.forEach((player) => {
     const totalScore = player.get("score") || 0;
     player.set("bonus", totalScore * multiplier);
+
+    // Time on task for players who reach the end. Removed players already have
+    // both fields from applyPartialPay and keep the time of their removal, so
+    // `gameEndTime` / `minutesSpent` are populated for everyone in the export
+    // and mean the same thing however the player left.
+    if (!player.get("gameEndTime")) {
+      player.set("gameEndTime", endedAt);
+      player.set(
+        "minutesSpent",
+        minutesBetween(player.get("gameStartTime"), endedAt),
+      );
+    }
+
     console.log(
-      `Player ${player.id}: TotalScore=${totalScore}, Bonus=$${player.get("bonus").toFixed(2)}`,
+      `Player ${player.id}: TotalScore=${totalScore}, Bonus=$${player.get("bonus").toFixed(2)}, Minutes=${player.get("minutesSpent")}`,
     );
   });
 });

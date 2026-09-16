@@ -78,8 +78,16 @@ export function Tangram(props) {
           return;
         }
 
+        // `clicked_at` is the commit time (client clock; also used to audit late
+        // arrivals). `tangram_selected_at` is when the participant chose. They
+        // coincide here because the click commits immediately, but in the
+        // social conditions the choice is held locally until submit, so the two
+        // are recorded separately to keep the measure comparable across
+        // conditions (see commitLocalSelections in Refgame.jsx).
+        const now = Date.now();
         player.round.set("clicked", tangram);
-        player.round.set("clicked_at", Date.now()); // client clock; for auditing late arrivals
+        player.round.set("clicked_at", now);
+        player.round.set("tangram_selected_at", now);
         // Auto-submit is handled by Refgame.jsx on a per-player basis
         // to avoid race conditions where submit reaches the server
         // before the clicked state has synced.

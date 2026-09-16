@@ -7,8 +7,9 @@
 #    that the anonymization step is supposed to strip (see SENSITIVE_COLUMNS
 #    in analysis/extract_run.py). Non-anonymized participant data was once
 #    committed by accident; this makes that a hard stop.
-# 2. Server unit tests. If staged files touch experiment/server/src/, runs
-#    `npm run test:unit` (vitest on scoring.js and reshuffling.js; seconds).
+# 2. Server unit tests. If staged files touch experiment/server/src/ or
+#    experiment/shared/, runs `npm run test:unit` (vitest on scoring.js,
+#    reshuffling.js and the shared engagement rules; seconds).
 # 3. Analysis tests. If staged files touch analysis/*.py or data/<dataset>/,
 #    runs the data integrity suite and the derived-metric unit tests
 #    (`uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py`,
@@ -77,7 +78,9 @@ Only anonymized data may be committed. Re-run analysis/extract_run.py (which str
 fi
 
 # ── 2. Server unit tests ────────────────────────────────────
-if printf '%s\n' "$staged" | grep -qE '^experiment/server/src/'; then
+# shared/ is included because the server's vitest also runs its tests
+# (see experiment/server/vitest.config.js).
+if printf '%s\n' "$staged" | grep -qE '^experiment/(server/src|shared)/'; then
   if command -v npm >/dev/null 2>&1 && [ -d experiment/server/node_modules ]; then
     log=$(mktemp)
     if ! npm run --silent test:unit --prefix experiment >"$log" 2>&1; then

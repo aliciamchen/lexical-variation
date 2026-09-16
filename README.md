@@ -107,6 +107,16 @@ The preprocessed pilot data is in `data/pilots/`. See [`data/pilots/README.md`](
 | `speaker_utterances_filtered.csv` | Same as above, but with non-referential messages removed first |
 | `social_guesses.csv` | Listener guesses about speaker group membership (social conditions only) |
 
+Sessions from September 2026 onward also record response times, how long each
+chat message took to compose, the device and viewport the participant played
+on, and when they switched away from the tab or lost their connection. These
+columns are empty in the pilot data, which predates the instrumentation, and
+are described alongside the others in `data/pilots/README.md`. Timestamps taken
+in the participant's browser are meaningful only relative to one another within
+that participant, since browser clocks are not synchronized; the columns read
+from the server are comparable across everyone, and the column descriptions say
+which is which.
+
 ## Analysis pipeline
 
 ### Reproducing pilot results

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useStageTimer } from "@empirica/core/player/classic/react";
 import { Tangram } from "../components/Tangram.jsx";
 import { Button } from "../components/Button.jsx";
@@ -9,6 +9,12 @@ export function Refgame(props) {
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [localTangramSelection, setLocalTangramSelection] = useState(null);
   const [localSocialGuess, setLocalSocialGuess] = useState(null);
+  // When each local choice was actually made. In the social conditions the two
+  // choices are committed together on submit, so without these the commit time
+  // would be the only record and the moment of choosing -- and which of the two
+  // came first -- would be lost. Refs, so recording a time never re-renders.
+  const localTangramAtRef = useRef(null);
+  const localSocialGuessAtRef = useRef(null);
 
   // Reset local state when stage/round changes
   useEffect(() => {
@@ -17,7 +23,50 @@ export function Refgame(props) {
     }
     setLocalTangramSelection(null);
     setLocalSocialGuess(null);
+    localTangramAtRef.current = null;
+    localSocialGuessAtRef.current = null;
   }, [stage.get("name"), round.get("target_num")]);
+
+  // Stamp, once per player-round, when the Selection stage first rendered for
+  // this participant. Response times are measured against this rather than the
+  // server's stage start: both ends then come from the same client clock, so
+  // skew between participants' machines cannot contaminate them.
+  useEffect(() => {
+    if (
+      stage.get("name") === "Selection" &&
+      !player.round.get("selection_rendered_at")
+    ) {
+      player.round.set("selection_rendered_at", Date.now());
+    }
+  }, [stage.get("name"), round.get("target_num")]);
+
+  // Record a local choice together with the moment it was made. A participant
+  // who changes their mind before submitting overwrites both, so these are the
+  // time of the choice actually submitted, not of the first one considered.
+  const chooseTangram = (tangram) => {
+    localTangramAtRef.current = Date.now();
+    setLocalTangramSelection(tangram);
+  };
+  const chooseSocialGuess = (guess) => {
+    localSocialGuessAtRef.current = Date.now();
+    setLocalSocialGuess(guess);
+  };
+
+  // Write both local choices and their timestamps onto the player-round.
+  // `clicked_at` stays the commit time; `tangram_selected_at` is when the
+  // participant chose, which is what a response time needs and what differs
+  // between the simultaneous and immediate paths.
+  const commitLocalSelections = () => {
+    if (localTangramSelection) {
+      player.round.set("clicked", localTangramSelection);
+      player.round.set("clicked_at", Date.now());
+      player.round.set("tangram_selected_at", localTangramAtRef.current);
+    }
+    if (localSocialGuess) {
+      player.round.set("social_guess", localSocialGuess);
+      player.round.set("social_guess_selected_at", localSocialGuessAtRef.current);
+    }
+  };
 
   const target = round.get("target");
   const shuffled_tangrams = player.get("shuffled_tangrams");
@@ -51,13 +100,7 @@ export function Refgame(props) {
       !player.round.get("clicked") &&
       (localTangramSelection || localSocialGuess)
     ) {
-      if (localTangramSelection) {
-        player.round.set("clicked", localTangramSelection);
-        player.round.set("clicked_at", Date.now());
-      }
-      if (localSocialGuess) {
-        player.round.set("social_guess", localSocialGuess);
-      }
+      commitLocalSelections();
     }
   }, [remainingSeconds]);
 
@@ -76,7 +119,7 @@ export function Refgame(props) {
         target={target}
         {...(simultaneousMode
           ? {
-              onSelect: setLocalTangramSelection,
+              onSelect: chooseTangram,
               localSelection: localTangramSelection,
             }
           : {})}
@@ -324,9 +367,7 @@ export function Refgame(props) {
   // Commit both selections in simultaneous mode
   const handleSimultaneousSubmit = () => {
     if (!localTangramSelection || !localSocialGuess) return;
-    player.round.set("clicked", localTangramSelection);
-    player.round.set("clicked_at", Date.now());
-    player.round.set("social_guess", localSocialGuess);
+    commitLocalSelections();
   };
 
   // Social guess component for listeners in social_mixed condition
@@ -382,7 +423,7 @@ export function Refgame(props) {
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
           <button
             className="button"
-            onClick={() => setLocalSocialGuess("same_group")}
+            onClick={() => chooseSocialGuess("same_group")}
             style={{
               padding: "8px 16px",
               backgroundColor:
@@ -398,7 +439,7 @@ export function Refgame(props) {
           </button>
           <button
             className="button"
-            onClick={() => setLocalSocialGuess("different_group")}
+            onClick={() => chooseSocialGuess("different_group")}
             style={{
               padding: "8px 16px",
               backgroundColor:

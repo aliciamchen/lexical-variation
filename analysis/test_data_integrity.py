@@ -187,7 +187,7 @@ class TestSchemaValidation:
     def test_players_required_columns(self, players):
         required = [
             "playerId", "gameId", "name", "originalGroup", "originalName",
-            "score", "bonus", "isActive", "idleRounds",
+            "score", "bonus", "isActive", "idleRounds", "playerIndex",
         ]
         missing = set(required) - set(players.columns)
         assert not missing, f"players.csv missing columns: {missing}"
@@ -205,6 +205,8 @@ class TestSchemaValidation:
             "gameId", "playerId", "playerName", "originalGroup",
             "currentGroup", "role", "blockNum", "phase", "phaseNum",
             "target", "roundScore", "roundId", "trialNum", "tangramSet",
+            "speakerId", "inGroupSpeaker", "groupSize", "speakerReassigned",
+            "reshuffleMode",
         ]
         missing = set(required) - set(trials.columns)
         assert not missing, f"trials.csv missing columns: {missing}"
@@ -811,6 +813,112 @@ class TestInGroupListenerConstraint:
             f"In-group listener constraint violated in {len(violations)} "
             f"trials:\n" + "\n".join(violations[:10])
         )
+
+
+def _truthy(series):
+    """Exported booleans read back as True/False or 'True'/'true' strings."""
+    return series.isin([True, "True", "true"])
+
+
+class TestReshuffleNetwork:
+    """The interaction structure recorded in trials.csv.
+
+    Every group has one player per rotation index (in Phase 1 because the
+    original trios were built that way, in Phase 2 because the reshuffle
+    enforces it), the speaker and in-group columns agree with the trio
+    membership, a full roster is never split into pairs, and the server's
+    reshuffle record, where present, agrees with what the trios show.
+    """
+
+    def test_each_original_group_has_indices_0_1_2(self, players, game_ids):
+        for gid in game_ids:
+            game_players = players[players["gameId"] == gid]
+            for grp in VALID_GROUPS:
+                idx = sorted(
+                    game_players[game_players["originalGroup"] == grp]["playerIndex"]
+                    .dropna().astype(int).tolist()
+                )
+                assert idx == [0, 1, 2], (
+                    f"Game {gid}, group {grp}: rotation indices {idx}, expected [0, 1, 2]"
+                )
+
+    def test_one_player_per_index_in_every_current_group(self, trials, players):
+        idx = players.set_index("playerId")["playerIndex"]
+        t = trials.assign(playerIndex=trials["playerId"].map(idx))
+        assert t["playerIndex"].notna().all(), "every trial row needs a rotation index"
+        dup = t.groupby(["gameId", "roundId", "currentGroup"])["playerIndex"].apply(
+            lambda s: s.duplicated().any()
+        )
+        assert not dup.any(), (
+            f"{int(dup.sum())} group-trials have two players with the same rotation index"
+        )
+
+    def test_speaker_id_matches_the_group_speaker(self, trials):
+        speakers = trials[trials["role"] == "speaker"].groupby(
+            ["gameId", "roundId", "currentGroup"]
+        )["playerId"].agg(list)
+        assert speakers.apply(len).eq(1).all(), "every group-trial should have exactly one speaker"
+        expected = speakers.apply(lambda ids: ids[0]).rename("expectedSpeaker")
+        merged = trials.join(expected, on=["gameId", "roundId", "currentGroup"])
+        assert merged["expectedSpeaker"].notna().all(), "a group-trial without a speaker row"
+        mismatch = merged[merged["speakerId"] != merged["expectedSpeaker"]]
+        assert mismatch.empty, f"{len(mismatch)} rows whose speakerId is not the group's speaker"
+
+    def test_in_group_speaker_flag_matches_original_groups(self, trials):
+        og = trials.drop_duplicates("playerId").set_index("playerId")["originalGroup"]
+        listeners = trials[trials["role"] == "listener"]
+        expected = listeners["originalGroup"] == listeners["speakerId"].map(og)
+        actual = _truthy(listeners["inGroupSpeaker"])
+        assert (expected == actual).all(), "inGroupSpeaker disagrees with the speaker's original group"
+        assert trials[trials["role"] == "speaker"]["inGroupSpeaker"].isna().all(), (
+            "inGroupSpeaker should be empty on speaker rows"
+        )
+
+    def test_group_size_counts_the_group_members(self, trials):
+        sizes = trials.groupby(["gameId", "roundId", "currentGroup"])["playerId"].transform("nunique")
+        assert (trials["groupSize"] == sizes).all()
+        assert (trials["groupSize"] >= 2).all(), "no player should be in a group alone"
+        assert (trials["groupSize"] <= GROUP_SIZE).all()
+
+    def test_full_roster_is_never_split_into_pairs(self, trials, game_condition_map):
+        for gid, cond in game_condition_map.items():
+            if cond not in MIXED_CONDITIONS:
+                continue
+            p2 = trials[(trials["gameId"] == gid) & (trials["phaseNum"] == 2)]
+            active = p2.groupby("roundId")["playerId"].nunique()
+            full_rounds = active[active == PLAYERS_PER_GAME].index
+            sizes = p2[p2["roundId"].isin(full_rounds)]["groupSize"]
+            assert (sizes == GROUP_SIZE).all(), (
+                f"Game {gid}: a Phase 2 round with all nine players active has a group smaller than three"
+            )
+
+    def test_speaker_reassigned_matches_the_rotation_index(self, trials, players):
+        idx = players.set_index("playerId")["playerIndex"]
+        known = trials[trials["speakerReassigned"].notna()]
+        if known.empty:
+            pytest.skip("speakerReassigned is empty in this dataset")
+        expected = known["speakerId"].map(idx).astype(int) != (known["blockNum"].astype(int) % GROUP_SIZE)
+        actual = _truthy(known["speakerReassigned"])
+        assert (expected == actual).all(), "speakerReassigned disagrees with the speaker's rotation index"
+
+    def test_reshuffle_mode_agrees_with_the_trio_composition(self, trials):
+        """Where the server recorded a reshuffle mode (full sample), 'constrained'
+        must mean every group that trial was a trio with exactly one in-group
+        listener, and 'reduced' must mean at least one was not."""
+        recorded = trials[trials["reshuffleMode"].notna()]
+        if recorded.empty:
+            pytest.skip("reshuffleMode was not recorded in this dataset (pilot exports predate it)")
+        for (gid, rid), r in recorded.groupby(["gameId", "roundId"]):
+            all_ok = all(
+                len(g) == GROUP_SIZE
+                and _truthy(g[g["role"] == "listener"]["inGroupSpeaker"]).sum() == 1
+                for _, g in r.groupby("currentGroup")
+            )
+            mode = r["reshuffleMode"].iloc[0]
+            assert mode in {"constrained", "reduced"}, f"Game {gid}, round {rid}: unknown mode {mode}"
+            assert (mode == "constrained") == all_ok, (
+                f"Game {gid}, round {rid}: reshuffleMode={mode} but the trios say {'constrained' if all_ok else 'reduced'}"
+            )
 
 
 # ============ 8. IDENTITY MASKING ============
@@ -2005,4 +2113,111 @@ class TestDataCompleteness:
         assert missing_pct < 0.10, (
             f"{missing_click}/{total_listeners} ({missing_pct:.1%}) listener "
             f"trials missing click data"
+        )
+
+
+# ============ 19. SESSION INSTRUMENTATION ============
+
+
+class TestSessionInstrumentation:
+    """Timing, device, and engagement records added in September 2026.
+
+    The pilot predates all of it, so every check here skips on an empty
+    column rather than failing. They exist to catch the full sample going
+    wrong: a response time that runs backwards, a clock that jumped, or a
+    condition that silently stopped recording.
+    """
+
+    def test_the_timing_columns_exist_whatever_the_export_vintage(self, trials, players):
+        for column in (
+            "tangramSelectedAt",
+            "selectionRenderedAt",
+            "selectionRt",
+            "selectionStartedAt",
+            "selectionEndedAt",
+            "selectionDurationMs",
+        ):
+            assert column in trials.columns, f"trials.csv is missing {column}"
+        for column in ("minutesSpent", "quizAttempts", "tabHiddenCount"):
+            assert column in players.columns, f"players.csv is missing {column}"
+
+    def test_response_times_are_positive(self, trials):
+        """A choice cannot precede the stage appearing on the same screen."""
+        rt = trials["selectionRt"].dropna()
+        if rt.empty:
+            pytest.skip("no response times recorded (export predates them)")
+        negative = rt[rt < 0]
+        assert len(negative) == 0, (
+            f"{len(negative)} trials have a negative response time; the "
+            "participant's clock moved backwards mid-session"
+        )
+
+    def test_response_times_fit_inside_the_selection_stage(self, trials):
+        """A response time longer than the stage means the clocks disagree.
+
+        Both ends of selectionRt come from the participant's browser and the
+        stage duration from the server, so a gross mismatch is the signal that
+        one of those clocks is untrustworthy for that session.
+        """
+        both = trials[["selectionRt", "selectionDurationMs"]].dropna()
+        if both.empty:
+            pytest.skip("no response times recorded (export predates them)")
+        # One second of slack for the round trip that commits the selection.
+        over = both[both["selectionRt"] > both["selectionDurationMs"] + 1000]
+        assert len(over) == 0, (
+            f"{len(over)} trials have a response time longer than the stage "
+            "they were made in"
+        )
+
+    def test_the_selection_is_never_committed_before_it_was_made(self, trials):
+        """clickedAt is the commit; tangramSelectedAt is the choice."""
+        both = trials[["clickedAt", "tangramSelectedAt"]].dropna()
+        if both.empty:
+            pytest.skip("no selection timestamps recorded")
+        early = both[both["clickedAt"] < both["tangramSelectedAt"]]
+        assert len(early) == 0, (
+            f"{len(early)} trials were committed before the choice was made"
+        )
+
+    def test_every_condition_records_the_choice_time(self, trials, game_condition_map):
+        """The social conditions commit on submit rather than on click.
+
+        That difference is exactly why tangramSelectedAt exists, so a
+        condition missing it would silently break every cross-condition
+        response-time comparison.
+        """
+        clicked = trials[trials["clicked"].notna()].copy()
+        if clicked["tangramSelectedAt"].dropna().empty:
+            pytest.skip("no selection timestamps recorded")
+        clicked["condition"] = clicked["gameId"].map(game_condition_map)
+        for condition, rows in clicked.groupby("condition"):
+            assert rows["tangramSelectedAt"].notna().any(), (
+                f"condition {condition} recorded no choice times at all"
+            )
+
+    def test_composition_time_is_positive_and_within_the_round(self, messages):
+        if "composeMs" not in messages.columns:
+            pytest.skip("messages.csv predates composition timing")
+        compose = messages["composeMs"].dropna()
+        if compose.empty:
+            pytest.skip("no composition times recorded")
+        assert (compose >= 0).all(), "a message was sent before it was started"
+
+    def test_hidden_time_is_never_negative(self, players):
+        hidden = players["tabHiddenMs"].dropna()
+        if hidden.empty:
+            pytest.skip("no engagement log recorded")
+        assert (hidden >= 0).all(), "negative tab-hidden time"
+
+    def test_time_on_task_is_recorded_for_everyone_who_finished(self, players):
+        """Finishers get an end time from onGameEnded, not just removals.
+
+        The pilot has none, which is the gap this checks has not returned.
+        """
+        finished = players[players["isActive"] == True]
+        if finished.empty or finished["minutesSpent"].dropna().empty:
+            pytest.skip("export predates end-of-game time on task")
+        missing = finished["minutesSpent"].isna().sum()
+        assert missing == 0, (
+            f"{missing} players who finished have no time on task"
         )

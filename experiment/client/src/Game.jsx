@@ -7,6 +7,7 @@ import {
 } from "@empirica/core/player/classic/react";
 import { Chat } from "./components/Chat";
 import { hasSocialGuessing, isMixedCondition } from "./constants";
+import { useEngagementLog } from "./instrumentation";
 
 import { React, useEffect } from "react";
 import { Profile } from "./Profile";
@@ -21,6 +22,12 @@ export function Game() {
   const player = usePlayer();
   const players = usePlayers();
   const round = useRound();
+
+  // Log tab-visibility, connectivity, and viewport changes for the duration of
+  // gameplay, so idle classification can tell absence from inaction. The count
+  // is surfaced on the container below so the end-to-end spec can see that a
+  // real browser event reached the player scope.
+  const engagementCount = useEngagementLog(player);
 
   // play sounds when the round or game changes
   useEffect(() => {
@@ -88,6 +95,7 @@ export function Game() {
       data-stage-name={stageName || "unknown"}
       data-condition={condition || "unknown"}
       data-player-group={playerGroup || "unknown"}
+      data-engagement-count={engagementCount}
     >
       <div className="h-full w-full flex flex-col">
         <Profile />

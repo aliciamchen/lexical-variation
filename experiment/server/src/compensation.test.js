@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computePartialPay, applyPartialPay } from "./compensation.js";
+import { computePartialPay, applyPartialPay, minutesBetween } from "./compensation.js";
 import { BASE_PAY, EXPECTED_GAME_DURATION_MIN } from "./constants.js";
 
 const MIN = 60 * 1000;
@@ -69,5 +69,23 @@ describe("applyPartialPay", () => {
     applyPartialPay(player, { includeBonus: false, now: 22.5 * MIN });
     expect(player.get("partialBonus")).toBe(0);
     expect(player.get("partialPay")).toBe(6);
+  });
+});
+
+describe("minutesBetween", () => {
+  // Shared by the partial-pay arithmetic and by the end-of-game record that
+  // gives players who finish a time on task, so both report the same number.
+  it("rounds elapsed time to whole minutes", () => {
+    expect(minutesBetween(0, 22.5 * MIN)).toBe(23);
+    expect(minutesBetween(5 * MIN, 12 * MIN)).toBe(7);
+  });
+
+  it("never returns a negative duration", () => {
+    expect(minutesBetween(10 * MIN, 5 * MIN)).toBe(0);
+  });
+
+  it("agrees with the minutes the partial-pay calculation reports", () => {
+    const pay = computePartialPay({ startMs: 3 * MIN, endMs: 28 * MIN });
+    expect(pay.minutesSpent).toBe(minutesBetween(3 * MIN, 28 * MIN));
   });
 });
