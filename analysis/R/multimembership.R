@@ -223,9 +223,20 @@ MM_SPEAKER <- "speaker"
 #' per game with the same_group coefficient, its standard error, and t value.
 #' Fits that fail are dropped, and the reason is returned in `note` so a game
 #' cannot silently disappear from the game-level regression.
+#' @param pair_term  Add a random intercept for the unordered speaker pair.
+#'   The speaker effects alone only approximate the dependence among
+#'   similarities that share a speaker: two particular speakers can also be
+#'   unusually similar to each other for reasons belonging to neither one.
+#'   The design-matched simulations show what this costs and buys -- with such
+#'   pair-level dependence present, omitting the term leaves 95% intervals
+#'   covering about 86%, and adding it restores about 94%; with no pair
+#'   dependence at all, adding it only makes the intervals slightly
+#'   conservative. Point estimates are unaffected either way, which is exactly
+#'   why the standard errors have to be checked separately.
 fit_group_specificity_mm <- function(
   pairwise_df,
   covariates = NULL,
+  pair_term = FALSE,
   verbose = FALSE
 ) {
   # A typed empty frame, so a window with no games still comes back with the
@@ -245,14 +256,25 @@ fit_group_specificity_mm <- function(
   }
 
   rhs <- paste(c("sameGroup", covariates), collapse = " + ")
+  re <- c(
+    "(1 | target)",
+    if (pair_term) "(1 | speakerPair)",
+    paste0("(1 | ", MM_SPEAKER, ")")
+  )
   model_formula <- as.formula(
-    paste("similarity ~", rhs, "+ (1 | target) + (1 |", MM_SPEAKER, ")")
+    paste("similarity ~", rhs, "+", paste(re, collapse = " + "))
   )
 
   bind_rows(
     empty,
     map_dfr(unique(pairwise_df$gameId), function(gid) {
       game_data <- as.data.frame(pairwise_df[pairwise_df$gameId == gid, ])
+      # Built here rather than taken from the exported participantPair column
+      # so the id is guaranteed to be unordered whatever the caller passes.
+      game_data$speakerPair <- paste(
+        pmin(game_data$speaker1, game_data$speaker2),
+        pmax(game_data$speaker1, game_data$speaker2)
+      )
       if (nrow(game_data) < 5) {
         return(NULL)
       }

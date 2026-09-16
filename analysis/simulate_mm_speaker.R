@@ -171,6 +171,32 @@ fit_mm <- function(d) {
   )
 }
 
+# The multiple-membership speaker effect plus a pair-level intercept. The
+# speaker term alone only approximates the dependence among similarities that
+# share a speaker; two particular speakers can also be unusually similar to
+# each other for reasons that belong to neither of them. Each unordered pair
+# is observed once per tangram, so this term is estimable, and the question
+# these simulations answer is whether it is needed: an omitted pair effect
+# would make the standard errors too small, and an unnecessary one could make
+# them too large.
+fit_mm_pair <- function(d) {
+  d <- as.data.frame(d)
+  d$participantPair <- paste(pmin(d$speaker1, d$speaker2),
+                             pmax(d$speaker1, d$speaker2))
+  model <- lmer_multimember(
+    similarity ~ sameGroup + (1 | target) + (1 | participantPair) + (1 | speaker),
+    data = d,
+    memberships = list(speaker = speaker_pair_weights(d$speaker1, d$speaker2))
+  )
+  cs <- coef(summary(model))
+  list(
+    estimate = cs["sameGroup", "Estimate"],
+    se = cs["sameGroup", "Std. Error"],
+    singular = isSingular(model),
+    df = df.residual(model)
+  )
+}
+
 fit_separate <- function(d) {
   model <- lmer(
     similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
@@ -253,6 +279,7 @@ run_scenario <- function(scenario, reps, check_ordering = TRUE) {
   rows <- lapply(seq_len(reps), function(i) {
     d <- do.call(sim_game, c(scenario$args, list(truth = truth)))
     mm <- safely_fit(fit_mm, d)
+    mmpair <- safely_fit(fit_mm_pair, d)
     sep <- safely_fit(fit_separate, d)
     order_gap <- NA_real_
     order_gap_sep <- NA_real_
@@ -270,6 +297,9 @@ run_scenario <- function(scenario, reps, check_ordering = TRUE) {
       mm_estimate = mm$estimate,
       mm_se = mm$se,
       mm_singular = mm$singular,
+      mmpair_estimate = mmpair$estimate,
+      mmpair_se = mmpair$se,
+      mmpair_singular = mmpair$singular,
       sep_estimate = sep$estimate,
       sep_se = sep$se,
       sep_singular = sep$singular,
@@ -313,7 +343,8 @@ run_weight_study <- function(
   scenario,
   studies,
   games_per_condition = 20,
-  contrast_effect = 0.10
+  contrast_effect = 0.10,
+  fitter = fit_mm
 ) {
   truth <- scenario$truth %||% TRUTH
   bind_rows(lapply(seq_len(studies), function(s) {
@@ -324,7 +355,7 @@ run_weight_study <- function(
         sim_game,
         c(scenario$args, list(effect = effect, truth = truth))
       )
-      fit <- safely_fit(fit_mm, d)
+      fit <- safely_fit(fitter, d)
       tibble(condition = cond, estimate = fit$estimate, se = fit$se)
     })) |>
       filter(is.finite(estimate), is.finite(se), se > 0)
@@ -377,6 +408,7 @@ main <- function(reps = 300, studies = 200, out = NULL, seed = 2026) {
     truth <- sc$truth %||% TRUTH
     bind_rows(
       summarise_structure(d, "mm", truth$same_group),
+      summarise_structure(d, "mmpair", truth$same_group),
       summarise_structure(d, "sep", truth$same_group)
     ) |>
       mutate(scenario = sc$name, note = sc$note, .before = 1)
@@ -406,11 +438,14 @@ main <- function(reps = 300, studies = 200, out = NULL, seed = 2026) {
   cat(
     "\n== Stage 2: inverse-variance weights in the game-level regression ==\n"
   )
+  fitters <- list(mm = fit_mm, mmpair = fit_mm_pair)
   stage2 <- bind_rows(lapply(SCENARIOS, function(sc) {
-    cat("  ", sc$name, "...\n", sep = "")
-    run_weight_study(sc, studies) |>
+    bind_rows(lapply(names(fitters), function(fn) {
+    cat("  ", sc$name, " / ", fn, "...\n", sep = "")
+    run_weight_study(sc, studies, fitter = fitters[[fn]]) |>
       summarise(
         scenario = sc$name,
+        structure = fn,
         studies = sum(is.finite(estimate)),
         mean_estimate = mean(estimate, na.rm = TRUE),
         emp_sd = sd(estimate, na.rm = TRUE),
@@ -419,6 +454,7 @@ main <- function(reps = 300, studies = 200, out = NULL, seed = 2026) {
         coverage = mean(covered, na.rm = TRUE),
         mean_weight_cv = mean(weight_cv, na.rm = TRUE)
       )
+    }))
   }))
   print(as.data.frame(
     stage2 |> mutate(across(where(is.numeric), \(x) round(x, 4)))

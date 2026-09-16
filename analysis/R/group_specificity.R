@@ -29,7 +29,17 @@ suppressPackageStartupMessages({
 # SI_pilot.qmd asks for it explicitly. Do not use it for the full sample: it
 # splits one person's effect across two variance components and makes the
 # estimate depend on an arbitrary ordering within each pair.
-SPEAKER_STRUCTURES <- c("multimembership", "separate")
+# "multimembership_pair" adds a random intercept for the unordered speaker
+# pair on top of the shared speaker effect. The design-matched simulations
+# (analysis/simulate_mm_speaker.R) found that the speaker effect alone leaves
+# the standard error about 25% too small when pair-level dependence is
+# present (95% intervals covering 86%), while the pair term restores nominal
+# coverage and is only mildly conservative when no such dependence exists.
+# Point estimates are the same either way, so this matters only through the
+# inverse-variance weights -- which is precisely what it matters for. It is
+# not the default because the preregistration text currently specifies the
+# tangram and speaker terms only; adopting it is a manuscript change.
+SPEAKER_STRUCTURES <- c("multimembership", "multimembership_pair", "separate")
 
 # `covariates` adds fixed-effect terms to every game's similarity model; the
 # preregistration uses this for the robustness check that includes description
@@ -37,10 +47,16 @@ SPEAKER_STRUCTURES <- c("multimembership", "separate")
 fit_group_specificity <- function(pairwise_df, covariates = NULL,
                                   speaker_structure = "multimembership") {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
-  if (speaker_structure == "multimembership") {
-    return(fit_group_specificity_mm(pairwise_df, covariates = covariates) |>
-             select(gameId, coefficient, std_error, t_value) |>
-             filter(!is.na(coefficient)))
+  if (speaker_structure != "separate") {
+    return(
+      fit_group_specificity_mm(
+        pairwise_df,
+        covariates = covariates,
+        pair_term = speaker_structure == "multimembership_pair"
+      ) |>
+        select(gameId, coefficient, std_error, t_value) |>
+        filter(!is.na(coefficient))
+    )
   }
   game_ids <- unique(pairwise_df$gameId)
   rhs <- paste(c("sameGroup", covariates), collapse = " + ")
@@ -87,13 +103,20 @@ permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67,
         similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
         data = d, control = lmerControl(optimizer = "bobyqa")
       )
-    } else {
-      model <- lmer_multimember(
-        similarity ~ sameGroup + (1 | target) + (1 | speaker),
-        data = as.data.frame(d),
-        memberships = list(speaker = speaker_pair_weights(d$speaker1, d$speaker2))
-      )
+      return(coef(summary(model))["sameGroup", "Estimate"])
     }
+    d <- as.data.frame(d)
+    d$speakerPair <- paste(pmin(d$speaker1, d$speaker2),
+                           pmax(d$speaker1, d$speaker2))
+    f <- if (speaker_structure == "multimembership_pair") {
+      similarity ~ sameGroup + (1 | target) + (1 | speakerPair) + (1 | speaker)
+    } else {
+      similarity ~ sameGroup + (1 | target) + (1 | speaker)
+    }
+    model <- lmer_multimember(
+      f, data = d,
+      memberships = list(speaker = speaker_pair_weights(d$speaker1, d$speaker2))
+    )
     coef(summary(model))["sameGroup", "Estimate"]
   }
 
@@ -166,9 +189,16 @@ compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
                                       force = FALSE, seed = 67,
                                       speaker_structure = "multimembership") {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
-  gs_cache <- file.path(cache_dir, "gs_results.rds")
-  perm_cache <- file.path(cache_dir, "perm_results.rds")
-  key_file <- file.path(cache_dir, "group_specificity_cache_key.txt")
+  # One set of cache files per speaker structure. They must not share a name:
+  # SI_pilot.qmd asks for "separate" and the full-sample notebooks use the
+  # default, so a single set would be overwritten by whichever notebook
+  # rendered last and the permutation test would rerun every time.
+  suffix <- paste0("_", speaker_structure)
+  gs_cache <- file.path(cache_dir, paste0("gs_results", suffix, ".rds"))
+  perm_cache <- file.path(cache_dir, paste0("perm_results", suffix, ".rds"))
+  key_file <- file.path(
+    cache_dir, paste0("group_specificity_cache_key", suffix, ".txt")
+  )
 
   # The cache is keyed by a hash of the input data and the permutation count,
   # so a change to the pairwise similarities (or a different dataset) can never

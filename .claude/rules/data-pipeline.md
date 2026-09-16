@@ -24,7 +24,7 @@ The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pil
 | `figures/<name>/` | Notebook figures (`figures/pilots/` holds the SI figures from `SI_pilot.qmd`) | Yes |
 | `figures/llm_plots/` | SI PDF figures from `SI_llm_simulation.qmd` | Yes |
 
-Cached fits are keyed to their inputs: `group_specificity.R` stores a hash of the pairwise data next to `gs_results.rds` and recomputes when it differs, and `bayes_factors.R` names each fit by a hash of data and formula. A stale cache can therefore not be reused silently, but recomputing the permutation test takes several minutes. The brms fits under `analysis/derived/<name>/bayes_factors/` are gitignored (tens of megabytes, reproducible); the group-specificity RDS files are committed.
+Cached fits are keyed to their inputs: `group_specificity.R` stores a hash of the pairwise data next to `gs_results_<speaker structure>.rds` and recomputes when it differs, and `bayes_factors.R` names each fit by a hash of data and formula. The speaker structure is in both the hash and the filename, so the full-sample notebooks and `SI_pilot.qmd` keep separate caches instead of overwriting each other's permutation run on every render. A stale cache can therefore not be reused silently, but recomputing the permutation test takes several minutes. The brms fits under `analysis/derived/<name>/bayes_factors/` are gitignored (tens of megabytes, reproducible); the group-specificity RDS files are committed.
 
 ## Data
 
