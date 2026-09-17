@@ -78,11 +78,13 @@ export async function startServer(): Promise<void> {
   // Spawn empirica server in its own process group (detached: true)
   // so it survives Playwright worker lifecycle transitions between projects.
   // Pass TEST_MODE=true so the server uses test-friendly timing and block counts.
+  const testMode = process.env.TEST_MODE ?? 'true';
+  console.log(`[server-manager] Starting empirica with TEST_MODE=${testMode}`);
   serverProcess = spawn('empirica', [], {
     cwd: EXPERIMENT_DIR,
     stdio: 'ignore',
     detached: true,
-    env: { ...process.env, TEST_MODE: process.env.TEST_MODE ?? 'true' },
+    env: { ...process.env, TEST_MODE: testMode },
   });
 
   // Don't keep the parent process alive waiting for this child

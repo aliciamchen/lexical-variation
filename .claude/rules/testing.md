@@ -105,10 +105,10 @@ Tests are split into 5 project groups in `playwright.config.ts`. Between each gr
 1. Create a `.spec.ts` file in the appropriate category directory under `experiment/tests/` (e.g., `tests/ui-verification/my-test.spec.ts`). The file must be in a directory matching one of the group patterns above so the config picks it up.
 
 2. Use the shared helpers:
-   - `tests/helpers/admin.ts` — `createBatch(page, condition)` to set up a game via the admin UI
-   - `tests/helpers/player-manager.ts` — `PlayerManager` class to create and manage multiple browser contexts (one per player)
-   - `tests/helpers/game-actions.ts` — `completeIntro(page)` to walk a player through consent, instructions, and quiz
-   - `tests/helpers/constants.ts` — all game constants (player count, timing, quiz answers, etc.)
+   - `tests/helpers/admin.ts` — `createBatch(page, condition)` to set up a game via the admin UI; `stopAllBatches(page)` to stop every running batch the way a researcher ends a session early (Empirica writes `game terminated`; see `compensation/batch-terminated.spec.ts`)
+   - `tests/helpers/player-manager.ts` — `PlayerManager` class to create and manage multiple browser contexts (one per player). `registerAllPlayers` opens `/` without `PROLIFIC_PID`, so the identifier field is editable and `completeIntro` types one; with the parameter the field is prefilled and read-only
+   - `tests/helpers/game-actions.ts` — `completeIntro(page)` to walk a player through consent, instructions, and quiz; `completeExitSurvey(page)` fills both survey pages and then waits for either the confirmation page (the exit-survey container with `data-prolific-code`; it has no Finish button) or the Sorry screen that removed players get instead. `getExitInfo` reports `prolificCode` from the Sorry screen or from that confirmation page
+   - `tests/helpers/constants.ts` — re-exports `shared/constants.js`; compare exit reasons against `EXIT_REASONS.*` and codes against `PROLIFIC_CODES.*`, never string literals
    - `tests/helpers/selectors.ts` — shared CSS selectors
 
 3. Typical test setup pattern:
@@ -149,6 +149,7 @@ Tests are split into 5 project groups in `playwright.config.ts`. Between each gr
 
 **Key config values** (from `experiment/shared/constants.js`, mirrored in `tests/helpers/constants.ts`):
 - `TEST_MODE` — controlled by `TEST_MODE` env var (defaults to `false` for production; `server-manager.ts` and `tests/helpers/set-default-test-mode.ts` default it to `true` for tests)
+- `tests/helpers/set-production-mode.ts` (imported by the holistic specs and their setup) sets `TEST_MODE=false` only inside a Playwright worker (`TEST_WORKER_INDEX` is set). Playwright also loads every spec file in the runner process when it collects a multi-project run such as `npm test`; a flip there was inherited by every worker, so groups 1-4 started the server with production block counts and failed late (2026-09-17). `reset-server.setup.ts` now refuses to start in that state, and `server-manager.ts` logs the mode it spawns with; check that line first when a group fails in unexpected places.
 - Test mode: 3+2 blocks; timers and idle threshold are the production values (45s/25s selection, 15s feedback, 3 idle rounds); 600s per-test timeout
 - Production mode (`TEST_MODE=false`): 6+6 blocks, same timers; 5400s per-test timeout
 - `IDLE_TEST_TIMING=true` (used by `npm run test:group4:fast`): 30s selection, 2 idle rounds — for suites whose tests wait out full idle timers
