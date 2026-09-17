@@ -1,0 +1,89 @@
+#!/bin/bash
+# Git pre-commit hook: the repository's commit gate. Install once per clone:
+#   git config core.hooksPath .githooks
+# The Claude Code hook (.claude/hooks/pre-commit-check.sh) runs this same
+# script before an agent's `git commit`, so both paths enforce one rule set.
+#
+# 1. Participant-privacy guard. Refuses the commit if any staged data file
+#    (anything under data/, or any .csv/.json under experiment/) contains a
+#    Prolific-ID-shaped token (exactly 24 hex characters) or a header column
+#    that the anonymization step is supposed to strip (SENSITIVE_COLUMNS in
+#    analysis/extract_run.py). Non-anonymized participant data was once
+#    committed by accident; this makes that a hard stop.
+# 2. Server unit tests, when staged files touch experiment/server/src/ or
+#    experiment/shared/ (vitest, seconds).
+# 3. R helper tests, when staged files touch analysis/R/, analysis/tests/, or
+#    analysis/config.R.
+# 4. Data integrity and Python unit tests, when staged files touch
+#    analysis/*.py or data/<dataset>/.
+#
+# Playwright end-to-end tests are deliberately not run here; they take many
+# minutes. Pass STAGED_FILES (newline separated) to check a given list instead
+# of the index, which is what the Claude hook does for `git commit -a`.
+
+set -o pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+if [ -n "${STAGED_FILES:-}" ]; then
+  staged="$STAGED_FILES"
+else
+  staged=$(git diff --cached --name-only --diff-filter=ACMR)
+fi
+staged=$(printf '%s\n' "$staged" | sed '/^$/d' | sort -u)
+[ -z "$staged" ] && exit 0
+
+fail() { printf '%s\n' "$1" >&2; exit 1; }
+
+# ── 1. Privacy guard ────────────────────────────────────────
+sensitive_cols='participantIdentifier|prolificPid|studyId|sessionId|urlParams|userAgent'
+hex24='(^|[^0-9a-fA-F])[0-9a-f]{24}([^0-9a-fA-F]|$)'
+violations=""
+while IFS= read -r f; do
+  case "$f" in
+    data/*|experiment/*.csv|experiment/*.json|experiment/*/*.csv|experiment/*/*.json) ;;
+    *) continue ;;
+  esac
+  content=$(git show ":$f" 2>/dev/null || cat "$f" 2>/dev/null) || continue
+  header=$(printf '%s\n' "$content" | head -n 1)
+  if printf '%s' "$header" | grep -qE "(^|,|\")($sensitive_cols)(LastChangedAt)?(\"|,|$)"; then
+    violations+="  $f: header contains a sensitive participant column"$'\n'
+  elif printf '%s' "$content" | grep -qE "$hex24"; then
+    violations+="  $f: contains a 24-hex token shaped like a Prolific ID"$'\n'
+  fi
+done <<< "$staged"
+
+if [ -n "$violations" ]; then
+  fail "Commit blocked: staged data files may contain participant identifiers.
+
+$violations
+Only anonymized data may be committed. Re-run analysis/extract_run.py (which strips SENSITIVE_COLUMNS) or remove the file from the commit."
+fi
+
+# ── 2. Server unit tests ────────────────────────────────────
+if printf '%s\n' "$staged" | grep -qE '^experiment/(server/src|shared)/'; then
+  if command -v npm >/dev/null 2>&1 && [ -d experiment/server/node_modules ]; then
+    npm run --silent test:unit --prefix experiment >/tmp/precommit-unit.log 2>&1 \
+      || fail "Commit blocked: server unit tests failed (npm run test:unit in experiment/).
+$(tail -n 60 /tmp/precommit-unit.log)"
+  fi
+fi
+
+# ── 3. R helper tests ───────────────────────────────────────
+if printf '%s\n' "$staged" | grep -qE '^analysis/(R/|tests/|config\.R$)'; then
+  if command -v Rscript >/dev/null 2>&1; then
+    Rscript analysis/tests/run_all.R >/tmp/precommit-r.log 2>&1 \
+      || fail "Commit blocked: R helper tests failed (Rscript analysis/tests/run_all.R).
+$(tail -n 30 /tmp/precommit-r.log)"
+  fi
+fi
+
+# ── 4. Data integrity and Python unit tests ─────────────────
+if printf '%s\n' "$staged" | grep -qE '^(analysis/[^/]+\.py|data/[^/]+/|operations/)'; then
+  if command -v uv >/dev/null 2>&1; then
+    uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py operations/test_session.py -q >/tmp/precommit-py.log 2>&1 \
+      || fail "Commit blocked: Python tests failed (uv run pytest analysis/test_*.py operations/test_session.py).
+$(tail -n 60 /tmp/precommit-py.log)"
+  fi
+fi
+
+exit 0
