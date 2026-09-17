@@ -2,7 +2,16 @@ import React, { useState, useEffect, useRef } from "react";
 import { useStageTimer } from "@empirica/core/player/classic/react";
 import { Tangram } from "../components/Tangram.jsx";
 import { Button } from "../components/Button.jsx";
-import { PHASE_1_BLOCKS, PHASE_2_BLOCKS, MAX_IDLE_ROUNDS, hasSocialGuessing, isMixedCondition } from "../constants";
+import {
+  GROUP_SIZE,
+  PHASE_1_BLOCKS,
+  PHASE_2_BLOCKS,
+  MAX_IDLE_ROUNDS,
+  ROUNDS_PER_BLOCK,
+  hasSocialGuessing,
+  isMixedCondition,
+} from "../constants";
+import { allGroupResponded, playerHasResponded } from "../groupResponse";
 
 export function Refgame(props) {
   const { round, stage, game, player, players } = props;
@@ -88,6 +97,28 @@ export function Refgame(props) {
   const simultaneousMode =
     isSocialMixed && isListener && stage.get("name") === "Selection";
 
+  // Use current_group for player grouping
+  const playerGroup = player.get("current_group");
+  const playersInGroup = players.filter(
+    (p) => p.get("current_group") === playerGroup && p.get("is_active"),
+  );
+  const otherPlayers = playersInGroup.filter((p) => p.id !== player.id);
+
+  // Check if speaker sent any messages (for idle speaker detection)
+  // During Selection stage, use live stage chat; during Feedback, use saved round chat
+  // (chat is saved to player.round at end of Selection stage in callbacks.js)
+  const isSelectionStage = stage.get("name") === "Selection";
+  const playerGroupChat = isSelectionStage
+    ? stage.get(`${playerGroup}_chat`) || []
+    : player.round.get("chat") || [];
+  const speaker = playersInGroup.find((p) => p.round.get("role") === "speaker");
+  const speakerSentMessage = Boolean(
+    speaker && playerGroupChat.some((msg) => msg.sender?.id === speaker.id),
+  );
+
+  // Check if speaker is missing (was kicked mid-block)
+  const speakerMissing = !speaker && isListener;
+
   // Auto-commit local selections when timer expires (safety net for simultaneous mode)
   const timer = useStageTimer();
   const remainingSeconds = timer?.remaining ? Math.round(timer.remaining / 1000) : null;
@@ -95,6 +126,11 @@ export function Refgame(props) {
   useEffect(() => {
     if (
       simultaneousMode &&
+      // Nothing can have been chosen before the speaker's description (the
+      // tangrams and the guess buttons are both locked until then), and a
+      // guess about a speaker who said nothing is unscored (scoring.js), so
+      // there is nothing worth committing.
+      speakerSentMessage &&
       remainingSeconds !== null &&
       remainingSeconds <= 1 &&
       !player.round.get("clicked") &&
@@ -102,7 +138,32 @@ export function Refgame(props) {
     ) {
       commitLocalSelections();
     }
-  }, [remainingSeconds]);
+  }, [remainingSeconds, localTangramSelection, localSocialGuess, speakerSentMessage]);
+
+  // Whether this player, and then the whole group, has responded this round
+  // (see groupResponse.js; Game.jsx hides the chat on the same rule).
+  const playerResponded = playerHasResponded(player, {
+    needsSocialGuess: isSocialMixed,
+  });
+  const groupResponded = allGroupResponded(playersInGroup, {
+    needsSocialGuess: isSocialMixed,
+  });
+
+  // Auto-submit this player's stage once everyone in the group has responded.
+  // Done per player, and only after their own selection is on the round, so a
+  // submit cannot reach the server before the click it depends on. An effect
+  // rather than a write during render: a render must not have side effects,
+  // and this one used to fire on every re-render of the waiting screen.
+  useEffect(() => {
+    if (
+      isSelectionStage &&
+      playerResponded &&
+      groupResponded &&
+      !player.stage?.get("submit")
+    ) {
+      player.stage?.set("submit", true);
+    }
+  }, [isSelectionStage, playerResponded, groupResponded, round.get("target_num")]);
 
   let tangramsToRender;
   if (shuffled_tangrams) {
@@ -142,7 +203,7 @@ export function Refgame(props) {
           {displayAvatar && <img src={displayAvatar} alt="Player avatar" />}
         </span>
         <span className="name" style={{ color: "#374151" }}>
-          {displayName || `Player ${p.index}`}
+          {displayName || "Player"}
           {self
             ? " (You)"
             : p.round.get("role") === "listener"
@@ -153,30 +214,8 @@ export function Refgame(props) {
     );
   };
 
-  // Use current_group for player grouping
-  const playerGroup = player.get("current_group");
-  const playersInGroup = players.filter(
-    (p) => p.get("current_group") === playerGroup && p.get("is_active"),
-  );
-  const otherPlayers = playersInGroup.filter((p) => p.id !== player.id);
-
   // Check if group is smaller than expected (someone left/was idle)
-  const expectedGroupSize = 3;
-  const groupIsSmaller = playersInGroup.length < expectedGroupSize;
-
-  // Check if speaker sent any messages (for idle speaker detection)
-  // During Selection stage, use live stage chat; during Feedback, use saved round chat
-  // (chat is saved to player.round at end of Selection stage in callbacks.js)
-  const isSelectionStage = stage.get("name") === "Selection";
-  const playerGroupChat = isSelectionStage
-    ? stage.get(`${playerGroup}_chat`) || []
-    : player.round.get("chat") || [];
-  const speaker = playersInGroup.find((p) => p.round.get("role") === "speaker");
-  const speakerSentMessage =
-    speaker && playerGroupChat.some((msg) => msg.sender?.id === speaker.id);
-
-  // Check if speaker is missing (was kicked mid-block)
-  const speakerMissing = !speaker && isListener;
+  const groupIsSmaller = playersInGroup.length < GROUP_SIZE;
 
   // Get total blocks from game (set based on TEST_MODE)
   const phase1Blocks = game.get("phase1Blocks") || PHASE_1_BLOCKS;
@@ -185,39 +224,18 @@ export function Refgame(props) {
   const displayBlockNum = block_num + 1;
 
   let waitingMessage = "";
-  if (stage.get("name") == "Selection") {
-    // For social_mixed, listeners need both tangram click AND social guess
-    const hasClicked = player.round.get("clicked");
-    const hasSocialGuess = player.round.get("social_guess");
-    const playerResponded =
-      player.round.get("role") === "speaker" ||
-      (hasClicked && (!isSocialMixed || hasSocialGuess));
-
-    if (playerResponded) {
-      // Check if all players in the same group have responded
-      const allGroupResponded = playersInGroup.every((p) => {
-        if (p.round.get("role") === "speaker") return true;
-        const pClicked = p.round.get("clicked");
-        const pSocialGuess = p.round.get("social_guess");
-        return pClicked && (!isSocialMixed || pSocialGuess);
-      });
-
-      if (allGroupResponded) {
-        // Check if there are multiple groups (TEST_MODE has only 1 group)
-        const activeGroups = game.get("active_groups") || [];
-        if (activeGroups.length > 1) {
-          waitingMessage =
-            "All players in group responded! Waiting for members of other groups to respond...";
-        } else {
-          waitingMessage = "All players responded!";
-        }
-        // Auto-submit this player's stage when all in group have responded
-        if (!player.stage?.get("submit")) {
-          player.stage?.set("submit", true);
-        }
+  if (isSelectionStage && playerResponded) {
+    if (groupResponded) {
+      // Check if there are multiple groups (TEST_MODE has only 1 group)
+      const activeGroups = game.get("active_groups") || [];
+      if (activeGroups.length > 1) {
+        waitingMessage =
+          "All players in group responded! Waiting for members of other groups to respond...";
       } else {
-        waitingMessage = "Waiting for the players in your group to respond...";
+        waitingMessage = "All players responded!";
       }
+    } else {
+      waitingMessage = "Waiting for the players in your group to respond...";
     }
   }
 
@@ -402,11 +420,27 @@ export function Refgame(props) {
       );
     }
 
-    // Toggle-style buttons using local state
+    // Toggle-style buttons using local state. Locked until the speaker has
+    // described the target, the same gate the tangrams use (Tangram.jsx): a
+    // guess made before any description has no language to judge, and the
+    // server does not score one (scoring.js). The panel itself stays visible
+    // so listeners know the question is coming.
+    const guessEnabled = speakerSentMessage;
     const currentGuess = localSocialGuess;
+    const guessButtonStyle = (value) => ({
+      padding: "8px 16px",
+      backgroundColor: currentGuess === value ? "#4b5563" : "#9ca3af",
+      color: "white",
+      border: currentGuess === value ? "3px solid #000" : "none",
+      borderRadius: 4,
+      cursor: guessEnabled ? "pointer" : "not-allowed",
+      opacity: guessEnabled ? 1 : 0.6,
+      fontWeight: currentGuess === value ? "bold" : "normal",
+    });
     return (
       <div
         className="social-guess-container"
+        data-guess-enabled={guessEnabled}
         style={{
           marginTop: 16,
           padding: 16,
@@ -420,38 +454,32 @@ export function Refgame(props) {
         >
           Was the speaker in your original group (from Phase 1)?
         </p>
+        {!guessEnabled && (
+          <p
+            style={{
+              textAlign: "center",
+              marginBottom: 12,
+              color: "#9a3412",
+              fontStyle: "italic",
+            }}
+          >
+            Waiting for the speaker's description
+          </p>
+        )}
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
           <button
             className="button"
+            disabled={!guessEnabled}
             onClick={() => chooseSocialGuess("same_group")}
-            style={{
-              padding: "8px 16px",
-              backgroundColor:
-                currentGuess === "same_group" ? "#4b5563" : "#9ca3af",
-              color: "white",
-              border: currentGuess === "same_group" ? "3px solid #000" : "none",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontWeight: currentGuess === "same_group" ? "bold" : "normal",
-            }}
+            style={guessButtonStyle("same_group")}
           >
             Yes, same group
           </button>
           <button
             className="button"
+            disabled={!guessEnabled}
             onClick={() => chooseSocialGuess("different_group")}
-            style={{
-              padding: "8px 16px",
-              backgroundColor:
-                currentGuess === "different_group" ? "#4b5563" : "#9ca3af",
-              color: "white",
-              border:
-                currentGuess === "different_group" ? "3px solid #000" : "none",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontWeight:
-                currentGuess === "different_group" ? "bold" : "normal",
-            }}
+            style={guessButtonStyle("different_group")}
           >
             No, different group
           </button>
@@ -623,8 +651,9 @@ export function Refgame(props) {
         {stage.get("name") == "Feedback" &&
           isMixedCondition(condition) &&
           phase_num === 2 &&
+          // ...except after the very last round, when there is nothing to shuffle for
           !(
-            round.get("target_num") === 5 &&
+            round.get("target_num") === ROUNDS_PER_BLOCK - 1 &&
             block_num >= (game.get("phase2Blocks") || PHASE_2_BLOCKS) - 1
           ) && (
             <p

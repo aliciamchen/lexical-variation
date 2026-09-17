@@ -432,3 +432,41 @@ describe("social scoring with irregular in-group counts", () => {
     expect(speaker.round.get("social_round_score")).toBe(SOCIAL_SPEAKER_POINTS_PER_CORRECT / 2);
   });
 });
+
+describe("social-guess scoring when the speaker was silent", () => {
+  // A guess about a speaker who never wrote is a coin flip with no language to
+  // judge, so neither side is scored and social_guess_correct is never set.
+  // The trial then has no response opportunity in the analysis.
+  it("scores neither the listeners' guesses nor the speaker", () => {
+    const speaker = makePlayer({ id: "s", role: "speaker", originalGroup: "A" });
+    const inGroup = makePlayer({
+      id: "l-in",
+      role: "listener",
+      originalGroup: "A",
+      clicked: "T1",
+      socialGuess: "same_group",
+    });
+    const outGroup = makePlayer({
+      id: "l-out",
+      role: "listener",
+      originalGroup: "B",
+      socialGuess: "different_group",
+    });
+    const game = makeGame({
+      players: [speaker, inGroup, outGroup],
+      condition: "social_mixed",
+    });
+    const stage = makeStage({ phaseNum: 2, chats: { A: [] } });
+
+    scoreSelectionStage(game, stage);
+
+    expect(inGroup.round.get("social_guess_correct")).toBeUndefined();
+    expect(inGroup.round.get("social_round_score")).toBeUndefined();
+    expect(outGroup.round.get("social_guess_correct")).toBeUndefined();
+    expect(speaker.round.get("social_round_score")).toBeUndefined();
+    expect(inGroup.get("social_guess_total")).toBeUndefined();
+    // Reference-game points are unaffected by the social skip
+    expect(inGroup.get("score")).toBe(LISTENER_CORRECT_POINTS);
+    expect(speaker.get("score")).toBe(SPEAKER_MAX_POINTS_PER_ROUND / 2);
+  });
+});

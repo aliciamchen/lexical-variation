@@ -91,7 +91,13 @@ export function scoreSelectionStage(game, stage) {
     speaker.round.set("round_score", speakerPoints);
 
     // ============ SOCIAL GUESSING (for conditions with social guessing in Phase 2) ============
-    if (hasSocialGuessing(condition) && phase_num === 2) {
+    // Scored only when the speaker actually wrote something: a guess about a
+    // speaker who never described anything is a coin flip with no language to
+    // judge, so it earns nothing for either side and `social_guess_correct` is
+    // never set (the analysis treats such trials as having no response
+    // opportunity). The client hides the guess buttons until a message arrives;
+    // this is the server-side guarantee.
+    if (hasSocialGuessing(condition) && phase_num === 2 && speakerSentMessage) {
       const speakerOriginalGroup = speaker.get("original_group");
       let correctGuessesFromOriginalGroup = 0;
 
