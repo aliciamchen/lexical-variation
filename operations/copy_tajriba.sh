@@ -1,14 +1,20 @@
 #!/bin/bash
 #
-# copy_tajriba.sh — Back up experiment data from the production server
+# copy_tajriba.sh -- Back up experiment data from the production server
 #
-# Runs `empirica export` on the server to produce a CSV zip, then
-# copies it into a timestamped directory under experiment/data/.
+# Runs `empirica export` on the server to produce a CSV zip, then copies it
+# to experiment/data/<timestamp>/empirica-export-<timestamp>.zip: one
+# directory per export, named by the zip's own timestamp. That is the layout
+# analysis/extract_run.py and the Makefile look for, so every backup taken
+# during a session is a usable export, not only the last one.
 #
 # Usage:
 #   bash operations/copy_tajriba.sh            # loop every 5 minutes (default)
-#   bash operations/copy_tajriba.sh --once     # single backup and exit
+#   bash operations/copy_tajriba.sh --once     # one backup; exit status says whether it worked
 #   bash operations/copy_tajriba.sh --help     # show this help
+#
+# The loop carries on through a failed ssh or scp and gives up only after
+# 3 consecutive failures.
 #
 # Requires SSH access to the production server.
 # Set EMPIRICA_SERVER in .env or environment (see .env.example).
@@ -41,59 +47,75 @@ fi
 # pipeline reads exports from experiment/data/<timestamp>/, so the destination
 # must not depend on where this script is invoked from.
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-current_datetime=$(date +"%Y%m%d_%H%M%S")
-dest="$REPO_ROOT/experiment/data/$current_datetime"
-mkdir -p "$dest"
+DATA_DIR="$REPO_ROOT/experiment/data"
 
 consecutive_failures=0
 
+now() {
+    date +"%Y-%m-%d %H:%M:%S"
+}
+
+# Count one failure; stop the script once MAX_FAILURES happen in a row.
+fail() {
+    consecutive_failures=$((consecutive_failures + 1))
+    echo "[$(now)] WARNING: $1 failed (attempt $consecutive_failures/$MAX_FAILURES)." >&2
+    if [[ $consecutive_failures -ge $MAX_FAILURES ]]; then
+        echo "[$(now)] ERROR: $MAX_FAILURES consecutive failures -- exiting." >&2
+        exit 1
+    fi
+    return 1
+}
+
 do_backup() {
-    local timestamp
-    timestamp=$(date +"%Y-%m-%d %H:%M:%S")
-    local remote_zip="/tmp/empirica-export-$(date +%Y%m%d_%H%M%S).zip"
+    local stamp remote_zip dest
+    # One timestamp names the remote zip, the local directory and the file in
+    # it, so extract_run.py's `experiment/data/<ts>/empirica-export-<ts>.zip`
+    # pattern matches every backup.
+    stamp=$(date +"%Y%m%d_%H%M%S")
+    remote_zip="/tmp/empirica-export-$stamp.zip"
+    dest="$DATA_DIR/$stamp"
 
-    echo "[$timestamp] Running empirica export on server..."
+    echo "[$(now)] Running empirica export on server..."
     if ! ssh "$REMOTE" "cd $REMOTE_DIR && empirica export --out $remote_zip" 2>&1; then
-        consecutive_failures=$((consecutive_failures + 1))
-        echo "[$timestamp] WARNING: empirica export failed (attempt $consecutive_failures/$MAX_FAILURES)." >&2
-        if [[ $consecutive_failures -ge $MAX_FAILURES ]]; then
-            echo "[$timestamp] ERROR: $MAX_FAILURES consecutive failures — exiting." >&2
-            exit 1
-        fi
-        return 1
+        fail "empirica export" || return 1
     fi
 
-    echo "[$timestamp] Copying zip to $dest/..."
-    if ! scp "$REMOTE:$remote_zip" "$dest/"; then
-        consecutive_failures=$((consecutive_failures + 1))
-        echo "[$timestamp] WARNING: scp failed (attempt $consecutive_failures/$MAX_FAILURES)." >&2
+    mkdir -p "$dest"
+    echo "[$(now)] Copying zip to $dest/..."
+    # Copied under a name extract_run.py never matches, then renamed, so a
+    # half-copied zip is never mistaken for an export.
+    local partial="$dest/.partial-$stamp.zip"
+    if ! scp "$REMOTE:$remote_zip" "$partial"; then
         ssh "$REMOTE" "rm -f $remote_zip" 2>/dev/null || true
-        if [[ $consecutive_failures -ge $MAX_FAILURES ]]; then
-            echo "[$timestamp] ERROR: $MAX_FAILURES consecutive failures — exiting." >&2
-            exit 1
-        fi
-        return 1
+        rm -f "$partial"
+        rmdir "$dest" 2>/dev/null || true
+        fail "scp" || return 1
     fi
+    mv "$partial" "$dest/$(basename "$remote_zip")"
 
     # Clean up remote zip
     ssh "$REMOTE" "rm -f $remote_zip" 2>/dev/null || true
 
     consecutive_failures=0
-    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Backup succeeded → $dest/$(basename "$remote_zip")"
+    echo "[$(now)] Backup succeeded -> $dest/$(basename "$remote_zip")"
 }
 
 # --- clean exit on Ctrl-C ---
-trap 'echo ""; echo "[$(date +"%Y-%m-%d %H:%M:%S")] Interrupted. Backups saved in $dest/"; exit 0' INT
+trap 'echo ""; echo "[$(now)] Interrupted. Backups are in $DATA_DIR/<timestamp>/"; exit 0' INT
 
 # --- one-shot mode ---
 if [[ "${1:-}" == "--once" ]]; then
-    do_backup
-    exit $?
+    if do_backup; then
+        exit 0
+    fi
+    exit 1
 fi
 
 # --- loop mode (default) ---
-echo "Backing up every $((INTERVAL / 60)) minutes. Press Ctrl-C to stop."
+# `|| true` keeps `set -e` from ending the loop on the first failed ssh or scp;
+# do_backup itself exits after MAX_FAILURES consecutive failures.
+echo "Backing up every $((INTERVAL / 60)) minutes into $DATA_DIR/<timestamp>/. Press Ctrl-C to stop."
 while true; do
-    do_backup
+    do_backup || true
     sleep "$INTERVAL"
 done

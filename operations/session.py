@@ -13,6 +13,8 @@ The commands, in the order a session uses them:
     approve   approve the finishers' submissions
     pay       pay bonuses, partial pay and lobby-timeout pay; send the explanatory notes
 
+    tally                           games per (condition, tangram set) cell; the
+                                    emptiest is the next session's treatment
     sessions / surveys / studies    look things up
     blocklist                       seed or repair the group of past players
 
@@ -20,14 +22,20 @@ Pass --session NAME to every step; `setup` saves the ids under that name and
 the rest read them back. Every command that changes anything prints its plan
 and asks before acting; --yes skips the prompt. The runbook is
 operations/procedures.md. PROLIFIC_TOKEN and PROLIFIC_WORKSPACE come from the
-repository-root .env and are never printed.
+repository-root .env and are never printed; `tally` and `sessions` read local
+files only and need neither.
 """
 
 import argparse
+import copy
+import csv
 import json
+import os
 import re
 import sys
+import tempfile
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -60,27 +68,50 @@ def session_file(name):
     return SESSIONS_DIR / f"{name}.json"
 
 
+def write_json_atomically(path, data):
+    """Write JSON to `path` through a temp file and os.replace.
+
+    The ledger and the session files are what stop a payment being made twice
+    and what carry ids between commands; a crash mid-write must leave the
+    previous version intact rather than a truncated file.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = tempfile.NamedTemporaryFile(
+        "w", dir=path.parent, prefix=f".{path.name}.", suffix=".tmp", delete=False
+    )
+    try:
+        with handle:
+            handle.write(json.dumps(data, indent=2) + "\n")
+        os.replace(handle.name, path)
+    except BaseException:
+        Path(handle.name).unlink(missing_ok=True)
+        raise
+
+
+def saved_sessions():
+    """Every saved session as {name: data}, oldest name first."""
+    if not SESSIONS_DIR.is_dir():
+        return {}
+    return {
+        path.stem: json.loads(path.read_text()) for path in sorted(SESSIONS_DIR.glob("*.json"))
+    }
+
+
 def read_session(name):
     """Load a session's saved ids, or exit naming the sessions that do exist."""
-    import json
-
     path = session_file(name)
     if not path.exists():
-        known = sorted(p.stem for p in SESSIONS_DIR.glob("*.json")) if SESSIONS_DIR.is_dir() else []
-        listing = "\n".join(f"  {k}" for k in known) or "  (none yet)"
+        listing = "\n".join(f"  {k}" for k in saved_sessions()) or "  (none yet)"
         sys.exit(f"No session {name!r}. Sessions on this machine:\n{listing}")
     return json.loads(path.read_text())
 
 
 def write_session(name, **fields):
     """Merge ids into a session file, creating it if needed."""
-    import json
-
-    SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
     path = session_file(name)
     data = json.loads(path.read_text()) if path.exists() else {}
     data.update({k: v for k, v in fields.items() if v is not None})
-    path.write_text(json.dumps(data, indent=2) + "\n")
+    write_json_atomically(path, data)
     return path
 
 
@@ -148,28 +179,29 @@ PLAYERS_PER_GAME = GAME["players_per_game"]
 # set-up step, which is why that step exists and charges nothing.
 PROLIFIC_FEE_RATE = 0.33
 
+# No single bonus payment can exceed a whole game's pay: the largest partial
+# payment is a full base pay plus the bonus cap. `pay --max-each` defaults to it.
+MAX_EACH_DEFAULT = BASE_PAY + MAX_BONUS
 
-def cmd_sessions(args, token):
-    """List the sessions saved on this machine."""
-    if not SESSIONS_DIR.is_dir() or not any(SESSIONS_DIR.glob("*.json")):
+
+def cmd_sessions(args, token=None):
+    """List the sessions saved on this machine. Needs no token."""
+    sessions = saved_sessions()
+    if not sessions:
         sys.exit(f"No sessions saved yet in {SESSIONS_DIR}.")
-    import json
-
-    for path in sorted(SESSIONS_DIR.glob("*.json")):
-        data = json.loads(path.read_text())
-        print(f"{path.stem}")
-        for key in ("condition", "tangram_set", "time", "survey_id",
+    for name, data in sessions.items():
+        print(name)
+        for key in ("condition", "tangram_set", "time", "budget_usd", "survey_id",
                     "screening_study_id", "game_study_id", "group_id", "run"):
-            if data.get(key):
+            if data.get(key) is not None:
                 print(f"  {key:20s} {data[key]}")
 
 
 def load_token():
     """Read PROLIFIC_TOKEN from the repo-root .env without printing it."""
-    env_path = PROJECT_ROOT / ".env"
-    if not env_path.exists():
-        sys.exit(f"No .env at {env_path}. Copy .env.example and add PROLIFIC_TOKEN.")
-    token = (dotenv_values(env_path).get("PROLIFIC_TOKEN") or "").strip()
+    if not (PROJECT_ROOT / ".env").exists():
+        sys.exit(f"No .env at {PROJECT_ROOT / '.env'}. Copy .env.example and add PROLIFIC_TOKEN.")
+    token = env_value("PROLIFIC_TOKEN")
     if not token:
         sys.exit("PROLIFIC_TOKEN is missing or empty in .env (see .env.example).")
     return token
@@ -230,20 +262,51 @@ def api(method, path, token, payload=None, params=None, retries=0):
 
 
 def paged(path, token, params=None):
-    """Yield every result from a paginated endpoint."""
+    """Yield every result from a paginated endpoint.
+
+    Surveys report `meta.total` and submissions `meta.count`, and paging stops
+    when the offset reaches it. An endpoint that returns a bare list, or a page
+    with no `meta` at all, is paged by length instead: a short page is the last
+    one, a full page means ask for the next. What is never done is to stop
+    quietly on a full page: this used to return after the first hundred
+    submissions whenever the count was missing, and everyone after them was
+    left unpaid without a word. So a full page under a `meta` that carries
+    neither key stops the command and names the endpoint, and a page identical
+    to the one before it (an endpoint ignoring `offset`) does the same.
+    """
     offset = 0
+    previous_ids = None
     while True:
         page = api(
             "GET", path, token, params={**(params or {}), "offset": offset, "limit": PAGE_SIZE}
         )
-        results = page.get("results", []) if isinstance(page, dict) else page
+        if isinstance(page, dict):
+            results, meta = page.get("results") or [], page.get("meta")
+        else:
+            results, meta = page or [], None
         yield from results
-        meta = page.get("meta") or {} if isinstance(page, dict) else {}
-        # Surveys report meta.total; submissions report meta.count.
-        total = meta.get("total", meta.get("count"))
         offset += PAGE_SIZE
-        if total is None or offset >= total or not results:
+        if len(results) < PAGE_SIZE:
             return
+        if isinstance(meta, dict):
+            total = meta.get("total", meta.get("count"))
+            if total is None:
+                sys.exit(
+                    f"GET {path} returned a full page of {PAGE_SIZE} results with a `meta` that "
+                    "has neither `total` nor `count`, so it cannot be known whether more exist.\n"
+                    "Prolific's pagination has changed shape; fix paged() in operations/session.py "
+                    "before trusting this listing."
+                )
+            if offset >= total:
+                return
+        ids = [r.get("id") or r.get("_id") for r in results if isinstance(r, dict)]
+        if ids and ids == previous_ids:
+            sys.exit(
+                f"GET {path} returned the same page twice at offset {offset - PAGE_SIZE} and "
+                f"{offset}, so it is ignoring `offset`. Fix paged() in operations/session.py "
+                "before trusting this listing."
+            )
+        previous_ids = ids
 
 
 def researcher_id(token):
@@ -399,7 +462,7 @@ def cmd_studies(args, token):
             f"{study['id']:26s} {created:11s} {study.get('status',''):12s} "
             f"{str(study.get('total_available_places') or ''):>6s}  {combined}{marker}"
         )
-    print("\nThe game study is named 'Group communication game'; the screening one starts")
+    print(f"\nThe game study is named '{GAME_STUDY_NAME}'; the screening one starts")
     print("'Screening survey:'. Survey ids (for `prepare`) come from `surveys --counts`.")
 
 
@@ -408,9 +471,18 @@ def set_study_allowlist(token, study_id, group_id):
 
     Prolific only allows `filters` to be changed while a study is still
     UNPUBLISHED -- after publishing, only internal_name, places, access_details
-    and submissions_config are updatable -- so this refuses anything else.
+    and submissions_config are updatable -- so this refuses anything else. A
+    study that already allowlists the group is left alone, whatever its status,
+    which is what lets `prepare` be re-run after `publish`.
     """
     study = api("GET", f"/studies/{study_id}/", token)
+    existing = study.get("filters") or []
+    current = next(
+        (f for f in existing if f.get("filter_id") == "participant_group_allowlist"), None
+    )
+    if current and list(current.get("selected_values") or []) == [group_id]:
+        print(f"  already allowlisted: study {study_id} points at group {group_id}")
+        return
     status = study.get("status")
     if status != "UNPUBLISHED":
         sys.exit(
@@ -418,7 +490,6 @@ def set_study_allowlist(token, study_id, group_id):
             f"a study is UNPUBLISHED. Set the allowlist in the UI, or use a fresh draft."
         )
 
-    existing = study.get("filters") or []
     dropped = [f for f in existing if (f.get("filter_id") or "").endswith("allowlist")]
     filters = [f for f in existing if not (f.get("filter_id") or "").endswith("allowlist")]
     filters.append({"filter_id": "participant_group_allowlist", "selected_values": [group_id]})
@@ -525,12 +596,12 @@ def cmd_prepare(args, token):
 
 
 def cmd_message(args, token):
-    """Send the reminder to a participant group (dry run unless --send)."""
+    """Show the reminder with the session time filled in, then send it to the group."""
     args.group_id = from_session(args, "group_id", args.group_id)
     args.study = from_session(args, "screening_study_id", args.study)
     args.time = args.time or (read_session(args.session).get("time") if args.session else None)
     if not args.group_id:
-        sys.exit("Give a group id, or --session NAME once `prepare --create` has run.")
+        sys.exit("Give a group id, or --session NAME once `prepare` has built the group.")
     body_path = Path(args.body_file) if args.body_file else MESSAGES_DIR / "reminder.txt"
     if not body_path.exists():
         sys.exit(f"No message template at {body_path}.")
@@ -607,9 +678,44 @@ def cmd_publish(args, token):
 
     # The one call in this file worth retrying: it fires after a countdown that
     # cannot be repeated, with the participants already waiting.
-    api("POST", f"/studies/{args.study_id}/transition/", token,
-        payload={"action": "PUBLISH"}, retries=4)
+    ok, error = transition_study(token, args.study_id, "PUBLISH", retries=4)
+    if not ok:
+        sys.exit(f"Publishing failed with {error}\nThe study is still unpublished; publish it in "
+                 "the Prolific UI now, the participants are waiting.")
     print(f"Published at {datetime.now().astimezone():%H:%M:%S %Z}.")
+
+
+# What a study's status can be once each transition has gone through, so a
+# refused retry can be checked against the study itself.
+TRANSITION_OUTCOMES = {
+    "PUBLISH": {"ACTIVE", "PUBLISHING", "SCHEDULED", "AWAITING REVIEW", "COMPLETED"},
+    "STOP": {"COMPLETED", "AWAITING REVIEW"},
+    "PAUSE": {"PAUSED"},
+}
+
+
+def transition_study(token, study_id, action, retries=0):
+    """POST a study transition; when it is refused, believe the study over the error.
+
+    A transition is retried through transient failures, and a retry can be
+    answered with a 4xx because the attempt before it already went through --
+    Prolific refuses to publish a study that is ACTIVE. So a refusal is checked
+    against the study's current status before it is reported as a failure.
+    Returns (ok, error).
+    """
+    ok, _, error = request_api(
+        "POST", f"/studies/{study_id}/transition/", token,
+        payload={"action": action}, retries=retries,
+    )
+    if ok:
+        return True, None
+    study = api("GET", f"/studies/{study_id}/", token)
+    status = norm_status(study.get("status"))
+    if status in TRANSITION_OUTCOMES.get(action, set()):
+        print(f"  {action} was refused ({error.split(chr(10))[0][:90]}), but the study is "
+              f"already {status}, so an earlier attempt went through.")
+        return True, None
+    return False, error
 
 
 # Timezone abbreviations as they appear in the participant-facing session time
@@ -778,8 +884,6 @@ def read_payment_csv(path, amount_column):
     Prolific would reject, not a payment worth making. `exit_reason` is empty
     for bonuses.csv and for early_ended.csv written before that column existed.
     """
-    import csv
-
     rows, skipped = [], 0
     with open(path, newline="") as handle:
         for row in csv.DictReader(handle):
@@ -820,19 +924,42 @@ STUDY_TEMPLATE_FIELDS = [
     "project",
 ]
 
-SCREENING_TITLE = "Screening survey: Group communication game [starts {time}]"
+# The game study's name on Prolific; `setup` copies the newest study with this
+# name and `blocklist --from-prolific` reads every study with it.
+GAME_STUDY_NAME = "Group communication game"
+SCREENING_TITLE = f"Screening survey: {GAME_STUDY_NAME} [starts {{time}}]"
+
+# What each completion code must, and must not, do on Prolific. The finished
+# code is reviewed by `approve` against the game data, so it must not approve
+# itself; removals and lobby timeouts are paid by bonus and asked to return, or
+# Prolific approves them and pays the full base reward too; and everyone who saw
+# the task joins the blocklist group (see with_group_action).
+REQUIRED_CODE_ACTIONS = {
+    "completion": {"ADD_TO_PARTICIPANT_GROUP"},
+    "partial": {"REQUEST_RETURN", "ADD_TO_PARTICIPANT_GROUP"},
+    "lobbyTimeout": {"REQUEST_RETURN"},
+}
+FORBIDDEN_CODE_ACTIONS = {"completion": {"AUTOMATICALLY_APPROVE"}}
+CODE_ACTION_REASONS = {
+    "REQUEST_RETURN": "these participants are paid by bonus and must be asked to return, or "
+                      "Prolific approves the submission and pays the full base reward as well",
+    "ADD_TO_PARTICIPANT_GROUP": "players who saw the task would not join the blocklist group",
+    "AUTOMATICALLY_APPROVE": "finishers must be approved by `approve`, after the cross-check "
+                             "against the game data",
+}
 
 
 def check_game_template(game_payload, allow_mismatch):
-    """Refuse a game study whose pay or codes have drifted from the experiment.
+    """Refuse a game study whose pay, codes or code actions have drifted from the experiment.
 
     `setup` copies the newest matching study, which is the previous session's,
     which copied the one before it. Nothing else checks that chain, so a one-off
     change -- a make-up session at a different reward, a regenerated code --
-    propagates to every session after it. These two values are the ones that
-    would do real damage: the reward is what the app promises participants and
-    what partial pay is prorated from, and the codes are how anyone is
-    identified as having finished at all.
+    propagates to every session after it. These values are the ones that would
+    do real damage: the reward is what the app promises participants and what
+    partial pay is prorated from, the codes are how anyone is identified as
+    having finished at all, and the actions on them are what asks removed
+    players to return and adds every player to the blocklist.
     """
     problems = []
     reward, expected_reward = game_payload.get("reward"), round(BASE_PAY * 100)
@@ -855,6 +982,19 @@ def check_game_template(game_payload, allow_mismatch):
             "Participants are shown the codes the experiment defines, so a study carrying "
             "different ones cannot tell finishers from removals."
         )
+    actions_by_code = {
+        (c.get("code") or "").strip(): {a.get("action") for a in (c.get("actions") or [])}
+        for c in (game_payload.get("completion_codes") or [])
+    }
+    for key, required in REQUIRED_CODE_ACTIONS.items():
+        code = PROLIFIC_CODES[key]
+        have = actions_by_code.get(code)
+        if have is None:
+            continue  # already reported as a missing code
+        for action in sorted(required - have):
+            problems.append(f"code {code} ({key}) lacks {action}: {CODE_ACTION_REASONS[action]}.")
+        for action in sorted(have & FORBIDDEN_CODE_ACTIONS.get(key, set())):
+            problems.append(f"code {code} ({key}) carries {action}: {CODE_ACTION_REASONS[action]}.")
     if not problems:
         return
     listing = "\n".join(f"  - {problem}" for problem in problems)
@@ -884,15 +1024,17 @@ def print_cost_estimate(screening_reward_cents, survey_places, game_reward_cents
     def row(label, detail, amount, note=""):
         print(f"  {label:11s}{detail:26s}${amount:8.2f}{note}")
 
+    total = round(screening + base + bonus + fee, 2)
     print("\nCost ceiling for this session (Prolific's fee is approximate):")
     row("screening", f"{survey_places} responses x ${screening_reward_cents / 100:.2f}", screening)
     row("base pay", f"{places} places x ${game_reward_cents / 100:.2f}", base)
     row("bonuses", f"{places} players x ${MAX_BONUS:.2f}", bonus, "   at the cap")
     row("fee", f"~{PROLIFIC_FEE_RATE:.0%} of the above", fee)
     print(f"  {'-' * 45}")
-    row("total", "", screening + base + bonus + fee)
+    row("total", "", total)
     print("  Only responses actually collected and players actually placed are charged;")
     print("  `close` after `prepare` stops the screening half of this from running on.")
+    return total
 
 
 def newest_first(items):
@@ -957,9 +1099,6 @@ def retime_sections(sections, time_text):
     in the study descriptions. It is a return value now, and the one regex that
     finds it is the same one that does the substitution.
     """
-    import copy
-    import uuid
-
     sections = copy.deepcopy(sections)
     changed, old_time = [], None
     for section in sections:
@@ -1014,8 +1153,6 @@ def with_group_action(completion_codes, group_id):
     lobby-timeout code is deliberately left alone, so participants who never
     reached a game stay eligible for a later session.
     """
-    import copy
-
     codes = copy.deepcopy(completion_codes or [])
     for code in codes:
         if code.get("code") not in PLAYED_CODES:
@@ -1048,6 +1185,21 @@ def retime_text(text, old_time, new_time):
 
 def cmd_setup(args, token):
     """Create the screening survey, its study, and the game study draft."""
+    # The design wants the eight (condition, tangram set) cells filled evenly,
+    # so the tally comes first: it says whether this session's treatment is
+    # the one to run before anything is created.
+    tally = print_tally()
+    chosen = (args.condition, tangram_set_label(args.set))
+    if tally:
+        counts, emptiest = tally
+        so_far = counts.get(chosen, {}).get("games", 0)
+        verdict = ("the emptiest cell" if chosen == emptiest else
+                   f"NOTE: the emptiest cell is {emptiest[0]} set {emptiest[1]} "
+                   f"({counts[emptiest]['games']} games)")
+        print(f"This session: {chosen[0]} set {chosen[1]} ({so_far} complete games so far) -- {verdict}.\n")
+    else:
+        print(f"This session: {chosen[0]} set {chosen[1]}.\n")
+
     # Pinning a template in .env stops the copy-the-newest chain drifting.
     args.template_survey = args.template_survey or env_value("PROLIFIC_TEMPLATE_SURVEY") or None
     args.template_study = args.template_study or env_value("PROLIFIC_TEMPLATE_STUDY") or None
@@ -1160,16 +1312,31 @@ def cmd_setup(args, token):
         )
 
     check_game_template(game_payload, args.allow_template_mismatch)
-    print_cost_estimate(
+    ceiling = print_cost_estimate(
         (screening_template or {}).get("reward", 30) or 30,
         args.survey_places,
         game_payload.get("reward") or 0,
         args.places,
     )
+    budget = args.budget if args.budget is not None else ceiling
+    print(f"  Session budget: ${budget:,.2f}"
+          + (" (--budget)" if args.budget is not None else " (the ceiling; --budget to change)")
+          + "; `pay` refuses to take the session past it.")
 
     if not confirm("\nCreate the survey and both study drafts? Nothing is published.", args):
         return
 
+    # The session file is written after each created object, so a failure
+    # between creations leaves the ids made so far on disk rather than only on
+    # the screen.
+    name = args.session or f"{args.condition}-set{args.set}-{datetime.now():%Y%m%d-%H%M}"
+    write_session(
+        name,
+        condition=args.condition,
+        tangram_set=args.set,
+        time=args.title_time or args.time,
+        budget_usd=budget,
+    )
     survey = api(
         "POST",
         "/surveys/",
@@ -1177,6 +1344,7 @@ def cmd_setup(args, token):
         payload={"researcher_id": researcher_id(token), "title": title, "sections": sections},
     )
     print(f"\nCreated survey {survey['_id']}")
+    write_session(name, survey_id=survey["_id"])
 
     screening_payload = {
         "name": title,
@@ -1195,6 +1363,7 @@ def cmd_setup(args, token):
     }
     screening = api("POST", "/studies/", token, payload=screening_payload)
     print(f"Created screening study {screening['id']} ({screening.get('status')})")
+    write_session(name, screening_study_id=screening["id"])
 
     game = api("POST", "/studies/", token, payload=game_payload)
     print(f"Created game study draft {game['id']} ({game.get('status')})")
@@ -1205,16 +1374,7 @@ def cmd_setup(args, token):
     print(f"  GAME_STUDY_ID={game['id']}       # prepare, publish, approve, pay")
     print("`session.py sessions` shows them again; you should not need them with --session.")
 
-    name = args.session or f"{args.condition}-set{args.set}-{datetime.now():%Y%m%d-%H%M}"
-    path = write_session(
-        name,
-        condition=args.condition,
-        tangram_set=args.set,
-        time=args.title_time or args.time,
-        survey_id=survey["_id"],
-        screening_study_id=screening["id"],
-        game_study_id=game["id"],
-    )
+    path = write_session(name, game_study_id=game["id"])
     print(f"\nSaved to {path}. From here on you can use --session {name}")
 
 
@@ -1227,8 +1387,6 @@ def played_participant_ids():
     reach either file and so stay eligible for later sessions. Amounts are
     ignored here -- a $0.00 partial pay still means they played.
     """
-    import csv
-
     runs_dir = PROJECT_ROOT / "data" / "runs"
     if not runs_dir.is_dir():
         sys.exit(f"No {runs_dir}. Run analysis/extract_run.py first.")
@@ -1360,7 +1518,20 @@ def read_ledger(run_path):
 
 
 def write_ledger(run_path, ledger):
-    ledger_path(run_path).write_text(json.dumps(ledger, indent=2) + "\n")
+    write_json_atomically(ledger_path(run_path), ledger)
+
+
+# Ledger keys that record the explanatory notes rather than a bulk payment.
+NOTE_LEDGER_KEYS = {"notes_sent", "notes_sent_at"}
+
+
+def ledger_entries(ledger):
+    """The bulk-payment entries of a ledger, skipping the note bookkeeping keys."""
+    return {
+        population: entry
+        for population, entry in ledger.items()
+        if isinstance(entry, dict) and population not in NOTE_LEDGER_KEYS
+    }
 
 
 def already_paid_elsewhere(current_run):
@@ -1378,8 +1549,8 @@ def already_paid_elsewhere(current_run):
     for other in sorted(x for x in runs_root.iterdir() if x.is_dir()):
         if other.name == current_run:
             continue
-        for population, entry in read_ledger(other).items():
-            if not isinstance(entry, dict) or not entry.get("paid_at"):
+        for population, entry in ledger_entries(read_ledger(other)).items():
+            if not entry.get("paid_at"):
                 continue
             for participant in entry.get("participants_paid") or []:
                 paid.setdefault(participant, f"{other.name}/{population}")
@@ -1389,10 +1560,21 @@ def already_paid_elsewhere(current_run):
 
 # ============ wording for removed participants ============
 
-# Of the reasons the server records, these two are caused by other players
-# leaving, so those participants can be told plainly that nothing went wrong on
-# their end. Checked against callbacks.js at startup by check_exit_reasons().
-OTHERS_LEFT_REASONS = {"group disbanded", "insufficient groups after accuracy check"}
+# Of the reasons the server records (EXIT_REASONS in shared/constants.js), these
+# are not the participant's doing -- other players left, too few groups
+# remained, or the researcher stopped the batch -- so those participants can be
+# told plainly that nothing went wrong on their end. Checked against
+# constants.js at startup by check_exit_reasons().
+OTHERS_LEFT_REASONS = {
+    "group disbanded",
+    "insufficient groups",
+    "insufficient groups after accuracy check",
+}
+
+# The researcher stopped the batch (Empirica's "game terminated"). Also not the
+# participant's doing, but "the other players left" would be untrue, so it has
+# its own note; the pay is the same as for a disbanded group.
+STOPPED_REASON = "game terminated"
 
 NEUTRAL_RETURN_REASON = "The study session ended before it could be completed."
 
@@ -1414,31 +1596,45 @@ def check_exit_reasons():
     if unknown:
         listing = ", ".join(sorted(repr(r) for r in unknown))
         sys.exit(
-            f"callbacks.js records exit reason(s) this tooling does not know: {listing}.\n"
-            "Add them to OTHERS_LEFT_REASONS or NEUTRAL_EXIT_REASONS in operations/session.py "
-            "so removed participants get the right wording."
+            f"EXIT_REASONS in shared/constants.js has reason(s) this tooling does not know: "
+            f"{listing}.\nAdd them to OTHERS_LEFT_REASONS or NEUTRAL_EXIT_REASONS in "
+            "operations/session.py so removed participants get the right wording."
         )
     missing = KNOWN_EXIT_REASONS - SERVER_EXIT_REASONS
     if missing:
         listing = ", ".join(sorted(repr(r) for r in missing))
-        print(f"Note: exit reason(s) {listing} are no longer recorded by callbacks.js.",
+        print(f"Note: exit reason(s) {listing} are no longer in EXIT_REASONS in constants.js.",
               file=sys.stderr)
 
 
 # Reasons that get the blame-neutral note: spelling out "low accuracy" would be
-# unkind, and a timeout was in the participant's own hands.
-NEUTRAL_EXIT_REASONS = {"low accuracy", "player timeout"}
-KNOWN_EXIT_REASONS = OTHERS_LEFT_REASONS | NEUTRAL_EXIT_REASONS
+# unkind.
+NEUTRAL_EXIT_REASONS = {"low accuracy"}
+# Removed for idling: paid base pay prorated to time spent, no bonus. Gets its
+# own plain note that says so without blaming anyone.
+INACTIVE_REASON = "player timeout"
+# Recorded by the client before a game exists, so these players never reach
+# early_ended.csv; known here so the startup check does not refuse the reason,
+# and skipped by `pay` if a row ever carries it, since it is paid nothing.
+UNPAID_EXIT_REASONS = {"quiz failed"}
+KNOWN_EXIT_REASONS = (
+    OTHERS_LEFT_REASONS | NEUTRAL_EXIT_REASONS | {INACTIVE_REASON, STOPPED_REASON} | UNPAID_EXIT_REASONS
+)
 
 
 def wording_for(exit_reason, args):
     """Pick the return reason and note template for one removed participant.
 
-    Removals happen for four causes (experiment/server/src/callbacks.js). Two
-    are caused by other players leaving, so those participants can be told
-    plainly that nothing went wrong on their end. "low accuracy" and "player
-    timeout" get blame-neutral wording: the first would be unkind to spell out,
-    and the second was in the participant's own hands.
+    The server records one of the EXIT_REASONS in shared/constants.js
+    (callbacks.js writes them). "group disbanded", "insufficient groups",
+    "insufficient groups after accuracy check" and "game terminated" are not
+    the participant's doing -- other players left, too few viable groups
+    remained, or the researcher stopped the batch -- so those participants are
+    told plainly that nothing went wrong on their end. "low accuracy" gets the
+    blame-neutral wording, since spelling it out would be unkind; "player
+    timeout" is in the participant's own hands and gets its own plain,
+    non-blaming note. "quiz failed" never reaches here: those players are not
+    paid, so extract_run.py writes them no row.
     """
     cleaned = exit_reason.strip().lower()
     if cleaned == LOBBY_TIMEOUT_REASON:
@@ -1448,6 +1644,15 @@ def wording_for(exit_reason, args):
         name = "others-left"
         default_reason = "Other players left, so the session could not be completed."
         default_note = "partial_payment_others_left.txt"
+    elif cleaned == STOPPED_REASON:
+        name = "stopped"
+        default_reason = "The researcher stopped the session before it could be completed."
+        default_note = "partial_payment_stopped.txt"
+    elif cleaned == INACTIVE_REASON:
+        name = "inactive"
+        default_reason = ("The game removes players after several rounds without a response, "
+                          "so the study could not be completed.")
+        default_note = "partial_payment_inactive.txt"
     else:
         name, default_reason = "neutral", NEUTRAL_RETURN_REASON
         default_note = "partial_payment.txt"
@@ -1480,9 +1685,10 @@ def cmd_open(args, token):
         print("\nWARNING: no participant_group_blocklist -- people who have already played could sign up.")
     if not confirm("\nPublish this screening survey now?", args):
         return
-    api("POST", f"/studies/{study_id}/transition/", token,
-        payload={"action": "PUBLISH"}, retries=3)
-    print(f"Published at {datetime.now():%H:%M:%S}.")
+    ok, error = transition_study(token, study_id, "PUBLISH", retries=3)
+    if not ok:
+        sys.exit(f"Publishing failed with {error}\nThe screening study is still unpublished.")
+    print(f"Published at {datetime.now().astimezone():%H:%M:%S %Z}.")
     if args.session:
         print(f"Watch it fill with `session.py surveys --session {args.session}`,")
         print(f"then close it with `session.py close --session {args.session}` once `prepare` has run.")
@@ -1504,40 +1710,67 @@ def cmd_close(args, token):
         sys.exit("Give the screening study id, or --session NAME.")
     study = api("GET", f"/studies/{study_id}/", token)
     reward = (study.get("reward") or 0) / 100
+    status = norm_status(study.get("status"))
     print(f"Survey study: {study.get('name')}")
-    print(f"Status:       {study.get('status')}")
+    print(f"Status:       {status}")
     print(f"Places:       {study.get('total_available_places')} at ${reward:.2f} per response")
-    if study.get("status") in ("UNPUBLISHED", "COMPLETED", "AWAITING REVIEW"):
-        sys.exit(f"\nThis study is {study.get('status')}; there is nothing to stop.")
-    if not confirm("\nStop this screening survey? No further responses will be collected.", args):
-        return
-
-    # Prolific has named this action differently across API versions, so try the
-    # ones it accepts rather than failing on the first.
-    for action in ("STOP", "PAUSE"):
-        ok, _, error = request_api(
-            "POST", f"/studies/{study_id}/transition/", token,
-            payload={"action": action}, retries=2,
-        )
-        if ok:
-            print(f"Stopped ({action}) at {datetime.now():%H:%M:%S}.")
+    if status == "UNPUBLISHED":
+        sys.exit("\nThis study is UNPUBLISHED; there is nothing to stop and nobody to pay.")
+    if status in ("COMPLETED", "AWAITING REVIEW"):
+        print(f"\nAlready {status}; nothing to stop.")
+    else:
+        if not confirm("\nStop this screening survey? No further responses will be collected.", args):
             return
-        print(f"  {action} was refused ({error.split(chr(10))[0][:120]})", file=sys.stderr)
-    sys.exit("Could not stop the study through the API; stop it in the Prolific UI.")
+        # Prolific has named this action differently across API versions, so try
+        # the ones it accepts rather than failing on the first.
+        for action in ("STOP", "PAUSE"):
+            ok, error = transition_study(token, study_id, action, retries=2)
+            if ok:
+                print(f"Stopped ({action}) at {datetime.now().astimezone():%H:%M:%S %Z}.")
+                break
+            print(f"  {action} was refused ({error.split(chr(10))[0][:120]})", file=sys.stderr)
+        else:
+            sys.exit("Could not stop the study through the API; stop it in the Prolific UI.")
+    approve_screening_submissions(token, study_id, reward, args)
+
+
+def approve_screening_submissions(token, study_id, reward, args):
+    """Approve the screening survey's AWAITING REVIEW submissions, so respondents are paid.
+
+    The survey study has one completion code and nothing to review: everyone
+    who answered is owed the response reward, however they answered. Approving
+    here pays them the same day instead of when Prolific's automatic approval
+    gets to it. Approved and returned submissions are left alone, so this is
+    safe to re-run.
+    """
+    submissions = list(paged(f"/studies/{study_id}/submissions/", token))
+    by_status = {}
+    for s in submissions:
+        by_status[norm_status(s.get("status"))] = by_status.get(norm_status(s.get("status")), 0) + 1
+    print(f"\n{len(submissions)} screening submissions:")
+    for status, n in sorted(by_status.items()):
+        print(f"  {n:3d} {status}")
+    awaiting = [s for s in submissions if norm_status(s.get("status")) == "AWAITING REVIEW"]
+    if not awaiting:
+        print("No screening submissions awaiting review; nothing to approve.")
+        return
+    if not confirm(f"\nApprove {len(awaiting)} screening submission(s) awaiting review? "
+                   f"Each pays the ${reward:.2f} response reward.", args):
+        return
+    for s in awaiting:
+        api("POST", f"/submissions/{s['id']}/transition/", token, payload={"action": "APPROVE"})
+    print(f"Approved {len(awaiting)}.")
 
 
 # ============ approve: approve the finishers ============
 
 
 def run_participant_ids(run):
-    """Prolific ids in a run's bonuses.csv, or None if there is no run to read.
+    """Prolific ids in a run's bonuses.csv, or None if the run has none to read.
 
     `approve` pays the base reward on the strength of a completion code alone,
     which nothing used to check against the game data.
     """
-    run = run or newest_run()
-    if not run:
-        return None
     path = PROJECT_ROOT / "data" / "runs" / run / "bonuses.csv"
     if not path.exists():
         return None
@@ -1553,47 +1786,49 @@ def cmd_approve(args, token):
         sys.exit("Give the game study id, or --session NAME.")
     submissions = list(paged(f"/studies/{study_id}/submissions/", token))
 
-    def norm(status):
-        return (status or "").replace("_", " ").upper()
-
     by_status = {}
     for s in submissions:
-        by_status[norm(s.get("status"))] = by_status.get(norm(s.get("status")), 0) + 1
+        by_status[norm_status(s.get("status"))] = by_status.get(norm_status(s.get("status")), 0) + 1
     print(f"{len(submissions)} submissions:")
     for status, n in sorted(by_status.items()):
         print(f"  {n:3d} {status}")
 
-    def code_of(submission):
-        return (submission.get("study_code") or "").strip().rstrip(".")
-
-    awaiting = [s for s in submissions if norm(s.get("status")) == "AWAITING REVIEW"]
-    finishers = [s for s in awaiting if code_of(s) == FINISHED_CODE]
+    awaiting = [s for s in submissions if norm_status(s.get("status")) == "AWAITING REVIEW"]
+    finishers = [s for s in awaiting if submission_code(s) == FINISHED_CODE]
     others = [s for s in awaiting if s not in finishers]
     if others:
         print(f"\n{len(others)} awaiting review WITHOUT the finished code -- these need a human:")
         for s in others:
             print(f"  {s.get('participant_id')}  submission {s.get('id')}  "
-                  f"code {code_of(s) or '(none)'}")
+                  f"code {submission_code(s) or '(none)'}")
 
     # Removed and lobby-timeout players are paid by bonus and asked to return.
     # If they never do, Prolific eventually approves the submission anyway and
     # pays the full base reward on top of the partial payment they already had.
-    at_risk = [s for s in awaiting if code_of(s) in (PARTIAL_CODE, LOBBY_TIMEOUT_CODE)]
+    at_risk = [s for s in awaiting if submission_code(s) in (PARTIAL_CODE, LOBBY_TIMEOUT_CODE)]
     if at_risk:
         print(f"\n{len(at_risk)} partial/lobby submission(s) are awaiting review rather than "
               "returned.\nIf they are left, Prolific will auto-approve them and pay the full "
               "base reward\non top of the partial payment already sent:")
         for s in at_risk:
-            print(f"  {s.get('participant_id')}  submission {s.get('id')}  code {code_of(s)}"
+            print(f"  {s.get('participant_id')}  submission {s.get('id')}  code {submission_code(s)}"
                   f"  return requested: {bool(s.get('return_requested'))}")
 
     # Cross-check against who the game data says actually played.
-    played = run_participant_ids(args.run or (
-        read_session(args.session).get("run") if getattr(args, "session", None) else None))
+    run = args.run or (
+        read_session(args.session).get("run") if getattr(args, "session", None) else None
+    ) or newest_run()
+    if not run:
+        print(f"\nno run to cross-check against (no data/{active_dataset()}/runs.txt yet)")
+        played = None
+    else:
+        played = run_participant_ids(run)
+        if played is None:
+            print(f"\nno bonuses.csv in data/runs/{run}, so nothing to cross-check against")
     if played is not None:
         claimed = {s.get("participant_id") for s in finishers}
         approved = {s.get("participant_id") for s in submissions
-                    if norm(s.get("status")) == "APPROVED"}
+                    if norm_status(s.get("status")) == "APPROVED"}
         unbacked = sorted(claimed - played)
         if unbacked:
             print(f"\nWARNING: {len(unbacked)} submission(s) carry the finished code but do not "
@@ -1623,18 +1858,23 @@ def cmd_approve(args, token):
 # ============ pay: bonuses, partial pay, and the notes that explain them ============
 
 
+def active_dataset():
+    """The dataset the data commands read: DATASET, defaulting to `full`.
+
+    Never the frozen pilot: the analysis scripts default to `pilots`, but here
+    a wrong default would pay or tally the pilot instead of the full sample.
+    """
+    return os.environ.get("DATASET") or "full"
+
+
 def newest_run():
     """The most recent run registered in the active dataset's runs.txt.
 
     Deliberately not the newest directory under data/runs/: a stale re-export
     of an old server can sit there, and paying against it would pay past
-    participants a second time. DATASET defaults to `full` here, never to the
-    frozen pilot.
+    participants a second time.
     """
-    import os
-
-    dataset = os.environ.get("DATASET") or "full"
-    runs_file = PROJECT_ROOT / "data" / dataset / "runs.txt"
+    runs_file = PROJECT_ROOT / "data" / active_dataset() / "runs.txt"
     if not runs_file.exists():
         return None
     runs = [
@@ -1691,14 +1931,127 @@ def setup_payment(token, run_path, population, study_id, rows, ledger, max_each,
         # Recorded so a later run can tell whether these people were already
         # paid; see already_paid_elsewhere().
         "participants_paid": [r["id"] for r in rows],
+        # Per person, so a later `pay` can prove the rows it is about to pay are
+        # the rows this bulk payment was set up from; see check_rows_match_ledger().
+        "amounts": {r["id"]: r["amount"] for r in rows},
         "requested_total": total,
         "response": {k: created.get(k) for k in ("amount", "fees", "vat", "total_amount")},
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "attempted_at": None,
         "paid_at": None,
     }
+    # Written before the amount check: the bulk payment now exists at Prolific,
+    # and the ledger must say so even if the check stops the command.
     write_ledger(run_path, ledger)
+    check_setup_amount(population, ledger[population])
     return ledger[population]
+
+
+def check_setup_amount(population, entry):
+    """Stop if Prolific's bulk payment is not for the amount that was requested."""
+    requested_total = float(entry.get("requested_total") or 0)
+    requested_cents = round(requested_total * 100)
+    amount = (entry.get("response") or {}).get("amount")
+    try:
+        amount = int(amount)
+    except (TypeError, ValueError):
+        amount = None
+    if amount == requested_cents:
+        return
+    have = "no readable amount" if amount is None else f"{amount} cents"
+    sys.exit(
+        f"{population}: Prolific set up bulk payment {entry.get('bulk_id')} for {have}, "
+        f"but {requested_cents} cents (${requested_total:.2f}) was requested.\n"
+        "Nothing was paid. Check that bulk payment in the Prolific UI; if it is wrong, cancel\n"
+        f"it there, remove the '{population}' entry from the run's prolific_payments.json, and\n"
+        "re-run pay to set it up again."
+    )
+
+
+def check_rows_match_ledger(population, entry, rows):
+    """Refuse to pay a set-up bulk payment whose rows no longer match what was set up.
+
+    Prolific pays the amounts the bulk payment was created with, not the ones in
+    the CSV today. If the CSV was re-extracted, or someone's submission was
+    approved in the meantime and dropped out of the payable rows, the payment
+    that is about to go out is not the one on the screen.
+    """
+    current = {row["id"]: round(row["amount"], 2) for row in rows}
+    recorded_ids = set(entry.get("participants_paid") or [])
+    problems = []
+    added = sorted(set(current) - recorded_ids)
+    removed = sorted(recorded_ids - set(current))
+    if added:
+        problems.append(f"now to be paid but not in the bulk payment: {', '.join(added)}")
+    if removed:
+        problems.append(f"in the bulk payment but no longer to be paid: {', '.join(removed)}")
+    recorded_amounts = entry.get("amounts")
+    if recorded_amounts is not None:
+        for participant in sorted(set(current) & set(recorded_amounts)):
+            if round(float(recorded_amounts[participant]), 2) != current[participant]:
+                problems.append(
+                    f"{participant}: ${float(recorded_amounts[participant]):.2f} set up, "
+                    f"${current[participant]:.2f} now"
+                )
+    else:
+        # Ledgers written before per-person amounts were recorded: the total is
+        # the only amount there is to compare.
+        total = round(sum(current.values()), 2)
+        recorded_total = round(float(entry.get("requested_total") or 0), 2)
+        if recorded_total != total:
+            problems.append(f"total ${recorded_total:.2f} set up, ${total:.2f} now")
+    if not problems:
+        return
+    listing = "\n".join(f"  - {problem}" for problem in problems)
+    sys.exit(
+        f"{population}: the rows to pay have changed since bulk payment {entry.get('bulk_id')} "
+        f"was set up:\n{listing}\n\n"
+        "Nothing was paid: paying it would send the amounts set up then, not these. Cancel\n"
+        f"that bulk payment in the Prolific UI, remove the '{population}' entry from the run's\n"
+        "prolific_payments.json, and re-run pay to set it up from the current rows."
+    )
+
+
+def ledger_cost(entry):
+    """What one bulk payment costs in dollars: Prolific's fee-inclusive total when known."""
+    total_amount = (entry.get("response") or {}).get("total_amount")
+    if total_amount is not None:
+        return total_amount / 100
+    return float(entry.get("requested_total") or 0)
+
+
+def paid_so_far(ledgers):
+    """Dollars already paid across the given ledgers."""
+    return round(
+        sum(
+            ledger_cost(entry)
+            for ledger in ledgers
+            for entry in ledger_entries(ledger).values()
+            if entry.get("paid_at")
+        ),
+        2,
+    )
+
+
+def check_session_budget(budget, spent, about_to_pay, args):
+    """Refuse to take a session past the budget `setup` recorded. Returns whether to go on."""
+    if budget is None:
+        return True
+    after = round(spent + about_to_pay, 2)
+    if after <= budget:
+        print(f"Session budget: ${after:,.2f} of ${budget:,.2f} after this payment.")
+        return True
+    message = (
+        f"Paying ${about_to_pay:,.2f} would take this session's Prolific spend to ${after:,.2f} "
+        f"(${spent:,.2f} already paid), over its budget of ${budget:,.2f}"
+    )
+    if not getattr(args, "force_budget", False):
+        sys.exit(
+            f"{message}.\nNothing was paid. The budget was set by `setup` (its cost ceiling, or "
+            "--budget); check the amounts, or pass --force-budget if the overrun is deliberate."
+        )
+    print(f"\nWARNING: {message} (--force-budget given).")
+    return confirm("Pay over the session budget anyway?", args)
 
 
 def pay_bulk(token, run_path, population, entry, ledger):
@@ -1738,7 +2091,51 @@ def check_unfinished_attempt(population, entry):
         )
 
 
-def lobby_timeout_rows(token, study_id):
+def norm_status(status):
+    """One spelling for a submission status: "awaiting_review" -> "AWAITING REVIEW"."""
+    return (status or "").strip().replace("_", " ").upper()
+
+
+def submission_code(submission):
+    """The completion code on a submission, without the stray trailing period some carry."""
+    return (submission.get("study_code") or "").strip().rstrip(".")
+
+
+# Only these submissions are paid a partial or lobby-timeout bonus. An APPROVED
+# one has already been paid the full base reward, so a bonus on top would pay
+# the person twice; a REJECTED one was refused on purpose.
+PAYABLE_STATUSES = {"RETURNED", "AWAITING REVIEW"}
+
+
+def payable_rows(rows, submissions_by_participant):
+    """Split partial and lobby rows into those to pay and those to skip, with the reason.
+
+    Returns (payable, skipped), where skipped is [(row, why)].
+    """
+    payable, skipped = [], []
+    for row in rows:
+        if (row.get("exit_reason") or "").strip().lower() in UNPAID_EXIT_REASONS:
+            skipped.append((row, f"exit reason {row['exit_reason']!r} is paid nothing by design"))
+            continue
+        submission = submissions_by_participant.get(row["id"])
+        if submission is None:
+            skipped.append((row, "no submission on this study"))
+            continue
+        status = norm_status(submission.get("status"))
+        if status == "APPROVED":
+            skipped.append((row, "APPROVED: already paid the full base reward, so a partial "
+                                 "payment on top would pay twice"))
+        elif status == "REJECTED":
+            skipped.append((row, "REJECTED: pay by hand if the rejection was a mistake"))
+        elif status not in PAYABLE_STATUSES:
+            skipped.append((row, f"{status or 'no status'}: only RETURNED or AWAITING REVIEW "
+                                 "submissions are paid"))
+        else:
+            payable.append(row)
+    return payable, skipped
+
+
+def lobby_timeout_rows(token, study_id, submissions=None):
     """Participants owed the lobby-timeout payment, read from Prolific.
 
     These people are invisible to the whole data pipeline: Empirica only creates
@@ -1746,11 +2143,14 @@ def lobby_timeout_rows(token, study_id):
     the lobby appears in neither bonuses.csv nor early_ended.csv. The Sorry page
     promises them LOBBY_TIMEOUT_PAY for their time, and until this existed
     nothing in the tooling ever paid it -- their submission's only trace is the
-    completion code, which requests a return and nothing more.
+    completion code, which requests a return and nothing more. Pass the study's
+    submissions if they are already fetched.
     """
+    if submissions is None:
+        submissions = paged(f"/studies/{study_id}/submissions/", token)
     seen, rows = set(), []
-    for submission in paged(f"/studies/{study_id}/submissions/", token):
-        code = (submission.get("study_code") or "").strip().rstrip(".")
+    for submission in submissions:
+        code = submission_code(submission)
         participant = submission.get("participant_id")
         if code != LOBBY_TIMEOUT_CODE or not participant or participant in seen:
             continue
@@ -1769,19 +2169,23 @@ def cmd_pay(args, token):
     Three populations: the finishers' bonuses and the removed players' partial
     pay, both from the run's CSVs, and the lobby timeouts, who are read from
     Prolific because they never reach a game and so appear in no export at all.
+    Every partial and lobby row is joined to its submission, and only RETURNED
+    or AWAITING REVIEW submissions are paid: an APPROVED one already received
+    the full base reward.
 
     Three confirmations, one per irreversible step: set up (charges nothing, but
     reveals Prolific's fee-inclusive total), pay, and message. A ledger under
-    the run directory records each bulk payment id, the people in it, and when
-    it was paid, so re-running never pays twice -- the pay endpoint is not
-    idempotent. The ledger also guards across runs, because exports are
-    cumulative and a bonus file that was not scoped to one batch would otherwise
-    pay an earlier session again.
+    the run directory records each bulk payment id, the people and amounts in
+    it, when it was paid, and who has had a note, so re-running never pays or
+    messages twice -- the pay endpoint is not idempotent. The ledger also
+    guards across runs, because exports are cumulative and a bonus file that
+    was not scoped to one batch would otherwise pay an earlier session again.
     """
+    saved = read_session(args.session) if args.session else {}
     study_id = from_session(args, "game_study_id", args.study)
     if not study_id:
         sys.exit("Give --study, or --session NAME.")
-    run = args.run or (read_session(args.session).get("run") if args.session else None) or newest_run()
+    run = args.run or saved.get("run") or newest_run()
     if not run:
         sys.exit("No run registered in the active dataset. Run analysis/extract_run.py --dataset full first, or pass --run.")
     run_path = run_dir(run)
@@ -1791,15 +2195,20 @@ def cmd_pay(args, token):
     print(f"Study: {study_id}")
 
     meta_path = run_path / "run_meta.json"
-    if meta_path.exists():
-        meta = json.loads(meta_path.read_text())
+    meta = json.loads(meta_path.read_text()) if meta_path.exists() else None
+    if meta is not None:
         batch = meta.get("batch")
         print(f"Batch: {batch or 'ALL batches in the export -- check this is what you want'}"
               f"   ({meta.get('finishers', '?')} finishers, {meta.get('early_ended', '?')} removed)")
     else:
         print("Batch: unknown -- this run was extracted before bonus files were scoped to a\n"
               "       batch, so it may contain players from earlier sessions. Re-extract it.")
+    check_run_treatment(run_path, meta, saved)
     print()
+
+    # Fetched once: the status filter, the lobby rows and the notes all read it.
+    submissions = list(paged(f"/studies/{study_id}/submissions/", token))
+    by_participant = {s.get("participant_id"): s for s in submissions if s.get("participant_id")}
 
     populations = {}
     for pop, filename, column in (
@@ -1812,12 +2221,28 @@ def cmd_pay(args, token):
             if rows:
                 populations[pop] = (rows, skipped)
     if not args.skip_lobby:
-        lobby = lobby_timeout_rows(token, study_id)
+        lobby = lobby_timeout_rows(token, study_id, submissions=submissions)
         if lobby:
             populations["lobby"] = (lobby, 0)
+
+    label = {"bonuses": "finishers", "early": "removed early", "lobby": "lobby timeouts"}
+    for pop in ("early", "lobby"):
+        if pop not in populations:
+            continue
+        rows, zero_rows = populations[pop]
+        payable, skipped = payable_rows(rows, by_participant)
+        if skipped:
+            print(f"{label[pop]}: {len(skipped)} of {len(rows)} not paid:")
+            for row, why in skipped:
+                print(f"  {row['id']}  ${row['amount']:6.2f}  "
+                      f"{row['exit_reason'] or 'reason not recorded'}  -- {why}")
+        if payable:
+            populations[pop] = (payable, zero_rows)
+        else:
+            del populations[pop]
     if not populations:
-        sys.exit("Nothing to pay: no positive amounts in bonuses.csv or early_ended.csv, "
-                 "and no lobby-timeout submissions on this study.")
+        sys.exit("Nothing to pay: no payable rows in bonuses.csv or early_ended.csv, "
+                 "and no payable lobby-timeout submissions on this study.")
 
     ledger = read_ledger(run_path)
 
@@ -1848,7 +2273,6 @@ def cmd_pay(args, token):
             "first, and pass --run to pay the right one. Nothing was paid."
         )
 
-    label = {"bonuses": "finishers", "early": "removed early", "lobby": "lobby timeouts"}
     for pop, (rows, skipped) in populations.items():
         total = sum(r["amount"] for r in rows)
         entry = ledger.get(pop)
@@ -1881,6 +2305,17 @@ def cmd_pay(args, token):
     # Phase 2: pay whatever is unpaid.
     unpaid = [pop for pop in populations if ledger.get(pop) and not ledger[pop].get("paid_at")]
     if unpaid:
+        # A bulk payment set up on an earlier run of this command pays what it
+        # was set up with, so the rows must still be those rows, and Prolific
+        # must have understood the amount.
+        for pop in unpaid:
+            check_rows_match_ledger(pop, ledger[pop], populations[pop][0])
+            check_setup_amount(pop, ledger[pop])
+        budget = saved.get("budget_usd") if args.session else None
+        if args.session and budget is None:
+            print("\n(This session has no budget_usd; it was set up before budgets existed.)")
+        if not check_session_budget(budget, paid_so_far(session_ledgers(saved, run, ledger)), grand, args):
+            return
         if not confirm(f"\nPay ${grand:,.2f} now? This cannot be undone.", args):
             return
         for pop in unpaid:
@@ -1889,30 +2324,34 @@ def cmd_pay(args, token):
     else:
         print("\nEverything is already paid.")
 
-    # Phase 3: notes to the people who were not simply finishers.
+    # Phase 3: notes to the people who were not simply finishers, one each.
     rows = [row for pop in ("early", "lobby") if pop in populations
             for row in populations[pop][0]]
     if not rows:
         return
     if ledger.get("notes_sent_at"):
-        print(f"\nExplanatory notes were already sent at {ledger['notes_sent_at']}.")
+        print(f"\nExplanatory notes were already sent at {ledger['notes_sent_at']} "
+              "(this ledger predates per-participant note records).")
         return
-    submissions = {s.get("participant_id"): s for s in paged(f"/studies/{study_id}/submissions/", token)}
+    noted = ledger.get("notes_sent") or {}
+    pending = [row for row in rows if row["id"] not in noted]
+    if not pending:
+        print(f"\nExplanatory notes were already sent to all {len(rows)} people.")
+        return
+    if len(pending) < len(rows):
+        print(f"\n{len(rows) - len(pending)} of {len(rows)} notes were already sent; "
+              f"{len(pending)} remain.")
     actionable = []
-    print(f"\nNotes for the {len(rows)} people who did not finish:")
-    for row in rows:
-        submission = submissions.get(row["id"])
-        if not submission:
-            print("  one participant has no submission in this study -- skipped")
-            continue
-        done = submission.get("status") == "RETURNED" or bool(submission.get("return_requested"))
+    print(f"\nNotes for the {len(pending)} people who did not finish:")
+    for row in pending:
+        submission = by_participant[row["id"]]
+        status = norm_status(submission.get("status"))
+        done = status == "RETURNED" or bool(submission.get("return_requested"))
         wording = wording_for(row["exit_reason"], args)
-        print(f"  {submission.get('status'):9s} ${row['amount']:6.2f}  {row['exit_reason'] or 'reason not recorded':42s}"
+        print(f"  {status:15s} ${row['amount']:6.2f}  {row['exit_reason'] or 'reason not recorded':42s}"
               f" -> {'note only' if done else 'request return + note'} [{wording['name']}]")
         actionable.append((submission, row, wording, not done))
-    if not actionable:
-        return
-    for name in {a[2]["name"] for a in actionable}:
+    for name in sorted({a[2]["name"] for a in actionable}):
         example = next(a for a in actionable if a[2]["name"] == name)
         print(f"\n--- '{name}' wording, example at ${example[1]['amount']:.2f} ---")
         print(f"Return reason: {example[2]['reason']}")
@@ -1928,9 +2367,177 @@ def cmd_pay(args, token):
             "study_id": study_id,
             "body": wording["note"].replace("{amount}", f"{row['amount']:.2f}"),
         })
-    ledger["notes_sent_at"] = datetime.now().isoformat(timespec="seconds")
-    write_ledger(run_path, ledger)
+        # Recorded per person and at once, so a failure part-way through leaves
+        # the people already messaged marked as such.
+        ledger.setdefault("notes_sent", {})[row["id"]] = datetime.now().isoformat(timespec="seconds")
+        write_ledger(run_path, ledger)
     print(f"Sent {len(actionable)} notes.")
+
+
+def session_ledgers(saved, run, ledger):
+    """The ledgers a session's spending is spread over: this run's, plus the one it paid before."""
+    ledgers = [ledger]
+    earlier = saved.get("run")
+    if earlier and earlier != run and (PROJECT_ROOT / "data" / "runs" / earlier).is_dir():
+        ledgers.append(read_ledger(PROJECT_ROOT / "data" / "runs" / earlier))
+    return ledgers
+
+
+def check_run_treatment(run_path, meta, saved):
+    """Warn when the run's games are not the treatment the session was set up for.
+
+    extract_run.py copies the raw game table to data/runs/<run>/raw/game.csv
+    and lists the batch's game ids in run_meta.json. If those games' condition
+    or tangram set is not what `setup` recorded, the batch in Empirica was made
+    with the wrong treatment, or the wrong run is being paid.
+    """
+    if not saved:
+        return
+    table = run_path / "raw" / "game.csv"
+    if not table.exists():
+        return
+    with open(table, newline="") as handle:
+        games = list(csv.DictReader(handle))
+    wanted = set((meta or {}).get("games") or [])
+    if wanted:
+        games = [g for g in games if g.get("id") in wanted]
+    games = [g for g in games if (g.get("condition") or "").strip()]
+    if not games:
+        return
+    found = {}
+    for game in games:
+        found.setdefault("condition", set()).add(game["condition"].strip())
+        raw_set = (game.get("tangram_set") or "").strip()
+        if raw_set:
+            found.setdefault("set", set()).add(str(int(float(raw_set))))
+    declared = {"condition": saved.get("condition"), "set": str(saved.get("tangram_set"))}
+    for key, label in (("condition", "condition"), ("set", "tangram set")):
+        if declared[key] in (None, "None") or key not in found:
+            continue
+        if found[key] != {declared[key]}:
+            print(f"WARNING: this run's games have {label} {', '.join(sorted(found[key]))}, "
+                  f"but the session was set up for {declared[key]}.\n"
+                  "         Either the batch was created with the wrong treatment, or this is\n"
+                  "         not the session's run (pass --run).")
+
+
+# ============ tally: games per treatment cell ============
+
+TANGRAM_SETS = ("0", "1")
+
+
+def tangram_set_label(raw):
+    """One spelling for a tangram set: "0.0", "0", 0 and 0.0 are all "0"."""
+    text = ("" if raw is None else str(raw)).strip()
+    if not text:
+        return "?"
+    try:
+        return str(int(float(text)))
+    except ValueError:
+        return text
+
+
+def read_games_table(path):
+    """[(condition, set, complete)] for every game in a games.csv.
+
+    `complete` is whether the game ran to its end: preprocessing.py carries the
+    server's `endedReason` when the export has it, and "end of game" is what
+    a game that was not terminated records. Exports without the column count
+    every game as complete.
+    """
+    with open(path, newline="") as handle:
+        reader = csv.DictReader(handle)
+        has_reason = "endedReason" in (reader.fieldnames or [])
+        games = []
+        for row in reader:
+            condition = (row.get("condition") or "").strip()
+            if not condition:
+                continue
+            complete = (row.get("endedReason") or "").strip() == "end of game" if has_reason else True
+            games.append((condition, tangram_set_label(row.get("tangramSet")), complete))
+    return games
+
+
+def cell_counts(games, sessions):
+    """Games and sessions per (condition, set) cell, every cell present.
+
+    Returns (counts, emptiest): counts maps each cell to {"games", "incomplete",
+    "sessions", "pending"}, where "games" are complete games, "sessions" the
+    saved sessions declaring the cell and "pending" those of them with no run
+    paid yet. The emptiest cell has the fewest complete games, then the fewest
+    sessions, then comes first in the conditions' order.
+    """
+    counts = {
+        (condition, tangram_set): {"games": 0, "incomplete": 0, "sessions": 0, "pending": 0}
+        for condition in CONDITIONS
+        for tangram_set in TANGRAM_SETS
+    }
+    for condition, tangram_set, complete in games:
+        cell = counts.setdefault(
+            (condition, tangram_set), {"games": 0, "incomplete": 0, "sessions": 0, "pending": 0}
+        )
+        cell["games" if complete else "incomplete"] += 1
+    for data in sessions.values():
+        if not data.get("condition"):
+            continue
+        cell = counts.setdefault(
+            (data["condition"], tangram_set_label(data.get("tangram_set"))),
+            {"games": 0, "incomplete": 0, "sessions": 0, "pending": 0},
+        )
+        cell["sessions"] += 1
+        if not data.get("run"):
+            cell["pending"] += 1
+
+    def order(cell):
+        condition, tangram_set = cell
+        rank = CONDITIONS.index(condition) if condition in CONDITIONS else len(CONDITIONS)
+        return (counts[cell]["games"], counts[cell]["sessions"], rank, tangram_set)
+
+    emptiest = min(counts, key=order)
+    return counts, emptiest
+
+
+def tally_lines(counts, emptiest):
+    lines = [f"  {'condition':18s} {'set':>3s} {'games':>6s} {'incomplete':>11s} {'sessions':>9s}"]
+    for (condition, tangram_set), cell in counts.items():
+        pending = f" ({cell['pending']} pending)" if cell["pending"] else ""
+        marker = "   <- emptiest" if (condition, tangram_set) == emptiest else ""
+        lines.append(
+            f"  {condition:18s} {tangram_set:>3s} {cell['games']:6d} {cell['incomplete']:11d} "
+            f"{cell['sessions']:9d}{pending}{marker}"
+        )
+    return lines
+
+
+def print_tally(dataset=None):
+    """Print games per treatment cell; returns (counts, emptiest) or None with no games yet."""
+    dataset = dataset or active_dataset()
+    games_path = PROJECT_ROOT / "data" / dataset / "games.csv"
+    sessions = saved_sessions()
+    if not games_path.exists():
+        print(f"no games yet (no {games_path.relative_to(PROJECT_ROOT)})")
+        if not sessions:
+            return None
+        games = []
+    else:
+        games = read_games_table(games_path)
+        complete = sum(1 for g in games if g[2])
+        print(f"{complete} complete game(s) in data/{dataset}/games.csv"
+              + (f", {len(games) - complete} incomplete" if len(games) > complete else "")
+              + f"; {len(sessions)} saved session(s):")
+    counts, emptiest = cell_counts(games, sessions)
+    for line in tally_lines(counts, emptiest):
+        print(line)
+    print("  Sessions are the saved session files; pending ones have not paid a run yet.")
+    return counts, emptiest
+
+
+def cmd_tally(args, token=None):
+    """Games per (condition, tangram set) cell, so the next session fills the emptiest. Needs no token."""
+    print_tally(getattr(args, "dataset", None))
+
+
+NO_TOKEN_COMMANDS = {"sessions", "tally"}
 
 
 def main():
@@ -1948,6 +2555,8 @@ def main():
 
     # --- lookups (read-only) ---
     p = sub.add_parser("sessions", help="list the sessions saved on this machine")
+    p = sub.add_parser("tally", help="games per (condition, tangram set) cell, marking the emptiest")
+    p.add_argument("--dataset", help="dataset whose games.csv to count (default: $DATASET or 'full')")
     p = sub.add_parser("surveys", help="watch this session's survey fill, or list survey ids")
     p.add_argument("--session", help="show only this session's survey and its count (one request)")
     p.add_argument("--counts", action="store_true", help="also fetch response counts (a request each)")
@@ -1966,10 +2575,13 @@ def main():
     p.add_argument("--set", required=True, choices=["0", "1"], help="tangram set")
     p.add_argument("--places", type=int, required=True, help="places on the game study (players you expect)")
     p.add_argument("--survey-places", type=int, default=100, help="ceiling on survey responses (default 100)")
+    p.add_argument("--budget", type=float,
+                   help="dollars this session may spend in total; `pay` refuses to go past it "
+                        "(default: the cost ceiling setup prints)")
     p.add_argument("--blocklist-group", help=f"group id of past players (default: find '{BLOCKLIST_GROUP_NAME}')")
     p.add_argument("--template-survey", help="survey id to copy questions from (default: newest screening survey)")
     p.add_argument("--template-study", help="study id to copy game settings from (default: newest game study)")
-    p.add_argument("--study-name", default="Group communication game")
+    p.add_argument("--study-name", default=GAME_STUDY_NAME)
     p.add_argument("--internal-name", help="internal name for the game study draft")
     p.add_argument("--workspace", help="workspace id (default: PROLIFIC_WORKSPACE in .env)")
     p.add_argument(
@@ -2044,8 +2656,12 @@ def main():
     session(p, "the game study and run")
     p.add_argument("--study", help="game study id (default: from --session)")
     p.add_argument("--run", help="run timestamp under data/runs/ (default: newest)")
-    p.add_argument("--max-each", type=float, default=30.0, help="refuse any single amount above this")
+    p.add_argument("--max-each", type=float, default=MAX_EACH_DEFAULT,
+                   help=f"refuse any single amount above this (default ${MAX_EACH_DEFAULT:.2f}, "
+                        "BASE_PAY + MAX_BONUS from shared/constants.js)")
     p.add_argument("--max-total", type=float, help="refuse if a population's total exceeds this")
+    p.add_argument("--force-budget", action="store_true",
+                   help="pay even if it takes the session past the budget `setup` recorded (asks again)")
     p.add_argument("--reason", help="return reason shown to every removed player (default: by exit reason)")
     p.add_argument("--note-file", help="note template for every removed player (default: by exit reason)")
     p.add_argument("--skip-lobby", action="store_true",
@@ -2057,15 +2673,18 @@ def main():
     p.add_argument("--name", default=BLOCKLIST_GROUP_NAME)
     p.add_argument("--workspace", help="workspace id (default: PROLIFIC_WORKSPACE in .env)")
     p.add_argument("--from-prolific", action="store_true", help="derive who played from Prolific submissions")
-    p.add_argument("--study-name", default="Group communication game")
+    p.add_argument("--study-name", default=GAME_STUDY_NAME)
     p.add_argument("--include-unknown", action="store_true", help="also block submissions with no completion code")
     yes(p)
 
     args = parser.parse_args()
     check_exit_reasons()
-    token = load_token()
+    # Commands that only read local files need no token, so a machine without
+    # .env can still list sessions and count games.
+    token = None if args.command in NO_TOKEN_COMMANDS else load_token()
     {
         "sessions": cmd_sessions,
+        "tally": cmd_tally,
         "surveys": cmd_surveys,
         "studies": cmd_studies,
         "setup": cmd_setup,

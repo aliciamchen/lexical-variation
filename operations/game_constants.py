@@ -3,7 +3,7 @@ Game constants read from the Empirica source, so the operations tooling cannot
 drift from the running experiment.
 
 `operations/session.py` needs a handful of values that the experiment already
-defines: the three Prolific completion codes, the two pay figures, the condition
+defines: the three Prolific completion codes, the pay figures, the condition
 names, and the exit reasons the server records when it removes a player. Those
 used to be copied into Python by hand, which meant a reworded exit reason or a
 regenerated completion code would change the experiment without changing the
@@ -12,6 +12,8 @@ and fails loudly when something it expects is missing.
 
 The parsing is deliberately narrow: it understands the few literal declarations
 it needs and nothing else, so an unexpected shape raises rather than guessing.
+Line comments are stripped before matching, so a `// ... ]` or `// key: value`
+remark beside a declaration cannot change what is read.
 """
 
 from __future__ import annotations
@@ -21,7 +23,6 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONSTANTS_JS = PROJECT_ROOT / "experiment" / "shared" / "constants.js"
-CALLBACKS_JS = PROJECT_ROOT / "experiment" / "server" / "src" / "callbacks.js"
 
 
 class ConstantsError(RuntimeError):
@@ -34,9 +35,29 @@ def _source(path: Path) -> str:
     return path.read_text()
 
 
+# A string literal (double-, single- or backtick-quoted) or a line comment. The
+# alternation keeps `//` inside a string ("https://...") from being read as the
+# start of a comment.
+_STRING_OR_COMMENT = re.compile(
+    r'"(?:[^"\\\n]|\\.)*"'
+    r"|'(?:[^'\\\n]|\\.)*'"
+    r"|`(?:[^`\\]|\\.)*`"
+    r"|//[^\n]*"
+)
+
+
+def _without_comments(source: str) -> str:
+    """The source with every `//` line comment removed and strings left alone."""
+    return _STRING_OR_COMMENT.sub(
+        lambda match: "" if match.group(0).startswith("//") else match.group(0), source
+    )
+
+
 def _scalar(source: str, name: str) -> str:
     """The right-hand side of `export const NAME = ...;` as raw text."""
-    match = re.search(rf"^export const {re.escape(name)}\s*=\s*([^;]+);", source, re.M)
+    match = re.search(
+        rf"^export const {re.escape(name)}\s*=\s*([^;]+);", _without_comments(source), re.M
+    )
     if not match:
         raise ConstantsError(f"Could not find `export const {name}` in {CONSTANTS_JS.name}.")
     return match.group(1).strip()
@@ -44,9 +65,8 @@ def _scalar(source: str, name: str) -> str:
 
 def _number(source: str, name: str) -> float:
     raw = _scalar(source, name)
-    # Strip a trailing line comment, then require a bare number: anything
-    # computed (a ternary on TEST_MODE, say) is not safe to read this way.
-    raw = raw.split("//", 1)[0].strip()
+    # Require a bare number: anything computed (a ternary on TEST_MODE, say) is
+    # not safe to read this way.
     try:
         value = float(raw)
     except ValueError as error:
@@ -60,7 +80,9 @@ def _number(source: str, name: str) -> float:
 def _string_list(source: str, name: str) -> list[str]:
     """The elements of `export const NAME = [ "a", "b" ];`."""
     match = re.search(
-        rf"^export const {re.escape(name)}\s*=\s*\[(.*?)\]\s*;", source, re.M | re.S
+        rf"^export const {re.escape(name)}\s*=\s*\[(.*?)\]\s*;",
+        _without_comments(source),
+        re.M | re.S,
     )
     if not match:
         raise ConstantsError(f"Could not find the array `{name}` in {CONSTANTS_JS.name}.")
@@ -73,7 +95,9 @@ def _string_list(source: str, name: str) -> list[str]:
 def _string_object(source: str, name: str) -> dict[str, str]:
     """The entries of `export const NAME = { key: "value", ... };`."""
     match = re.search(
-        rf"^export const {re.escape(name)}\s*=\s*\{{(.*?)\}}\s*;", source, re.M | re.S
+        rf"^export const {re.escape(name)}\s*=\s*\{{(.*?)\}}\s*;",
+        _without_comments(source),
+        re.M | re.S,
     )
     if not match:
         raise ConstantsError(f"Could not find the object `{name}` in {CONSTANTS_JS.name}.")
@@ -106,17 +130,19 @@ def load():
 
 
 def exit_reasons() -> set[str]:
-    """Every `exitReason` string the server records, read from callbacks.js.
+    """Every `exitReason` string the server can record, from EXIT_REASONS in constants.js.
 
-    `session.py` words each removed participant's message from this value, so a
-    reason the tooling has never heard of is worth refusing rather than quietly
-    sending the blame-neutral wording to someone whose group left.
+    callbacks.js writes `player.set("exitReason", EXIT_REASONS.<key>)` rather
+    than a literal, so the object in shared/constants.js is the one list of
+    reasons. `session.py` words each removed participant's message from this
+    value, so a reason the tooling has never heard of is worth refusing rather
+    than quietly sending the blame-neutral wording to someone whose group left.
     """
-    source = _source(CALLBACKS_JS)
-    found = set(re.findall(r'"exitReason"\s*,\s*"([^"]+)"', source))
-    if not found:
+    source = _source(CONSTANTS_JS)
+    try:
+        reasons = _string_object(source, "EXIT_REASONS")
+    except ConstantsError as error:
         raise ConstantsError(
-            f"Found no exitReason values in {CALLBACKS_JS.name}; "
-            "session.py cannot word removal messages without them."
-        )
-    return found
+            f"{error} session.py cannot word removal messages without EXIT_REASONS."
+        ) from error
+    return set(reasons.values())

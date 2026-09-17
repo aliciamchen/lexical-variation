@@ -1,0 +1,7 @@
+Hello, and thank you for taking part in our study today.
+
+The game removes a player after several rounds without a response, so that the other players in the group are not left waiting, and that is why your session ended early.
+
+We have sent you ${amount} through Prolific: the study's base pay, prorated to the time you spent in the game. The bonus for correct answers is not included. You will also see a request to return the submission, since the study was not completed. Returning it does not affect the payment.
+
+Thank you again for your time.
