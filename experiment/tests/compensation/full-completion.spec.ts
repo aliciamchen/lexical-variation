@@ -3,7 +3,8 @@
  *
  * Players who complete the full game get the completion code C2I8XDMC.
  * Set up and complete a full refer_separated game. Verify all 9 players
- * see the completion code on the exit/finished screen.
+ * see the completion code on the survey's confirmation page, which has no
+ * Finish button so the code cannot be dismissed before it is copied.
  */
 import { test, expect } from '@playwright/test';
 import { PlayerManager } from '../helpers/player-manager';
@@ -18,6 +19,7 @@ import {
 } from '../helpers/game-actions';
 import { expectPlayerInGame } from '../helpers/assertions';
 import { PHASE_1_BLOCKS, PHASE_2_BLOCKS, ROUNDS_PER_BLOCK, PROLIFIC_CODES } from '../helpers/constants';
+import { EXIT_SURVEY } from '../helpers/selectors';
 
 test.describe.serial('Compensation: Full Completion (TEST_PLAN 10.1)', () => {
   let pm: PlayerManager;
@@ -127,9 +129,16 @@ test.describe.serial('Compensation: Full Completion (TEST_PLAN 10.1)', () => {
     await first.locator('select[name="gender"]').selectOption('prefer-not-to-say');
     await first.locator('input[name="feltHuman"][value="yes"]').click();
     await first.getByRole('button', { name: /^submit$/i }).click();
-    await expect(first.getByRole('button', { name: /finish/i })).toBeVisible({ timeout: 10_000 });
+    // The confirmation page exposes the code on the container and in the text,
+    // and offers nothing to click: the code stays visible until the tab closes.
+    await expect(first.locator(EXIT_SURVEY)).toHaveAttribute(
+      'data-prolific-code',
+      PROLIFIC_CODES.completion,
+      { timeout: 10_000 },
+    );
     await expect(first.locator('body')).toContainText(PROLIFIC_CODES.completion);
-    await first.getByRole('button', { name: /finish/i }).click();
+    await expect(first.locator('body')).toContainText('You can close this tab');
+    await expect(first.getByRole('button', { name: /finish/i })).toHaveCount(0);
 
     // Complete exit survey for the remaining players
     for (const page of pages.slice(1)) {

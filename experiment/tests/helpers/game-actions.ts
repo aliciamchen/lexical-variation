@@ -81,7 +81,8 @@ export async function getExitInfo(page: Page): Promise<ExitInfo | null> {
         return {
           type: 'exit-survey' as const,
           exitReason: exitSurvey.getAttribute('data-ended-reason'),
-          prolificCode: null,
+          // Only the confirmation page (after both survey pages) carries the code
+          prolificCode: exitSurvey.getAttribute('data-prolific-code'),
           partialPay: null,
           playerId: null,
         };
@@ -96,8 +97,8 @@ export async function getExitInfo(page: Page): Promise<ExitInfo | null> {
 export async function isInGame(page: Page): Promise<boolean> {
   const container = page.locator(GAME_CONTAINER);
   if ((await container.count()) === 0) return false;
-  // Sorry screen can render INSIDE game-container (via Inactive component)
-  // when a player is kicked mid-game. Exclude those players.
+  // A kicked player is routed to the Sorry screen by Empirica's exit steps;
+  // check for it in case the game container is still being torn down.
   const sorry = page.locator(SORRY_SCREEN);
   if ((await sorry.count()) > 0) return false;
   // Exit survey means the player has left the game (disbanded flow)
@@ -451,9 +452,11 @@ export async function handleTransition(pages: Page[], timeout = 120_000): Promis
 export async function completeExitSurvey(page: Page): Promise<void> {
   // The ExitSurvey component (client/src/intro-exit/ExitSurvey.jsx) is a
   // three-page flow: page 1 required questions ("Next"), page 2 demographics
-  // ("Submit"), page 3 confirmation with the Prolific code ("Finish").
-  // Removed (disbanded / low-accuracy) players answer both pages too, but
-  // page 2's submit sends them to the Sorry screen instead of page 3.
+  // ("Submit"), page 3 confirmation with the Prolific code. Page 3 has no
+  // button: the code stays on screen (data-prolific-code) until the tab is
+  // closed. Removed players (disbanded, too few groups, low accuracy, batch
+  // stopped) answer both pages too, but page 2's submit sends them to the
+  // Sorry screen instead of page 3.
 
   // ── Page 1: required questions (gates the "Next" button) ──
   await page.locator('input[name="understood"][value="yes"]').click();
@@ -485,17 +488,13 @@ export async function completeExitSurvey(page: Page): Promise<void> {
 
   await page.getByRole('button', { name: /^submit$/i }).click();
 
-  // ── Page 3: confirmation with the Prolific code and a Finish button ──
+  // ── Page 3: confirmation with the Prolific code (nothing to click) ──
   // Removed players are routed to the Sorry screen here instead; wait for
-  // whichever appears and only click Finish when the confirmation rendered.
-  const finishButton = page.getByRole('button', { name: /finish/i });
+  // whichever appears. The confirmation is the exit-survey container once it
+  // carries the completion code.
+  const confirmation = page.locator(`${EXIT_SURVEY}[data-prolific-code]`);
   const sorry = page.locator(SORRY_SCREEN);
-  await Promise.race([
-    finishButton.waitFor({ state: 'visible', timeout: 10_000 }),
-    sorry.waitFor({ state: 'visible', timeout: 10_000 }),
-  ]);
-  if ((await sorry.count()) > 0) return;
-  await finishButton.click();
+  await confirmation.or(sorry).first().waitFor({ state: 'visible', timeout: 10_000 });
 }
 
 /**

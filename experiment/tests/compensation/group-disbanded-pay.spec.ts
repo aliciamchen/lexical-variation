@@ -33,6 +33,7 @@ import {
   expectPlayerInGame,
 } from '../helpers/assertions';
 import {
+  EXIT_REASONS,
   MAX_IDLE_ROUNDS,
   PROLIFIC_CODES,
 } from '../helpers/constants';
@@ -121,7 +122,7 @@ test.describe.serial('Compensation: Group Disbanded (TEST_PLAN 10.3)', () => {
 
     // Find the player(s) with "group disbanded" exit reason
     const disbandedPlayers = removed.filter(
-      (r) => r.info.exitReason === 'group disbanded',
+      (r) => r.info.exitReason === EXIT_REASONS.groupDisbanded,
     );
 
     // There should be at least 1 disbanded player (the remaining member of the group)
@@ -152,7 +153,7 @@ test.describe.serial('Compensation: Group Disbanded (TEST_PLAN 10.3)', () => {
     const removed = await getRemovedPlayers(pages);
 
     const timeoutPlayers = removed.filter(
-      (r) => r.info.exitReason === 'player timeout',
+      (r) => r.info.exitReason === EXIT_REASONS.playerTimeout,
     );
     expect(timeoutPlayers.length).toBeGreaterThanOrEqual(2);
 

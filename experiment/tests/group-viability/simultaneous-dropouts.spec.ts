@@ -26,6 +26,7 @@ import {
   expectOneSpeakerPerGroup,
 } from '../helpers/assertions';
 import {
+  EXIT_REASONS,
   MAX_IDLE_ROUNDS,
   PROLIFIC_CODES,
   MIN_GROUP_SIZE,
@@ -129,12 +130,12 @@ test.describe.serial('Group Viability: Simultaneous Dropouts from Different Grou
     // Wait for exit screens to render (may take time for Empirica to propagate state)
     const exitInfoA = await waitForExitScreen(pages[idleFromGroupA], 60_000);
     expect(exitInfoA).not.toBeNull();
-    expect(exitInfoA!.exitReason).toBe('player timeout');
+    expect(exitInfoA!.exitReason).toBe(EXIT_REASONS.playerTimeout);
     expect(parseFloat(exitInfoA!.partialPay || '0')).toBeGreaterThan(0); // prorated base pay, no bonus
 
     const exitInfoB = await waitForExitScreen(pages[idleFromGroupB], 60_000);
     expect(exitInfoB).not.toBeNull();
-    expect(exitInfoB!.exitReason).toBe('player timeout');
+    expect(exitInfoB!.exitReason).toBe(EXIT_REASONS.playerTimeout);
     expect(parseFloat(exitInfoB!.partialPay || '0')).toBeGreaterThan(0); // prorated base pay, no bonus
   });
 

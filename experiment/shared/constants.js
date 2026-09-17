@@ -172,6 +172,28 @@ export const MAX_IDLE_ROUNDS = IDLE_TEST_TIMING ? 2 : 3; // consecutive idle rou
 export const MIN_GROUP_SIZE = 2; // Minimum players needed to continue in a group
 // MIN_ACTIVE_GROUPS is derived dynamically in callbacks.js based on actual group count
 
+// Why a player left before the end. The server writes one of these to the
+// player's `exitReason` (and `ended`) when it removes them; the client routes
+// the exit screens on it; operations/game_constants.py reads this object so the
+// payment tooling words each removal message from the same list. Empirica
+// itself writes "game ended", "game failed" (lobby timeout), and
+// "game terminated" (the admin stopped the batch) to `ended`.
+export const EXIT_REASONS = {
+  quizFailed: "quiz failed", // three failed quiz attempts; no pay
+  playerTimeout: "player timeout", // idle for MAX_IDLE_ROUNDS; prorated base, no bonus
+  groupDisbanded: "group disbanded", // own original group fell below MIN_GROUP_SIZE
+  insufficientGroups: "insufficient groups", // too few viable groups remained mid-game
+  lowAccuracy: "low accuracy", // own group failed the Phase 1 accuracy screen
+  insufficientGroupsAccuracy: "insufficient groups after accuracy check",
+  gameTerminated: "game terminated", // the researcher stopped the batch
+};
+
+// ============ INTRO ============
+export const MAX_QUIZ_ATTEMPTS = 3; // quiz attempts before the player is excluded
+// Shared lobby wait before a batch fails; must match `duration` in
+// .empirica/lobbies.yaml, which Empirica reads directly.
+export const LOBBY_TIMEOUT_MINUTES = 10;
+
 // ============ PHASE 1 ACCURACY THRESHOLD ============
 // At end of Phase 1, remove groups where fewer than 2/3 of players achieved >= 2/3 accuracy
 // Accuracy is calculated from listener performance in the last 3 blocks of Phase 1

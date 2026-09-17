@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { usePlayer, useGame } from "@empirica/core/player/classic/react";
 import { Button } from "../components/Button";
+import { EXIT_REASONS, MAX_QUIZ_ATTEMPTS } from "../constants";
 
 export function Quiz({ next }) {
   const player = usePlayer();
@@ -10,11 +11,10 @@ export function Quiz({ next }) {
   // Attempts are stored on the player record (not just React state) so a page
   // reload cannot reset the three-attempt limit.
   const [attempts, setAttempts] = useState(player.get("quiz_attempts") || 0);
-  const [failed, setFailed] = useState(
-    player.get("exitReason") === "quiz failed"
-  );
-
-  const MAX_ATTEMPTS = 3;
+  // Shown for the instant between the third failure and Empirica switching to
+  // the exit steps (App.jsx routes a quiz failure to the Sorry page). A player
+  // whose failure is already recorded never renders the quiz at all.
+  const [failed, setFailed] = useState(false);
 
   const baseQuestions = [
     {
@@ -107,27 +107,23 @@ export function Quiz({ next }) {
 
     if (allCorrect) {
       alert("Congratulations, you answered all questions correctly!");
-      // Clear any prior quiz failure so it doesn't poison the exit flow
-      if (player.get("exitReason") === "quiz failed") {
-        player.set("exitReason", null);
-      }
       next();
     } else {
       const newAttempts = attempts + 1;
       setAttempts(newAttempts);
       player.set("quiz_attempts", newAttempts);
 
-      if (newAttempts >= MAX_ATTEMPTS) {
+      if (newAttempts >= MAX_QUIZ_ATTEMPTS) {
         setFailed(true);
-        player.set("exitReason", "quiz failed");
+        player.set("exitReason", EXIT_REASONS.quizFailed);
         // Formally exit: Empirica excludes players with `ended` set from the
         // game's ready count and never reassigns them to another game. The
         // participant is routed to the Sorry page (quiz-failed message).
-        player.set("ended", "quiz failed");
+        player.set("ended", EXIT_REASONS.quizFailed);
       } else {
         alert(
           `Some answers are incorrect. You have ${
-            MAX_ATTEMPTS - newAttempts
+            MAX_QUIZ_ATTEMPTS - newAttempts
           } attempt(s) remaining. Please try again.`
         );
       }
@@ -164,7 +160,7 @@ export function Quiz({ next }) {
             Quiz Failed
           </h2>
           <p>
-            Unfortunately, you have used all {MAX_ATTEMPTS} attempts and were
+            Unfortunately, you have used all {MAX_QUIZ_ATTEMPTS} attempts and were
             not able to pass the comprehension quiz. You will not be able to
             participate in this study.
           </p>
@@ -184,7 +180,7 @@ export function Quiz({ next }) {
     <div>
       <h1>Comprehension Quiz</h1>
       <p style={{ marginBottom: "20px", color: "#666" }}>
-        Attempt {attempts + 1} of {MAX_ATTEMPTS}
+        Attempt {attempts + 1} of {MAX_QUIZ_ATTEMPTS}
       </p>
       <form>
         {questions.map((q, questionIndex) => (

@@ -24,6 +24,7 @@ import {
   expectPlayerInGame,
 } from '../helpers/assertions';
 import {
+  EXIT_REASONS,
   MAX_IDLE_ROUNDS,
   PHASE_1_BLOCKS,
   ROUNDS_PER_BLOCK,
@@ -128,7 +129,7 @@ test.describe.serial('Group Viability: Phase 2 Dropout in Mixed Condition (3.6)'
     // Wait for the idle player to see the sorry screen
     const exitInfo = await waitForExitScreen(pages[idleIndex], 60_000);
     expect(exitInfo).not.toBeNull();
-    expect(exitInfo!.exitReason).toBe('player timeout');
+    expect(exitInfo!.exitReason).toBe(EXIT_REASONS.playerTimeout);
   });
 
   test('remaining 8 players are redistributed and continue playing', async () => {

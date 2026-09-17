@@ -1,8 +1,27 @@
 import { usePlayer, useGame } from "@empirica/core/player/classic/react";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
-import { BASE_PAY, PROLIFIC_CODES } from "../constants";
+import {
+  BASE_PAY,
+  EXIT_REASONS,
+  PARTIAL_PAY_SURVEY_REASONS,
+  PROLIFIC_CODES,
+} from "../constants";
+
+// Which survey pages the saved answers already cover. Page 1 is the group
+// questions, page 2 the demographics and the felt-human check; each is saved
+// as a whole when its form is submitted, so a page counts as complete when
+// every one of its required fields is present.
+const page1Complete = (s) =>
+  Boolean(
+    s.understood &&
+      s.groupIdentification &&
+      s.groupCloseness &&
+      s.groupLanguage &&
+      (s.strategy || "").trim(),
+  );
+const page2Complete = (s) => Boolean(s.feltHuman && s.age && s.gender);
 
 export function ExitSurvey({ next }) {
   const labelClassName = "block text-sm font-medium text-gray-700 my-2";
@@ -33,21 +52,31 @@ export function ExitSurvey({ next }) {
   // Every player who reaches the survey answers both pages: demographics feed
   // the attrition report and the felt-human item is an AI-use signal, so
   // removed players answer them too and are then routed to the Sorry page.
-  const [page, setPage] = useState("required");
+  //
+  // The page is derived from what is already saved on the player rather than
+  // held in React state, so a reload (or a reconnect that remounts the exit
+  // steps) resumes at the first unanswered page instead of asking a completed
+  // page again, and can never lose answers that were submitted.
+  const saved = player.get("exitSurvey") || {};
+  const page = !page1Complete(saved)
+    ? "required"
+    : !page2Complete(saved)
+      ? "optional"
+      : "done";
 
-  // Use exitReason (our custom attribute) first — Empirica can overwrite
-  // "ended" to "game ended" when the game finishes, clobbering our value.
+  // Use exitReason (our custom attribute) first: Empirica overwrites `ended`
+  // with "game ended" when the game finishes and "game terminated" when the
+  // admin stops the batch.
   const endedReason = player.get("exitReason") || player.get("ended");
-  const isDisbanded =
-    endedReason === "group disbanded" ||
-    endedReason === "low accuracy" ||
-    endedReason === "insufficient groups after accuracy check";
+  // Removed early through no fault of their own; paid base prorated to time
+  // spent plus the bonus so far, with the partial code on the Sorry page.
+  const isRemoved = PARTIAL_PAY_SURVEY_REASONS.includes(endedReason);
 
   // Get player's score and bonus
   const score = player.get("score") || 0;
   const bonus = player.get("bonus") || 0;
 
-  // Partial pay info for disbanded players
+  // Partial pay info for removed players
   const partialPay = player.get("partialPay");
   const partialBasePay = player.get("partialBasePay");
   const partialBonus = player.get("partialBonus");
@@ -60,17 +89,19 @@ export function ExitSurvey({ next }) {
     groupLanguage &&
     strategy.trim();
 
+  // Each submit merges into the saved object so that neither page can wipe
+  // the other's answers.
   function handleRequiredSubmit(event) {
     event.preventDefault();
     if (!requiredComplete) return;
     player.set("exitSurvey", {
+      ...(player.get("exitSurvey") || {}),
       understood,
       groupIdentification,
       groupCloseness,
       groupLanguage,
       strategy,
     });
-    setPage("optional");
   }
 
   const page2RequiredComplete = feltHuman && age && gender;
@@ -79,7 +110,7 @@ export function ExitSurvey({ next }) {
     event.preventDefault();
     if (!page2RequiredComplete) return;
     player.set("exitSurvey", {
-      ...player.get("exitSurvey"),
+      ...(player.get("exitSurvey") || {}),
       feltHuman,
       age,
       gender,
@@ -87,18 +118,25 @@ export function ExitSurvey({ next }) {
       fair,
       feedback,
     });
-    if (isDisbanded) {
-      // Players removed at the accuracy check (or whose group disbanded) get
-      // their prorated pay and partial-completion code on the Sorry page.
-      next();
-    } else {
-      setPage("done");
-    }
   }
 
-  // Build the header alert based on whether game ended normally or was disbanded
+  // Removed players get their prorated pay and partial-completion code on the
+  // Sorry page, so once both pages are saved they move on. Done in an effect
+  // keyed on the derived page, so it also fires for a player who reloads after
+  // finishing the survey; the ref stops it firing twice before Empirica
+  // switches the step.
+  const advancedRef = useRef(false);
+  useEffect(() => {
+    if (page === "done" && isRemoved && !advancedRef.current) {
+      advancedRef.current = true;
+      next();
+    }
+  }, [page, isRemoved]);
+
+  // Build the header alert based on whether the game ended normally or the
+  // player was removed early
   let headerAlert;
-  if (isDisbanded) {
+  if (isRemoved) {
     const payAmount = partialPay != null ? partialPay.toFixed(2) : "0.00";
     const basePayAmount =
       partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
@@ -107,7 +145,7 @@ export function ExitSurvey({ next }) {
       minutesSpent != null ? `${minutesSpent} minutes` : "your time";
 
     let explanation;
-    if (endedReason === "group disbanded") {
+    if (endedReason === EXIT_REASONS.groupDisbanded) {
       explanation = (
         <p>
           Unfortunately, too many members of your original group left the game,
@@ -115,13 +153,22 @@ export function ExitSurvey({ next }) {
           players.
         </p>
       );
-    } else if (endedReason === "low accuracy") {
+    } else if (endedReason === EXIT_REASONS.insufficientGroups) {
+      explanation = (
+        <p>
+          Too many players in other groups left the game, so there were not
+          enough groups left to continue.
+        </p>
+      );
+    } else if (endedReason === EXIT_REASONS.lowAccuracy) {
       explanation = (
         <p>
           Unfortunately, your group's accuracy during Phase 1 was below the
           threshold required to continue to Phase 2.
         </p>
       );
+    } else if (endedReason === EXIT_REASONS.gameTerminated) {
+      explanation = <p>The researcher had to stop this session early.</p>;
     } else {
       explanation = (
         <p>
@@ -166,13 +213,20 @@ export function ExitSurvey({ next }) {
     );
   }
 
-  // Page 3: Confirmation with Prolific code
+  // Page 3: confirmation with the Prolific code. This is the last thing a
+  // finisher sees, so it has no button: calling `next()` here would end the
+  // exit steps and replace the code with Empirica's generic "Finished" page,
+  // and a participant who had not yet copied the code would have no way back.
+  // The code is also on `data-prolific-code` for the end-to-end tests.
   if (page === "done") {
+    // Removed players are on their way to the Sorry page (see the effect above).
+    if (isRemoved) return null;
     return (
       <div
         className="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
         data-testid="exit-survey"
         data-ended-reason={endedReason || "game ended"}
+        data-prolific-code={PROLIFIC_CODES.completion}
       >
         <Alert title="Thank you!">
           <p>
@@ -192,10 +246,10 @@ export function ExitSurvey({ next }) {
             Please submit the following code on Prolific to receive your
             payment: <strong>{PROLIFIC_CODES.completion}</strong>.
           </p>
+          <p className="mt-2">
+            You can close this tab once you have submitted the code.
+          </p>
         </Alert>
-        <div className="mt-8">
-          <Button handleClick={() => next()}>Finish</Button>
-        </div>
       </div>
     );
   }

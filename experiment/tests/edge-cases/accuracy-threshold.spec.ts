@@ -37,6 +37,7 @@ import {
   expectPlayerInGame,
 } from '../helpers/assertions';
 import {
+  EXIT_REASONS,
   PHASE_1_BLOCKS,
   ROUNDS_PER_BLOCK,
   MIN_GROUP_SIZE,
@@ -122,7 +123,7 @@ test.describe.serial('Edge Case: Phase 1 Accuracy Threshold', () => {
     let targetRemovedCount = 0;
     for (const { page, info } of removed) {
       // The sorry screen should indicate "low accuracy" as exit reason
-      if (info.exitReason === 'low accuracy') {
+      if (info.exitReason === EXIT_REASONS.lowAccuracy) {
         targetRemovedCount++;
       }
     }

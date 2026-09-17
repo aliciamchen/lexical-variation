@@ -33,6 +33,7 @@ import {
   expectPlayerOnExitScreen,
 } from '../helpers/assertions';
 import {
+  EXIT_REASONS,
   MAX_IDLE_ROUNDS,
   PROLIFIC_CODES,
   MIN_GROUP_SIZE,
@@ -183,7 +184,7 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
     expect(removed.length).toBe(9);
   });
 
-  test('remaining players (from group C) get "group disbanded" with partial pay > 0', async () => {
+  test('remaining players (from group C) get "insufficient groups" with partial pay > 0', async () => {
     const pages = pm.getPages();
     const groupNames = Object.keys(groupPageIndices);
     const groupC = groupNames[2];
@@ -192,15 +193,14 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
     // Disbanded players see ExitSurvey before Sorry — complete all surveys
     await completeDisbandedExitSurveys(pages);
 
-    // Group C players were never idle - they should have been terminated
-    // due to insufficient groups remaining
+    // Group C players were never idle: their own group was fine, so they get
+    // the distinct "insufficient groups" reason rather than "group disbanded"
     for (const idx of groupCIndices) {
       const exitInfo = await getExitInfo(pages[idx]);
       expect(exitInfo).not.toBeNull();
       expect(exitInfo!.type).toBe('sorry');
 
-      // They should have "group disbanded" reason (game termination uses same reason)
-      expect(exitInfo!.exitReason).toBe('group disbanded');
+      expect(exitInfo!.exitReason).toBe(EXIT_REASONS.insufficientGroups);
 
       // They should get the CFTYDMIY code
       expect(exitInfo!.prolificCode).toBe(PROLIFIC_CODES.partial);
@@ -221,7 +221,7 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
     for (const idx of groupPageIndices[groupA]) {
       const exitInfo = await getExitInfo(pages[idx]);
       expect(exitInfo).not.toBeNull();
-      if (exitInfo!.exitReason === 'player timeout') {
+      if (exitInfo!.exitReason === EXIT_REASONS.playerTimeout) {
         expect(parseFloat(exitInfo!.partialPay || '0')).toBeGreaterThan(0); // prorated base pay
       }
     }
@@ -230,7 +230,7 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
     for (const idx of groupPageIndices[groupB]) {
       const exitInfo = await getExitInfo(pages[idx]);
       expect(exitInfo).not.toBeNull();
-      if (exitInfo!.exitReason === 'player timeout') {
+      if (exitInfo!.exitReason === EXIT_REASONS.playerTimeout) {
         expect(parseFloat(exitInfo!.partialPay || '0')).toBeGreaterThan(0); // prorated base pay
       }
     }

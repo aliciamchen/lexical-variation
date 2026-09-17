@@ -33,7 +33,8 @@ import { EXIT_SURVEY } from '../helpers/selectors';
  * groupIdentification, groupCloseness, groupLanguage, strategy) behind a "Next"
  * button, page 2 demographics (age, gender, feltHuman required; education,
  * fair, feedback optional) behind a "Submit" button, then a confirmation page
- * with the Prolific code and a "Finish" button. The Empirica player object is
+ * with the Prolific code and no button (the code stays up until the tab is
+ * closed). The Empirica player object is
  * not exposed to page context, so we verify that player.set("exitSurvey", ...)
  * captured every required field via the component's own gating: it only stores
  * the required fields and advances to page 2 once they are all set, and only
@@ -292,19 +293,22 @@ test.describe.serial('UI Verification: Endgame — Transition & Exit Survey (5.5
     await submitBtn.click();
   });
 
-  test('(5.6) confirmation page shows completion code and Finish button after submission', async () => {
+  test('(5.6) confirmation page shows the completion code and has no Finish button', async () => {
     const page = pm.getPage(0);
 
-    // The Finish button marks the confirmation page (page 3)
-    const finishBtn = page.getByRole('button', { name: /finish/i });
-    await expect(finishBtn).toBeVisible({ timeout: 10_000 });
+    // The confirmation page (page 3) is the survey container carrying the code
+    const survey = page.locator(EXIT_SURVEY);
+    await expect(survey).toHaveAttribute('data-prolific-code', PROLIFIC_CODES.completion, {
+      timeout: 10_000,
+    });
 
-    // The Prolific completion code is now shown
+    // The Prolific completion code is now shown, with the closing instruction
     const bodyText = await page.textContent('body');
     expect(bodyText).toContain(PROLIFIC_CODES.completion);
+    expect(bodyText).toContain('You can close this tab');
 
-    // Click Finish to complete
-    await finishBtn.click();
+    // Nothing to click: a Finish button would let the code be dismissed
+    await expect(page.getByRole('button', { name: /finish/i })).toHaveCount(0);
 
     // Complete the exit survey for the remaining players so the game finishes
     const pages = pm.getPages();

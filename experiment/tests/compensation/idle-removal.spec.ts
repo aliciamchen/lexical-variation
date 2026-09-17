@@ -21,6 +21,7 @@ import {
   expectPlayerOnExitScreen,
 } from '../helpers/assertions';
 import {
+  EXIT_REASONS,
   MAX_IDLE_ROUNDS,
   PROLIFIC_CODES,
 } from '../helpers/constants';
@@ -82,7 +83,7 @@ test.describe.serial('Compensation: Idle Removal (TEST_PLAN 10.2)', () => {
     const exitInfo = await waitForExitScreen(idlePlayerPage, 60_000);
     expect(exitInfo).not.toBeNull();
     expect(exitInfo!.type).toBe('sorry');
-    expect(exitInfo!.exitReason).toBe('player timeout');
+    expect(exitInfo!.exitReason).toBe(EXIT_REASONS.playerTimeout);
 
     // Idle players receive prorated base pay (no bonus) with the partial-payment code
     expect(exitInfo!.prolificCode).toBe('CFTYDMIY');

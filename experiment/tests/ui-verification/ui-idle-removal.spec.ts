@@ -9,7 +9,7 @@ import {
 } from '../helpers/game-actions';
 import { expectPlayerInGame } from '../helpers/assertions';
 import { SORRY_SCREEN } from '../helpers/selectors';
-import { MAX_IDLE_ROUNDS } from '../helpers/constants';
+import { EXIT_REASONS, MAX_IDLE_ROUNDS } from '../helpers/constants';
 
 /**
  * TEST_PLAN 5.7 + 5.8: Sorry/exit page and group-size-change message.
@@ -112,7 +112,7 @@ test.describe.serial('UI Verification: Idle Removal (5.7, 5.8)', () => {
     const sorryEl = idlePage.locator(SORRY_SCREEN);
     const exitReason = await sorryEl.getAttribute('data-exit-reason');
     expect(exitReason).not.toBeNull();
-    expect(exitReason).toBe('player timeout');
+    expect(exitReason).toBe(EXIT_REASONS.playerTimeout);
   });
 
   test('(5.7) sorry screen has data-prolific-code attribute', async () => {

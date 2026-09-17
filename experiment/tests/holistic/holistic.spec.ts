@@ -41,6 +41,7 @@ import {
   expectOneSpeakerPerGroup,
 } from '../helpers/assertions';
 import {
+  EXIT_REASONS,
   PLAYER_NAMES,
   PROLIFIC_CODES,
   PHASE_1_BLOCKS,
@@ -174,7 +175,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
       const sorry = page.locator(SORRY_SCREEN);
       await expect(page.locator(QUIZ_FAILED_SCREEN).or(sorry).first()).toBeVisible({ timeout: 10_000 });
       await expect(sorry).toBeVisible({ timeout: 15_000 });
-      await expect(sorry).toHaveAttribute('data-exit-reason', 'quiz failed');
+      await expect(sorry).toHaveAttribute('data-exit-reason', EXIT_REASONS.quizFailed);
       await expect(sorry).toHaveAttribute('data-prolific-code', 'none');
       const screenText = await sorry.textContent();
       expect(screenText).toContain('return this study on Prolific');
@@ -450,7 +451,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     // Verify the speaker is kicked
     const exitInfo = await waitForExitScreen(gamePages[idleSpeakerGameIdx], 60_000);
     expect(exitInfo).not.toBeNull();
-    expect(exitInfo!.exitReason).toBe('player timeout');
+    expect(exitInfo!.exitReason).toBe(EXIT_REASONS.playerTimeout);
     expect(exitInfo!.prolificCode).toBe('CFTYDMIY');
   });
 
@@ -503,7 +504,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     // Verify the listener is kicked
     const exitInfo = await waitForExitScreen(gamePages[idleListenerGameIdx], 60_000);
     expect(exitInfo).not.toBeNull();
-    expect(exitInfo!.exitReason).toBe('player timeout');
+    expect(exitInfo!.exitReason).toBe(EXIT_REASONS.playerTimeout);
     expect(exitInfo!.prolificCode).toBe('CFTYDMIY');
   });
 
@@ -649,13 +650,13 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     // Wait for the idle player to be kicked
     const idleExitInfo = await waitForExitScreen(gamePages[idleTargetIdx], 60_000);
     expect(idleExitInfo).not.toBeNull();
-    expect(idleExitInfo!.exitReason).toBe('player timeout');
+    expect(idleExitInfo!.exitReason).toBe(EXIT_REASONS.playerTimeout);
 
     // The remaining member of the 2-member group should be disbanded.
     // Disbanded players now see ExitSurvey first, then Sorry.
     const disbandedInitialInfo = await waitForExitScreen(gamePages[disbandedTargetIdx], 60_000);
     expect(disbandedInitialInfo).not.toBeNull();
-    expect(disbandedInitialInfo!.exitReason).toBe('group disbanded');
+    expect(disbandedInitialInfo!.exitReason).toBe(EXIT_REASONS.groupDisbanded);
 
     // Complete the exit survey so the player reaches the Sorry page with code/pay
     await completeDisbandedExitSurveys(gamePages);

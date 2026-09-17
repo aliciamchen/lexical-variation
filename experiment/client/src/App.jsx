@@ -8,6 +8,7 @@ import { Introduction } from "./intro-exit/Introduction";
 import { ConsentPage } from "./intro-exit/Consent.jsx";
 import { Sorry } from "./intro-exit/Sorry.jsx";
 import { MyPlayerForm } from "./intro-exit/PlayerCreate.jsx";
+import { EXIT_REASONS, PARTIAL_PAY_SURVEY_REASONS } from "./constants";
 
 export default function App() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -21,30 +22,32 @@ export default function App() {
     return [Introduction];
   }
 
+  // Empirica shows the exit steps as soon as `player.get("ended")` is set, so
+  // this decides every screen a participant sees after leaving the game.
   function exitSteps({ game, player }) {
-    // Use exitReason (our custom attribute) first — Empirica can overwrite
-    // "ended" to "game ended" when the game finishes, clobbering our value.
+    // Use exitReason (our custom attribute) first: Empirica overwrites `ended`
+    // with "game ended" when the game finishes and with "game terminated" when
+    // the admin stops the batch (the server then also writes `exitReason`).
     const exitReason = player.get("exitReason");
     const ended = player.get("ended");
     const reason = exitReason || ended;
 
-    if (reason === "quiz failed") {
-      // Quiz failure: player stays on the quiz-failed screen (rendered by Quiz
-      // component). If Empirica forces exit (e.g. lobby timeout), show Sorry
-      // which will display the generic/lobby-timeout message. But we mark it
-      // so Sorry can detect quiz failure and show the right message.
+    if (reason === EXIT_REASONS.quizFailed) {
+      // Three failed quiz attempts: no survey, no pay (Sorry explains).
       return [Sorry];
-    } else if (
-      reason === "group disbanded" ||
-      reason === "low accuracy" ||
-      reason === "insufficient groups after accuracy check"
-    ) {
+    } else if (PARTIAL_PAY_SURVEY_REASONS.includes(reason)) {
+      // Removed through no fault of their own (group disbanded, too few groups
+      // left, accuracy screen, or the researcher stopped the session): survey
+      // first, then the partial code and prorated pay on Sorry.
       return [ExitSurvey, Sorry];
-    } else if (reason === "player timeout") {
+    } else if (reason === EXIT_REASONS.playerTimeout) {
       return [Sorry];
     } else if (ended === "game ended") {
+      // Finished the game: the survey's last page shows the completion code
+      // and stays up (there is no further step).
       return [ExitSurvey];
     } else {
+      // Lobby timeout ("game failed") or anything unexpected.
       return [Sorry];
     }
   }

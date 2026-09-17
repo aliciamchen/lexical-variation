@@ -31,6 +31,7 @@ import {
   expectPlayerOnExitScreen,
 } from '../helpers/assertions';
 import {
+  EXIT_REASONS,
   MAX_IDLE_ROUNDS,
   PHASE_1_BLOCKS,
   ROUNDS_PER_BLOCK,
@@ -122,7 +123,7 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
     for (const idx of idlePageIndices) {
       const exitInfo = await waitForExitScreen(pages[idx], 60_000);
       expect(exitInfo).not.toBeNull();
-      expect(exitInfo!.exitReason).toBe('player timeout');
+      expect(exitInfo!.exitReason).toBe(EXIT_REASONS.playerTimeout);
       expect(exitInfo!.prolificCode).toBe('CFTYDMIY');
     }
   });
@@ -133,7 +134,7 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
     // Find the remaining player from the disbanded group
     const removed = await getRemovedPlayers(pages);
     const disbandedPlayers = removed.filter(
-      (r) => r.info.exitReason === 'group disbanded',
+      (r) => r.info.exitReason === EXIT_REASONS.groupDisbanded,
     );
 
     // There should be at least 1 disbanded player (the remaining member of the group)
@@ -147,7 +148,7 @@ test.describe.serial('Group Viability: Group Disbanded (3.4)', () => {
       const info = await getExitInfo(page);
       expect(info).not.toBeNull();
       expect(info!.type).toBe('sorry');
-      expect(info!.exitReason).toBe('group disbanded');
+      expect(info!.exitReason).toBe(EXIT_REASONS.groupDisbanded);
 
       // Verify the prolific code is CFTYDMIY
       expect(info!.prolificCode).toBe(PROLIFIC_CODES.partial);

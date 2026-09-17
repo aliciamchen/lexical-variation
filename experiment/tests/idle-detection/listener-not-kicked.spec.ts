@@ -13,6 +13,7 @@ import {
   expectPlayerInGame,
 } from '../helpers/assertions';
 import {
+  EXIT_REASONS,
   MAX_IDLE_ROUNDS,
   ROUNDS_PER_BLOCK,
 } from '../helpers/constants';
@@ -107,7 +108,7 @@ test.describe.serial('Idle Detection: Listener Not Kicked When Speaker Idles (TE
     const speakerPage = pages[speakerIndex];
     const speakerExit = await waitForExitScreen(speakerPage, 60_000);
     expect(speakerExit).not.toBeNull();
-    expect(speakerExit!.exitReason).toBe('player timeout');
+    expect(speakerExit!.exitReason).toBe(EXIT_REASONS.playerTimeout);
 
     // Verify listeners in the same group are still active and in the game
     for (const listenerIdx of groupListenerIndices) {
@@ -120,7 +121,7 @@ test.describe.serial('Idle Detection: Listener Not Kicked When Speaker Idles (TE
       const exitInfo = await waitForExitScreen(listenerPage, 5_000);
       if (exitInfo) {
         // If listener ended up on exit screen, it should NOT be "player timeout"
-        expect(exitInfo.exitReason).not.toBe('player timeout');
+        expect(exitInfo.exitReason).not.toBe(EXIT_REASONS.playerTimeout);
       } else {
         // Listener is still in the game -- this is the expected outcome
         await expectPlayerInGame(listenerPage);
@@ -133,7 +134,7 @@ test.describe.serial('Idle Detection: Listener Not Kicked When Speaker Idles (TE
     const removed = await getRemovedPlayers(pages);
 
     // Filter for those removed specifically for "player timeout"
-    const timedOut = removed.filter(r => r.info.exitReason === 'player timeout');
+    const timedOut = removed.filter(r => r.info.exitReason === EXIT_REASONS.playerTimeout);
     expect(timedOut.length).toBe(1);
   });
 
@@ -154,7 +155,7 @@ test.describe.serial('Idle Detection: Listener Not Kicked When Speaker Idles (TE
 
     // Verify no additional players were kicked for timeout
     const removed = await getRemovedPlayers(pages);
-    const timedOut = removed.filter(r => r.info.exitReason === 'player timeout');
+    const timedOut = removed.filter(r => r.info.exitReason === EXIT_REASONS.playerTimeout);
     expect(timedOut.length).toBe(1); // Still only the original speaker
   });
 });

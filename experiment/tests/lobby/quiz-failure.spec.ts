@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createBatch } from '../helpers/admin';
 import { QUIZ_FAILED_SCREEN, SORRY_SCREEN } from '../helpers/selectors';
+import { EXIT_REASONS } from '../helpers/constants';
 
 // TEST_PLAN 4.2: Player fails comprehension quiz 3 times and is shown failure screen
 test.describe.serial('Lobby: quiz failure after 3 attempts', { tag: '@smoke' }, () => {
@@ -83,7 +84,7 @@ test.describe.serial('Lobby: quiz failure after 3 attempts', { tag: '@smoke' }, 
     const failedScreen = page.locator(QUIZ_FAILED_SCREEN).or(sorry);
     await expect(failedScreen.first()).toBeVisible({ timeout: 10_000 });
     await expect(sorry).toBeVisible({ timeout: 15_000 });
-    await expect(sorry).toHaveAttribute('data-exit-reason', 'quiz failed');
+    await expect(sorry).toHaveAttribute('data-exit-reason', EXIT_REASONS.quizFailed);
     await expect(sorry).toHaveAttribute('data-prolific-code', 'none');
 
     // Verify the failure message content — no code, player is asked to return the study

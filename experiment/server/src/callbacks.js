@@ -30,6 +30,7 @@ import {
   isMixedCondition,
   hasSocialGuessing,
   GROUP_NAMES,
+  EXIT_REASONS,
 } from "./constants";
 import { reshuffleGroups } from "./reshuffling";
 import { scoreSelectionStage } from "./scoring";
@@ -466,8 +467,8 @@ Empirica.onStageEnded(({ stage }) => {
             `Player ${player.id} (${role}) removed after ${MAX_IDLE_ROUNDS} idle rounds`,
           );
           player.set("is_active", false);
-          player.set("ended", "player timeout");
-          player.set("exitReason", "player timeout");
+          player.set("ended", EXIT_REASONS.playerTimeout);
+          player.set("exitReason", EXIT_REASONS.playerTimeout);
           player.set("gameEndTime", Date.now());
           // Inactivity removals are paid base pay prorated to time spent but
           // forfeit the bonus (see compensation.js).
@@ -550,8 +551,8 @@ function checkGroupViability(game) {
       `Removing final member ${player.id} from disbanded group ${player.get("original_group")}`,
     );
     player.set("is_active", false);
-    player.set("ended", "group disbanded");
-    player.set("exitReason", "group disbanded");
+    player.set("ended", EXIT_REASONS.groupDisbanded);
+    player.set("exitReason", EXIT_REASONS.groupDisbanded);
     player.set("gameEndTime", Date.now());
 
     // Proportional pay: base prorated to time spent, plus earned bonus
@@ -570,15 +571,17 @@ function checkGroupViability(game) {
       `Not enough active groups (${viableGroups.length} < ${minRequired}), ending game`,
     );
 
-    // Give remaining active players partial compensation and end them
+    // Give remaining active players partial compensation and end them. Their
+    // own group was fine, so they get a distinct reason from "group disbanded"
+    // and the exit screens explain that too few groups remained.
     const remainingActivePlayers = players.filter((p) => p.get("is_active"));
     remainingActivePlayers.forEach((player) => {
       console.log(
         `Ending remaining player ${player.id} due to insufficient groups`,
       );
       player.set("is_active", false);
-      player.set("ended", "group disbanded");
-      player.set("exitReason", "group disbanded");
+      player.set("ended", EXIT_REASONS.insufficientGroups);
+      player.set("exitReason", EXIT_REASONS.insufficientGroups);
       player.set("gameEndTime", Date.now());
 
       // Proportional pay: base prorated to time spent, plus earned bonus
@@ -651,8 +654,8 @@ function checkPhase1AccuracyThreshold(game) {
           `    Removing player ${player.id} (${player.get("original_name")})`,
         );
         player.set("is_active", false);
-        player.set("ended", "low accuracy");
-        player.set("exitReason", "low accuracy");
+        player.set("ended", EXIT_REASONS.lowAccuracy);
+        player.set("exitReason", EXIT_REASONS.lowAccuracy);
         player.set("gameEndTime", Date.now());
 
         applyPartialPay(player);
@@ -685,8 +688,8 @@ function checkPhase1AccuracyThreshold(game) {
         `Ending remaining player ${player.id} due to insufficient groups after accuracy check`,
       );
       player.set("is_active", false);
-      player.set("ended", "insufficient groups after accuracy check");
-      player.set("exitReason", "insufficient groups after accuracy check");
+      player.set("ended", EXIT_REASONS.insufficientGroupsAccuracy);
+      player.set("exitReason", EXIT_REASONS.insufficientGroupsAccuracy);
       player.set("gameEndTime", Date.now());
 
       applyPartialPay(player);
@@ -734,9 +737,28 @@ Empirica.onGameEnded(({ game }) => {
 
   const endedAt = Date.now();
 
+  // The admin stopping the batch is the one emergency lever during a live
+  // session. Empirica then calls game.end("terminated", "batch ended"), sets
+  // the game's status to "terminated", and writes "game terminated" to every
+  // player's `ended`. Nothing we did chose to remove these players, so they are
+  // paid like a disbanded group: base prorated to time spent plus the bonus
+  // earned so far, with the partial completion code. Players already removed
+  // for another reason keep their reason and pay.
+  const terminated = game.get("status") === "terminated";
+
   players.forEach((player) => {
     const totalScore = player.get("score") || 0;
     player.set("bonus", totalScore * multiplier);
+
+    if (terminated && player.get("is_active")) {
+      player.set("is_active", false);
+      player.set("exitReason", EXIT_REASONS.gameTerminated);
+      player.set("gameEndTime", endedAt);
+      applyPartialPay(player, { now: endedAt });
+      console.log(
+        `Player ${player.id} ended by batch termination: $${player.get("partialPay")} for ${player.get("minutesSpent")} minutes`,
+      );
+    }
 
     // Time on task for players who reach the end. Removed players already have
     // both fields from applyPartialPay and keep the time of their removal, so

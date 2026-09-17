@@ -27,6 +27,7 @@ import {
   expectOneSpeakerPerGroup,
 } from '../helpers/assertions';
 import {
+  EXIT_REASONS,
   MAX_IDLE_ROUNDS,
   ROUNDS_PER_BLOCK,
   PROLIFIC_CODES,
@@ -102,7 +103,7 @@ test.describe.serial('Group Viability: Speaker Dropout Mid-Block (3.7)', () => {
     // Wait for exit screen to render (may take time for Empirica to propagate state)
     const exitInfo = await waitForExitScreen(pages[speakerPageIndex], 60_000);
     expect(exitInfo).not.toBeNull();
-    expect(exitInfo!.exitReason).toBe('player timeout');
+    expect(exitInfo!.exitReason).toBe(EXIT_REASONS.playerTimeout);
     expect(parseFloat(exitInfo!.partialPay || '0')).toBeGreaterThan(0); // prorated base pay, no bonus
   });
 

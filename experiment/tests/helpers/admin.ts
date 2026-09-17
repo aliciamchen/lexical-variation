@@ -71,6 +71,34 @@ async function stopRunningBatches(page: Page): Promise<void> {
 }
 
 /**
+ * Stop every running batch from the admin interface, as a researcher would to
+ * end a live session early. Empirica then terminates the games in those
+ * batches: each player's `ended` becomes "game terminated" and the server's
+ * onGameEnded pays them like a disbanded group (see callbacks.js).
+ *
+ * Navigates to /admin itself, so any page from a fresh context will do.
+ */
+export async function stopAllBatches(page: Page): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await page.goto('/admin', { timeout: 30_000 });
+      break;
+    } catch {
+      if (attempt === 2) throw new Error('Admin page unreachable after 3 attempts');
+      await page.waitForTimeout(5000);
+    }
+  }
+  const state = await waitForAdminReady(page);
+  if (state === 'empty') return;
+  await stopRunningBatches(page);
+
+  const stillRunning = await page.getByRole('button', { name: 'Stop' }).count();
+  if (stillRunning > 0) {
+    throw new Error(`stopAllBatches: ${stillRunning} batch(es) still running after stopping`);
+  }
+}
+
+/**
  * Create a new batch in the admin interface.
  * Navigates to /admin, stops any running batches, creates batch with specified treatment.
  *

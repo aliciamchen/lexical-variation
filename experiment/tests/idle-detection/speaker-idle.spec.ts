@@ -16,6 +16,7 @@ import {
   expectPlayerInGame,
 } from '../helpers/assertions';
 import {
+  EXIT_REASONS,
   MAX_IDLE_ROUNDS,
   ROUNDS_PER_BLOCK,
 } from '../helpers/constants';
@@ -93,7 +94,7 @@ test.describe.serial('Idle Detection: Speaker Idle (TEST_PLAN 3.1)', () => {
     const exitInfo = await waitForExitScreen(idleSpeakerPage, 60_000);
     expect(exitInfo).not.toBeNull();
     expect(exitInfo!.type).toBe('sorry');
-    expect(exitInfo!.exitReason).toBe('player timeout');
+    expect(exitInfo!.exitReason).toBe(EXIT_REASONS.playerTimeout);
     expect(exitInfo!.prolificCode).toBe('CFTYDMIY');
   });
 
@@ -124,7 +125,7 @@ test.describe.serial('Idle Detection: Speaker Idle (TEST_PLAN 3.1)', () => {
     const removed = await getRemovedPlayers(pages);
 
     expect(removed.length).toBe(1);
-    expect(removed[0].info.exitReason).toBe('player timeout');
+    expect(removed[0].info.exitReason).toBe(EXIT_REASONS.playerTimeout);
     expect(removed[0].info.prolificCode).toBe('CFTYDMIY');
   });
 });

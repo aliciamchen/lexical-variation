@@ -1,12 +1,19 @@
 import React from "react";
 import { usePlayer } from "@empirica/core/player/classic/react";
 import { Alert } from "../components/Alert";
-import { LOBBY_TIMEOUT_PAY, PROLIFIC_CODES } from "../constants";
+import {
+  EXIT_REASONS,
+  LOBBY_TIMEOUT_PAY,
+  PARTIAL_PAY_SURVEY_REASONS,
+  PROLIFIC_CODES,
+} from "../constants";
+
+const money = (amount) => (amount != null ? amount.toFixed(2) : "0.00");
 
 export function Sorry() {
   const player = usePlayer();
-  // Use exitReason (our custom attribute) first — Empirica can overwrite
-  // "ended" to "game ended" when the game finishes, clobbering our value.
+  // Use exitReason (our custom attribute) first: Empirica overwrites `ended`
+  // with "game ended" / "game terminated" / "game failed" itself.
   const exitReason = player.get("exitReason");
   const endedReason = exitReason || player.get("ended");
   const partialPay = player.get("partialPay");
@@ -14,13 +21,12 @@ export function Sorry() {
   const partialBonus = player.get("partialBonus");
   const gameStartTime = player.get("gameStartTime");
 
-  // Detect lobby timeout: player never started a game (no gameStartTime)
-  // and wasn't explicitly kicked for another reason
+  // Lobby timeout: the player never started a game (no gameStartTime) and the
+  // server did not remove them for one of its own reasons. Empirica writes
+  // "game failed" to `ended` in that case, which is not a reason of ours, so
+  // the absence of gameStartTime is what detects it.
   const isLobbyTimeout =
-    !gameStartTime &&
-    endedReason !== "player timeout" &&
-    endedReason !== "group disbanded" &&
-    endedReason !== "quiz failed";
+    !gameStartTime && !Object.values(EXIT_REASONS).includes(endedReason);
 
   // Different messages based on why the player was removed
   let title = "Game Ended";
@@ -29,7 +35,7 @@ export function Sorry() {
   let compensationMessage = null;
   let showCompensation = true;
 
-  if (endedReason === "quiz failed") {
+  if (endedReason === EXIT_REASONS.quizFailed) {
     title = "Quiz Failed";
     message = (
       <>
@@ -44,7 +50,7 @@ export function Sorry() {
       </>
     );
     showCompensation = false;
-  } else if (isLobbyTimeout || endedReason === "lobby timeout") {
+  } else if (isLobbyTimeout) {
     title = "Participant Recruitment Issue";
     message = (
       <>
@@ -61,7 +67,7 @@ export function Sorry() {
     );
     compensationCode = PROLIFIC_CODES.lobbyTimeout;
     compensationMessage = `$${LOBBY_TIMEOUT_PAY.toFixed(2)} for your time spent`;
-  } else if (endedReason === "player timeout") {
+  } else if (endedReason === EXIT_REASONS.playerTimeout) {
     title = "Removed for Inactivity";
     message = (
       <>
@@ -79,21 +85,12 @@ export function Sorry() {
       </>
     );
     // Prorated base pay for time spent; no bonus (see server/src/compensation.js)
-    const idleBasePay = partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
     compensationCode = PROLIFIC_CODES.partial;
-    compensationMessage = `$${idleBasePay} for the time you spent (base pay only, no bonus)`;
-  } else if (
-    endedReason === "group disbanded" ||
-    endedReason === "low accuracy" ||
-    endedReason === "insufficient groups after accuracy check"
-  ) {
+    compensationMessage = `$${money(partialBasePay)} for the time you spent (base pay only, no bonus)`;
+  } else if (PARTIAL_PAY_SURVEY_REASONS.includes(endedReason)) {
     // These players already saw the full explanation on the ExitSurvey page.
     // This page just shows the Prolific completion code.
     title = "Completion Code";
-    const payAmount = partialPay != null ? partialPay.toFixed(2) : "0.00";
-    const basePayAmount =
-      partialBasePay != null ? partialBasePay.toFixed(2) : "0.00";
-    const bonusAmount = partialBonus != null ? partialBonus.toFixed(2) : "0.00";
     message = (
       <p>
         Thank you for completing the exit survey. Please use the code below to
@@ -101,9 +98,21 @@ export function Sorry() {
       </p>
     );
     compensationCode = PROLIFIC_CODES.partial;
-    compensationMessage = `$${payAmount} ($${basePayAmount} base + $${bonusAmount} bonus)`;
+    compensationMessage = `$${money(partialPay)} ($${money(partialBasePay)} base + $${money(partialBonus)} bonus)`;
+  } else if (partialPay != null) {
+    // An unrecognized reason, but the server computed pay for this player, so
+    // they were in a game that ended early. Never tell such a player they get
+    // nothing: show the partial code and what they are owed.
+    message = (
+      <p>
+        The session ended early. We apologize for the inconvenience; please use
+        the code below to receive your payment.
+      </p>
+    );
+    compensationCode = PROLIFIC_CODES.partial;
+    compensationMessage = `$${money(partialPay)} ($${money(partialBasePay)} base + $${money(partialBonus)} bonus)`;
   } else {
-    // Default / unknown reason
+    // Default / unknown reason with nothing owed
     message = (
       <>
         <p>
@@ -131,7 +140,7 @@ export function Sorry() {
       data-prolific-code={
         showCompensation && compensationCode ? compensationCode : "none"
       }
-      data-partial-pay={partialPay?.toFixed(2) || "0.00"}
+      data-partial-pay={money(partialPay)}
       data-player-id={player?.id || "unknown"}
     >
       <Alert title={title}>{message}</Alert>
