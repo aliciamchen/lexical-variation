@@ -21,8 +21,8 @@ export function ConsentPage({ onConsent }) {
       <p>
         <b>Payment:</b> This study will take approximately {ESTIMATED_TIME}{" "}
         minutes. Given this estimated duration, you will receive{" "}
-        <b>${BASE_PAY}</b> for successfully completing the survey, with an
-        additional performance bonus of up to <b>${MAX_BONUS}</b>.
+        <b>${BASE_PAY}</b> for successfully completing the study, with an
+        additional performance bonus of up to <b>${MAX_BONUS.toFixed(2)}</b>.
       </p>
       <p>
         <b>Risks and benefits:</b> There are no risks associated with
@@ -53,7 +53,7 @@ export function ConsentPage({ onConsent }) {
         contact the Chairman of the Committee on the Use of Humans as
         Experimental Subjects, M.I.T., Room E25-143B, 77 Massachusetts Ave,
         Cambridge, MA 02139, phone 1-617-253-6787. If you have any questions or
-        issues completing the survey, please email Alicia Chen: aliciach@mit.edu
+        issues completing the study, please email Alicia Chen: aliciach@mit.edu
         or Rebecca Saxe (PI): saxe@mit.edu
       </p>
       <div className="flex w-sw justify-center">

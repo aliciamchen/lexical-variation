@@ -1,7 +1,5 @@
-import { useStageTimer } from "@empirica/core/player/classic/react";
 import React from "react";
 import _ from "lodash";
-import { useGame } from "@empirica/core/player/classic/react";
 import { hasSocialGuessing } from "../constants";
 
 export function Tangram(props) {
@@ -95,7 +93,7 @@ export function Tangram(props) {
     };
 
     // Highlight target object for speaker
-    if ((target == tangram) & (player.round.get("role") == "speaker")) {
+    if (target == tangram && player.round.get("role") == "speaker") {
       _.extend(mystyle, {
         outline: "10px solid #000",
         zIndex: "9",
@@ -104,8 +102,8 @@ export function Tangram(props) {
 
     // Show listeners what they've clicked (committed selection)
     if (
-      (stage.get("name") == "Selection") &
-      (tangram == player.round.get("clicked"))
+      stage.get("name") == "Selection" &&
+      tangram == player.round.get("clicked")
     ) {
       _.extend(mystyle, {
         outline: `10px solid #A9A9A9`,

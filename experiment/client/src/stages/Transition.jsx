@@ -5,13 +5,14 @@ import {
   NUM_TANGRAMS,
   PHASE2_SELECTION_DURATION,
   LISTENER_CORRECT_POINTS,
+  SPEAKER_MAX_POINTS_PER_ROUND,
   SOCIAL_GUESS_CORRECT_POINTS,
   SOCIAL_SPEAKER_POINTS_PER_CORRECT,
   hasSocialGuessing,
 } from "../constants";
 
 export function Transition(props) {
-  const { round, stage, game, player, players } = props;
+  const { stage, game, player } = props;
   const condition = game.get("condition");
 
   if (player.stage?.get("submit")) {
@@ -114,18 +115,22 @@ export function Transition(props) {
           {PHASE2_SELECTION_DURATION} seconds) for the listeners to respond in
           each round, so please act quickly.
         </p>
-        <p className="instruction-prompt" style={{ marginTop: 8 }}>
-          <strong>
-            {hasSocialGuessing(condition) ? "Scoring" : "Scoring Reminder:"}
-          </strong>
+        {/* A list cannot sit inside a paragraph, so the heading is its own <p>. */}
+        <div className="instruction-prompt" style={{ marginTop: 8 }}>
+          <p>
+            <strong>
+              {hasSocialGuessing(condition) ? "Scoring" : "Scoring Reminder:"}
+            </strong>
+          </p>
           <ul style={{ marginTop: 4, marginLeft: 20 }}>
             <li>
               Listeners earn <strong>{LISTENER_CORRECT_POINTS} points</strong>{" "}
               for correctly identifying the target picture.
             </li>
             <li>
-              Speakers earn up to <strong>2 points</strong> based on the
-              proportion of listeners who correctly identify the target.
+              Speakers earn up to{" "}
+              <strong>{SPEAKER_MAX_POINTS_PER_ROUND} points</strong> based on
+              the proportion of listeners who correctly identify the target.
             </li>
             {hasSocialGuessing(condition) && (
               <>
@@ -144,7 +149,7 @@ export function Transition(props) {
               </>
             )}
           </ul>
-        </p>
+        </div>
         <div
           style={{
             marginTop: "1rem",
@@ -243,5 +248,6 @@ export function Transition(props) {
     );
   }
 
-  return "Not implemented yet";
+  // Only the two transition stages above exist (callbacks.js).
+  return null;
 }

@@ -2,19 +2,16 @@ import { Loading } from "@empirica/core/player/react";
 import React from "react";
 import { Refgame } from "./stages/Refgame.jsx";
 import { Transition } from "./stages/Transition.jsx";
-import { Inactive } from "./stages/Inactive.jsx";
 
 export function Task(props) {
   const { round, stage, game, player, players } = props;
 
-  // Check if player has been removed
-  if (player.get("ended") === "player timeout" || player.get("ended") === "group disbanded") {
-    return <Inactive />;
-  }
-
-  // Check if player is active
+  // A removed player never reaches this component: Empirica shows the exit
+  // steps as soon as `ended` is set (see exitSteps in App.jsx), and the
+  // server writes `ended` in the same callback as `is_active`. This only
+  // covers the instant between the two updates, should they ever be split.
   if (!player.get("is_active")) {
-    return <Inactive />;
+    return <Loading />;
   }
 
   switch (round.get("phase")) {
