@@ -73,20 +73,28 @@ export function recordClientContext(player) {
  * the calling component is mounted. Mounted from `Game`, so the log covers
  * gameplay, which is the window idle classification draws on.
  *
- * Returns how many events have been recorded. `Game` puts it on a data
- * attribute, which is how the end-to-end spec checks that real browser events
- * reach the player scope.
+ * Returns how many events have been recorded for this player. `Game` puts it
+ * on a data attribute, which is how the end-to-end spec checks that real
+ * browser events reach the player scope.
  */
 export function useEngagementLog(player) {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(
+    () => (player?.get("engagement_events") || []).length,
+  );
 
   useEffect(() => {
     if (!player) return;
 
+    // Seeded from the player scope so the cap is per player: a reload mounts
+    // a new recorder, which must continue the count rather than restart it,
+    // and must stay silent if the log was already marked truncated.
     const recorder = createEngagementRecorder({
       write: (event) => player.append("engagement_events", event),
       onTruncated: () => player.set("engagement_log_truncated", true),
+      initialCount: (player.get("engagement_events") || []).length,
+      truncated: Boolean(player.get("engagement_log_truncated")),
     });
+    setCount(recorder.count);
 
     // Each branch returns whether anything was written, so the counter only
     // advances when the append actually succeeded.

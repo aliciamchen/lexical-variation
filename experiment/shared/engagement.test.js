@@ -66,6 +66,31 @@ describe("createEngagementRecorder", () => {
       expect(written).toHaveLength(MAX_ENGAGEMENT_EVENTS);
     });
 
+    it("is per player, not per recorder: a fresh recorder resumes from the saved count", () => {
+      // A reload creates a new recorder; seeded from the player scope it has
+      // only the remainder of the cap left, not a fresh two hundred.
+      const { recorder, written, onTruncated } = makeRecorder({ max: 5, initialCount: 3 });
+      expect(recorder.record("hidden")).toBe(true);
+      expect(recorder.record("visible")).toBe(true);
+      expect(recorder.record("hidden")).toBe(false);
+      expect(written).toHaveLength(2);
+      expect(recorder.count).toBe(5);
+      expect(onTruncated).toHaveBeenCalledTimes(1);
+    });
+
+    it("stays truncated once the player scope says so, without re-marking it", () => {
+      const { recorder, written, onTruncated } = makeRecorder({
+        max: 5,
+        initialCount: 5,
+        truncated: true,
+      });
+      expect(recorder.record("hidden")).toBe(false);
+      expect(recorder.recordOnline()).toBe(false);
+      expect(written).toEqual([]);
+      expect(recorder.truncated).toBe(true);
+      expect(onTruncated).not.toHaveBeenCalled();
+    });
+
     it("counts a write that throws, so one broken scope is not retried forever", () => {
       const onTruncated = vi.fn();
       const recorder = createEngagementRecorder({

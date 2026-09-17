@@ -22,20 +22,31 @@ export const RESIZE_DEBOUNCE_MS = 500;
 /**
  * Create a recorder that writes engagement events until it hits the cap.
  *
+ * The cap is per player, not per recorder: a participant who reloads the
+ * page gets a fresh recorder, so it starts from what the player scope
+ * already holds (`initialCount`, and whether the log was already marked
+ * truncated). Without that, every reload would grant another two hundred
+ * events.
+ *
  * @param {object} opts
  * @param {(event: object) => void} opts.write       appends one event
  * @param {() => void} opts.onTruncated              called once, when the cap is first hit
+ * @param {number} [opts.initialCount]               events already recorded for this player
+ * @param {boolean} [opts.truncated]                 whether the log was already marked truncated
  * @param {number} [opts.max]                        cap, for tests
  * @param {() => number} [opts.now]                  clock, for tests
  */
 export function createEngagementRecorder({
   write,
   onTruncated,
+  initialCount = 0,
+  truncated: alreadyTruncated = false,
   max = MAX_ENGAGEMENT_EVENTS,
   now = Date.now,
 }) {
-  let count = 0;
-  let truncated = false;
+  let count = initialCount;
+  // Already marked on the player: stop at once, and do not mark it again.
+  let truncated = alreadyTruncated;
   let lastSize = null;
   // When the connection dropped, if it is currently down. Held rather than
   // written, because a write cannot leave the machine while it is offline.
@@ -52,7 +63,7 @@ export function createEngagementRecorder({
    * one broken scope into an unbounded stream of warnings.
    */
   function record(type, extra = {}, at = null) {
-    if (count >= max) {
+    if (truncated || count >= max) {
       if (!truncated) {
         truncated = true;
         onTruncated();
