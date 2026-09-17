@@ -11,7 +11,7 @@
  *
  * Condition: refer_separated (simpler, no reshuffling)
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { PlayerManager } from '../helpers/player-manager';
 import { createBatch } from '../helpers/admin';
 import {
@@ -38,6 +38,43 @@ import {
   PROLIFIC_CODES,
   MIN_GROUP_SIZE,
 } from '../helpers/constants';
+
+/**
+ * Idle `skipIndices` until every member of their original group is gone.
+ *
+ * A listener counts as idle only on a round whose speaker actually sent a
+ * description (see server/src/idle.js): that is deliberate, because a listener
+ * cannot act when nobody described anything. The consequence for a test is
+ * that exactly MAX_IDLE_ROUNDS rounds are not always enough -- one round with a
+ * silent speaker resets the counter -- so this plays a bounded number of extra
+ * rounds and fails with what it saw if the group is still there at the end.
+ * Both idle phases below use it, so a removal that has not finished settling
+ * is reported here rather than as a null exit screen two tests later.
+ */
+async function idleUntilGroupRemoved(
+  pages: Page[],
+  skipIndices: number[],
+  groupIndices: number[],
+  label: string,
+): Promise<void> {
+  const maxRounds = MAX_IDLE_ROUNDS * 3;
+  for (let round = 1; round <= maxRounds; round++) {
+    await playRound(pages, { skipIndices });
+    if (round < MAX_IDLE_ROUNDS) continue;
+    // Idle detection runs at the end of the Feedback stage, so give the write
+    // a moment to reach the client before counting.
+    await pages[0].waitForTimeout(3000);
+    const removed = await getRemovedPlayers(pages);
+    const gone = removed.filter((r) => groupIndices.includes(pages.indexOf(r.page)));
+    if (gone.length === groupIndices.length) return;
+  }
+  const removed = await getRemovedPlayers(pages);
+  const gone = removed.filter((r) => groupIndices.includes(pages.indexOf(r.page)));
+  throw new Error(
+    `${label}: ${gone.length} of ${groupIndices.length} players removed after ` +
+      `${maxRounds} idle rounds (expected the whole group to be gone)`,
+  );
+}
 
 test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
   let pm: PlayerManager;
@@ -107,13 +144,9 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
     }
     expect(idleIndicesA.length).toBe(2);
 
-    // Idle them for MAX_IDLE_ROUNDS rounds (all within Block 1)
-    for (let r = 0; r < MAX_IDLE_ROUNDS; r++) {
-      await playRound(pages, { skipIndices: idleIndicesA });
-    }
-
-    // Wait for idle detection to process
-    await pages[0].waitForTimeout(5000);
+    // Idle them until the group is gone: 2 removed for inactivity and the
+    // third, left alone, removed as disbanded.
+    await idleUntilGroupRemoved(pages, idleIndicesA, groupPageIndices[groupA], 'group A');
 
     // Verify all 3 Group A players are removed (2 timeout + 1 disbanded)
     const removed = await getRemovedPlayers(pages);
@@ -157,12 +190,16 @@ test.describe.serial('Group Viability: Game Terminated (3.5)', () => {
     }
     expect(idleIndicesB.length).toBe(2);
 
-    // Idle Group B listeners for MAX_IDLE_ROUNDS rounds
-    for (let r = 0; r < MAX_IDLE_ROUNDS; r++) {
-      await playRound(pages, { skipIndices: idleIndicesB });
-    }
+    // Idle Group B listeners until the group is gone. Losing a second group
+    // leaves only group C, which is below min_active_groups, so the server
+    // ends the game for everyone still in it.
+    await idleUntilGroupRemoved(pages, idleIndicesB, groupPageIndices[groupB], 'group B');
 
-    await pages[0].waitForTimeout(5000);
+    const removedB = await getRemovedPlayers(pages);
+    const groupBRemoved = removedB.filter((r) =>
+      groupPageIndices[groupB].includes(pages.indexOf(r.page)),
+    );
+    expect(groupBRemoved.length).toBe(3);
   });
 
   test('ALL remaining players see exit screen when fewer than 2 groups remain', async () => {
