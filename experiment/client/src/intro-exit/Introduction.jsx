@@ -15,9 +15,11 @@ import {
   PHASE_2_BLOCKS,
   SELECTION_DURATION,
   LISTENER_CORRECT_POINTS,
+  SPEAKER_MAX_POINTS_PER_ROUND,
   SOCIAL_GUESS_CORRECT_POINTS,
   SOCIAL_SPEAKER_POINTS_PER_CORRECT,
   GROUP_SIZE,
+  LOBBY_TIMEOUT_MINUTES,
   getAvatarUrl,
   avatar_seeds,
 } from "../constants";
@@ -42,10 +44,10 @@ export function Introduction({ next }) {
 
   useEffect(() => {
     if (player?.id) {
-      Sentry.setUser({
-        id: player.id,
-        username: player.get("name"),
-      });
+      // The Empirica player id only: it is what the export and Sentry share,
+      // and it is not a Prolific id. (The player's name is assigned at game
+      // start, so it is not available here anyway.)
+      Sentry.setUser({ id: player.id });
 
       // Save Prolific URL params as named player attributes
       const urlParams = new URLSearchParams(window.location.search);
@@ -292,7 +294,7 @@ export function Introduction4({ next }) {
         to select a picture each round. If you do not select a picture in this
         time frame (as a listener) or do not write a description in the chat (as
         a speaker), you will automatically progress to the next stage when the
-        time is up and will not not get a bonus, so please stay focused.
+        time is up and will not get a bonus, so please stay focused.
       </p>
       <p>
         <strong>Remember, free riding is not permitted.</strong> If we detect
@@ -389,9 +391,9 @@ export function Introduction6({ next }) {
           they earn <strong>{LISTENER_CORRECT_POINTS} points</strong>.
         </li>
         <li>
-          The <strong>Speaker</strong> earns up to <strong>2 points</strong>{" "}
-          based on the proportion of listeners who correctly identify the
-          target.
+          The <strong>Speaker</strong> earns up to{" "}
+          <strong>{SPEAKER_MAX_POINTS_PER_ROUND} points</strong> based on the
+          proportion of listeners who correctly identify the target.
         </li>
         <li>No points are awarded for incorrect selections or timeouts.</li>
       </ul>
@@ -420,8 +422,8 @@ export function Introduction6({ next }) {
       <p>
         After you pass the comprehension quiz, you will be put into a waiting
         lobby. When there are enough players to start the game, the game will
-        begin. Please note that it might take up to 10 minutes to find enough
-        players. A sound will play when the game starts.
+        begin. Please note that it might take up to {LOBBY_TIMEOUT_MINUTES}{" "}
+        minutes to find enough players. A sound will play when the game starts.
       </p>
       <p>If you experience issues, please contact us on Prolific.</p>
       <p>

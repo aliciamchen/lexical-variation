@@ -5,7 +5,7 @@ paths:
 
 # Sentry (error monitoring)
 
-The client app reports errors to Sentry via `@sentry/react`, initialized in `experiment/client/src/index.jsx` with error tracking, session replays (100%), browser tracing, and structured logs. `Introduction.jsx` sets the Sentry user from the Prolific URL parameters.
+The client app reports errors to Sentry via `@sentry/react`, initialized in `experiment/client/src/index.jsx` with error tracking, session replays for sessions that hit an error only (`replaysSessionSampleRate: 0`, `replaysOnErrorSampleRate: 1.0`, all text and inputs masked), browser tracing, and structured logs. `beforeSend`, `beforeSendTransaction`, and `beforeBreadcrumb` in `index.jsx` cut every reported URL at the `?`, so the Prolific ids in the study link's query string (and Empirica's `ns` parameter) never reach Sentry; the location itself is not rewritten because a reload needs `ns`. `Introduction.jsx` sets the Sentry user to the Empirica player id only.
 
 **Project details:**
 - Organization: set via `SENTRY_ORG` in `.env`
