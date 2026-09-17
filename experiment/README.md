@@ -36,7 +36,7 @@ empirica
 - Admin: http://localhost:3000/admin
 - Players: http://localhost:3000/
 
-Click "New Batch" in admin, select a treatment, then open 9 player tabs. Each player goes through consent → identifier → instructions → quiz before entering the lobby.
+Click "New Batch" in admin, select a treatment, then open 9 player tabs. Each player goes through consent → identifier → instructions → quiz before entering the lobby. On Prolific the study link carries `PROLIFIC_PID`, and the identifier field is filled from it and locked so that ids cannot be mistyped; without that parameter, as in local testing and the Playwright suite, the field is editable and any identifier can be typed.
 
 There are 4 between-subjects conditions (treatments): `refer_separated`, `refer_mixed`, `social_mixed`, `social_first`.
 
@@ -101,13 +101,15 @@ Client errors are reported to Sentry via `@sentry/react` (configured in `client/
 - **Organization**: set via `SENTRY_ORG` in `.env`
 - **Project**: `javascript-react`
 - **Dashboard**: `https://$SENTRY_ORG.sentry.io/`
-- **Features**: error tracking, session replays (100%), browser tracing, structured logs
+- **Features**: error tracking, session replays for sessions that hit an error (text and inputs masked), browser tracing, structured logs
+
+Every URL that Sentry reports is cut at the `?` before it leaves the browser (`beforeSend`, `beforeSendTransaction`, and `beforeBreadcrumb` in `index.jsx`), so the Prolific ids in the study link's query string never reach Sentry; the Sentry user is the Empirica player id only.
 
 During pilot sessions, keep the Sentry dashboard open to watch for client errors, slow page loads, and websocket disconnections.
 
 ## Playwright tests
 
-The test suite contains 48 spec files across 12 categories, covering all 4 conditions, idle detection, group viability, UI, timing, and more. The Empirica server is managed automatically by the test framework.
+The test suite contains 45 spec files across 13 categories, covering all 4 conditions, idle detection, group viability, compensation (including the researcher stopping a batch mid-game), UI, timing, and more. The Empirica server is managed automatically by the test framework.
 
 ### Setup
 
@@ -174,10 +176,10 @@ Unit tests for the server's scoring and reshuffling logic are in `server/src/*.t
 Test helpers in `tests/helpers/`:
 
 - **`player-manager.ts`** — manages 9 browser contexts/pages
-- **`admin.ts`** — creates batches via admin UI
-- **`game-actions.ts`** — `playRound()`, `playBlock()`, `handleTransition()`, `completeExitSurvey()`
+- **`admin.ts`** — `createBatch()` creates and starts a batch via the admin UI; `stopAllBatches()` stops every running batch, which is how a researcher ends a session early and what `compensation/batch-terminated.spec.ts` exercises
+- **`game-actions.ts`** — `playRound()`, `playBlock()`, `handleTransition()`, `completeExitSurvey()`. The exit survey's confirmation page has no Finish button (the completion code stays on screen until the participant closes the tab), so `completeExitSurvey()` ends by waiting for that page, identified by its `data-prolific-code` attribute, or for the Sorry screen that removed players are routed to instead
 - **`assertions.ts`** — `expectPlayerInGame()`, `expectCondition()`, `expectSocialGuessUI()`
-- **`constants.ts`** — game config values mirrored from `shared/constants.js`
+- **`constants.ts`** — re-exports `shared/constants.js` (use `EXIT_REASONS` and `PROLIFIC_CODES` rather than string literals) plus test-only values such as the player count and quiz answers
 - **`selectors.ts`** — centralized DOM selectors
 - **`server-manager.ts`** — server lifecycle (start/stop/reset)
 

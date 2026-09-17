@@ -64,9 +64,25 @@ cp .env.example .env   # then fill in values
 
 The single `.env` file at the repository root is read only on your own machine: `empirica bundle` compiles the Sentry DSN into the client bundle and refuses to build a production bundle without it, and `operations/copy_tajriba.sh` uses the server hostname to pull backups. The Google Cloud project for the Gemini-based filter can also be set there, but the scripts fall back to your `gcloud` default project. Keep real hostnames and organization names in `.env`, never in committed files.
 
+The Empirica admin password and the service token that the game server uses to talk to its database are in `experiment/.empirica/empirica.toml`, which is also gitignored because `empirica bundle` ships it to the production server. Create it from the template with fresh random values before running the experiment locally or building a bundle:
+
+```bash
+cp experiment/.empirica/empirica.toml.example experiment/.empirica/empirica.toml   # then replace both values
+```
+
+Finally, point git at the repository's pre-commit hook. It refuses any commit that stages a data file with a participant identifier in it, and it runs the unit tests that cover whatever the commit touches:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Running the experiment
 
-See [`experiment/README.md`](experiment/README.md) for full documentation on local development, production deployment, running sessions, copying data, error monitoring, and testing.
+See [`experiment/README.md`](experiment/README.md) for full documentation on local development, production deployment, running sessions, copying data, error monitoring, and testing. The Prolific side of a session (screening survey, allowlist, reminder, publishing at the announced time, approvals, and payments) is driven by `operations/session.py`, and the step-by-step runbook is [`operations/procedures.md`](operations/procedures.md). Every command that changes anything prints its plan and asks before acting.
+
+A few of its commands are worth knowing about before the first session. `uv run python operations/session.py tally` counts the complete games in `data/<dataset>/games.csv` (`DATASET`, default `full`) in each of the eight condition-by-tangram-set cells, adds the saved sessions that have not yet paid a run, and marks the emptiest cell, which is the treatment the next session should run; `setup` prints the same table before creating anything. `setup` also records a budget for the session (the cost ceiling it prints, or `--budget`), and `pay` refuses to go past it. `pay` never pays a removed or lobby-timeout participant whose submission Prolific has already approved, since approval pays the full study reward. Backups taken with `operations/copy_tajriba.sh` each land in their own `experiment/data/<timestamp>/empirica-export-<timestamp>.zip`, named by the export's timestamp, so every backup during a session is an export the pipeline can find; the loop carries on through a failed connection and stops only after three consecutive failures.
+
+Participants reach the game from Prolific with their ID in the study link, and the identifier field is filled from it and locked so that ids cannot be mistyped. The last page of the exit survey keeps the completion code on screen (there is no Finish button to click past it), and reloading during the survey resumes at the first unanswered page. If a batch has to be stopped mid-game, the participants see an explanation, answer the exit survey, and receive the partial completion code with base pay prorated to their time plus the bonus earned so far. Sentry, which monitors client errors, receives no query strings (so no Prolific ids) and records session replays only for sessions that hit an error.
 
 Quick start for local development:
 
@@ -106,6 +122,9 @@ The preprocessed pilot data is in `data/pilots/`. See [`data/pilots/README.md`](
 | `speaker_utterances.csv` | Speaker messages concatenated per round (all messages) |
 | `speaker_utterances_filtered.csv` | Same as above, but with non-referential messages removed first |
 | `social_guesses.csv` | Listener guesses about speaker group membership (social conditions only) |
+| `dropouts.csv` | One row per participant who reached the experiment but played no real game (quiz failure, lobby timeout, arrival after the games were full), with the batch, how Empirica ended the record, the exit reason, and the number of quiz attempts. This is what the attrition report counts |
+| `speaker_utterances_filtered.source.json` | The sha256 and row count of the `messages.csv` that `speaker_utterances_filtered.csv` was built from. `compute_derived.py` refuses a filtered file whose record is missing or does not match, so a stale filtered file can never be analyzed in place of the current data |
+| `participant_exclusions.csv`, `exclude_games.txt` | Optional inputs, absent for the pilot. `exclude_games.txt` lists the Empirica game ids of rehearsal or deploy-check games that ran on the production server (one per line, `#` comments), and `combine_runs.py` drops them and every row that belongs to them. `participant_exclusions.csv` lists `playerId,reason` for participants excluded after the fact; preprocessing drops their messages and sets `excluded` and `exclusionReason` on their own rows and on the rows of the listeners they described to, in `trials.csv` and `social_guesses.csv`, so every derived measure is recomputed without them |
 
 Sessions from September 2026 onward also record response times, how long each
 chat message took to compose, the device and viewport the participant played
@@ -135,7 +154,7 @@ quarto render analysis/SI_pilot.qmd                     # pilot analyses → fig
 quarto render analysis/llm_simulation/SI_llm_simulation.qmd  # LLM benchmark
 ```
 
-The filter step requires Vertex AI (see [LLM simulation](#llm-simulation)) and can be skipped since the filtered data is already committed. Run `make help` to see all available targets.
+The filter step requires Vertex AI (see [LLM simulation](#llm-simulation)). Its labels are cached in `messages_classified.csv`, so only speaker messages that have not been labeled before are sent to the model; `uv run python analysis/filter_nonreferential.py classify --data-dir data/<name> --dry-run` prints how many messages would be sent and the estimated number of API calls without calling anything, and a real run asks for confirmation (or `--yes`) first. The pilot labels are committed, so the step can be skipped for the pilot with `make process-no-filter`. Run `make help` to see all available targets.
 
 The `make test` target runs the data integrity suite on the processed CSVs together with unit tests for the derived-metric definitions (`analysis/test_compute_derived.py`) and for the preprocessing rules that the preregistration states precisely, such as the description-length flag and the treatment of trials with no referential message (`analysis/test_preprocessing.py`). It also runs the R helper tests in `analysis/tests/`, which check the shared data preparation, the group-specificity estimates and permutation test, the planned-contrast helpers, the stats-to-LaTeX writer, and the random-effects simplification procedure that every mixed model goes through (`fit_progressively()` in `analysis/R/mixed_models.R`: the maximal structure, then correlations removed, then slopes dropped from the smallest variance component, as preregistered). The primary-analysis notebook computes Bayes factors for non-significant planned contrasts with `brms`, which takes several minutes per contrast; set the environment variable `BAYES_FACTORS=never` before rendering to skip them, or `BAYES_FACTORS=always` to compute them for every contrast.
 
@@ -166,9 +185,19 @@ There are three scripts that should be run in order. Each reads the previous scr
 | ↳ `filter_nonreferential.py` | `data/<name>/messages.csv` | `data/<name>/speaker_utterances_filtered.csv` (requires Vertex AI; `--skip-filter`) |
 | ↳ `compute_derived.py` | `data/<name>/*.csv` | `analysis/derived/<name>/` (`--skip-derived`) |
 
+Among the derived outputs, `pairwise_similarities_jaccard.csv` and `block_pairwise_similarities_jaccard.csv` repeat the sentence-embedding similarity tables pair for pair with the Jaccard overlap of the two descriptions' content words, which is the preregistered robustness check on the similarity measure; pairs where either description has no content words carry an empty similarity.
+
 ### Processing new data
 
-Raw Empirica exports (`.zip` files) are in `experiment/data/` via `empirica export` or the backup script. (Note: these are not committed because they contain identifiable participant data). Register each export's timestamp in the dataset's `runs.txt`, then process:
+Raw Empirica exports (`.zip` files) are in `experiment/data/<timestamp>/` via `empirica export` or the backup script. (Note: these are not committed because they contain identifiable participant data). Before adding an export to a dataset, run it through a throwaway dataset first:
+
+```bash
+make smoke ZIP=experiment/data/<run>/empirica-export-<run>.zip
+```
+
+This runs the whole pipeline on that one export in a dataset named `smoke` (without the LLM filter) and then the integrity suite, so a bad export is caught before it touches any committed data. The block-count checks fail for games played in `TEST_MODE`, and the bonus checks fail for exports from before the production pay rate; anything else that fails is a problem with the export. The `smoke` directories are gitignored; delete `data/smoke/` and `analysis/derived/smoke/` afterwards.
+
+`extract_run.py` registers each export's timestamp in the dataset's `runs.txt` (pass `--no-register` to look at an export without adding it), then the rest of the pipeline follows:
 
 ```bash
 make all                 # pilot: extract zips → combine → process → test → render notebooks
