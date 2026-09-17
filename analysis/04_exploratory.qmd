@@ -13,6 +13,14 @@ source(here::here("analysis", "config.R"))
 list2env(load_tables(), envir = globalenv())
 
 has_adjacent <- has_rows(adjacent_sim)
+
+# Statistics this notebook reports, written as LaTeX macros at the end
+# (writing/manuscript/stats/exploratory.tex)
+macros <- list()
+```
+
+```{r dataset-banner, results='asis', echo=FALSE}
+dataset_banner(games = games)
 ```
 
 ```{r prep-data}
@@ -20,11 +28,14 @@ has_adjacent <- has_rows(adjacent_sim)
 # resets per phase; add_global_block() uses each game's own Phase 1 length)
 utts_with_condition <- speaker_utts |> add_condition(games) |> add_global_block(games)
 
-listeners_with_condition <- trials |>
-  filter(role == "listener") |>
-  mutate(correct = as_correct(clickedCorrect)) |>
+# Listener trials of both phases under the response-opportunity rule
+# (code_accuracy() via listener_trials(): timeouts and late arrivals are 0,
+# trials without an opportunity leave the denominator)
+listeners_with_condition <- bind_rows(
+  listener_trials(trials, games, phase = 1),
+  listener_trials(trials, games, phase = 2)
+) |>
   filter(!is.na(correct)) |>
-  add_condition(games) |>
   add_global_block(games)
 
 if (has_adjacent) {
@@ -174,3 +185,50 @@ if (has_umap && exists("umap_data")) {
 }
 ```
 
+
+# Statistics for the manuscript
+
+This notebook is descriptive: it reports trajectories and embedding
+projections rather than hypothesis tests, so the macros it writes to
+`writing/manuscript/stats/exploratory.tex` are the observation counts and the
+endpoint means the figures rest on. Names are prefixed `exploratory`.
+
+```{r write-stats}
+# The mean of a measure in its own first and last observed block, with the two
+# block numbers, so a measure that only starts once a pair of descriptions
+# exists (adjacent similarity) is not reported as missing in block 0.
+endpoint_macros <- function(prefix, df, value, digits = 3) {
+  d <- df |> filter(is.finite(.data[[value]]), !is.na(globalBlock))
+  if (nrow(d) == 0) return(list())
+  first <- min(d$globalBlock)
+  last <- max(d$globalBlock)
+  setNames(
+    list(
+      fmt_count(nrow(d)),
+      first,
+      last,
+      fmt_stat(mean(d[[value]][d$globalBlock == first]), digits),
+      fmt_stat(mean(d[[value]][d$globalBlock == last]), digits)
+    ),
+    paste0(prefix, c("N", "FirstBlock", "LastBlock", "First", "Last"))
+  )
+}
+
+macros <- c(
+  macros,
+  endpoint_macros("exploratoryLength", utts_with_condition, "uttLength", digits = 2),
+  endpoint_macros("exploratoryAccuracy", listeners_with_condition, "correct"),
+  if (exists("adj_with_condition")) {
+    endpoint_macros("exploratorySimAdjacent", adj_with_condition, "simAdjacent")
+  } else {
+    list()
+  }
+)
+if (exists("has_umap") && has_umap) {
+  macros <- c(macros, list(
+    exploratoryNUmapPoints = fmt_count(nrow(umap_data))
+  ))
+}
+
+write_stats_tex(macros, stats_file("exploratory"), source = "analysis/04_exploratory.qmd")
+```

@@ -17,7 +17,16 @@ list2env(load_tables(), envir = globalenv())
 has_phase_change <- has_rows(phase_change)
 has_pairwise <- has_rows(pairwise_sim)
 
-n_conditions <- n_distinct(games$condition)
+# Real games only: test games have no condition
+n_conditions <- n_distinct(games$condition, na.rm = TRUE)
+
+# Statistics this notebook reports, written as LaTeX macros at the end
+# (writing/manuscript/stats/secondary.tex)
+macros <- list()
+```
+
+```{r dataset-banner, results='asis', echo=FALSE}
+dataset_banner(games = games)
 ```
 
 # 1. Semantic change (Phase 1 → Phase 2)
@@ -32,11 +41,15 @@ if (!has_phase_change || nrow(phase_change) == 0) {
   cat("Skipping: phase_change_similarities.csv not found. Run compute_derived.py first.\n")
 } else {
 phase_change <- phase_change |>
-  mutate(condition = factor(condition, levels = CONDITION_ORDER))
+  mutate(condition = factor(condition, levels = CONDITION_ORDER)) |>
+  add_group_id()
 
 if (n_conditions >= 2) {
+  # Paper formula: sim_phase1_phase2 ~ condition + (1 | game) + (1 | group)
+  #   + (1 | participant) + (condition | tangram); the game and group
+  #   intercepts are retained through any simplification
   m_semantic <- fit_progressively(
-    simPhase1Phase2 ~ condition + (1 | playerId) + (condition | target),
+    simPhase1Phase2 ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (condition | target),
     data = phase_change
   )
   print(summary(m_semantic))
@@ -67,7 +80,7 @@ if (n_conditions >= 2) {
 } else {
   # With only 1 condition, fit without condition predictor
   m_semantic <- lmer(
-    simPhase1Phase2 ~ 1 + (1 | playerId) + (1 | target),
+    simPhase1Phase2 ~ 1 + (1 | gameId) + (1 | group) + (1 | playerId) + (1 | target),
     data = phase_change,
     control = lmerControl(optimizer = "bobyqa")
   )
@@ -154,8 +167,9 @@ if (inherits(m_ref_accuracy, "glmerMod") && "condition" %in% all.vars(formula(m_
   if (all(c("refer_mixed", "social_mixed") %in% lv)) ordering$mixed_gt_social <- pairwise_weights(lv, "refer_mixed", "social_mixed")
   if (all(c("social_mixed", "social_first") %in% lv)) ordering$social_gt_socialfirst <- pairwise_weights(lv, "social_mixed", "social_first")
   if (length(ordering)) {
+    ordering_contrasts <- contrast(em_acc, ordering)
     cat("\nPredicted ordering, consecutive contrasts (positive = predicted direction, log-odds):\n")
-    print(summary(contrast(em_acc, ordering), infer = c(TRUE, TRUE)))
+    print(summary(ordering_contrasts, infer = c(TRUE, TRUE)))
   }
 } else {
   cat("Preregistered accuracy tests need the condition-by-block mixed model.\n")
@@ -190,7 +204,23 @@ ggplot(acc_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
 
 # 3. In-group vs out-group listener accuracy (social conditions)
 
-Within `social_mixed` and `social_first`: do listeners understand in-group speakers better?
+Within `social_mixed` and `social_first`: do listeners understand in-group
+speakers better, and is any H4b cost concentrated among out-group listeners?
+The preregistration extends the H4b model with in-group status and its
+interaction with condition, retaining the block term and the H4b
+random-effects structure:
+
+```
+ref_correct ~ in_group_speaker * condition + block_num
+  + (block_num | game) + (block_num | listener) + (block_num | speaker)
+  + (condition | tangram)
+```
+
+The social-first minus social-mixed contrast is reported separately for
+in-group and for out-group listeners (as odds ratios on the response scale,
+with confidence intervals), regardless of the primary H4b result, together
+with the interaction (the ratio of those two odds ratios). Significance in
+one subgroup but not the other is not itself evidence for an interaction.
 
 ```{r model-ingroup}
 # Phase 2 listener trials in the social conditions, each with its speaker and
@@ -201,30 +231,46 @@ social_listener <- listener_trials(trials, games, phase = 2, conditions = SOCIAL
   attach_speaker(trials) |>
   filter(!is.na(inGroupSpeaker))
 
-if (nrow(social_listener) > 0) {
-  # Paper formula: ref_correct ~ in_group_speaker * condition + (1 | speaker) + (1 | listener) + (condition | tangram)
-
+if (nrow(social_listener) > 0 && n_distinct(social_listener$condition) >= 2) {
   m_ingroup <- fit_progressively(
-    correct ~ inGroupSpeaker * condition + (1 | playerId) + (1 | speakerId) + (condition | target),
+    correct ~ inGroupSpeaker * condition + blockNum_c +
+      (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) +
+      (condition | target),
     data = social_listener,
     family = binomial
   )
   print(summary(m_ingroup))
-  report_effect_sizes(m_ingroup)
+  report_odds_ratios(m_ingroup)
 
   if (inherits(m_ingroup, "glmerMod")) {
-    # Prediction: in-group listeners are more accurate; the interaction asks
-    # whether social_first amplifies that advantage.
-    em_ingroup <- emmeans(m_ingroup, ~ inGroupSpeaker | condition)
-    cat("\nIn-group minus out-group (log-odds) within each condition:\n")
-    print(summary(contrast(em_ingroup, "revpairwise"), infer = c(TRUE, TRUE)))
+    # social_first minus social_mixed within each listener type, as odds
+    # ratios (emmeans back-transforms the log-odds contrast to the response
+    # scale), and the interaction as the ratio of the two odds ratios.
+    em_cond_by_group <- emmeans(m_ingroup, ~ condition | inGroupSpeaker, type = "response")
+    ct_within <- contrast(em_cond_by_group, list(
+      socialfirst_vs_socialmixed = pairwise_weights(SOCIAL_CONDITIONS, "social_first", "social_mixed")
+    ))
+    cat("\nSocial-first vs social-mixed within out-group and within in-group listeners (odds ratio):\n")
+    print(summary(ct_within, infer = c(TRUE, TRUE)))
+    ingroup_contrasts <- contrast_table(ct_within, "in-group status")
+
+    cat("\nInteraction: ratio of the in-group to the out-group odds ratio (does social-first amplify the in-group advantage?):\n")
+    em_full <- emmeans(m_ingroup, ~ condition * inGroupSpeaker, type = "response")
+    ct_interaction <- contrast(em_full, interaction = c("revpairwise", "revpairwise"))
+    print(summary(ct_interaction, infer = c(TRUE, TRUE)))
+
+    # The in-group advantage itself, within each condition and overall
+    em_group_by_cond <- emmeans(m_ingroup, ~ inGroupSpeaker | condition, type = "response")
+    cat("\nIn-group vs out-group listeners within each condition (odds ratio):\n")
+    print(summary(contrast(em_group_by_cond, "revpairwise"), infer = c(TRUE, TRUE)))
     cat("\nAveraged over conditions:\n")
-    print(summary(contrast(emmeans(m_ingroup, ~ inGroupSpeaker), "revpairwise"), infer = c(TRUE, TRUE)))
-    cat("\nEstimated accuracy (response scale):\n")
-    print(summary(em_ingroup, type = "response"))
+    print(summary(contrast(emmeans(m_ingroup, ~ inGroupSpeaker, type = "response"), "revpairwise"),
+                  infer = c(TRUE, TRUE)))
+    cat("\nEstimated accuracy by condition and listener type (response scale, at the mean block):\n")
+    print(summary(em_full))
   }
 } else {
-  cat("No social condition listener data available.\n")
+  cat("Need Phase 2 listener trials from both social conditions.\n")
 }
 ```
 
@@ -253,47 +299,91 @@ if (exists("social_listener") && nrow(social_listener) > 0 &&
 }
 ```
 
-# 4. Group-specificity vs social accuracy correlation
+# 4. Group-specificity vs social accuracy
 
-Does maintaining group-specific language correlate with social identification accuracy?
+Do games with higher Phase 2 social-identification accuracy also have more
+group-specific expressions, after accounting for condition and Phase 1
+group-specificity? The preregistered model is the ordinary least-squares
+regression
+
+```
+group_specificity_phase2 ~ social_accuracy + condition + group_specificity_phase1
+```
+
+restricted to the two social conditions, with equal weight for each eligible
+game (both endpoints estimable). The inverse-variance rerun (weights
+`1 / SE_phase2^2`) is a robustness check. A positive social-accuracy
+coefficient would indicate an association conditional on condition and
+baseline group-specificity, not that distinctive language causes better
+social identification.
 
 ```{r model-gs-social}
 if (!has_pairwise || nrow(pairwise_sim) == 0) {
   cat("Skipping: pairwise_similarities.csv not found. Run compute_derived.py first.\n")
 } else if (nrow(social_guesses) > 0) {
-  # Mean social accuracy per game
+  # Mean social accuracy per game over eligible response opportunities
   social_acc_by_game <- social_guess_trials(social_guesses, games) |>
     group_by(gameId) |>
     summarise(social_accuracy = mean(correct, na.rm = TRUE), .groups = "drop")
 
-  # The same per-game estimates as the primary analysis (weight = 1 / SE^2 of Phase 2)
+  # The same per-game estimates as the primary analysis
   gs_social <- gs_wide(game_specificity_table(pairwise_sim, games)) |>
     inner_join(social_acc_by_game, by = "gameId")
 
-  if (nrow(gs_social) >= 3) {
-    m_gs_social <- lm(gs_phase2 ~ social_accuracy + gs_phase1, data = gs_social, weights = weight)
+  fit_gs_social <- function(weights = NULL) {
+    fit_game_level(
+      gs_social,
+      outcome = "gs_phase2",
+      predictors = c("social_accuracy", "gs_phase1"),
+      conditions = SOCIAL_CONDITIONS,
+      weights = weights
+    )
+  }
+  gs_social_fit <- fit_gs_social()
+  m_gs_social <- gs_social_fit$model
+  if (!is.null(m_gs_social) && nrow(gs_social_fit$data) >= 4) {
+    cat(sprintf("Games in the model: %d\n", nrow(gs_social_fit$data)))
+    print(knitr::kable(gs_social_fit$data |> count(condition, name = "games")))
     print(summary(m_gs_social))
     report_effect_sizes(m_gs_social)
+    sa_coef <- broom::tidy(m_gs_social, conf.int = TRUE) |>
+      filter(term == "social_accuracy")
+    cat(sprintf(
+      "\nSocial accuracy coefficient (OLS): %.3f, 95%% CI [%.3f, %.3f], p = %s\n",
+      sa_coef$estimate, sa_coef$conf.low, sa_coef$conf.high, fmt_pval(sa_coef$p.value)
+    ))
+
+    gs_social_wls <- fit_gs_social(weights = "weight")
+    if (!is.null(gs_social_wls$model)) {
+      sa_coef_w <- broom::tidy(gs_social_wls$model, conf.int = TRUE) |>
+        filter(term == "social_accuracy")
+      cat(sprintf(
+        "Robustness, inverse-variance weights (1 / SE_phase2^2): %.3f, 95%% CI [%.3f, %.3f], p = %s\n",
+        sa_coef_w$estimate, sa_coef_w$conf.low, sa_coef_w$conf.high, fmt_pval(sa_coef_w$p.value)
+      ))
+    }
   } else {
-    cat(sprintf("Not enough games (%d) for regression (need ≥3).\n", nrow(gs_social)))
+    cat("Not enough games in the two social conditions for the regression",
+        if (!is.null(gs_social_fit$note)) paste0("(", gs_social_fit$note, ")"), "\n")
   }
 } else {
   cat("No social guess data available.\n")
 }
 ```
 
-```{r plot-gs-social, fig.width=6, fig.height=5}
+```{r plot-gs-social, fig.width=7, fig.height=5}
 # Plot 13: Social accuracy vs group-specificity scatter
-if (exists("gs_social") && nrow(gs_social) >= 3) {
-  ggplot(gs_social, aes(x = social_accuracy, y = gs_phase2)) +
+if (exists("gs_social_fit") && nrow(gs_social_fit$data) >= 3) {
+  ggplot(gs_social_fit$data, aes(x = social_accuracy, y = gs_phase2, color = condition)) +
     geom_point(size = 3) +
-    geom_smooth(method = "lm", se = TRUE, alpha = 0.2) +
+    geom_smooth(aes(group = 1), method = "lm", se = TRUE, alpha = 0.2, color = "gray40") +
+    scale_color_condition() +
     labs(
-      x = "Mean social accuracy",
+      x = "Mean social-identification accuracy (Phase 2)",
       y = "Phase 2 group-specificity",
-      title = "Social accuracy vs group-specificity (social_mixed)"
-    ) +
-    NULL
+      color = "Condition",
+      title = "Social accuracy vs group-specificity (social conditions)"
+    )
 } else {
   cat("Not enough data points for scatter plot.\n")
 }
@@ -331,12 +421,10 @@ if (nrow(social_guesses) > 0) {
 ```
 
 ```{r plot-social-accuracy, fig.width=7, fig.height=4}
-# Plot 14: Social-signaling accuracy over blocks (pooled)
+# Plot 14: Social-signaling accuracy over blocks (pooled), over eligible
+# response opportunities (code_accuracy() via social_guess_trials())
 if (nrow(social_guesses) > 0) {
-  social_by_block <- social_guesses |>
-    mutate(correct = as.numeric(
-      socialGuessCorrect == TRUE | socialGuessCorrect == "true"
-    )) |>
+  social_by_block <- social_guess_trials(social_guesses, games) |>
     filter(!is.na(correct)) |>
     group_by(blockNum) |>
     tidyboot_mean(correct, nboot = 1000)
@@ -359,14 +447,10 @@ if (nrow(social_guesses) > 0) {
 ```
 
 ```{r plot-social-accuracy-by-condition, fig.width=8, fig.height=5}
-# Social accuracy trajectories by condition (paper: compare across social conditions)
+# Social accuracy trajectories by condition (paper: compare across social
+# conditions), over eligible response opportunities
 if (nrow(social_guesses) > 0) {
-  social_with_cond <- social_guesses |>
-    left_join(games |> select(gameId, condition), by = "gameId") |>
-    filter(condition %in% c("social_mixed", "social_first")) |>
-    mutate(correct = as.numeric(
-      socialGuessCorrect == TRUE | socialGuessCorrect == "true"
-    ))
+  social_with_cond <- social_guess_trials(social_guesses, games, SOCIAL_CONDITIONS)
 
   if (n_distinct(social_with_cond$condition) >= 2) {
     social_by_block_cond <- social_with_cond |>
@@ -398,21 +482,22 @@ if (nrow(social_guesses) > 0) {
 
 How does description length evolve across Phase 2 blocks by condition?
 
-Paper formula: `utt_length ~ condition * block_num + (1 | participant) + (1 | tangram)`
+Paper formula:
+`utt_length ~ condition * block_num + (1 | game) + (1 | group) + (1 | participant) + (1 | tangram)`,
+with `group` the game-unique original group.
 
 ```{r model-utt-length-phase2}
 p2_utts <- phase2_utterances(speaker_utts, games)
 
 n_cond <- n_distinct(p2_utts$condition)
 if (n_cond >= 2) {
-  # Paper formula: utt_length ~ condition * block_num + (1 | participant) + (1 | tangram)
   m_p2_length <- fit_progressively(
-    uttLength ~ condition * blockNum_c + (1 | playerId) + (1 | target),
+    uttLength ~ condition * blockNum_c + (1 | gameId) + (1 | group) + (1 | playerId) + (1 | target),
     data = p2_utts
   )
 } else {
   m_p2_length <- fit_progressively(
-    uttLength ~ blockNum_c + (1 | playerId) + (1 | target),
+    uttLength ~ blockNum_c + (1 | gameId) + (1 | group) + (1 | playerId) + (1 | target),
     data = p2_utts
   )
   cat("Only 1 condition; fitting without condition predictor.\n")
@@ -426,7 +511,8 @@ if (n_cond >= 2 && inherits(m_p2_length, "merMod")) {
   # plateau in refer_separated, a possible initial lengthening in refer_mixed,
   # short descriptions in the social conditions.
   cat("\nBlock slope (words per block) by condition:\n")
-  print(test(emtrends(m_p2_length, ~ condition, var = "blockNum_c")))
+  p2_length_slopes <- as.data.frame(test(emtrends(m_p2_length, ~ condition, var = "blockNum_c")))
+  print(p2_length_slopes)
   cat("\nMean Phase 2 description length by condition (at the mean block):\n")
   print(summary(emmeans(m_p2_length, "condition")))
 }
@@ -463,8 +549,9 @@ four conditions, to explore whether group-specific language maintained
 passively (refer_separated) differs from language maintained under a
 social-signaling goal (social_mixed). Each measure is modeled on each speaker's
 final description of each tangram within a phase, with the H3c formula
-`measure ~ condition + (1 | participant) + (condition | tangram)`. The named
-contrast is refer_separated minus social_mixed; all pairwise comparisons follow
+`measure ~ condition + (1 | game) + (1 | group) + (1 | participant) + (condition | tangram)`
+(`group` is the game-unique original group). The named contrast is
+refer_separated minus social_mixed; all pairwise comparisons follow
 (Tukey-adjusted). Exploratory.
 
 ```{r utterance-properties-all-conditions}
@@ -485,7 +572,9 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
       d <- props |> filter(!is.na(.data[[measure]]))
       if (nrow(d) == 0) next
       cat(sprintf("\n=== Phase %d: %s ===\n", ph, PROPERTY_LABELS[[measure]]))
-      f <- as.formula(sprintf("%s ~ condition + (1 | playerId) + (condition | target)", measure))
+      f <- as.formula(sprintf(
+        "%s ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (condition | target)", measure
+      ))
       m <- fit_progressively(f, data = d)
       em <- emmeans(m, "condition")
       property_summaries[[length(property_summaries) + 1]] <- as.data.frame(summary(em)) |>
@@ -512,4 +601,123 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
     )
   }
 }
+```
+
+# Statistics for the manuscript
+
+Every contrast, coefficient, confidence interval, and p-value reported above
+goes into `writing/manuscript/stats/secondary.tex` as a `\newcommand` macro,
+with names prefixed `secondary`. A comparison the dataset cannot support
+contributes no macro, so an unavailable number fails loudly in LaTeX rather
+than reading as a result. The secondary analyses report frequentist results
+only; Bayes factors are preregistered for the primary hypotheses.
+
+```{r write-stats}
+# emmeans labels an interaction contrast with one column per factor rather
+# than a single `contrast` column, so pull the estimate, interval, and p-value
+# by position and accept whichever names the back-transform produced.
+emm_macros <- function(prefix, obj, row = 1L, digits = 3) {
+  if (is.null(obj)) return(list())
+  tab <- as.data.frame(summary(obj, infer = c(TRUE, TRUE)))
+  if (nrow(tab) < row) return(list())
+  pick <- function(candidates) {
+    hit <- intersect(candidates, names(tab))
+    if (length(hit) == 0) return(NA_real_)
+    tab[[hit[1]]][row]
+  }
+  setNames(
+    list(
+      fmt_stat(pick(c("estimate", "odds.ratio", "ratio")), digits),
+      fmt_stat(pick(c("lower.CL", "asymp.LCL")), digits),
+      fmt_stat(pick(c("upper.CL", "asymp.UCL")), digits),
+      fmt_pval(pick("p.value"))
+    ),
+    paste0(prefix, c("Est", "Lo", "Hi", "P"))
+  )
+}
+
+if (exists("contrasts_semantic")) {
+  macros <- c(
+    macros,
+    contrast_macros("secondarySemanticSepVsMixed", contrasts_semantic, row = 1),
+    contrast_macros("secondarySemanticSocialVsMixed", contrasts_semantic, row = 2)
+  )
+}
+if (exists("drift_ci")) {
+  macros <- c(macros, list(
+    secondaryDriftMean = fmt_stat(drift_ci$empirical_stat),
+    secondaryDriftLo = fmt_stat(drift_ci$ci_lower),
+    secondaryDriftHi = fmt_stat(drift_ci$ci_upper)
+  ))
+}
+
+if (exists("ordering_contrasts")) {
+  # contrast_table() gives the `lower`/`upper` names contrast_macros() expects
+  ord <- contrast_table(ordering_contrasts, "")
+  prefixes <- c(sep_gt_mixed = "secondaryAccSepVsMixed",
+                mixed_gt_social = "secondaryAccMixedVsSocial",
+                social_gt_socialfirst = "secondaryAccSocialVsSocialFirst")
+  for (i in seq_len(nrow(ord))) {
+    prefix <- prefixes[as.character(ord$contrast[i])]
+    if (is.na(prefix)) next
+    macros <- c(macros, contrast_macros(unname(prefix), ord, row = i))
+  }
+}
+if (exists("m_ref_accuracy")) {
+  macros <- c(macros, coef_macros("secondaryAccBlock", m_ref_accuracy, "blockNum_c"))
+}
+
+if (exists("ct_within")) {
+  within_tab <- as.data.frame(summary(ct_within, infer = c(TRUE, TRUE)))
+  # One row per in-group status; name the macros by the status rather than the row
+  for (i in seq_len(nrow(within_tab))) {
+    status <- as.character(within_tab$inGroupSpeaker[i])
+    prefix <- if (identical(status, "in_group")) {
+      "secondaryIngroupWithinIn"
+    } else if (identical(status, "out_group")) {
+      "secondaryIngroupWithinOut"
+    } else {
+      NULL
+    }
+    if (is.null(prefix)) next
+    macros <- c(macros, emm_macros(prefix, ct_within, row = i))
+  }
+}
+if (exists("ct_interaction")) {
+  macros <- c(macros, emm_macros("secondaryIngroupInteraction", ct_interaction, row = 1))
+}
+
+if (exists("sa_coef") && nrow(sa_coef) == 1) {
+  macros <- c(macros, list(
+    secondaryGsSocialEst = fmt_stat(sa_coef$estimate),
+    secondaryGsSocialLo = fmt_stat(sa_coef$conf.low),
+    secondaryGsSocialHi = fmt_stat(sa_coef$conf.high),
+    secondaryGsSocialP = fmt_pval(sa_coef$p.value),
+    secondaryGsSocialNGames = nrow(gs_social_fit$data)
+  ))
+}
+if (exists("sa_coef_w") && nrow(sa_coef_w) == 1) {
+  macros <- c(macros, list(
+    secondaryGsSocialWlsEst = fmt_stat(sa_coef_w$estimate),
+    secondaryGsSocialWlsLo = fmt_stat(sa_coef_w$conf.low),
+    secondaryGsSocialWlsHi = fmt_stat(sa_coef_w$conf.high),
+    secondaryGsSocialWlsP = fmt_pval(sa_coef_w$p.value)
+  ))
+}
+
+if (exists("m_social_acc")) {
+  macros <- c(macros, coef_macros("secondarySocialAccBlock", m_social_acc, "blockNum_c"))
+}
+if (exists("social_guesses_model") && has_rows(social_guesses_model)) {
+  macros <- c(macros, list(
+    secondarySocialAccMean = fmt_stat(mean(social_guesses_model$correct, na.rm = TRUE)),
+    secondarySocialAccN = fmt_count(sum(!is.na(social_guesses_model$correct)))
+  ))
+}
+
+if (exists("m_p2_length")) {
+  macros <- c(macros, coef_macros("secondaryLengthBlock", m_p2_length, "blockNum_c"))
+}
+
+write_stats_tex(macros, stats_file("secondary"), source = "analysis/03_secondary_analysis.qmd")
 ```

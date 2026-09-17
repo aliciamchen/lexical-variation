@@ -9,12 +9,19 @@ format:
 ```{r setup, message=FALSE, warning=FALSE}
 library(jsonlite)
 source(here::here("analysis", "config.R"))
+# Statistics this notebook reports, written as LaTeX macros at the end
+# (writing/manuscript/stats/overview.tex)
+macros <- list()
 ```
 
 # Load data
 
 ```{r load-data}
 list2env(load_tables(), envir = globalenv())
+```
+
+```{r dataset-banner, results='asis', echo=FALSE}
+dataset_banner(games = games)
 ```
 
 # Game-level summary
@@ -78,7 +85,9 @@ cat("Unique players:", n_distinct(trials$playerId), "\n")
 # Referential accuracy over eligible listener response opportunities: an
 # active listener on a played trial whose speaker sent a message. Timeouts
 # and late arrivals count as unsuccessful; trials the listener could not have
-# answered leave the denominator instead of counting against them.
+# answered leave the denominator instead of counting against them, and
+# observations removed by a technical failure or a post-hoc participant
+# exclusion are missing (the excluded_* columns).
 ref_opportunities <- bind_rows(
   listener_trials(trials, games, phase = 1),
   listener_trials(trials, games, phase = 2)
@@ -108,6 +117,66 @@ no_opportunity <- trials |>
   nrow()
 cat(no_opportunity, "listener trials had no speaker message and are excluded",
     "from the accuracy denominators.\n")
+```
+
+# Exclusions
+
+Post-hoc participant exclusions (paper, "Exclusion criteria") are listed in
+`data/<dataset>/participant_exclusions.csv` and applied by the pipeline: the
+excluded participants' messages leave the corpus, and their own rows of
+`trials.csv` and `social_guesses.csv`, plus the rows of the listeners they
+spoke to, carry `excluded` and `exclusionReason`. `code_accuracy()` treats
+those observations as missing, not unsuccessful, alongside the documented
+technical failures in `technical_exclusions.csv`. The counts here are the
+rows affected; the accuracy tables above report them as `excluded_participant`
+and `excluded_technical`.
+
+```{r participant-exclusions}
+excl_file <- participant_exclusions()
+if (nrow(excl_file) == 0) {
+  cat(sprintf(
+    "No post-hoc participant exclusions recorded (data/%s/participant_exclusions.csv absent or empty).\n",
+    DATASET
+  ))
+} else {
+  cat(sprintf("%d participant(s) excluded after the fact:\n", nrow(excl_file)))
+  print(knitr::kable(excl_file |> mutate(playerId = substr(playerId, 1, 10))))
+}
+
+is_flagged <- function(x) (x == TRUE | x == "true") %in% TRUE
+n_excluded_trial_rows <- 0L
+if (!exclusion_columns_present(trials)) {
+  cat("NOTE: trials.csv has no excluded/exclusionReason columns (regenerate with the current pipeline);",
+      "no post-hoc exclusions are applied in this render.\n")
+} else {
+  flagged <- trials |> add_condition(games) |> filter(is_flagged(excluded))
+  n_excluded_trial_rows <- nrow(flagged)
+  if (nrow(flagged) == 0) {
+    cat("No trial rows are flagged excluded.\n")
+  } else {
+    cat("\nTrial rows flagged excluded, by condition, role, and reason:\n")
+    print(knitr::kable(flagged |> count(condition, role, exclusionReason, name = "rows")))
+  }
+  if (has_rows(social_guesses) && exclusion_columns_present(social_guesses)) {
+    sg_flagged <- social_guesses |> add_condition(games) |> filter(is_flagged(excluded))
+    cat(sprintf("\nSocial-guess opportunities flagged excluded: %d\n", nrow(sg_flagged)))
+    if (nrow(sg_flagged) > 0) {
+      print(knitr::kable(sg_flagged |> count(condition, exclusionReason, name = "rows")))
+    }
+  }
+}
+
+tech <- technical_exclusions()
+cat(sprintf("\nDocumented technical failures (technical_exclusions.csv): %d\n", nrow(tech)))
+if (nrow(tech) > 0) {
+  print(knitr::kable(tech |> count(outcome, reason, name = "observations")))
+}
+
+macros <- c(macros, list(
+  overviewNExcludedParticipants = nrow(excl_file),
+  overviewNExcludedTrialRows = n_excluded_trial_rows,
+  overviewNTechnicalExclusions = nrow(tech)
+))
 ```
 
 # Message summary
@@ -145,6 +214,30 @@ speaker_utts |>
   knitr::kable(caption = "Speaker utterance length by phase")
 ```
 
+## Speaker trials without an analyzable description
+
+A speaker trial has an analyzable description when it appears in the
+(filtered) speaker-utterance table. The endpoint coverage rule in
+`02_primary_analysis.qmd` counts such descriptions, so the proportion of
+speaker trials that lack one, by condition and phase, is reported here with
+its reasons: the speaker sent nothing (`silent`), the speaker was excluded
+after the fact (`excluded`), or every message the speaker sent was classified
+as non-referential (`non_referential_only`).
+
+```{r description-coverage}
+desc_cov <- speaker_description_coverage(trials, speaker_utts, games)
+knitr::kable(
+  desc_cov,
+  digits = 3,
+  caption = "Speaker trials without an analyzable description, by condition and phase"
+)
+macros <- c(macros, list(
+  overviewPropNoDescription = fmt_stat(
+    sum(desc_cov$without_description) / sum(desc_cov$speaker_trials), 3
+  )
+))
+```
+
 # Social guesses summary
 
 ```{r social-guess-summary}
@@ -163,6 +256,25 @@ if (nrow(social_guesses) > 0) {
     )
 } else {
   cat("No social guess data (expected for refer_separated and refer_mixed conditions)\n")
+}
+```
+
+The components of social-identification accuracy (paper,
+"Social-identification components and opportunities"): in-group and
+out-group opportunities, the on-time response rate, the in-group hit rate,
+the out-group false-alarm rate, and balanced accuracy. The full table, with
+the on-time accuracy and the answered counts, is in `02_primary_analysis.qmd`.
+
+```{r social-components}
+if (exists("social_opportunities") && has_rows(social_opportunities)) {
+  social_components <- social_identification_components(social_opportunities, trials)
+  knitr::kable(
+    social_components |> select(all_of(SOCIAL_COMPONENT_COLUMNS_SHORT)),
+    digits = 3,
+    caption = "Social-identification components by condition (Phase 2)"
+  )
+} else {
+  cat("No social-identification opportunities in this dataset.\n")
 }
 ```
 
@@ -220,14 +332,19 @@ if (nrow(excluded_groups) > 0) {
 
 # Attrition
 
-The preregistration commits to reporting attrition rates by condition and
-testing whether dropout is differential across conditions (paper, "Dropout
-handling"). A player counts as removed when the server took them out of the
-game (idle for three rounds, low Phase 1 accuracy, a disbanded group, or too few
-groups left). A game ran to completion when at least two groups reached the
-end; a complete nine-player game kept every player. The Phase 2 analyses are
-rerun on complete games in `02_primary_analysis.qmd`. The last column counts
-players flagged for a Phase 1 description-length increase (the AI-use trigger).
+The preregistration commits to reporting attrition and exclusions by
+condition at the participant, group, and game levels, and to testing whether
+dropout is differential across conditions (paper, "Dropout handling"). A
+player counts as removed when the server took them out of the game. Two kinds
+of removal are distinguished: for the player's own inactivity (idle for three
+rounds) or their group's low Phase 1 accuracy, and through no fault of their
+own, when their group disbanded, too few groups remained for the game to go
+on (`insufficient groups`), or the researcher stopped the batch
+(`game terminated`); the latter are compensated for their time. A game ran to
+completion when at least two groups reached the end; a complete nine-player
+game kept every player. The Phase 2 analyses are rerun on complete games in
+`02_primary_analysis.qmd`. The last column counts players flagged for a
+Phase 1 description-length increase (the AI-use trigger).
 
 ```{r attrition}
 pa <- player_attrition(players, games)
@@ -241,7 +358,8 @@ print(knitr::kable(games_by_condition(status), digits = 2))
 
 if (any(pa$removed)) {
   cat("\nRemoved players:\n")
-  print(knitr::kable(pa |> filter(removed) |> select(condition, gameId, originalGroup, reason, idleRounds) |>
+  print(knitr::kable(pa |> filter(removed) |>
+                       select(condition, gameId, originalGroup, reason, no_fault, idleRounds) |>
                        mutate(gameId = substr(gameId, 1, 10)) |> arrange(condition)))
 }
 
@@ -257,6 +375,48 @@ if (length(tests) == 0) {
     cat("\nComplete nine-player games by condition (Fisher's exact test; the game is the unit):\n")
     print(tests$games)
   }
+}
+```
+
+## Original groups
+
+One row per original group: an intact group had no removal; a lost group
+ended with fewer than two active members (the server's `MIN_GROUP_SIZE`),
+whether because it failed the Phase 1 accuracy screen (`low_accuracy`) or
+because it disbanded.
+
+```{r attrition-groups}
+ga <- group_attrition(players, games)
+cat("Original groups by condition:\n")
+print(knitr::kable(groups_by_condition(ga), digits = 2))
+
+groups_with_removal <- ga |> filter(removed > 0)
+if (nrow(groups_with_removal) > 0) {
+  cat("\nGroups with at least one removal:\n")
+  print(knitr::kable(groups_with_removal |> mutate(gameId = substr(gameId, 1, 10))))
+} else {
+  cat("\nNo group lost a member.\n")
+}
+```
+
+## Players who never played a real game
+
+`data/<dataset>/dropouts.csv` (written by `combine_runs.py`) holds one row per
+player record that never reached a real game: participants who failed the
+comprehension quiz three times, waited in a lobby that timed out, or arrived
+after the games were full. They have no condition, so the counts are for the
+dataset as a whole.
+
+```{r dropouts}
+if (!has_rows(dropouts)) {
+  cat(sprintf(
+    "NOTE: data/%s/dropouts.csv is absent or empty (a dataset combined before September 2026 has no dropout records); quiz failures cannot be counted.\n",
+    DATASET
+  ))
+} else {
+  cat(sprintf("%d player record(s) never played a real game:\n", nrow(dropouts)))
+  print(knitr::kable(dropout_summary(dropouts), digits = 2))
+  cat(sprintf("\nFailed the comprehension quiz (three attempts): %d\n", quiz_failures(dropouts)))
 }
 ```
 
@@ -286,3 +446,23 @@ print(knitr::kable(
 ))
 ```
 
+# Statistics for the manuscript
+
+```{r write-stats}
+macros <- c(macros, list(
+  overviewNGames = sum(!is.na(games$condition)),
+  overviewNPlayers = nrow(pa),
+  overviewNTrials = fmt_count(nrow(trials)),
+  overviewNMessages = fmt_count(nrow(messages)),
+  overviewNSpeakerUtts = fmt_count(nrow(speaker_utts)),
+  overviewNRemoved = sum(pa$removed),
+  overviewNRemovedNoFault = sum(pa$no_fault),
+  overviewNGroupsLost = sum(ga$lost),
+  overviewNGamesComplete = sum(status$complete_nine),
+  overviewNGamesRanToCompletion = sum(status$ran_to_completion),
+  overviewNDropouts = nrow(dropouts),
+  overviewNQuizFailed = quiz_failures(dropouts),
+  overviewNNoOpportunity = no_opportunity
+))
+write_stats_tex(macros, stats_file("overview"), source = "analysis/00_data_overview.qmd")
+```

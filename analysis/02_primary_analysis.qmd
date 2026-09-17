@@ -21,6 +21,14 @@ if (!has_pairwise) {
   cat("WARNING: pairwise_similarities.csv not found. Run compute_derived.py first.\n")
   cat("Most analyses in this notebook will be skipped.\n")
 }
+
+# Statistics this notebook reports, written as LaTeX macros at the end
+# (writing/manuscript/stats/primary.tex)
+macros <- list()
+```
+
+```{r dataset-banner, results='asis', echo=FALSE}
+dataset_banner(games = games)
 ```
 
 # Inference and reporting policy
@@ -51,49 +59,87 @@ conventions. These checks do not gate H3/H4 or primary-analysis eligibility.
 
 # Compute group-specificity per game per phase
 
-For each game, fit:
-`similarity ~ sameGroup + (1 | target) + (1 | speaker)`
+For each game and endpoint window, fit:
+`similarity ~ sameGroup + (1 | target) + (1 | speaker) + (1 | speakerPair)`
 
 Extract the `sameGroup` coefficient as the group-specificity score.
 
 The speaker term is a multiple-membership random intercept. Each observation
 is a pair of speakers describing the same tangram, so every speaker has one
 random effect shared across both pair positions, with a common variance and
-equal weights of 1/2. This replaces the earlier
-`(1 | speaker1) + (1 | speaker2)`, which split one person's effect across two
-variance components and made the estimate depend on an arbitrary ordering
-within each pair. Fitting is by REML through lme4's modular interface
+equal weights of 1/2. The `speakerPair` intercept is the unordered pair of
+speakers: it captures resemblance that belongs to two particular people rather
+than to either of them, which is where a shared convention resides, and it is
+retained even when its variance is estimated at the boundary. This replaces
+the earlier `(1 | speaker1) + (1 | speaker2)`, which split one person's effect
+across two variance components and made the estimate depend on an arbitrary
+ordering within each pair. Fitting is by REML through lme4's modular interface
 (`analysis/R/multimembership.R`); the design-matched simulations that check
 convergence, ordering invariance, and interval calibration are in
 `analysis/simulate_mm_speaker.R`. The pilot SI keeps the earlier structure,
 as the paper records.
 
-The standard error of each game's coefficient becomes that game's
-inverse-variance weight in the H1/H2 regression, so it carries more than the
-point estimate does; the simulations assess those weights directly.
+Each game's standard error is reported as within-game uncertainty and feeds
+the inverse-variance weights of the robustness reruns below; it does not
+determine a game's weight in the primary regressions, which give every
+eligible game equal weight.
+
+## Endpoint coverage
+
+An endpoint estimate requires analyzable descriptions from at least two
+speakers in each of at least two original groups within the window, and both
+within-group and between-group pairs. H1/H2 use games with both endpoints;
+H3a uses the Phase 1 endpoint only. A missing endpoint is never replaced from
+another window. Every game-window is listed with its eligibility and, where
+there is no estimate, the reason.
 
 ```{r fit-group-specificity}
 if (!has_pairwise) {
   cat("Skipping group-specificity analysis: no pairwise similarity data.\n")
 } else {
   # game_specificity_table() (analysis/R/group_specificity.R) is the one place
-  # the per-game estimates are fit; gs_wide() gives one row per game with the
-  # Phase 1 and Phase 2 estimates and the inverse-variance weights.
+  # the per-game estimates are fit; it returns every game-window with an
+  # eligibility flag and a note. gs_wide() gives one row per game with the
+  # Phase 1 and Phase 2 estimates (NA where an endpoint is not estimable) and
+  # the inverse-variance weights for the robustness reruns.
   gs_table <- game_specificity_table(pairwise_sim, games)
   gs_combined <- gs_wide(gs_table)
 
-  cat("Group-specificity estimates:\n")
+  cat("Endpoint coverage by window and condition:\n")
+  print(knitr::kable(endpoint_coverage_summary(gs_table)))
+
+  not_estimable <- gs_table |> filter(!estimable)
+  if (nrow(not_estimable) > 0) {
+    cat("\nGame-windows without an estimate:\n")
+    print(knitr::kable(
+      not_estimable |>
+        mutate(gameId = substr(gameId, 1, 10)) |>
+        select(condition, gameId, window, n_pairs, n_speakers, n_groups_two_speakers, both_levels, note)
+    ))
+  } else {
+    cat("\nEvery game-window is eligible and estimable.\n")
+  }
+
+  cat(sprintf(
+    "\nGames with both endpoints (H1/H2): %d of %d; with the Phase 1 endpoint (H3a): %d.\n",
+    sum(gs_combined$both_endpoints), nrow(gs_combined), sum(gs_combined$eligible_phase1)
+  ))
+  cat("\nGroup-specificity estimates:\n")
   print(knitr::kable(gs_combined |> select(gameId, condition, gs_phase1, se_phase1, gs_phase2, se_phase2),
-                     digits = 4, caption = "Group-specificity by game and phase"))
+                     digits = 4, caption = "Group-specificity by game and phase (NA: endpoint not estimable)"))
 }
 ```
 
-# Weighted least squares regression
+# Ordinary least squares regression
 
 ```
 group_specificity_phase2 ~ condition + group_specificity_phase1
 ```
-Weights: `1 / SE_phase2^2` (inverse variance of Phase 2 estimates).
+Every eligible game receives equal weight (ordinary least squares). A game is
+eligible when both endpoint windows are estimable under the coverage rule
+above. Inverse-variance weighting (`1 / SE_phase2^2`) is the robustness check
+reported right after the planned contrasts, not an alternative primary
+support criterion.
 
 Restricted to the three conditions that share the same Phase 1 procedure
 (`refer_separated`, `refer_mixed`, `social_mixed`). In `social_first` the
@@ -102,21 +148,24 @@ manipulation precedes Phase 1, so its Phase 1 group-specificity is an outcome
 covariate slope could bias the H1 and H2 contrasts. `social_first` is kept in
 the descriptive plots below.
 
-```{r wls-model}
+```{r ols-model}
 if (!exists("gs_combined")) {
   cat("Skipping: no group-specificity data.\n")
 } else {
-  # fit_h12_wls() (analysis/R/contrasts.R) restricts to H12_CONDITIONS and
-  # returns the data, the lm, and the planned contrasts
-  h12 <- fit_h12_wls(gs_combined)
+  # fit_h12() (analysis/R/contrasts.R) restricts to H12_CONDITIONS, drops
+  # games without both endpoints, and returns the data, the lm, and the
+  # planned contrasts. weights = NULL is ordinary least squares.
+  h12 <- fit_h12(gs_combined)
   gs_h12 <- h12$data
-  wls_model <- h12$model
+  ols_model <- h12$model
   contrasts <- h12$contrasts
-  if (is.null(wls_model)) {
+  if (is.null(ols_model)) {
     cat(sprintf("Skipping the H1/H2 model: %s.\n", h12$note))
   } else {
-    print(summary(wls_model))
-    report_effect_sizes(wls_model)
+    cat(sprintf("Games in the H1/H2 model: %d\n", nrow(gs_h12)))
+    print(knitr::kable(gs_h12 |> count(condition, name = "games")))
+    print(summary(ols_model))
+    report_effect_sizes(ols_model)
   }
 }
 ```
@@ -150,21 +199,42 @@ if (!is.null(contrasts)) {
 }
 ```
 
+## Robustness: inverse-variance weights
+
+The preregistered robustness check repeats the same contrasts with weighted
+least squares, each game weighted by `1 / SE_phase2^2` (the inverse variance
+of its Phase 2 group-specificity estimate). It is reported beside the primary
+OLS contrasts and does not replace them.
+
+```{r robustness-wls-h1-h2}
+if (exists("h12") && !is.null(h12$model)) {
+  h12_wls <- fit_h12(gs_combined, weights = "weight")
+  print_weighted_check(h12, h12_wls)
+} else {
+  cat("Primary H1/H2 model not fit; nothing to compare.\n")
+}
+```
+
 Bayes factors for non-significant contrasts (preregistered: brms refit,
-standardized estimates, Cauchy(0, sqrt(2)/2) prior on the effect size; see
-`bayes_factors.R`). Each contrast is tested on its two conditions, keeping the
-Phase 1 covariate and the inverse-variance weights.
+standardized estimates, Cauchy(0, sqrt(2)/2) prior on the effect size,
+two-sided; see `bayes_factors.R`). The full model is the primary
+three-condition OLS model (`gs_phase2 ~ condition + gs_phase1`, equal
+weights) refit in brms; the null for each contrast equates the two conditions
+it compares and keeps everything else, so BF10 concerns that planned contrast
+only.
 
 ```{r bayes-factors-h1-h2}
 if (!is.null(contrasts)) {
   p <- as.data.frame(summary(contrasts, infer = c(TRUE, TRUE)))$p.value
-  maybe_bayes_factor(p[1], "H1 refer_separated vs refer_mixed", function() {
-    bf_wls_contrast(gs_h12, "gs_phase2", levels = c("refer_mixed", "refer_separated"),
-                    covariates = "gs_phase1", weights = "weight", name = "H1")
+  bf_h1 <- maybe_bayes_factor(p[1], "H1 refer_separated vs refer_mixed", function() {
+    bf_game_level_contrast(gs_h12, "gs_phase2", levels = H12_CONDITIONS,
+                           contrast = c("refer_separated", "refer_mixed"),
+                           covariates = "gs_phase1", name = "H1")
   })
-  maybe_bayes_factor(p[2], "H2 social_mixed vs refer_mixed", function() {
-    bf_wls_contrast(gs_h12, "gs_phase2", levels = c("refer_mixed", "social_mixed"),
-                    covariates = "gs_phase1", weights = "weight", name = "H2")
+  bf_h2 <- maybe_bayes_factor(p[2], "H2 social_mixed vs refer_mixed", function() {
+    bf_game_level_contrast(gs_h12, "gs_phase2", levels = H12_CONDITIONS,
+                           contrast = c("social_mixed", "refer_mixed"),
+                           covariates = "gs_phase1", name = "H2")
   })
 }
 ```
@@ -196,6 +266,7 @@ gs_long <- gs_combined |>
     names_to = "phase",
     values_to = "group_specificity"
   ) |>
+  filter(!is.na(group_specificity)) |>
   mutate(phase = ifelse(phase == "gs_phase1", "Phase 1", "Phase 2"))
 
 ggplot(gs_long, aes(x = phase, y = group_specificity, group = gameId)) +
@@ -217,7 +288,7 @@ if (!exists("gs_combined")) {
   cat("Skipping plot: no group-specificity data.\n")
 } else {
 # Plot 7: Phase 2 group-specificity by condition (primary result)
-ggplot(gs_combined, aes(x = condition, y = gs_phase2, fill = condition)) +
+ggplot(gs_combined |> filter(!is.na(gs_phase2)), aes(x = condition, y = gs_phase2, fill = condition)) +
   geom_violin(alpha = 0.3) +
   geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
   stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
@@ -232,23 +303,23 @@ ggplot(gs_combined, aes(x = condition, y = gs_phase2, fill = condition)) +
 }
 ```
 
-```{r plot-wls-forest, fig.width=7, fig.height=4}
-# Plot 8: WLS coefficient forest plot
-if (!is.null(wls_model)) {
-  wls_coefs <- broom::tidy(wls_model, conf.int = TRUE) |>
+```{r plot-ols-forest, fig.width=7, fig.height=4}
+# Plot 8: OLS coefficient forest plot
+if (exists("ols_model") && !is.null(ols_model)) {
+  ols_coefs <- broom::tidy(ols_model, conf.int = TRUE) |>
     filter(term != "(Intercept)")
 
-  ggplot(wls_coefs, aes(x = estimate, y = term)) +
+  ggplot(ols_coefs, aes(x = estimate, y = term)) +
     geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
     geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +
     geom_point(size = 3) +
     labs(
       x = "Coefficient estimate",
       y = "",
-      title = "WLS model coefficients"
+      title = "H1/H2 OLS model coefficients"
     )
 } else {
-  cat("WLS model not fitted (insufficient conditions).\n")
+  cat("OLS model not fitted (insufficient conditions).\n")
 }
 ```
 
@@ -300,43 +371,44 @@ alignment, and each description property, rather than for H3 as a whole.
 
 ## H3a: Phase 1 group-specificity
 
-WLS regression: `group_specificity_phase1 ~ condition`, weighted by inverse
-variance of Phase 1 GS estimates. Contrast: `social_first > social_mixed`.
+Ordinary least squares: `group_specificity_phase1 ~ condition`, restricted to
+the two social conditions, with equal weight for each game whose Phase 1
+endpoint is estimable (the Phase 2 endpoint is not required). Contrast:
+`social_first > social_mixed`. The inverse-variance rerun (weights
+`1 / SE_phase1^2`) follows as a robustness check.
 
 ```{r h3a-gs}
 if (!exists("gs_combined")) {
   cat("Skipping H3a: no group-specificity data.\n")
 } else {
-  gs_social <- gs_combined |>
-    filter(condition %in% c("social_mixed", "social_first")) |>
-    mutate(
-      weight_p1 = 1 / se_phase1^2,
-      condition = factor(condition, levels = c("social_mixed", "social_first"))
-    )
+  h3a <- fit_h3a(gs_combined)
+  gs_social <- h3a$data
+  ols_h3a <- h3a$model
+  contrast_h3a <- h3a$contrasts
 
-  if (n_distinct(gs_social$condition) >= 2 && nrow(gs_social) >= 4) {
-    wls_h3a <- lm(
-      gs_phase1 ~ condition,
-      data = gs_social,
-      weights = weight_p1
-    )
-    print(summary(wls_h3a))
-    report_effect_sizes(wls_h3a)
-
-    em_h3a <- emmeans(wls_h3a, "condition")
-    contrast_h3a <- contrast(em_h3a, list(
-      H3a_socialfirst_gt_socialmixed = c(-1, 1)  # social_first - social_mixed
-    ))
+  if (!is.null(ols_h3a) && !is.null(contrast_h3a) && nrow(gs_social) >= 4) {
+    cat(sprintf("Games in the H3a model: %d\n", nrow(gs_social)))
+    print(knitr::kable(gs_social |> count(condition, name = "games")))
+    print(summary(ols_h3a))
+    report_effect_sizes(ols_h3a)
     print(summary(contrast_h3a, infer = c(TRUE, TRUE)))
 
     print(cohens_d_games(gs_social, "gs_phase1", "condition", "social_first", "social_mixed"))
 
     p_h3a <- as.data.frame(summary(contrast_h3a, infer = c(TRUE, TRUE)))$p.value
-    maybe_bayes_factor(p_h3a, "H3a social_first vs social_mixed", function() {
-      bf_wls_contrast(gs_social, "gs_phase1", levels = SOCIAL_CONDITIONS, weights = "weight_p1", name = "H3a")
+    # The primary two-condition OLS model refit in brms, unweighted; the null
+    # drops condition
+    bf_h3a <- maybe_bayes_factor(p_h3a, "H3a social_first vs social_mixed", function() {
+      bf_game_level_contrast(gs_social, "gs_phase1", levels = SOCIAL_CONDITIONS,
+                             contrast = c("social_first", "social_mixed"), name = "H3a")
     })
+
+    cat("\nRobustness: inverse-variance weights (1 / SE_phase1^2):\n")
+    print_weighted_check(h3a, fit_h3a(gs_combined, weights = "weight_p1"))
   } else {
-    cat("Insufficient data for H3a (need both social conditions).\n")
+    contrast_h3a <- NULL
+    cat("Insufficient data for H3a (need both social conditions with at least two games each):",
+        if (!is.null(h3a$note)) h3a$note else "", "\n")
   }
 }
 ```
@@ -362,6 +434,10 @@ if (exists("gs_social") && nrow(gs_social) > 0) {
 
 The primary contrast is `social_first > social_mixed` at Phase 1 block 3,
 when all three original group members have had one scheduled speaker turn.
+Blocks are counted from 1 here, as in the paper; the exported `blockNum` is
+0-indexed, so `within_group_block_pairs()` converts it once to a 1-indexed
+`block` column and the model uses blocks 2-6 on that scale (0-indexed
+blockNum 1-5), with the milestone at block 3 (0-indexed blockNum 2).
 Within-group pairwise similarities are averaged within group, tangram, and
 block. Available pairs contribute equally; means with no valid pairs are
 omitted, without substituting another block for a missing block-3 observation.
@@ -391,12 +467,9 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
     print(summary(m_h3b))
     print(h3b$summary)
     cat("Primary block-3 support criterion met:", h3b$supported, "\n")
-    # The model-specific Bayes-factor policy remains to be finalized. Do not
-    # substitute a test that removes all condition effects across all blocks.
-    if (BAYES_FACTORS != "never" &&
-        (BAYES_FACTORS == "always" || isTRUE(h3b$summary$p.value >= 0.05))) {
-      cat("H3b block-3 Bayes factor is not yet implemented; do not interpret non-significance as evidence for the null.\n")
-    }
+    # Bayes factors are preregistered for H1, H2, H3a, H4a, and H4b only; H3b
+    # reports the frequentist contrast, and a non-significant contrast is not
+    # evidence for the null.
   } else {
     cat("H3b inference skipped:", h3b$note, "\n")
   }
@@ -411,9 +484,10 @@ significant but the block-3 contrast is not.
 
 ```{r h3b-secondary-trend}
 if (exists("h3b") && !is.null(h3b$model)) {
+  # block_c is the 1-indexed block centered at the block-3 milestone
   m_h3b_trend <- fit_progressively(H3B_TREND_FORMULA, data = h3b$data)
   print(summary(m_h3b_trend))
-  slopes_h3b <- emtrends(m_h3b_trend, "condition", var = "blockNum_c",
+  slopes_h3b <- emtrends(m_h3b_trend, "condition", var = "block_c",
                          lmer.df = "satterthwaite", lmerTest.limit = Inf)
   print(summary(contrast(slopes_h3b, list(
     secondary_slope_socialfirst_minus_socialmixed = c(-1, 1)
@@ -424,13 +498,15 @@ if (exists("h3b") && !is.null(h3b$model)) {
 ```{r plot-h3b, fig.width=8, fig.height=5}
 if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
   # Bootstrap game means, not the overlapping pairs or groups within a game.
+  # `block` is 1-indexed (paper numbering); the milestone is block 3.
   conv_games <- p1_within_social |>
-    group_by(condition, gameId, group, blockNum) |>
+    mutate(block = as.integer(as.character(block))) |>
+    group_by(condition, gameId, group, block) |>
     summarise(similarity = mean(similarity), .groups = "drop") |>
-    group_by(condition, gameId, blockNum) |>
+    group_by(condition, gameId, block) |>
     summarise(similarity = mean(similarity), .groups = "drop")
   conv_by_block <- conv_games |>
-    group_by(condition, blockNum) |>
+    group_by(condition, block) |>
     group_modify(function(d, keys) {
       if (nrow(d) < 2L) {
         return(tibble(empirical_stat = mean(d$similarity),
@@ -440,7 +516,7 @@ if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
         select(empirical_stat, ci_lower, ci_upper)
     })
 
-  ggplot(conv_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
+  ggplot(conv_by_block, aes(x = block, y = empirical_stat, color = condition)) +
     geom_vline(xintercept = H3B_BLOCK, linetype = "dotted", color = "gray50") +
     geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
                 alpha = 0.15, color = NA) +
@@ -448,8 +524,9 @@ if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
     geom_point(size = 2) +
     scale_color_condition() +
     scale_fill_condition() +
+    scale_x_continuous(breaks = 1:6, limits = c(1, 6)) +
     labs(
-      x = "Block number (Phase 1)",
+      x = "Phase 1 block (1-indexed)",
       y = "Within-group cosine similarity",
       color = "Condition",
       title = "H3b: Within-group alignment by social condition",
@@ -469,6 +546,12 @@ uniqueness, and lower word frequency in `social_first`. Each is supported only
 if its own condition contrast has a two-tailed, unadjusted p < .05 and the
 predicted direction. All three results are reported; a lower-frequency effect
 alone does not support the concreteness or lexical-uniqueness predictions.
+
+Each measure is modeled on each speaker's final Phase 1 description of each
+tangram with the preregistered structure
+`measure ~ condition + (1 | game) + (1 | group) + (1 | participant) + (condition | tangram)`,
+where `group` is the game-unique original group. The game and group
+intercepts are retained through any simplification.
 
 All three measures are precomputed in Python (`compute_derived.py`) with
 consistent tokenization: each utterance is lowercased, split into alphabetic
@@ -503,7 +586,7 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
     if (nrow(p1_concrete) > 0) {
       cat("=== Concreteness ===\n")
       m_concrete <- fit_progressively(
-        concreteness ~ condition + (1 | playerId) + (condition | target),
+        concreteness ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (condition | target),
         data = p1_concrete
       )
       print(summary(m_concrete))
@@ -515,7 +598,7 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
     if (nrow(p1_unique) > 0) {
       cat("\n=== Lexical Uniqueness ===\n")
       m_uniqueness <- fit_progressively(
-        uniqueness ~ condition + (1 | playerId) + (condition | target),
+        uniqueness ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (condition | target),
         data = p1_unique
       )
       print(summary(m_uniqueness))
@@ -527,7 +610,7 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
     if (nrow(p1_freq) > 0) {
       cat("\n=== Word Frequency ===\n")
       m_freq <- fit_progressively(
-        mean_zipf_freq ~ condition + (1 | playerId) + (condition | target),
+        mean_zipf_freq ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (condition | target),
         data = p1_freq
       )
       print(summary(m_freq))
@@ -633,6 +716,41 @@ if (nrow(excl) == 0) {
 }
 ```
 
+## Social-identification components and opportunities
+
+Overall social-identification accuracy over eligible response opportunities is
+the primary H4a outcome. The table below breaks it into the parts the
+preregistration commits to reporting, by condition: how many in-group and
+out-group response opportunities there actually were, the proportion answered
+by the server's scoring cutoff, accuracy among those on-time answers, the
+in-group hit rate (answering "same group" to a speaker from the guesser's own
+original group), the out-group false-alarm rate (answering "same group" to a
+speaker from another group), and balanced accuracy, the mean of the hit rate
+and the out-group correct-rejection rate. Excluded observations are counted in
+`excluded` and left out of every rate. These components separate the signal
+from the response bias and show how the composition of the opportunities
+changes after dropout; they are descriptive and are not alternative support
+criteria for H4a. The short version is in `00_data_overview.qmd`.
+
+```{r h4a-components}
+if (!has_rows(social_p2)) {
+  cat("No social-identification opportunities in the social conditions.\n")
+} else {
+  social_components <- social_identification_components(social_p2, trials)
+  print(knitr::kable(
+    social_components,
+    digits = 3,
+    caption = "Signal-detection components of social identification, by condition"
+  ))
+  if (any(social_components$speaker_unknown > 0)) {
+    cat(sprintf(
+      "\n%d scored opportunit(ies) have no recorded speaker group and count in neither the in-group nor the out-group column.\n",
+      sum(social_components$speaker_unknown)
+    ))
+  }
+}
+```
+
 ## H4a: Social-identification accuracy
 
 `glmer(social_correct ~ condition + block_num + (block_num | game) + (block_num | listener) + (block_num | speaker) + (condition | tangram), family = binomial)`
@@ -669,7 +787,7 @@ if (nrow(social_guesses) > 0) {
 
       p_h4a <- as.data.frame(summary(contrast_h4a, infer = c(TRUE, TRUE)))$p.value
       # Same formula that converged above; the null drops the fixed effect of condition
-      maybe_bayes_factor(p_h4a, "H4a social_first vs social_mixed", function() {
+      bf_h4a <- maybe_bayes_factor(p_h4a, "H4a social_first vs social_mixed", function() {
         bf_glmm_condition(social_h4, formula(m_h4a), levels = SOCIAL_CONDITIONS, name = "H4a")
       })
     }
@@ -735,7 +853,7 @@ if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 
     print(summary(contrast_h4b, infer = c(TRUE, TRUE)))
 
     p_h4b <- as.data.frame(summary(contrast_h4b, infer = c(TRUE, TRUE)))$p.value
-    maybe_bayes_factor(p_h4b, "H4b social_mixed vs social_first", function() {
+    bf_h4b <- maybe_bayes_factor(p_h4b, "H4b social_mixed vs social_first", function() {
       bf_glmm_condition(p2_listener_social, formula(m_h4b), levels = SOCIAL_CONDITIONS, name = "H4b")
     })
   }
@@ -769,14 +887,15 @@ if (exists("p2_listener_social") && nrow(p2_listener_social) > 0) {
 
 # Robustness: Phase 2 results on a subset of games
 
-The preregistration commits to two robustness checks for the Phase 2 analyses
-(H1, H2, and H4): restricting to complete nine-player games, and restricting to
-games whose Phase 1 group specificity exceeded chance in the permutation test.
-`robustness_rerun()` (analysis/R/contrasts.R) refits the H1/H2 weighted
-regression and the H4 models on a subset of games and prints the planned
-contrasts next to the primary ones. If the restriction excludes no games, the
-results are identical to the primary analyses by construction and nothing is
-refit.
+The preregistration commits to sensitivity analyses for the Phase 2 analyses
+(H1, H2, and H4) on subsets of games: complete nine-player games and games
+that kept all three original groups. `robustness_rerun()`
+(analysis/R/contrasts.R) refits the H1/H2 equal-weight OLS regression and the
+H4 models on a subset of games and prints the planned contrasts next to the
+primary ones. If the restriction excludes no games, the results are identical
+to the primary analyses by construction and nothing is refit. The paper
+explicitly does not restrict analyses to games with statistically significant
+Phase 1 group specificity, so no such rerun appears here.
 
 ```{r robustness-helper}
 # The H4 models to rerun, with their planned contrast weights
@@ -793,25 +912,6 @@ h4_specs <- list(
        late = "lateClick",
        weights = list(H4b_socialmixed_gt_socialfirst = c(1, -1)))
 )
-```
-
-## Games with significant Phase 1 group specificity
-
-The permutation test is the one reported in the convention-formation checks
-(`01_outcome_neutral.qmd`); its cached results are reused when the pairwise
-similarities are unchanged.
-
-```{r robustness-significant-gs}
-if (has_pairwise && exists("gs_combined")) {
-  perm_p1 <- compute_group_specificity(pairwise_sim |> filter(window == "phase1_final"), derived_dir)$perm_results
-  significant_games <- perm_p1 |> filter(p_value < 0.05) |> pull(gameId)
-  cat(sprintf("%d of %d games have significant Phase 1 group specificity (permutation p < .05).\n",
-              length(significant_games), nrow(perm_p1)))
-  robustness_rerun(significant_games, "games with significant Phase 1 group specificity",
-                   gs = gs_combined, primary_contrasts = contrasts, h4 = h4_specs)
-} else {
-  cat("Skipping: no pairwise similarities.\n")
-}
 ```
 
 ## Description length as a covariate
@@ -833,10 +933,10 @@ if (!has_pairwise || !all(c("length1", "length2") %in% names(pairwise_sim))) {
     filter(phaseNum == 2) |>
     group_by(gameId) |>
     summarise(mean_length_p2 = mean(uttLength, na.rm = TRUE), .groups = "drop")
-  diag <- gs_combined |> left_join(length_by_game, by = "gameId")
-  cat("Mean Phase 2 description length by condition:\n")
+  diag <- gs_combined |> filter(both_endpoints) |> left_join(length_by_game, by = "gameId")
+  cat("Mean Phase 2 description length by condition (games with both endpoints):\n")
   print(knitr::kable(diag |> group_by(condition) |>
-                       summarise(games = n(), mean_length = mean(mean_length_p2), .groups = "drop"), digits = 2))
+                       summarise(games = n(), mean_length = mean(mean_length_p2, na.rm = TRUE), .groups = "drop"), digits = 2))
   if (nrow(diag) >= 4) {
     r <- cor(diag$mean_length_p2, diag$gs_phase2, use = "complete.obs")
     cat(sprintf("\nGame-level correlation between mean Phase 2 length and Phase 2 group specificity: r = %.2f\n", r))
@@ -851,7 +951,7 @@ if (!has_pairwise || !all(c("length1", "length2") %in% names(pairwise_sim))) {
                        inner_join(gs_adj |> select(gameId, gs_phase1_adj = gs_phase1, gs_phase2_adj = gs_phase2), by = "gameId") |>
                        mutate(gameId = substr(gameId, 1, 8)), digits = 3))
 
-  h12_adj <- fit_h12_wls(gs_adj)
+  h12_adj <- fit_h12(gs_adj)
   if (!is.null(h12_adj$contrasts) && all(table(h12_adj$data$condition) >= 2)) {
     cat("\nH1/H2 with length-adjusted group specificity:\n")
     print(knitr::kable(bind_rows(contrast_table(contrasts, "primary"),
@@ -886,41 +986,55 @@ with each of them 12 times in expectation over the 36 trials; when a group was
 removed at the accuracy screen, the six remaining players reshuffle across two
 groups and every out-group pair meets twice as often. The preregistration lets
 such games contribute under the outcome-specific inclusion rules, so the Phase 2
-results are checked here with the number of active groups as a covariate and,
-as a sensitivity split, on the games that kept all three groups. `activeGroups`
-in games.csv is the number of original groups still active at the end of the
-game; the per-game roster is in `00_data_overview.qmd`.
+results are checked here with the number of active original groups as a
+covariate and, as a sensitivity split, on the games that kept all three groups
+throughout Phase 2. The covariate is `activeGroupsMin`, the minimum number of
+active original groups during Phase 2 (a group that is removed partway through
+Phase 2 counts as lost for the whole check); when the pipeline has not written
+that column, `activeGroups`, the number of original groups still active at the
+end of the game, is used with a note. The per-game roster is in
+`00_data_overview.qmd`.
 
 ```{r robustness-roster-size}
 if (!exists("gs_combined")) {
   cat("Skipping: no group-specificity estimates.\n")
 } else {
-  roster <- games |>
-    filter(!is.na(condition)) |>
-    select(gameId, activeGroups)
-  three_groups <- roster |> filter(activeGroups == 3) |> pull(gameId)
-  cat(sprintf("%d of %d games kept all three original groups.\n", length(three_groups), nrow(roster)))
-  robustness_rerun(three_groups, "games with three active groups",
+  if ("activeGroupsMin" %in% names(games)) {
+    roster <- games |>
+      filter(!is.na(condition)) |>
+      transmute(gameId, activeGroupsMin = as.integer(activeGroupsMin))
+    cat("Covariate: activeGroupsMin, the minimum number of active original groups during Phase 2.\n")
+  } else {
+    roster <- games |>
+      filter(!is.na(condition)) |>
+      transmute(gameId, activeGroupsMin = as.integer(activeGroups))
+    cat("NOTE: games.csv has no activeGroupsMin column (regenerate with the current pipeline);",
+        "falling back to activeGroups, the number of original groups active at the end of the game.\n")
+  }
+  three_groups <- roster |> filter(activeGroupsMin == 3) |> pull(gameId)
+  cat(sprintf("%d of %d games kept all three original groups throughout Phase 2.\n",
+              length(three_groups), nrow(roster)))
+  robustness_rerun(three_groups, "games with three active groups throughout Phase 2",
                    gs = gs_combined, primary_contrasts = contrasts, h4 = h4_specs)
 
   gs_rs <- gs_combined |>
     left_join(roster, by = "gameId") |>
-    mutate(activeGroups = factor(activeGroups))
-  if (n_distinct(gs_rs$activeGroups) < 2) {
-    cat("\nEvery game has the same number of active groups; the covariate is not estimable.\n")
+    mutate(activeGroupsMin = factor(activeGroupsMin))
+  if (n_distinct(gs_rs$activeGroupsMin) < 2) {
+    cat("\nEvery game has the same minimum number of active groups; the covariate is not estimable.\n")
   } else {
-    cat("\nGames per condition and number of active groups:\n")
-    print(knitr::kable(gs_rs |> count(condition, activeGroups)))
+    cat("\nGames per condition and minimum number of active groups:\n")
+    print(knitr::kable(gs_rs |> count(condition, activeGroupsMin)))
     # With few games the covariate can be nested in condition (every two-group
     # game in one condition), which emmeans refuses to contrast; report that
     # rather than stop the render.
     not_estimable <- function(e) list(model = NULL, contrasts = NULL, note = conditionMessage(e))
-    h12_rs <- tryCatch(fit_h12_wls(gs_rs, covariate = "gs_phase1 + activeGroups"), error = not_estimable)
+    h12_rs <- tryCatch(fit_h12(gs_rs, covariate = "gs_phase1 + activeGroupsMin"), error = not_estimable)
     if (is.null(h12_rs$contrasts) || any(is.na(coef(h12_rs$model)))) {
-      cat("\nH1/H2 with the number of active groups as a covariate is not estimable in this dataset",
+      cat("\nH1/H2 with the minimum number of active groups as a covariate is not estimable in this dataset",
           if (!is.null(h12_rs$note)) paste0(" (", h12_rs$note, ")"), ".\n", sep = "")
     } else {
-      cat("\nH1/H2 with the number of active groups as a covariate:\n")
+      cat("\nH1/H2 with the minimum number of active groups as a covariate:\n")
       print(knitr::kable(bind_rows(contrast_table(contrasts, "primary"),
                                    contrast_table(h12_rs$contrasts, "with active groups")), digits = 3))
     }
@@ -928,11 +1042,11 @@ if (!exists("gs_combined")) {
     for (spec in h4_specs) {
       if (is.null(spec$data) || is.null(spec$model) || !"gameId" %in% names(spec$data)) next
       d <- spec$data |>
-        select(-any_of("activeGroups")) |>
+        select(-any_of(c("activeGroups", "activeGroupsMin"))) |>
         left_join(roster, by = "gameId") |>
-        mutate(activeGroups = factor(activeGroups))
-      if (n_distinct(d$activeGroups) < 2) next
-      m_rs <- fit_progressively(update(H4_FORMULA, . ~ . + activeGroups), data = d, family = binomial)
+        mutate(activeGroupsMin = factor(activeGroupsMin))
+      if (n_distinct(d$activeGroupsMin) < 2) next
+      m_rs <- fit_progressively(update(H4_FORMULA, . ~ . + activeGroupsMin), data = d, family = binomial)
       if (!inherits(m_rs, "glmerMod")) next
       cat(sprintf("\n%s with the number of active groups as a covariate (%s):\n", spec$name, random_effects_structure(m_rs)))
       rs_contrast <- tryCatch(
@@ -951,10 +1065,11 @@ if (!exists("gs_combined")) {
 
 ## Tangram set as a covariate
 
-The paper notes that set-level differences in difficulty are absorbed by the
-tangram random effects and the game-level residual, and commits to confirming
-that results are unchanged with tangram set as a covariate. The two sets are
-counterbalanced across games within each condition.
+Tangram sets are balanced within condition, and the paper states that tangram
+set enters the game-level condition regressions only in a sensitivity
+analysis, not as a primary covariate. This section is that sensitivity
+analysis: the H1/H2 regression and the H4 models are refit with tangram set as
+a covariate.
 
 ```{r robustness-tangram-set}
 if (!exists("gs_combined")) {
@@ -968,7 +1083,7 @@ if (!exists("gs_combined")) {
   cat("Games per condition and tangram set:\n")
   print(knitr::kable(gs_ts |> count(condition, tangramSet)))
 
-  h12_ts <- fit_h12_wls(gs_ts, covariate = "gs_phase1 + tangramSet")
+  h12_ts <- fit_h12(gs_ts, covariate = "gs_phase1 + tangramSet")
   if (!is.null(h12_ts$contrasts)) {
     cat("\nH1/H2 with tangram set as a covariate:\n")
     print(knitr::kable(bind_rows(contrast_table(contrasts, "primary"),
@@ -1040,4 +1155,218 @@ for (spec in h4_specs) {
                             spec$weights), "late arrivals excluded")
   ), digits = 3))
 }
+```
+
+# Robustness: content-word Jaccard similarity
+
+The preregistered robustness measure for every similarity-based hypothesis is
+the Jaccard overlap of the two descriptions' content-word sets, which replaces
+the sentence-embedding cosine with a purely lexical measure.
+`compute_derived.py` writes the same pairs as the SBERT tables, in the same
+order, with `similarity` recomputed as that overlap
+(`pairwise_similarities_jaccard.csv`, `block_pairwise_similarities_jaccard.csv`).
+A pair in which either description has no content words has no Jaccard value;
+those pairs are omitted, as the preregistration specifies, so their coverage
+is reported first and every estimate below rests on the pairs that remain.
+H1, H2, H3a, and the H3b block-3 contrast are refit on these tables and shown
+beside the primary SBERT results.
+
+```{r robustness-jaccard-coverage}
+if (!has_rows(pairwise_sim_jaccard)) {
+  cat(sprintf(
+    "Skipping: %s not found in analysis/derived/%s/ (regenerate with compute_derived.py).\n",
+    pairwise_file("jaccard"), DATASET
+  ))
+} else {
+  cat("Endpoint pairs with and without a Jaccard similarity:\n")
+  print(knitr::kable(similarity_coverage(pairwise_sim_jaccard, games), digits = 3))
+}
+if (has_rows(block_pairwise_sim_jaccard)) {
+  cat("\nWithin-group block pairs with and without a Jaccard similarity:\n")
+  print(knitr::kable(
+    similarity_coverage(block_pairwise_sim_jaccard, games, by = c("phaseNum", "condition")),
+    digits = 3
+  ))
+}
+```
+
+```{r robustness-jaccard-h12-h3a}
+if (!has_rows(pairwise_sim_jaccard)) {
+  cat("Skipping: no Jaccard pairwise similarities.\n")
+} else {
+  # Drop the pairs without a Jaccard value, then run the same equal-weight
+  # endpoint pipeline as the primary analysis
+  gs_table_jaccard <- game_specificity_table(
+    pairwise_sim_jaccard |> filter(is.finite(similarity)),
+    games,
+    measure = "jaccard"
+  )
+  gs_jaccard <- gs_wide(gs_table_jaccard)
+
+  cat("Endpoint coverage on the Jaccard table:\n")
+  print(knitr::kable(endpoint_coverage_summary(gs_table_jaccard)))
+
+  h12_jaccard <- fit_h12(gs_jaccard)
+  h12_jaccard_reported <- !is.null(h12_jaccard$contrasts) &&
+    all(table(h12_jaccard$data$condition) >= 2)
+  if (!h12_jaccard_reported) {
+    cat("\nH1/H2 on Jaccard similarity needs at least two games per condition; skipped",
+        if (!is.null(h12_jaccard$note)) paste0(" (", h12_jaccard$note, ")"), ".\n", sep = "")
+  } else {
+    cat(sprintf("\nH1/H2 on Jaccard similarity (%d games):\n", nrow(h12_jaccard$data)))
+    print(knitr::kable(bind_rows(
+      contrast_table(if (exists("contrasts")) contrasts else NULL, "primary (SBERT)"),
+      contrast_table(h12_jaccard$contrasts, "Jaccard")
+    ), digits = 3))
+  }
+
+  h3a_jaccard <- fit_h3a(gs_jaccard)
+  h3a_jaccard_reported <- !is.null(h3a_jaccard$contrasts) && nrow(h3a_jaccard$data) >= 4
+  if (!h3a_jaccard_reported) {
+    cat("\nH3a on Jaccard similarity needs both social conditions with at least two games each; skipped",
+        if (!is.null(h3a_jaccard$note)) paste0(" (", h3a_jaccard$note, ")"), ".\n", sep = "")
+  } else {
+    cat(sprintf("\nH3a on Jaccard similarity (%d games):\n", nrow(h3a_jaccard$data)))
+    print(knitr::kable(bind_rows(
+      contrast_table(if (exists("contrast_h3a")) contrast_h3a else NULL, "primary (SBERT)"),
+      contrast_table(h3a_jaccard$contrasts, "Jaccard")
+    ), digits = 3))
+  }
+}
+```
+
+```{r robustness-jaccard-h3b}
+if (!has_rows(block_pairwise_sim_jaccard)) {
+  cat(sprintf(
+    "Skipping H3b on Jaccard similarity: %s not found.\n",
+    block_pairwise_file("jaccard")
+  ))
+} else {
+  h3b_jaccard <- fit_h3b(within_group_block_means(
+    block_pairwise_sim_jaccard, games, phase = 1, conditions = SOCIAL_CONDITIONS
+  ))
+  if (is.null(h3b_jaccard$model)) {
+    cat("H3b on Jaccard similarity skipped:", h3b_jaccard$note, "\n")
+  } else {
+    cat(sprintf("H3b block-%d contrast on Jaccard similarity (%s):\n",
+                H3B_BLOCK, random_effects_structure(h3b_jaccard$model)))
+    print(knitr::kable(bind_rows(
+      contrast_table(if (exists("h3b")) h3b$contrast else NULL, "primary (SBERT)"),
+      contrast_table(h3b_jaccard$contrast, "Jaccard")
+    ), digits = 3))
+    cat("Block-3 support criterion met on Jaccard similarity:", h3b_jaccard$supported, "\n")
+  }
+}
+```
+
+# Statistics for the manuscript
+
+Every planned-contrast estimate, confidence interval, p-value, and Bayes
+factor printed above is written to `writing/manuscript/stats/primary.tex` as a
+`\newcommand` macro, with names prefixed `primary`, so the manuscript never
+carries a hand-copied number. A hypothesis the dataset cannot support
+contributes no macro, which makes an unavailable number fail loudly in LaTeX
+rather than read as a result.
+
+```{r write-stats}
+if (exists("gs_combined") && has_rows(gs_combined)) {
+  macros <- c(macros, list(
+    primaryNGamesBothEndpoints = sum(gs_combined$both_endpoints),
+    primaryNGamesPhaseOneEndpoint = sum(gs_combined$eligible_phase1 %in% TRUE),
+    primaryNGameWindows = nrow(gs_table)
+  ))
+}
+
+# H1 and H2: the primary equal-weight OLS contrasts, their Bayes factors, and
+# the inverse-variance robustness rerun
+if (exists("contrasts") && !is.null(contrasts)) {
+  macros <- c(
+    macros,
+    list(primaryNGamesHOneTwo = nrow(gs_h12)),
+    contrast_macros("primaryHOne", contrasts, row = 1),
+    contrast_macros("primaryHTwo", contrasts, row = 2)
+  )
+  if (exists("bf_h1")) macros <- c(macros, bf_macros("primaryHOne", bf_h1))
+  if (exists("bf_h2")) macros <- c(macros, bf_macros("primaryHTwo", bf_h2))
+}
+if (exists("h12_wls") && !is.null(h12_wls$contrasts)) {
+  macros <- c(
+    macros,
+    contrast_macros("primaryHOneWls", h12_wls$contrasts, row = 1),
+    contrast_macros("primaryHTwoWls", h12_wls$contrasts, row = 2)
+  )
+}
+
+# H3a
+if (exists("contrast_h3a") && !is.null(contrast_h3a)) {
+  macros <- c(
+    macros,
+    list(primaryNGamesHThreeA = nrow(gs_social)),
+    contrast_macros("primaryHThreeA", contrast_h3a, row = 1)
+  )
+  if (exists("bf_h3a")) macros <- c(macros, bf_macros("primaryHThreeA", bf_h3a))
+}
+
+# H3b: the block-3 contrast
+if (exists("h3b") && !is.null(h3b$summary) && nrow(h3b$summary) == 1) {
+  sm <- h3b$summary
+  lo <- if ("lower.CL" %in% names(sm)) sm$lower.CL else sm$asymp.LCL
+  hi <- if ("upper.CL" %in% names(sm)) sm$upper.CL else sm$asymp.UCL
+  macros <- c(macros, list(
+    primaryHThreeBBlock = H3B_BLOCK,
+    primaryHThreeBEst = fmt_stat(sm$estimate),
+    primaryHThreeBLo = fmt_stat(lo),
+    primaryHThreeBHi = fmt_stat(hi),
+    primaryHThreeBP = fmt_pval(sm$p.value)
+  ))
+}
+
+# H3c: the three description properties (reference level is social_mixed, so
+# the coefficient is social_first minus social_mixed)
+if (exists("m_concrete")) macros <- c(macros, coef_macros("primaryHThreeCConcrete", m_concrete, "conditionsocial_first"))
+if (exists("m_uniqueness")) macros <- c(macros, coef_macros("primaryHThreeCUnique", m_uniqueness, "conditionsocial_first"))
+if (exists("m_freq")) macros <- c(macros, coef_macros("primaryHThreeCFreq", m_freq, "conditionsocial_first"))
+
+# H4a and H4b: odds-ratio contrasts on the response scale, with their Bayes
+# factors
+if (exists("contrast_h4a")) {
+  macros <- c(macros, contrast_macros("primaryHFourA", contrast_h4a, row = 1))
+  if (exists("bf_h4a")) macros <- c(macros, bf_macros("primaryHFourA", bf_h4a))
+}
+if (exists("contrast_h4b")) {
+  macros <- c(macros, contrast_macros("primaryHFourB", contrast_h4b, row = 1))
+  if (exists("bf_h4b")) macros <- c(macros, bf_macros("primaryHFourB", bf_h4b))
+}
+
+# The signal-detection components of H4a, pooled over the social conditions
+if (exists("social_components") && has_rows(social_components)) {
+  tot <- function(col) sum(social_components[[col]], na.rm = TRUE)
+  macros <- c(macros, list(
+    primaryNSocialOpportunities = fmt_count(tot("opportunities")),
+    primaryNSocialInGroup = fmt_count(tot("in_group_opportunities")),
+    primaryNSocialOutGroup = fmt_count(tot("out_group_opportunities")),
+    primarySocialOnTimeRate = fmt_stat(tot("on_time") / tot("scored")),
+    primarySocialHitRate = fmt_stat(sum(social_components$hit_rate * social_components$in_group_answered, na.rm = TRUE) /
+                                      tot("in_group_answered")),
+    primarySocialFalseAlarmRate = fmt_stat(sum(social_components$false_alarm_rate * social_components$out_group_answered, na.rm = TRUE) /
+                                             tot("out_group_answered"))
+  ))
+}
+
+# The Jaccard robustness reruns
+if (exists("h12_jaccard_reported") && isTRUE(h12_jaccard_reported)) {
+  macros <- c(
+    macros,
+    contrast_macros("primaryHOneJaccard", h12_jaccard$contrasts, row = 1),
+    contrast_macros("primaryHTwoJaccard", h12_jaccard$contrasts, row = 2)
+  )
+}
+if (exists("h3a_jaccard_reported") && isTRUE(h3a_jaccard_reported)) {
+  macros <- c(macros, contrast_macros("primaryHThreeAJaccard", h3a_jaccard$contrasts, row = 1))
+}
+if (exists("h3b_jaccard") && !is.null(h3b_jaccard$contrast)) {
+  macros <- c(macros, contrast_macros("primaryHThreeBJaccard", h3b_jaccard$contrast, row = 1))
+}
+
+write_stats_tex(macros, stats_file("primary"), source = "analysis/02_primary_analysis.qmd")
 ```

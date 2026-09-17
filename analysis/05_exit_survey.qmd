@@ -25,6 +25,14 @@ list2env(load_tables(), envir = globalenv())
 survey <- exit_survey_responses(players, games)
 cat("Respondents (any survey field answered):", nrow(survey), "of",
     nrow(players |> semi_join(games |> filter(!is.na(condition)), by = "gameId")), "players in real games\n")
+
+# Statistics this notebook reports, written as LaTeX macros at the end
+# (writing/manuscript/stats/survey.tex)
+macros <- list()
+```
+
+```{r dataset-banner, results='asis', echo=FALSE}
+dataset_banner(games = games)
 ```
 
 # Who responded
@@ -122,6 +130,10 @@ if (!has_field(survey, "feltHuman")) {
   } else {
     cat(sprintf("\n%d game(s) flagged for inspection:\n", nrow(flags)))
     print(knitr::kable(flags |> mutate(gameId = substr(gameId, 1, 10))))
+    group_flags <- felt_human_flags(survey, level = "group")
+    cat(sprintf("\n%d original group(s) flagged for inspection of their chat logs:\n", nrow(group_flags)))
+    print(knitr::kable(group_flags |> mutate(gameId = substr(gameId, 1, 10)) |>
+                         select(condition, gameId, originalGroup, respondents, said_no, players_saying_no)))
   }
 }
 ```
@@ -172,4 +184,69 @@ if (has_field(survey, "feedback")) {
                        select(condition, originalGroup, respondent, feedback) |> arrange(condition, originalGroup),
                      caption = "Open feedback"))
 }
+```
+
+# Statistics for the manuscript
+
+The survey numbers the manuscript quotes are written to
+`writing/manuscript/stats/survey.tex` as `\newcommand` macros, with names
+prefixed `survey`. An item the dataset never collected contributes no macro
+rather than a zero, so a missing number fails loudly in LaTeX instead of
+reading as a result.
+
+```{r write-stats}
+item_macros <- function(prefix, field) {
+  if (!has_field(survey, field)) return(list())
+  v <- survey[[field]][!is.na(survey[[field]])]
+  if (length(v) == 0) return(list())
+  setNames(
+    list(length(v), fmt_stat(mean(v), 2), fmt_stat(sd(v), 2)),
+    paste0(prefix, c("N", "Mean", "SD"))
+  )
+}
+
+yes_macros <- function(prefix, field) {
+  if (!has_field(survey, field)) return(list())
+  v <- survey[[field]][!is.na(survey[[field]])]
+  if (length(v) == 0) return(list())
+  setNames(
+    list(length(v), sum(v == "yes"), fmt_stat(mean(v == "yes"))),
+    paste0(prefix, c("N", "Yes", "PropYes"))
+  )
+}
+
+macros <- c(
+  macros,
+  list(
+    surveyNRespondents = nrow(survey),
+    surveyNPlayers = nrow(players |> semi_join(games |> filter(!is.na(condition)), by = "gameId")),
+    surveyNRemovedRespondents = sum(survey$respondent == "removed", na.rm = TRUE)
+  ),
+  item_macros("surveyIdentification", "groupIdentification"),
+  item_macros("surveyCloseness", "groupCloseness"),
+  yes_macros("surveyGroupLanguage", "groupLanguage"),
+  item_macros("surveyAge", "age")
+)
+
+if (has_field(survey, "feltHuman")) {
+  fh_all <- survey$feltHuman[!is.na(survey$feltHuman)]
+  flags <- felt_human_flags(survey)
+  group_flags <- felt_human_flags(survey, level = "group")
+  macros <- c(macros, list(
+    surveyFeltHumanN = length(fh_all),
+    surveyFeltHumanNo = sum(fh_all == "no"),
+    surveyFeltHumanPropNo = fmt_stat(mean(fh_all == "no")),
+    surveyNGamesFlagged = nrow(flags),
+    surveyNGroupsFlagged = nrow(group_flags)
+  ))
+}
+if (has_field(survey, "understood")) {
+  u <- survey$understood[!is.na(survey$understood)]
+  macros <- c(macros, list(
+    surveyUnderstoodN = length(u),
+    surveyUnderstoodYes = sum(u == "yes")
+  ))
+}
+
+write_stats_tex(macros, stats_file("survey"), source = "analysis/05_exit_survey.qmd")
 ```
