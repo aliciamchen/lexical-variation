@@ -207,6 +207,9 @@ class TestSchemaValidation:
             "target", "roundScore", "roundId", "trialNum", "tangramSet",
             "speakerId", "inGroupSpeaker", "groupSize", "speakerReassigned",
             "reshuffleMode",
+            # the server's own record of the network, empty in older exports
+            "serverSpeakerId", "serverInGroupListener", "serverGroupSize",
+            "reshuffleGroups", "reshuffleTrios", "reshuffleTriosOk", "reshufflePairs",
         ]
         missing = set(required) - set(trials.columns)
         assert not missing, f"trials.csv missing columns: {missing}"
@@ -242,6 +245,7 @@ class TestSchemaValidation:
         required = [
             "gameId", "playerId", "originalGroup", "blockNum", "phase",
             "target", "socialGuess", "socialGuessCorrect", "tangramSet",
+            "speakerWasSameGroup",
         ]
         missing = set(required) - set(social_guesses.columns)
         assert not missing, f"social_guesses.csv missing columns: {missing}"
@@ -283,6 +287,27 @@ class TestGameStructure:
                 assert game["activeGroups"] >= 2, (
                     f"Game {game['gameId']}: only {game['activeGroups']} active "
                     f"group(s) but the game was not terminated"
+                )
+
+    def test_active_groups_min_is_the_smallest_phase2_roster(self, games, trials):
+        """activeGroupsMin is the fewest groups any Phase 2 trial was played
+        with. It is bounded by the design, and where the server recorded no
+        reshuffle count (the pilot) it must equal what the trials show."""
+        assert "activeGroupsMin" in games.columns
+        assert games["activeGroupsMin"].notna().all()
+        assert games["activeGroupsMin"].between(1, NUM_GROUPS).all()
+        p2_speakers = trials[(trials["phaseNum"] == 2) & (trials["role"] == "speaker")]
+        from_trials = (
+            p2_speakers.groupby(["gameId", "roundId"])["currentGroup"].nunique()
+            .groupby("gameId").min()
+        )
+        if "reshuffleGroups" in trials.columns and trials["reshuffleGroups"].notna().any():
+            pytest.skip("the server's reshuffle counts take precedence in this dataset")
+        for _, game in games.iterrows():
+            if game["gameId"] in from_trials.index:
+                assert game["activeGroupsMin"] == from_trials[game["gameId"]], (
+                    f"Game {game['gameId']}: activeGroupsMin={game['activeGroupsMin']} but the "
+                    f"Phase 2 trials show a minimum of {from_trials[game['gameId']]} groups"
                 )
 
     def test_phase1_blocks(self, games):
@@ -901,6 +926,57 @@ class TestReshuffleNetwork:
         actual = _truthy(known["speakerReassigned"])
         assert (expected == actual).all(), "speakerReassigned disagrees with the speaker's rotation index"
 
+    def test_server_speaker_record_matches_the_derived_speaker(self, trials):
+        """Where the server wrote speaker_id (September 2026 onward), it must
+        name the same player the trio membership does."""
+        recorded = trials[trials["serverSpeakerId"].notna()]
+        if recorded.empty:
+            pytest.skip("serverSpeakerId is empty in this dataset (the pilot exports predate it)")
+        mismatch = recorded[recorded["serverSpeakerId"] != recorded["speakerId"]]
+        assert mismatch.empty, f"{len(mismatch)} rows where the server's speaker_id is not the derived speakerId"
+
+    def test_server_in_group_record_matches_the_derived_flag(self, trials):
+        listeners = trials[(trials["role"] == "listener") & trials["serverInGroupListener"].notna()]
+        if listeners.empty:
+            pytest.skip("serverInGroupListener is empty in this dataset (the pilot exports predate it)")
+        server = _truthy(listeners["serverInGroupListener"])
+        derived = _truthy(listeners["inGroupSpeaker"])
+        assert (server == derived).all(), (
+            f"{int((server != derived).sum())} listener rows where in_group_listener disagrees with inGroupSpeaker"
+        )
+
+    def test_server_group_size_matches_the_derived_size(self, trials):
+        recorded = trials[trials["serverGroupSize"].notna()]
+        if recorded.empty:
+            pytest.skip("serverGroupSize is empty in this dataset (the pilot exports predate it)")
+        assert (recorded["serverGroupSize"].astype(int) == recorded["groupSize"].astype(int)).all(), (
+            "the server's group_size disagrees with the number of players in the group"
+        )
+
+    def test_reshuffle_counts_agree_with_the_trios(self, trials):
+        """The reshuffle's own tally (groups, trios, trios with one in-group
+        listener, pairs) must describe the groups the trials show."""
+        recorded = trials[trials["reshuffleGroups"].notna()]
+        if recorded.empty:
+            pytest.skip("reshuffle counts were not recorded in this dataset (the pilot exports predate them)")
+        for (gid, rid), r in recorded.groupby(["gameId", "roundId"]):
+            groups = [g for _, g in r.groupby("currentGroup")]
+            trios = [g for g in groups if len(g) == GROUP_SIZE]
+            trios_ok = [
+                g for g in trios
+                if _truthy(g[g["role"] == "listener"]["inGroupSpeaker"]).sum() == 1
+            ]
+            pairs = [g for g in groups if len(g) == 2]
+            first = r.iloc[0]
+            expected = (len(groups), len(trios), len(trios_ok), len(pairs))
+            actual = tuple(
+                int(first[c]) for c in ("reshuffleGroups", "reshuffleTrios", "reshuffleTriosOk", "reshufflePairs")
+            )
+            assert actual == expected, (
+                f"Game {gid}, round {rid}: reshuffle counts (groups, trios, ok, pairs) = {actual}, "
+                f"but the trials show {expected}"
+            )
+
     def test_reshuffle_mode_agrees_with_the_trio_composition(self, trials):
         """Where the server recorded a reshuffle mode (full sample), 'constrained'
         must mean every group that trial was a trio with exactly one in-group
@@ -919,6 +995,49 @@ class TestReshuffleNetwork:
             assert (mode == "constrained") == all_ok, (
                 f"Game {gid}, round {rid}: reshuffleMode={mode} but the trios say {'constrained' if all_ok else 'reduced'}"
             )
+
+
+class TestParticipantExclusions:
+    """`excluded` / `exclusionReason` on trials.csv and social_guesses.csv.
+
+    An exclusion is never silent: every flagged row has a reason, an unflagged
+    row has none, every listener of an excluded speaker is flagged with them,
+    and the opportunity frame agrees with the trials it was built from.
+    """
+
+    def test_columns_are_consistent_on_trials(self, trials):
+        assert set(trials["excluded"].dropna().unique()) <= {True, False}
+        reason = trials["exclusionReason"].fillna("")
+        assert (_truthy(trials["excluded"]) == (reason != "")).all(), (
+            "every excluded row needs a reason and no other row may have one"
+        )
+        excluded_players = set(trials.loc[_truthy(trials["excluded"]) & ~reason.str.startswith("speaker excluded"), "playerId"])
+        listeners = trials[(trials["role"] == "listener") & trials["speakerId"].isin(excluded_players)]
+        assert _truthy(listeners["excluded"]).all(), "a listener of an excluded speaker is not flagged"
+        own = trials[trials["playerId"].isin(excluded_players)]
+        assert _truthy(own["excluded"]).all()
+
+    def test_social_guesses_agree_with_trials(self, social_guesses, trials):
+        if social_guesses.empty:
+            pytest.skip("no social-guessing games in this dataset")
+        keys = ["gameId", "playerId", "roundId"]
+        merged = social_guesses[keys + ["excluded"]].merge(
+            trials[keys + ["excluded"]], on=keys, suffixes=("", "Trial")
+        )
+        assert len(merged) == len(social_guesses)
+        assert (_truthy(merged["excluded"]) == _truthy(merged["excludedTrial"])).all()
+
+    def test_excluded_players_have_no_messages_or_utterances(
+        self, trials, messages, speaker_utterances
+    ):
+        reason = trials["exclusionReason"].fillna("")
+        excluded_players = set(
+            trials.loc[_truthy(trials["excluded"]) & ~reason.str.startswith("speaker excluded"), "playerId"]
+        )
+        if not excluded_players:
+            pytest.skip("no participant exclusions in this dataset")
+        assert not messages["senderId"].isin(excluded_players).any()
+        assert not speaker_utterances["playerId"].isin(excluded_players).any()
 
 
 # ============ 8. IDENTITY MASKING ============
@@ -1264,6 +1383,27 @@ class TestSocialGuessing:
             social_guesses["responseOpportunity"]
             == social_guesses["hasSpeakerMessage"]
         ).all(), "social responseOpportunity disagrees with hasSpeakerMessage"
+
+    def test_speaker_was_same_group_is_the_ground_truth_the_guess_was_scored_on(
+        self, social_guesses, trials
+    ):
+        """The server's record of whether the speaker shared the listener's
+        original group must match the groups in trials.csv, and the scored
+        correctness must be exactly guess-versus-record."""
+        recorded = social_guesses[social_guesses["speakerWasSameGroup"].notna()]
+        if recorded.empty:
+            pytest.skip("speakerWasSameGroup is empty in this dataset")
+        og = trials.drop_duplicates("playerId").set_index("playerId")["originalGroup"]
+        truth = recorded["originalGroup"] == recorded["speakerId"].map(og)
+        assert (_truthy(recorded["speakerWasSameGroup"]) == truth).all(), (
+            "speakerWasSameGroup disagrees with the speaker's original group"
+        )
+        guessed_same = recorded["socialGuess"] == "same_group"
+        expected_correct = _truthy(recorded["speakerWasSameGroup"]) == guessed_same
+        scored = recorded[recorded["socialGuessCorrect"].notna()]
+        assert (_truthy(scored["socialGuessCorrect"]) == expected_correct[scored.index]).all(), (
+            "socialGuessCorrect is not the guess compared with speakerWasSameGroup"
+        )
 
     def test_social_guess_correct_is_boolean(self, social_guesses):
         """socialGuessCorrect should be boolean (NaN allowed for idle rounds where speaker didn't send a message)."""
@@ -2062,6 +2202,21 @@ class TestExitSurvey:
 
 class TestDataCompleteness:
     """Validate that the dataset is complete and internally consistent."""
+
+    def test_dropouts_file_exists_and_is_disjoint_from_players(self, players):
+        """dropouts.csv (written by combine_runs.py) lists every player record
+        with no real game -- quiz failures, lobby timeouts, arrivals after the
+        games were full -- so attrition can be reported. It always exists, at
+        least as a header, and never overlaps players.csv."""
+        path = DATA_DIR / "dropouts.csv"
+        assert path.exists(), "dropouts.csv is missing; rerun combine_runs.py"
+        dropouts = pd.read_csv(path)
+        assert dropouts.columns.tolist() == ["playerId", "batchId", "ended", "exitReason", "quizAttempts"]
+        assert not dropouts["playerId"].isin(set(players["playerId"])).any(), (
+            "a dropout record is also in players.csv"
+        )
+        assert dropouts["playerId"].is_unique
+        assert pd.to_numeric(dropouts["quizAttempts"], errors="raise").dropna().between(1, 3).all()
 
     def test_at_least_one_real_game(self, games):
         assert len(games) > 0, "No real (non-test) games found in games.csv"

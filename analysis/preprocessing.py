@@ -4,15 +4,25 @@ Preprocessing script for Empirica experiment data.
 Parses raw Empirica export CSVs and produces clean analysis-ready CSVs.
 
 Usage:
-    uv run python analysis/preprocessing.py experiment/export-data/ --output analysis/processed_data/
+    uv run python analysis/preprocessing.py data/<dataset>/raw_anonymized/ --output data/<dataset>/
+
+process_data.py runs this as its first step with those two paths for the
+active dataset.
 """
 
 import argparse
 import json
 import re
+from collections import Counter
 from pathlib import Path
 
 import pandas as pd
+
+from dataset_paths import (
+    FILTERED_UTTERANCES_FILE,
+    FILTERED_UTTERANCES_SIDECAR,
+    filtered_utterances_status,
+)
 
 
 def drop_last_changed_cols(df: pd.DataFrame) -> pd.DataFrame:
@@ -20,14 +30,45 @@ def drop_last_changed_cols(df: pd.DataFrame) -> pd.DataFrame:
     return df[[c for c in df.columns if not c.endswith("LastChangedAt")]]
 
 
-def parse_json_field(val):
-    """Safely parse a JSON string, returning None on failure."""
+# Malformed JSON values swallowed by parse_json_field, counted per column so
+# that a corrupt export is reported once per column instead of silently
+# yielding empty values. Reported by report_malformed_json() at the end of a
+# run (and reset), so a value that cannot be parsed can never pass unnoticed.
+_MALFORMED_JSON: Counter = Counter()
+
+
+def parse_json_field(val, column: str | None = None):
+    """Safely parse a JSON string, returning None on failure.
+
+    A missing or empty value is simply None. A value that is present but not
+    valid JSON is also None, but is counted under `column` (or "<unknown>")
+    so the run can report how many such values each column had.
+    """
     if pd.isna(val) or val == "":
         return None
     try:
         return json.loads(val)
     except (json.JSONDecodeError, TypeError):
+        _MALFORMED_JSON[column or "<unknown>"] += 1
         return None
+
+
+def parse_json_column(series: pd.Series, column: str | None = None) -> pd.Series:
+    """parse_json_field over a whole column, attributing failures to its name."""
+    name = column or (str(series.name) if series.name is not None else None)
+    return series.apply(lambda raw: parse_json_field(raw, name))
+
+
+def report_malformed_json() -> dict[str, int]:
+    """Print one line per column that had unparsable JSON, then reset the count."""
+    counts = dict(_MALFORMED_JSON)
+    for column, n in sorted(counts.items()):
+        print(
+            f"  Warning: {n} value(s) in column {column!r} were not valid JSON and "
+            "were treated as missing"
+        )
+    _MALFORMED_JSON.clear()
+    return counts
 
 
 def build_games(game_df: pd.DataFrame) -> pd.DataFrame:
@@ -66,11 +107,70 @@ def build_games(game_df: pd.DataFrame) -> pd.DataFrame:
     # Normalize condition names
     games["condition"] = games["condition"].replace({"exp2_social_goal": "social_first"})
 
-    # Parse activeGroups from JSON list string
-    games["activeGroups"] = games["activeGroups"].apply(
-        lambda x: len(parse_json_field(x)) if parse_json_field(x) else None
+    # activeGroups is the number of original groups still viable when the game
+    # ended, from the JSON list the server keeps on the game. An empty list is a
+    # game whose groups were all disbanded, so it counts as 0; only a missing or
+    # unparsable value is left empty.
+    def count_groups(raw):
+        parsed = parse_json_field(raw, "active_groups")
+        return len(parsed) if isinstance(parsed, list) else None
+
+    games["activeGroups"] = games["activeGroups"].apply(count_groups).astype("Int64")
+
+    # Provenance: the Empirica batch the game ran in (one batch per session)
+    # and the export it was read from (combine_runs.py stamps `_sourceRun`
+    # with the export timestamp). Both let a game be traced back to a session
+    # and to the ledger that paid it. Added last so the column order of older
+    # exports is unchanged.
+    games["batchId"] = (
+        game_df["batchID"].values if "batchID" in game_df.columns else pd.NA
+    )
+    games["sourceRun"] = (
+        game_df["_sourceRun"].values if "_sourceRun" in game_df.columns else pd.NA
     )
 
+    return games
+
+
+def add_active_groups_min(
+    games: pd.DataFrame, round_df: pd.DataFrame, trials: pd.DataFrame
+) -> pd.DataFrame:
+    """Add activeGroupsMin: the smallest number of groups any Phase 2 trial was played with.
+
+    `activeGroups` is the server's count of viable *original* groups at the end
+    of the game. In the mixed conditions the Phase 2 roster is reshuffled into
+    new groups every trial, and after removals it can form fewer groups than
+    there are viable original groups (five players make a trio and a pair, not
+    three groups), so the two can differ. This column is what the roster-size
+    checks in the analysis need: per Phase 2 refgame round it takes the
+    server's `reshuffle_groups` when the export has it, otherwise the number
+    of distinct `currentGroup` values with a speaker in that round's trials,
+    and reports the minimum. Rounds with neither (created but never played)
+    are skipped, and a game with no usable Phase 2 round falls back to
+    `activeGroups`.
+    """
+    games = games.copy()
+    rd = drop_last_changed_cols(round_df)
+    p2_rounds = rd[(rd["phase"] == "refgame") & (rd["phase_num"] == 2)]
+    has_server_count = "reshuffle_groups" in p2_rounds.columns
+
+    speakers = trials[(trials["role"] == "speaker") & (trials["phaseNum"] == 2)]
+    groups_per_round = speakers.groupby("roundId")["currentGroup"].nunique()
+
+    minima = {}
+    for game_id, rounds in p2_rounds.groupby("gameID"):
+        counts = []
+        for _, rnd in rounds.iterrows():
+            if has_server_count and pd.notna(rnd["reshuffle_groups"]):
+                counts.append(int(rnd["reshuffle_groups"]))
+            elif rnd["id"] in groups_per_round.index:
+                counts.append(int(groups_per_round[rnd["id"]]))
+        if counts:
+            minima[game_id] = min(counts)
+
+    games["activeGroupsMin"] = (
+        games["gameId"].map(minima).astype("Int64").fillna(games["activeGroups"])
+    ).astype("Int64")
     return games
 
 
@@ -156,7 +256,7 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
     # Parse exitSurvey JSON and flatten (if present)
     if "exitSurvey" in players.columns:
         def parse_exit_survey(row):
-            survey = parse_json_field(row["exitSurvey"])
+            survey = parse_json_field(row["exitSurvey"], "exitSurvey")
             if survey and isinstance(survey, dict):
                 for key, val in survey.items():
                     row[f"exitSurvey_{key}"] = val
@@ -207,7 +307,7 @@ def flatten_client_context(players: pd.DataFrame) -> pd.DataFrame:
             players[column] = pd.NA
         return players
 
-    parsed = players["clientContext"].apply(parse_json_field)
+    parsed = parse_json_column(players["clientContext"], "client_context")
     for field, column in CLIENT_CONTEXT_FIELDS.items():
         players[column] = parsed.apply(
             lambda ctx, f=field: ctx.get(f) if isinstance(ctx, dict) else None
@@ -237,7 +337,7 @@ def summarize_engagement(players: pd.DataFrame) -> pd.DataFrame:
         return players
 
     summaries = players["engagementEvents"].apply(
-        lambda raw: _engagement_summary(parse_json_field(raw))
+        lambda raw: _engagement_summary(parse_json_field(raw, "engagement_events"))
     )
     for column in summary_columns:
         players[column] = summaries.apply(lambda d, c=column: d[c])
@@ -526,11 +626,16 @@ def add_network_columns(
     """Add speakerId, inGroupSpeaker, groupSize, and speakerReassigned.
 
     The speaker of each trial's group, each listener's in-group status, and the
-    group size come from the trio membership in the table itself, which is the
-    same definition the R helper `attach_speaker()` uses. The server also
-    records `speaker_id` and `in_group_listener` since September 2026; deriving
-    them here keeps the pilot on the same definition, and the integrity suite
-    cross-checks the two where both exist.
+    group size are *derived* here from the trio membership in the table itself
+    (the rows sharing a game, round, and currentGroup), which is the same
+    definition the R helper `attach_speaker()` uses. That keeps every export,
+    including the pilot, on one definition. The server has recorded its own
+    `speaker_id`, `in_group_listener`, and `group_size` on each player-round
+    since September 2026; those are carried separately as `serverSpeakerId`,
+    `serverInGroupListener`, and `serverGroupSize` by
+    `add_server_network_columns()` (empty for the pilot), and the integrity
+    suite (`TestReshuffleNetwork`) checks that the derived and recorded values
+    agree wherever the recorded ones exist.
 
     `speakerReassigned` is the server's flag when the export has one
     (`server_reassigned`, aligned with the rows), and otherwise is derived from
@@ -575,6 +680,70 @@ def add_network_columns(
         trials["speakerReassigned"] = pd.Series(pd.NA, index=trials.index, dtype="boolean")
 
     return trials.drop(columns=["speakerGroup"])
+
+
+# Server-recorded network attributes (September 2026 onward): the player-round
+# keys and the round keys, each with the trials.csv column it becomes. All are
+# empty for the pilot, whose exports predate them.
+SERVER_PLAYER_ROUND_COLUMNS = {
+    "speaker_id": "serverSpeakerId",
+    "in_group_listener": "serverInGroupListener",
+    "group_size": "serverGroupSize",
+}
+SERVER_ROUND_COLUMNS = {
+    "reshuffle_groups": "reshuffleGroups",
+    "reshuffle_trios": "reshuffleTrios",
+    "reshuffle_trios_ok": "reshuffleTriosOk",
+    "reshuffle_pairs": "reshufflePairs",
+}
+
+
+def add_server_network_columns(
+    trials: pd.DataFrame, player_round_df: pd.DataFrame, round_df: pd.DataFrame
+) -> pd.DataFrame:
+    """Carry the server's own record of the network beside the derived columns.
+
+    `speakerId`, `inGroupSpeaker`, and `groupSize` are derived from the trio
+    membership in the table (see `add_network_columns`). Since September 2026
+    the server also writes `speaker_id`, `in_group_listener`, and `group_size`
+    on every player-round, and on every mixed Phase 2 round the outcome of the
+    reshuffle: how many groups it formed, how many were trios, how many of
+    those trios had exactly one in-group listener, and how many were pairs.
+    Those come through here as `server*` and `reshuffle*` columns so the two
+    accounts can be compared row by row; the integrity suite does that
+    wherever the server columns are non-empty. Every column exists whatever
+    the export's vintage, empty when the export predates the record.
+    """
+    trials = trials.copy()
+    keys = ["gameId", "playerId", "roundId"]
+
+    pr = drop_last_changed_cols(player_round_df)
+    pr = pr[pr["phase"] == "refgame"]
+    present = [c for c in SERVER_PLAYER_ROUND_COLUMNS if c in pr.columns]
+    if present:
+        server = pr[["gameID", "playerID", "roundID"] + present].rename(
+            columns={"gameID": "gameId", "playerID": "playerId", "roundID": "roundId",
+                     **SERVER_PLAYER_ROUND_COLUMNS}
+        ).drop_duplicates(keys)
+        trials = trials.merge(server, on=keys, how="left")
+    for column in SERVER_PLAYER_ROUND_COLUMNS.values():
+        if column not in trials.columns:
+            trials[column] = pd.NA
+    trials["serverInGroupListener"] = trials["serverInGroupListener"].astype("boolean")
+    trials["serverGroupSize"] = pd.to_numeric(trials["serverGroupSize"], errors="coerce").astype("Int64")
+
+    rd = drop_last_changed_cols(round_df)
+    present = [c for c in SERVER_ROUND_COLUMNS if c in rd.columns]
+    if present:
+        counts = rd[["id"] + present].rename(
+            columns={"id": "roundId", **SERVER_ROUND_COLUMNS}
+        ).drop_duplicates("roundId")
+        trials = trials.merge(counts, on="roundId", how="left")
+    for column in SERVER_ROUND_COLUMNS.values():
+        if column not in trials.columns:
+            trials[column] = pd.NA
+        trials[column] = pd.to_numeric(trials[column], errors="coerce").astype("Int64")
+    return trials
 
 
 # The conditions whose Phase 2 includes the social-identification task. Mirrors
@@ -629,6 +798,77 @@ def add_response_opportunity(
     return trials
 
 
+# ── Participant exclusions ───────────────────────────────────────────────────
+
+PARTICIPANT_EXCLUSIONS_FILE = "participant_exclusions.csv"
+
+
+def read_participant_exclusions(path: Path) -> pd.DataFrame:
+    """Read data/<dataset>/participant_exclusions.csv (playerId, reason).
+
+    The file lists participants whose data are excluded after the fact -- a
+    confirmed AI-assisted player, a participant who reported not understanding
+    the task, a duplicate account. It is optional; when present every row needs
+    a non-empty reason, so an exclusion can never be silent, and a player id
+    may appear only once. Returns an empty frame with the two columns when the
+    file does not exist.
+    """
+    columns = ["playerId", "reason"]
+    if not path.exists():
+        return pd.DataFrame(columns=columns)
+    exclusions = pd.read_csv(path, dtype=str)
+    missing = [c for c in columns if c not in exclusions.columns]
+    if missing:
+        raise ValueError(f"{path.name} must have columns playerId,reason; missing {missing}")
+    exclusions = exclusions[columns].copy()
+    exclusions["playerId"] = exclusions["playerId"].fillna("").str.strip()
+    exclusions["reason"] = exclusions["reason"].fillna("").str.strip()
+    blank = exclusions[(exclusions["playerId"] == "") | (exclusions["reason"] == "")]
+    if not blank.empty:
+        raise ValueError(
+            f"{len(blank)} row(s) of {path.name} have an empty playerId or reason; every "
+            "exclusion needs both"
+        )
+    dup = exclusions["playerId"].duplicated()
+    if dup.any():
+        raise ValueError(
+            f"{path.name} lists the same playerId more than once: "
+            f"{sorted(exclusions.loc[dup, 'playerId'].unique())}"
+        )
+    return exclusions.reset_index(drop=True)
+
+
+def apply_participant_exclusions(
+    trials: pd.DataFrame, exclusions: pd.DataFrame
+) -> pd.DataFrame:
+    """Add `excluded` and `exclusionReason` to a trial-level table.
+
+    A row is excluded when it is the excluded player's own, or when it is a
+    listener's row on a trial the excluded player spoke in: a listener's
+    selection is only as good as the description it answered, so the
+    listener's data for that trial go with the speaker's. The reason is the
+    participant's own on their rows and `speaker excluded: <reason>` on the
+    listener rows, so the two kinds stay distinguishable. Nothing else is
+    changed; in particular `responseOpportunity` is computed before this and
+    still says whether the listener *could* have answered.
+
+    Works on any frame with playerId, role, and speakerId (trials.csv and the
+    social-guess opportunity frame).
+    """
+    trials = trials.copy()
+    reasons = dict(zip(exclusions["playerId"], exclusions["reason"]))
+    own = trials["playerId"].map(reasons)
+    via_speaker = pd.Series(pd.NA, index=trials.index, dtype="object")
+    if "speakerId" in trials.columns:
+        listener = trials["role"] == "listener"
+        via_speaker[listener] = trials.loc[listener, "speakerId"].map(reasons)
+    via_speaker = via_speaker.where(via_speaker.isna(), "speaker excluded: " + via_speaker.astype(str))
+    reason = own.where(own.notna(), via_speaker)
+    trials["excluded"] = reason.notna()
+    trials["exclusionReason"] = reason.fillna("")
+    return trials
+
+
 def build_messages(
     player_round_df: pd.DataFrame, game_df: pd.DataFrame, round_df: pd.DataFrame
 ) -> pd.DataFrame:
@@ -650,7 +890,7 @@ def build_messages(
 
     rows = []
     for _, row in pr.iterrows():
-        chat_json = parse_json_field(row.get("chat"))
+        chat_json = parse_json_field(row.get("chat"), "chat")
         if not chat_json or not isinstance(chat_json, list):
             continue
 
@@ -727,60 +967,84 @@ def build_messages(
     return messages
 
 
-def build_speaker_utterances(
-    messages: pd.DataFrame, trials: pd.DataFrame
-) -> pd.DataFrame:
-    """Build speaker_utterances.csv: 1 row per speaker per trial."""
-    # Filter to speaker messages only
-    speaker_msgs = messages[messages["senderRole"] == "speaker"].copy()
-    speaker_msgs = speaker_msgs.sort_values(["roundId", "timestamp"])
+# The columns that identify one speaker's turn in one round. Every speaker
+# message of a round shares them, so grouping on them concatenates the round's
+# messages into a single utterance.
+UTTERANCE_KEY_COLUMNS = [
+    "gameId", "roundId", "senderId", "blockNum", "phase", "phaseNum", "target",
+    "trialNum", "tangramSet",
+]
 
-    # Concatenate speaker messages per round (one utterance per speaker per round)
-    groupby_cols = [
-        "gameId", "roundId", "senderId", "blockNum", "phase", "phaseNum", "target",
-        "trialNum", "tangramSet",
-    ]
+# Column order of speaker_utterances.csv and speaker_utterances_filtered.csv.
+SPEAKER_UTTERANCE_COLUMNS = [
+    "gameId",
+    "playerId",
+    "originalGroup",
+    "currentGroup",
+    "tangramSet",
+    "blockNum",
+    "trialNum",
+    "phase",
+    "phaseNum",
+    "target",
+    "repNum",
+    "utterance",
+    "uttLength",
+]
+
+
+def assemble_speaker_utterances(
+    speaker_msgs: pd.DataFrame, trials: pd.DataFrame
+) -> pd.DataFrame:
+    """One utterance per speaker per round from the given speaker messages.
+
+    The messages of a round are joined in timestamp order with ", ", counted
+    in words, and given the speaker's group and repetition number from their
+    trial row. This is the one definition of an utterance: `build_speaker_
+    utterances` passes every speaker message, and `filter_nonreferential.
+    build_filtered_utterances` passes only the referential ones, so the two
+    files can differ only in which messages went in.
+
+    The grouping keys must be complete. pandas drops NaN keys from a groupby
+    by default, which would lose a round's utterance without any trace, so the
+    grouping keeps NaN keys and a NaN in any key column is an error here.
+    """
+    missing = speaker_msgs[UTTERANCE_KEY_COLUMNS].isna().sum()
+    if (missing > 0).any():
+        raise ValueError(
+            "speaker messages have missing values in utterance key column(s) "
+            f"{missing[missing > 0].to_dict()}; every message needs a complete key"
+        )
+
+    speaker_msgs = speaker_msgs.sort_values(["roundId", "timestamp"])
     utterances = (
-        speaker_msgs.groupby(groupby_cols)
+        speaker_msgs.groupby(UTTERANCE_KEY_COLUMNS, dropna=False)
         .agg(utterance=("text", lambda x: ", ".join(x.astype(str))))
         .reset_index()
     )
-
     utterances["uttLength"] = utterances["utterance"].apply(lambda x: len(x.split()))
 
-    # Merge in player info from trials (speaker rows only)
-    # Use senderId == playerId to get the correct speaker's trial row
+    # The speaker's own trial row (senderId == playerId) supplies their group
+    # and the repetition number of the target.
     speaker_trials = trials[trials["role"] == "speaker"][
         ["gameId", "playerId", "originalGroup", "currentGroup", "roundId", "repNum"]
     ].drop_duplicates()
-
     utterances = utterances.merge(
         speaker_trials,
         left_on=["gameId", "roundId", "senderId"],
         right_on=["gameId", "roundId", "playerId"],
         how="left",
     )
+    return utterances[[c for c in SPEAKER_UTTERANCE_COLUMNS if c in utterances.columns]]
 
-    # Select and order final columns
-    cols = [
-        "gameId",
-        "playerId",
-        "originalGroup",
-        "currentGroup",
-        "tangramSet",
-        "blockNum",
-        "trialNum",
-        "phase",
-        "phaseNum",
-        "target",
-        "repNum",
-        "utterance",
-        "uttLength",
-    ]
-    utterances = utterances[[c for c in cols if c in utterances.columns]]
-    utterances = utterances.sort_values(["gameId", "playerId", "blockNum", "target"])
 
-    return utterances
+def build_speaker_utterances(
+    messages: pd.DataFrame, trials: pd.DataFrame
+) -> pd.DataFrame:
+    """Build speaker_utterances.csv: 1 row per speaker per trial."""
+    speaker_msgs = messages[messages["senderRole"] == "speaker"].copy()
+    utterances = assemble_speaker_utterances(speaker_msgs, trials)
+    return utterances.sort_values(["gameId", "playerId", "blockNum", "target"])
 
 
 LENGTH_INCREASE_THRESHOLD_WORDS = 5
@@ -870,6 +1134,16 @@ def build_social_guesses(
         "responseOpportunity",
         "speakerId",
         "tangramSet",
+        # Whether the speaker shared the listener's original group: the ground
+        # truth every guess is judged against, and the in-group/out-group split
+        # of the opportunity counts the analysis reports. The server records it
+        # only for guesses it scored, so it is completed here from the
+        # speaker's own original group, which is known for every opportunity.
+        "speakerWasSameGroup",
+        # From trials.csv (apply_participant_exclusions): the guesser's own
+        # exclusion or their speaker's.
+        "excluded",
+        "exclusionReason",
     ]
 
     social_games = set(
@@ -892,6 +1166,11 @@ def build_social_guesses(
 
     if opportunities.empty or "social_guess" not in pr.columns:
         return pd.DataFrame(columns=columns)
+    # A trial frame built without the exclusion pass (unit tests, older
+    # callers) means nobody is excluded, not that the columns are unknown.
+    if "excluded" not in opportunities.columns:
+        opportunities["excluded"] = False
+        opportunities["exclusionReason"] = ""
 
     # Speaker of each (round, group): a roundId is shared across all groups in
     # a game, so the group is required to attribute a guess to the speaker the
@@ -903,8 +1182,12 @@ def build_social_guesses(
         .to_dict()
     )
 
+    submitted_cols = [
+        "gameID", "playerID", "roundID", "social_guess", "social_guess_correct",
+        "social_round_score",
+    ] + (["speaker_was_same_group"] if "speaker_was_same_group" in pr.columns else [])
     submitted = pr[pr["social_guess"].notna() & (pr["social_guess"] != "")][
-        ["gameID", "playerID", "roundID", "social_guess", "social_guess_correct", "social_round_score"]
+        submitted_cols
     ].rename(
         columns={
             "gameID": "gameId",
@@ -913,6 +1196,7 @@ def build_social_guesses(
             "social_guess": "socialGuess",
             "social_guess_correct": "socialGuessCorrect",
             "social_round_score": "socialRoundScore",
+            "speaker_was_same_group": "speakerWasSameGroup",
         }
     )
 
@@ -933,25 +1217,105 @@ def build_social_guesses(
         if column not in guesses.columns:
             guesses[column] = pd.NA
 
+    # Complete the ground truth over every opportunity. `scoring.js` writes
+    # `speaker_was_same_group` only inside the branch that scores a submitted
+    # guess, so taking the server's record alone would leave it empty exactly
+    # for the nonresponses, and the in-group and out-group opportunity counts
+    # the analysis reports would silently become answered-only. The speaker's
+    # own original group is recorded on their trial row whether or not anyone
+    # answered, so it is derived from there and the server's record is kept as
+    # a cross-check.
+    speaker_group_lookup = (
+        trials[trials["role"] == "speaker"][["roundId", "currentGroup", "originalGroup"]]
+        .drop_duplicates()
+        .set_index(["roundId", "currentGroup"])["originalGroup"]
+        .to_dict()
+    )
+    derived = []
+    for round_id, group, listener_group in zip(
+        guesses["roundId"], guesses["currentGroup"], guesses["originalGroup"]
+    ):
+        speaker_group = speaker_group_lookup.get((round_id, group))
+        derived.append(pd.NA if speaker_group is None else speaker_group == listener_group)
+    derived = pd.Series(derived, index=guesses.index, dtype="boolean")
+
+    recorded = guesses["speakerWasSameGroup"].astype("boolean")
+    both = recorded.notna() & derived.notna()
+    if both.any() and not (recorded[both] == derived[both]).all():
+        disagree = guesses.loc[both & (recorded != derived), ["gameId", "roundId", "playerId"]]
+        raise ValueError(
+            "speaker_was_same_group disagrees with the speaker's original group on "
+            f"{len(disagree)} opportunities, so the speaker attribution is wrong:\n"
+            f"{disagree.to_string(index=False)}"
+        )
+    guesses["speakerWasSameGroup"] = recorded.fillna(derived)
+
     return guesses[columns]
+
+
+def retire_stale_filtered_utterances(output_dir: Path) -> bool:
+    """Delete a speaker_utterances_filtered.csv built from a different messages.csv.
+
+    Called right after messages.csv is rewritten. The filtered utterances are
+    derived from messages.csv through the classifier's labels, and every later
+    step prefers them when they exist, so a filtered file left over from a
+    previous messages.csv would be analyzed in place of the current data. When
+    the sidecar written by `filter_nonreferential.py apply` no longer matches,
+    the file and its sidecar are deleted and the deletion is printed; the
+    filter has to be rerun (`classify` sends only the messages it has not
+    labeled before). A filtered file with no sidecar at all is left in place
+    but announced, because the derived step will refuse it. Returns whether
+    anything was deleted.
+    """
+    status, detail = filtered_utterances_status(output_dir)
+    if status == "stale":
+        for name in (FILTERED_UTTERANCES_FILE, FILTERED_UTTERANCES_SIDECAR):
+            path = output_dir / name
+            if path.exists():
+                path.unlink()
+                print(f"  Deleted stale {name}")
+        print(f"  ({detail})")
+        print("  Rerun filter_nonreferential.py classify + apply to rebuild it.")
+        return True
+    if status == "unverified":
+        print(f"  Warning: {detail}; compute_derived.py will refuse it until the filter is rerun")
+    elif status == "current":
+        print(f"  {detail}")
+    return False
 
 
 def main():
     parser = argparse.ArgumentParser(
         description="Preprocess Empirica export data for analysis"
     )
-    parser.add_argument("input_dir", help="Path to Empirica export-data directory")
+    parser.add_argument(
+        "input_dir",
+        help="Directory of raw Empirica CSVs (data/<dataset>/raw_anonymized/ from combine_runs.py)",
+    )
     parser.add_argument(
         "--output",
         "-o",
-        default="analysis/processed_data/",
-        help="Output directory for clean CSVs",
+        default="data/pilots/",
+        help="Output directory for the analysis-ready CSVs (data/<dataset>/; default: the pilot)",
+    )
+    parser.add_argument(
+        "--exclusions",
+        default=None,
+        help=(
+            "participant_exclusions.csv (playerId,reason); default: the file of that "
+            "name in the output directory, if present"
+        ),
     )
     args = parser.parse_args()
 
     input_dir = Path(args.input_dir)
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
+    exclusions_path = (
+        Path(args.exclusions) if args.exclusions else output_dir / PARTICIPANT_EXCLUSIONS_FILE
+    )
+    if args.exclusions and not exclusions_path.exists():
+        parser.error(f"--exclusions file not found: {exclusions_path}")
 
     print(f"Reading data from {input_dir}")
 
@@ -965,24 +1329,52 @@ def main():
     stage_path = input_dir / "stage.csv"
     stage_df = pd.read_csv(stage_path) if stage_path.exists() else None
 
-    # Build each output
+    # Build each output. games.csv is written after trials because the Phase 2
+    # roster minimum (activeGroupsMin) is read off the trials table.
     print("Building games.csv...")
     games = build_games(game_df)
-    games.to_csv(output_dir / "games.csv", index=False)
-    print(f"  {len(games)} games")
+
+    # Participant exclusions are read first so a malformed file fails before
+    # anything is written.
+    exclusions = read_participant_exclusions(exclusions_path)
+    if not exclusions.empty:
+        unknown = sorted(set(exclusions["playerId"]) - set(player_df["id"].astype(str)))
+        if unknown:
+            raise SystemExit(
+                f"Error: {exclusions_path.name} names {len(unknown)} playerId(s) not in "
+                f"player.csv: {unknown}"
+            )
+        print(f"Excluding {len(exclusions)} participant(s) listed in {exclusions_path}")
 
     # Messages are built before trials because a trial's response opportunity
-    # depends on whether that group's speaker said anything.
+    # depends on whether that group's speaker said anything. Response
+    # opportunities are computed from *all* messages, before excluded players'
+    # messages are dropped: whether a listener could have answered does not
+    # change because their speaker was excluded later.
     print("Building messages.csv...")
     messages = build_messages(player_round_df, game_df, round_df)
-    messages.to_csv(output_dir / "messages.csv", index=False)
-    print(f"  {len(messages)} messages")
+    all_messages = messages
 
     print("Building trials.csv...")
     trials = add_response_opportunity(
         build_trials(player_round_df, round_df, game_df, player_df, stage_df),
-        messages,
+        all_messages,
     )
+    trials = add_server_network_columns(trials, player_round_df, round_df)
+    trials = apply_participant_exclusions(trials, exclusions)
+    if not exclusions.empty:
+        excluded_ids = set(exclusions["playerId"])
+        own_rows = int(trials["playerId"].isin(excluded_ids).sum())
+        print(
+            f"  {int(trials['excluded'].sum())} trial rows flagged excluded "
+            f"({own_rows} of the excluded players' own, the rest listeners they spoke to)"
+        )
+        dropped = messages["senderId"].isin(excluded_ids)
+        messages = messages[~dropped].copy()
+        print(f"  Dropped {int(dropped.sum())} messages sent by excluded participants")
+    messages.to_csv(output_dir / "messages.csv", index=False)
+    print(f"  {len(messages)} messages written to messages.csv")
+    retire_stale_filtered_utterances(output_dir)
     trials.to_csv(output_dir / "trials.csv", index=False)
     listener_rows = int((trials["role"] == "listener").sum())
     opportunities = int(trials["responseOpportunity"].sum())
@@ -991,6 +1383,10 @@ def main():
         f"rows are response opportunities "
         f"({listener_rows - opportunities} had no speaker message)"
     )
+
+    games = add_active_groups_min(games, round_df, trials)
+    games.to_csv(output_dir / "games.csv", index=False)
+    print(f"  {len(games)} games written to games.csv")
 
     print("Building speaker_utterances.csv...")
     speaker_utterances = build_speaker_utterances(messages, trials)
@@ -1019,6 +1415,11 @@ def main():
             f"  {len(social_guesses)} social-guess opportunities; {eligible} eligible, "
             f"{answered} answered"
         )
+
+    # JSON columns of the export that could not be parsed were treated as
+    # missing above; say so once per column rather than never.
+    if report_malformed_json():
+        print("  Check the export: malformed JSON usually means a truncated or corrupted copy.")
 
     print(f"\nAll CSVs written to {output_dir}")
 

@@ -1,41 +1,38 @@
 """
 Combine raw CSVs from extracted runs into data/<dataset>/raw_anonymized/.
 
-Stacks the raw Empirica CSVs, filters out failed games (lobby timeouts),
-and writes a manifest.json with provenance info. The runs default to the
-timestamps listed in data/<dataset>/runs.txt.
+Stacks the raw Empirica CSVs, filters out failed games (lobby timeouts) and
+any game listed in data/<dataset>/exclude_games.txt (test and rehearsal games
+that ran on the production server), and writes a manifest.json with
+provenance info. The runs default to the timestamps listed in
+data/<dataset>/runs.txt.
 
 Usage:
     uv run python analysis/combine_runs.py                       # runs from data/pilots/runs.txt
     uv run python analysis/combine_runs.py --dataset full        # runs from data/full/runs.txt
-    uv run python analysis/combine_runs.py 20260301_132907 20260301_214147
+    uv run python analysis/combine_runs.py --dataset full 20260301_132907 20260301_214147
+
+Positional runs for the frozen pilot dataset must be exactly the runs in
+data/pilots/runs.txt; --allow-pilot overrides that guard deliberately.
 """
 
 import argparse
 import json
-import re
 import sys
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 
-from dataset_paths import RUNS_DIR, add_dataset_argument, dataset_dirs
+from dataset_paths import (
+    FROZEN_DATASET,
+    RAW_CSV_FILES,
+    RUNS_DIR,
+    TIMESTAMP_DIR_PATTERN,
+    add_dataset_argument,
+    dataset_dirs,
+)
 from extract_run import SENSITIVE_COLUMNS
-
-TIMESTAMP_DIR_PATTERN = re.compile(r"^\d{8}_\d{6}$")
-
-RAW_CSV_FILES = [
-    "batch.csv",
-    "game.csv",
-    "global.csv",
-    "player.csv",
-    "playerGame.csv",
-    "playerRound.csv",
-    "playerStage.csv",
-    "round.csv",
-    "stage.csv",
-]
 
 
 def validate_runs(run_ids: list[str]) -> list[Path]:
@@ -138,6 +135,34 @@ def deduplicate_ids(
     return collapsed
 
 
+# Tables whose rows belong to a game through a gameID column.
+GAME_DEPENDENT_TABLES = [
+    "player.csv", "playerGame.csv", "playerRound.csv", "playerStage.csv",
+    "round.csv", "stage.csv",
+]
+
+
+def drop_games(combined: dict[str, pd.DataFrame], game_ids: set[str]) -> dict[str, pd.DataFrame]:
+    """Remove the given games from game.csv and every row that belongs to them.
+
+    Rows of the dependent tables are kept only when their gameID is a game that
+    survives, so a player, round, stage, or message of a dropped game never
+    reaches the combined output.
+    """
+    game_df = combined["game.csv"]
+    game_df = game_df[~game_df["id"].isin(game_ids)].copy()
+    combined["game.csv"] = game_df
+
+    valid_game_ids = set(game_df["id"])
+    for csv_name in GAME_DEPENDENT_TABLES:
+        if csv_name not in combined:
+            continue
+        df = combined[csv_name]
+        if "gameID" in df.columns:
+            combined[csv_name] = df[df["gameID"].isin(valid_game_ids)].copy()
+    return combined
+
+
 def filter_failed_games(
     combined: dict[str, pd.DataFrame],
 ) -> tuple[dict[str, pd.DataFrame], list[str]]:
@@ -149,19 +174,129 @@ def filter_failed_games(
     if failed_ids:
         print(f"  Filtering out {len(failed_ids)} failed game(s): {failed_ids}")
 
-    game_df = game_df[~game_df["id"].isin(failed_ids)].copy()
-    combined["game.csv"] = game_df
+    return drop_games(combined, failed_ids), sorted(failed_ids)
 
-    valid_game_ids = set(game_df["id"])
-    for csv_name in ["player.csv", "playerGame.csv", "playerRound.csv",
-                     "playerStage.csv", "round.csv", "stage.csv"]:
-        if csv_name not in combined:
-            continue
-        df = combined[csv_name]
-        if "gameID" in df.columns:
-            combined[csv_name] = df[df["gameID"].isin(valid_game_ids)].copy()
 
-    return combined, sorted(failed_ids)
+EXCLUDE_GAMES_FILE = "exclude_games.txt"
+
+
+def read_excluded_games(data_dir: Path) -> list[str]:
+    """Empirica game ids listed in data/<dataset>/exclude_games.txt.
+
+    One id per line; blank lines and `#` comments are ignored, so each entry
+    can carry the reason it is excluded. The file is optional. It exists for
+    games that ran on the production server but are not data: a rehearsal with
+    lab members, a game started to check a deploy, a session the researcher
+    stopped. Their rows would otherwise be indistinguishable from real games
+    in every table.
+    """
+    path = data_dir / EXCLUDE_GAMES_FILE
+    if not path.exists():
+        return []
+    ids = []
+    for line in path.read_text().splitlines():
+        line = line.split("#", 1)[0].strip()
+        if line:
+            ids.append(line)
+    return ids
+
+
+def exclude_games(
+    combined: dict[str, pd.DataFrame], excluded: list[str]
+) -> tuple[dict[str, pd.DataFrame], list[str]]:
+    """Drop the games listed in exclude_games.txt and everything that belongs to them.
+
+    Returns the ids that were actually present; an id that matches no game is
+    reported, because it usually means a typo rather than an already-absent game.
+    """
+    if not excluded:
+        return combined, []
+    present = set(combined["game.csv"]["id"])
+    found = [gid for gid in excluded if gid in present]
+    missing = [gid for gid in excluded if gid not in present]
+    if missing:
+        print(
+            f"  Warning: {len(missing)} id(s) in {EXCLUDE_GAMES_FILE} match no game in these "
+            f"runs: {', '.join(missing)}"
+        )
+    if not found:
+        return combined, []
+    before = {name: len(df) for name, df in combined.items()}
+    combined = drop_games(combined, set(found))
+    dropped = {
+        name: before[name] - len(df) for name, df in combined.items() if before[name] != len(df)
+    }
+    print(
+        f"  Excluding {len(found)} game(s) listed in {EXCLUDE_GAMES_FILE}: {', '.join(found)}"
+    )
+    print("  Rows dropped: " + ", ".join(f"{name} {n}" for name, n in dropped.items()))
+    return combined, found
+
+
+DROPOUTS_FILE = "dropouts.csv"
+DROPOUT_COLUMNS = ["playerId", "batchId", "ended", "exitReason", "quizAttempts"]
+
+
+def split_dropouts(
+    players_all: pd.DataFrame,
+    games_all: pd.DataFrame,
+    combined: dict[str, pd.DataFrame],
+    excluded_game_ids: list[str],
+) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
+    """Separate the player records that never played a real game.
+
+    Every participant who reached the experiment has a player record, whether
+    they finished a game, failed the quiz, waited in a lobby that timed out, or
+    arrived after the games were full. `raw_anonymized/player.csv` keeps only
+    the players of real games, so those other records vanish at this step --
+    and with them the attrition the manuscript has to report. They are written
+    to `dropouts.csv` instead: one row per player record with no real game,
+    with the batch it belonged to (through its game, when it had one), how
+    Empirica ended it, the exit reason the server set, and how many quiz
+    attempts it made. A record attached to a real game that was never started
+    (no original group, so the game began without it) is a dropout too and is
+    moved out of player.csv. Players of games listed in exclude_games.txt are
+    neither data nor dropouts and are left out.
+
+    `players_all` and `games_all` are the tables before any game was filtered.
+    Returns the updated tables and the dropouts frame (empty with the header
+    when there are none).
+    """
+    real_games = set(combined["game.csv"]["id"])
+    game_batch = games_all.drop_duplicates("id").set_index("id")["batchID"] if "batchID" in games_all.columns else pd.Series(dtype=object)
+
+    in_excluded = players_all["gameID"].isin(set(excluded_game_ids))
+    no_real_game = players_all["gameID"].isna() | ~players_all["gameID"].isin(real_games)
+    if "original_group" in players_all.columns:
+        never_started = players_all["gameID"].isin(real_games) & players_all["original_group"].isna()
+    else:
+        never_started = pd.Series(False, index=players_all.index)
+    is_dropout = (no_real_game | never_started) & ~in_excluded
+
+    rows = players_all[is_dropout]
+    dropouts = pd.DataFrame(
+        {
+            "playerId": rows["id"].values,
+            "batchId": rows["gameID"].map(game_batch).values,
+            "ended": rows["ended"].values if "ended" in rows.columns else pd.NA,
+            "exitReason": rows["exitReason"].values if "exitReason" in rows.columns else pd.NA,
+            "quizAttempts": pd.to_numeric(
+                rows["quiz_attempts"] if "quiz_attempts" in rows.columns else pd.Series(pd.NA, index=rows.index),
+                errors="coerce",
+            ).astype("Int64").values,
+        },
+        columns=DROPOUT_COLUMNS,
+    )
+
+    if never_started.any():
+        moved = set(players_all.loc[never_started & ~in_excluded, "id"])
+        player_df = combined["player.csv"]
+        combined["player.csv"] = player_df[~player_df["id"].isin(moved)].copy()
+        print(
+            f"  Moved {len(moved)} player record(s) of real games that never started "
+            f"(no original group) to {DROPOUTS_FILE}"
+        )
+    return combined, dropouts.reset_index(drop=True)
 
 
 def enforce_anonymization(combined: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
@@ -201,6 +336,8 @@ def write_manifest(
     input_counts: dict[str, dict[str, int]],
     failed_game_ids: list[str],
     collapsed: dict[str, dict[str, int]] | None = None,
+    excluded_game_ids: list[str] | None = None,
+    n_dropouts: int = 0,
 ):
     """Write manifest.json with provenance info."""
     game_df = combined["game.csv"]
@@ -212,6 +349,10 @@ def write_manifest(
         "row_counts": {name: len(df) for name, df in combined.items()},
         "input_row_counts": input_counts,
         "filtered_failed_games": failed_game_ids,
+        # Games listed in exclude_games.txt (test and rehearsal games) and dropped.
+        "excluded_games": excluded_game_ids or [],
+        # Player records with no real game, written to dropouts.csv.
+        "dropouts": n_dropouts,
         # Records seen in more than one export, collapsed to the newest version.
         "collapsed_duplicates": collapsed or {},
     }
@@ -219,6 +360,29 @@ def write_manifest(
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
     print(f"  Manifest written to {manifest_path}")
+
+
+def frozen_dataset_error(
+    dataset: str, runs: list[str], registered: list[str], allow_pilot: bool
+) -> str | None:
+    """Why positional runs may not rebuild the frozen pilot dataset, or None.
+
+    The pilot is complete and committed; `combine_runs.py --dataset pilots
+    <runs>` with runs other than those in data/pilots/runs.txt would rewrite
+    its raw_anonymized/ from different exports. The default (no positional
+    runs) always reads runs.txt and is never blocked, and `--allow-pilot`
+    states the intent when the pilot really is to be rebuilt.
+    """
+    if dataset != FROZEN_DATASET or not runs or allow_pilot:
+        return None
+    if sorted(runs) == sorted(registered):
+        return None
+    return (
+        f"the '{FROZEN_DATASET}' dataset is frozen: the runs given "
+        f"({' '.join(sorted(runs))}) are not the runs in its runs.txt "
+        f"({' '.join(sorted(registered)) or 'none'}). Pass --allow-pilot to rebuild the "
+        "pilot from these exports anyway, or --dataset <name> for another dataset."
+    )
 
 
 def main():
@@ -230,9 +394,20 @@ def main():
         help="Run timestamps (default: the entries of data/<dataset>/runs.txt)"
     )
     add_dataset_argument(parser)
+    parser.add_argument(
+        "--allow-pilot", action="store_true",
+        help=(
+            f"Allow positional runs that differ from data/{FROZEN_DATASET}/runs.txt for the "
+            f"frozen '{FROZEN_DATASET}' dataset"
+        ),
+    )
     args = parser.parse_args()
 
     dirs = dataset_dirs(args.dataset)
+    error = frozen_dataset_error(dirs.name, args.runs, dirs.read_runs(), args.allow_pilot)
+    if error:
+        print(f"Error: {error}", file=sys.stderr)
+        sys.exit(1)
     if not args.runs:
         args.runs = dirs.read_runs()
         if not args.runs:
@@ -275,8 +450,30 @@ def main():
             "  If those runs should not overlap, you may be combining the wrong exports."
         )
 
+    # Kept before any game is filtered, for the dropout record below.
+    players_all = combined["player.csv"].copy()
+    games_all = combined["game.csv"].copy()
+
     print("\nFiltering failed games...")
     combined, failed_game_ids = filter_failed_games(combined)
+
+    print(f"\nExcluding games listed in {dirs.data / EXCLUDE_GAMES_FILE}...")
+    excluded = read_excluded_games(dirs.data)
+    if not excluded:
+        print("  No exclusions (the file is absent or empty)")
+    combined, excluded_game_ids = exclude_games(combined, excluded)
+
+    print("\nRecording player records with no real game...")
+    combined, dropouts = split_dropouts(players_all, games_all, combined, excluded_game_ids)
+    dropouts_path = dirs.data / DROPOUTS_FILE
+    dirs.data.mkdir(parents=True, exist_ok=True)
+    dropouts.to_csv(dropouts_path, index=False)
+    if dropouts.empty:
+        print(f"  None; wrote an empty {DROPOUTS_FILE} (header only)")
+    else:
+        reasons = dropouts["exitReason"].fillna(dropouts["ended"]).fillna("unknown").value_counts()
+        summary = ", ".join(f"{reason}: {n}" for reason, n in reasons.items())
+        print(f"  {len(dropouts)} dropout record(s) written to {dropouts_path} ({summary})")
 
     print("\nEnforcing anonymization...")
     combined = enforce_anonymization(combined)
@@ -284,7 +481,10 @@ def main():
     print("\nWriting combined raw CSVs...")
     write_combined_raw(combined, output_raw)
 
-    write_manifest(dirs.data, args.runs, combined, input_counts, failed_game_ids, collapsed)
+    write_manifest(
+        dirs.data, args.runs, combined, input_counts, failed_game_ids, collapsed,
+        excluded_game_ids, len(dropouts),
+    )
 
     game_df = combined["game.csv"]
     print(f"\nCombine complete: {len(game_df)} games from {len(args.runs)} runs")

@@ -3,7 +3,7 @@
     "20260301_132907",
     "20260301_214147"
   ],
-  "created": "2026-09-11T16:26:02.645840",
+  "created": "2026-09-17T10:52:17.269929",
   "games": 4,
   "conditions": {
     "refer_mixed": 1,
@@ -50,5 +50,7 @@
     "01KJP22PXP1SKJXX96F7G716FA",
     "01KJP3SKQZ7EDVPMXVMGGM8QV9"
   ],
+  "excluded_games": [],
+  "dropouts": 21,
   "collapsed_duplicates": {}
 }

@@ -8,19 +8,42 @@ Run with:
     uv run pytest analysis/test_preprocessing.py -v
 """
 
+import json
+import sys
+
 import numpy as np
 import pandas as pd
 import pytest
 
-from filter_nonreferential import BatchParseError, build_filtered_utterances, parse_batch_labels
+import preprocessing
+
+from dataset_paths import (
+    FILTERED_UTTERANCES_FILE,
+    FILTERED_UTTERANCES_SIDECAR,
+    filtered_utterances_status,
+    write_filtered_sidecar,
+)
+from filter_nonreferential import (
+    BatchParseError,
+    attach_labels,
+    build_filtered_utterances,
+    parse_batch_labels,
+)
+from combine_runs import DROPOUT_COLUMNS, exclude_games, read_excluded_games, split_dropouts
 from preprocessing import (
+    add_active_groups_min,
     add_network_columns,
+    add_server_network_columns,
+    apply_participant_exclusions,
+    build_games,
     build_messages,
     build_players,
     add_response_opportunity,
     build_social_guesses,
     build_trials,
     flag_length_increase,
+    read_participant_exclusions,
+    retire_stale_filtered_utterances,
     selection_stage_times,
 )
 
@@ -631,3 +654,711 @@ class TestMessageComposition:
         messages = build_messages(*self._message_inputs(chat))
         assert messages["composeMs"].isna().all()
         assert messages["pasted"].isna().all()
+
+
+# ── Filtered utterances and their sidecar ────────────────────────────────────
+#
+# speaker_utterances_filtered.csv is derived from messages.csv, and every later
+# step prefers it when it exists. The sidecar written by `apply` is what stops
+# a filtered file from an earlier messages.csv being analyzed in place of the
+# current data.
+
+
+def _messages_frame(texts=("the dancer", "thanks")):
+    rows = []
+    for i, text in enumerate(texts):
+        rows.append(
+            {
+                "gameId": "g1",
+                "roundId": "r1",
+                "blockNum": 0,
+                "phase": "refgame",
+                "phaseNum": 1,
+                "target": "t1",
+                "group": "A",
+                "senderId": "s1",
+                "senderName": "Repi",
+                "senderRole": "speaker",
+                "text": text,
+                "timestamp": 1000 + i,
+                "trialNum": 0,
+                "tangramSet": 0,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _write_filtered_dataset(tmp_path):
+    _messages_frame().to_csv(tmp_path / "messages.csv", index=False)
+    (tmp_path / FILTERED_UTTERANCES_FILE).write_text("gameId,utterance\ng1,the dancer\n")
+    write_filtered_sidecar(tmp_path)
+
+
+class TestFilteredUtterancesSidecar:
+    def test_status_follows_the_sidecar_and_messages_csv(self, tmp_path):
+        assert filtered_utterances_status(tmp_path)[0] == "absent"
+        _write_filtered_dataset(tmp_path)
+        assert filtered_utterances_status(tmp_path)[0] == "current"
+        record = json.loads((tmp_path / FILTERED_UTTERANCES_SIDECAR).read_text())
+        assert record["source"] == "messages.csv" and record["rows"] == 2
+        # messages.csv changes underneath the filtered file: stale
+        _messages_frame(("the dancer", "thanks", "a third")).to_csv(
+            tmp_path / "messages.csv", index=False
+        )
+        status, detail = filtered_utterances_status(tmp_path)
+        assert status == "stale"
+        assert "2 rows" in detail and "3 rows" in detail
+        # no sidecar at all: cannot be verified
+        (tmp_path / FILTERED_UTTERANCES_SIDECAR).unlink()
+        assert filtered_utterances_status(tmp_path)[0] == "unverified"
+
+    def test_preprocessing_deletes_a_stale_filtered_file_and_keeps_a_current_one(
+        self, tmp_path, capsys
+    ):
+        _write_filtered_dataset(tmp_path)
+        assert retire_stale_filtered_utterances(tmp_path) is False
+        assert (tmp_path / FILTERED_UTTERANCES_FILE).exists()
+
+        _messages_frame(("changed",)).to_csv(tmp_path / "messages.csv", index=False)
+        assert retire_stale_filtered_utterances(tmp_path) is True
+        assert not (tmp_path / FILTERED_UTTERANCES_FILE).exists()
+        assert not (tmp_path / FILTERED_UTTERANCES_SIDECAR).exists()
+        out = capsys.readouterr().out
+        assert f"Deleted stale {FILTERED_UTTERANCES_FILE}" in out
+
+    def test_a_filtered_file_without_a_sidecar_is_left_but_reported(self, tmp_path, capsys):
+        _messages_frame().to_csv(tmp_path / "messages.csv", index=False)
+        (tmp_path / FILTERED_UTTERANCES_FILE).write_text("gameId,utterance\n")
+        assert retire_stale_filtered_utterances(tmp_path) is False
+        assert (tmp_path / FILTERED_UTTERANCES_FILE).exists()
+        assert "Warning" in capsys.readouterr().out
+
+
+class TestAttachLabels:
+    """`apply` joins the classifier's labels onto the current messages.csv."""
+
+    def test_labels_are_joined_by_message_key_and_listeners_default_to_referential(self):
+        messages = _messages_frame(("the dancer", "thanks"))
+        listener = messages.iloc[[0]].assign(senderId="l1", senderRole="listener", text="which?")
+        messages = pd.concat([messages, listener], ignore_index=True)
+        # The cache lists the messages in another order and with extra columns
+        # of its own; only the key decides the match.
+        classified = _messages_frame(("the dancer", "thanks")).assign(
+            is_referential=[True, False], llm_label=["R", "NR"], extra=1
+        ).iloc[::-1]
+        out = attach_labels(messages, classified)
+        by_text = out.set_index("text")
+        assert by_text.loc["the dancer", "llm_label"] == "R"
+        assert bool(by_text.loc["thanks", "is_referential"]) is False
+        assert by_text.loc["which?", "llm_label"] == "" and bool(by_text.loc["which?", "is_referential"])
+
+    def test_an_unlabeled_speaker_message_is_an_error_not_a_default(self):
+        messages = _messages_frame(("the dancer", "brand new message"))
+        classified = _messages_frame(("the dancer",)).assign(is_referential=[True], llm_label=["R"])
+        with pytest.raises(ValueError, match="1 of 2 speaker messages .* have no label"):
+            attach_labels(messages, classified)
+
+    def test_timestamps_read_back_as_floats_still_match(self):
+        messages = _messages_frame(("the dancer",))
+        classified = _messages_frame(("the dancer",)).assign(
+            is_referential=[True], llm_label=["R"]
+        )
+        classified["timestamp"] = classified["timestamp"].astype(float)
+        assert attach_labels(messages, classified)["llm_label"].tolist() == ["R"]
+
+
+# ── Game exclusions and provenance ───────────────────────────────────────────
+
+
+class TestExcludeGames:
+    def test_the_exclusion_file_ignores_comments_and_blank_lines(self, tmp_path):
+        (tmp_path / "exclude_games.txt").write_text(
+            "# rehearsal with lab members\nGAME_A\n\nGAME_B  # deploy check\n"
+        )
+        assert read_excluded_games(tmp_path) == ["GAME_A", "GAME_B"]
+        assert read_excluded_games(tmp_path / "missing") == []
+
+    def test_an_excluded_game_takes_every_dependent_row_with_it(self, capsys):
+        combined = {
+            "game.csv": pd.DataFrame({"id": ["GAME_A", "GAME_B"], "condition": ["refer_mixed"] * 2}),
+            "player.csv": pd.DataFrame({"id": ["p1", "p2"], "gameID": ["GAME_A", "GAME_B"]}),
+            "playerRound.csv": pd.DataFrame({"id": ["pr1", "pr2", "pr3"], "gameID": ["GAME_A", "GAME_A", "GAME_B"]}),
+            "batch.csv": pd.DataFrame({"id": ["b1"]}),
+        }
+        out, found = exclude_games(combined, ["GAME_A", "NOT_A_GAME"])
+        assert found == ["GAME_A"]
+        assert out["game.csv"]["id"].tolist() == ["GAME_B"]
+        assert out["player.csv"]["id"].tolist() == ["p2"]
+        assert out["playerRound.csv"]["id"].tolist() == ["pr3"]
+        assert len(out["batch.csv"]) == 1  # no gameID column: untouched
+        printed = capsys.readouterr().out
+        assert "NOT_A_GAME" in printed and "Excluding 1 game(s)" in printed
+
+
+def _game_df(**extra):
+    base = {
+        "id": ["g"],
+        "condition": ["refer_mixed"],
+        "tangram_set": [0],
+        "actualPlayerCount": [9],
+        "active_groups": ['["A","B","C"]'],
+        "phase1Blocks": [6],
+        "phase2Blocks": [6],
+    }
+    base.update(extra)
+    return pd.DataFrame(base)
+
+
+class TestGamesProvenance:
+    def test_batch_and_source_run_are_carried_into_games_csv(self):
+        games = build_games(_game_df(batchID=["batch1"], _sourceRun=["20260301_132907"]))
+        assert games["batchId"].tolist() == ["batch1"]
+        assert games["sourceRun"].tolist() == ["20260301_132907"]
+
+    def test_an_export_without_them_still_has_the_columns(self):
+        games = build_games(_game_df())
+        assert games["batchId"].isna().all() and games["sourceRun"].isna().all()
+        # appended after the existing columns, so older files keep their order
+        assert games.columns.tolist()[:7] == [
+            "gameId", "condition", "tangramSet", "numPlayers", "activeGroups",
+            "phase1Blocks", "phase2Blocks",
+        ]
+
+
+# ── Active groups ────────────────────────────────────────────────────────────
+
+
+class TestActiveGroups:
+    def test_an_empty_group_list_counts_as_zero_and_a_missing_one_stays_empty(self):
+        games = build_games(_game_df(id=["g1", "g2", "g3"], condition=["refer_mixed"] * 3,
+                                     tangram_set=[0] * 3, actualPlayerCount=[9] * 3,
+                                     active_groups=['["A","B","C"]', "[]", None],
+                                     phase1Blocks=[6] * 3, phase2Blocks=[6] * 3))
+        assert games["activeGroups"].tolist()[:2] == [3, 0]
+        assert pd.isna(games["activeGroups"].tolist()[2])
+
+    @staticmethod
+    def _rounds(reshuffle_groups=None):
+        rounds = pd.DataFrame(
+            {
+                "id": ["p1r", "r1", "r2", "r3"],
+                "gameID": ["g"] * 4,
+                "phase": ["refgame"] * 4,
+                "phase_num": [1, 2, 2, 2],
+            }
+        )
+        if reshuffle_groups is not None:
+            rounds["reshuffle_groups"] = reshuffle_groups
+        return rounds
+
+    @staticmethod
+    def _trials():
+        rows = []
+        # Phase 1 round with three groups; Phase 2 rounds with 3, then 2 groups;
+        # r3 was created but never played (no trial rows).
+        for rid, phase, groups in (("p1r", 1, "ABC"), ("r1", 2, "XYZ"), ("r2", 2, "XY")):
+            for g in groups:
+                rows.append({"gameId": "g", "roundId": rid, "phaseNum": phase,
+                             "currentGroup": g, "role": "speaker", "playerId": f"s{g}"})
+                rows.append({"gameId": "g", "roundId": rid, "phaseNum": phase,
+                             "currentGroup": g, "role": "listener", "playerId": f"l{g}"})
+        return pd.DataFrame(rows)
+
+    def test_minimum_comes_from_the_trials_when_the_server_count_is_absent(self):
+        games = pd.DataFrame({"gameId": ["g"], "activeGroups": pd.array([3], dtype="Int64")})
+        out = add_active_groups_min(games, self._rounds(), self._trials())
+        assert out["activeGroupsMin"].tolist() == [2]
+
+    def test_the_server_count_takes_precedence_where_recorded(self):
+        games = pd.DataFrame({"gameId": ["g"], "activeGroups": pd.array([3], dtype="Int64")})
+        # r3 has a server count of 1 although it has no trials; r1 and r2 fall
+        # back to the trials (3 and 2)
+        rounds = self._rounds(reshuffle_groups=[None, None, None, 1])
+        out = add_active_groups_min(games, rounds, self._trials())
+        assert out["activeGroupsMin"].tolist() == [1]
+
+    def test_a_game_without_phase_2_trials_falls_back_to_active_groups(self):
+        games = pd.DataFrame({"gameId": ["g", "other"], "activeGroups": pd.array([3, 2], dtype="Int64")})
+        trials = self._trials()
+        trials = trials[trials["phaseNum"] == 1]
+        out = add_active_groups_min(games, self._rounds(), trials).set_index("gameId")
+        assert out.loc["g", "activeGroupsMin"] == 3
+        assert out.loc["other", "activeGroupsMin"] == 2
+
+
+# ── Server-recorded network columns ──────────────────────────────────────────
+
+
+class TestServerNetworkColumns:
+    def test_the_servers_record_rides_beside_the_derived_columns(self):
+        pr, rd, gd = _trial_inputs(
+            speaker_id=["p1", "p1"], in_group_listener=[None, True], group_size=[2, 2]
+        )
+        rd = rd.assign(reshuffle_groups=[3], reshuffle_trios=[2], reshuffle_trios_ok=[1], reshuffle_pairs=[1])
+        trials = add_server_network_columns(build_trials(pr, rd, gd), pr, rd)
+        listener = trials[trials["role"] == "listener"].iloc[0]
+        assert listener["serverSpeakerId"] == "p1" and listener["speakerId"] == "p1"
+        assert bool(listener["serverInGroupListener"]) is True
+        assert listener["serverGroupSize"] == 2
+        assert (trials["reshuffleGroups"] == 3).all() and (trials["reshuffleTriosOk"] == 1).all()
+        assert (trials["reshufflePairs"] == 1).all()
+        # the server does not record in_group_listener for the speaker
+        assert pd.isna(trials[trials["role"] == "speaker"]["serverInGroupListener"].iloc[0])
+
+    def test_an_export_without_the_record_has_the_columns_empty(self):
+        pr, rd, gd = _trial_inputs()
+        trials = add_server_network_columns(build_trials(pr, rd, gd), pr, rd)
+        for column in (
+            "serverSpeakerId", "serverInGroupListener", "serverGroupSize",
+            "reshuffleGroups", "reshuffleTrios", "reshuffleTriosOk", "reshufflePairs",
+        ):
+            assert column in trials.columns and trials[column].isna().all()
+        assert len(trials) == 2
+
+
+def test_social_guesses_carry_the_servers_same_group_record():
+    games = pd.DataFrame([{"id": "g1", "condition": "social_mixed"}])
+    pr = pd.DataFrame([
+        {"gameID": "g1", "playerID": "s1", "roundID": "r1", "phase": "refgame", "role": "speaker",
+         "current_group": "A", "social_guess": None, "social_guess_correct": None,
+         "social_round_score": None, "speaker_was_same_group": None},
+        {"gameID": "g1", "playerID": "l1", "roundID": "r1", "phase": "refgame", "role": "listener",
+         "current_group": "A", "social_guess": "same_group", "social_guess_correct": True,
+         "social_round_score": 6, "speaker_was_same_group": True},
+        {"gameID": "g1", "playerID": "l2", "roundID": "r1", "phase": "refgame", "role": "listener",
+         "current_group": "A", "social_guess": None, "social_guess_correct": None,
+         "social_round_score": None, "speaker_was_same_group": None},
+    ])
+    trials = add_response_opportunity(
+        pd.DataFrame([_trial("s1", "speaker"), _trial("l1", "listener"), _trial("l2", "listener")]),
+        pd.DataFrame([_message("s1", "speaker")]),
+    )
+    out = build_social_guesses(pr, games, trials).set_index("playerId")
+    assert bool(out.loc["l1", "speakerWasSameGroup"]) is True
+    # l2 never answered, so the server recorded nothing, but the speaker's own
+    # original group is known and the ground truth is completed from it: the
+    # in-group/out-group opportunity counts must cover the nonresponses too.
+    assert bool(out.loc["l2", "speakerWasSameGroup"]) is True
+    # appended after the columns older files have, together with the exclusion flags
+    assert out.columns.tolist()[-3:] == ["speakerWasSameGroup", "excluded", "exclusionReason"]
+
+
+def test_same_group_ground_truth_covers_out_group_nonresponses():
+    games = pd.DataFrame([{"id": "g1", "condition": "social_mixed"}])
+    pr = pd.DataFrame([
+        {"gameID": "g1", "playerID": "s1", "roundID": "r1", "phase": "refgame", "role": "speaker",
+         "current_group": "A", "social_guess": None, "social_guess_correct": None,
+         "social_round_score": None, "speaker_was_same_group": None},
+        {"gameID": "g1", "playerID": "l2", "roundID": "r1", "phase": "refgame", "role": "listener",
+         "current_group": "A", "social_guess": None, "social_guess_correct": None,
+         "social_round_score": None, "speaker_was_same_group": None},
+    ])
+    speaker = _trial("s1", "speaker")
+    listener = _trial("l2", "listener")
+    listener["originalGroup"] = "B"  # reshuffled into the speaker's current group
+    trials = add_response_opportunity(
+        pd.DataFrame([speaker, listener]), pd.DataFrame([_message("s1", "speaker")])
+    )
+    out = build_social_guesses(pr, games, trials).set_index("playerId")
+    assert bool(out.loc["l2", "speakerWasSameGroup"]) is False
+
+
+def test_same_group_ground_truth_is_missing_only_when_the_speaker_is_unknown():
+    games = pd.DataFrame([{"id": "g1", "condition": "social_mixed"}])
+    pr = pd.DataFrame([
+        {"gameID": "g1", "playerID": "l2", "roundID": "r1", "phase": "refgame", "role": "listener",
+         "current_group": "A", "social_guess": None, "social_guess_correct": None,
+         "social_round_score": None, "speaker_was_same_group": None},
+    ])
+    # No speaker row at all: nothing to compare the listener's group against.
+    trials = add_response_opportunity(
+        pd.DataFrame([_trial("l2", "listener")]), pd.DataFrame([_message("s1", "speaker")])
+    )
+    out = build_social_guesses(pr, games, trials).set_index("playerId")
+    assert pd.isna(out.loc["l2", "speakerWasSameGroup"])
+
+
+# ── Participant exclusions ───────────────────────────────────────────────────
+
+
+class TestParticipantExclusionsFile:
+    def test_a_missing_file_means_no_exclusions(self, tmp_path):
+        out = read_participant_exclusions(tmp_path / "participant_exclusions.csv")
+        assert out.empty and out.columns.tolist() == ["playerId", "reason"]
+
+    def test_every_row_needs_a_reason(self, tmp_path):
+        path = tmp_path / "participant_exclusions.csv"
+        path.write_text("playerId,reason\np1,confirmed AI use\np2,\n")
+        with pytest.raises(ValueError, match="empty playerId or reason"):
+            read_participant_exclusions(path)
+
+    def test_a_player_may_be_listed_once(self, tmp_path):
+        path = tmp_path / "participant_exclusions.csv"
+        path.write_text("playerId,reason\np1,a\np1,b\n")
+        with pytest.raises(ValueError, match="more than once"):
+            read_participant_exclusions(path)
+
+
+def test_exclusion_marks_own_rows_and_the_listeners_of_an_excluded_speaker():
+    trials = pd.DataFrame([
+        {"playerId": "A0", "role": "speaker", "speakerId": "A0", "roundId": "r1"},
+        {"playerId": "A1", "role": "listener", "speakerId": "A0", "roundId": "r1"},
+        {"playerId": "A2", "role": "listener", "speakerId": "A0", "roundId": "r1"},
+        {"playerId": "A1", "role": "speaker", "speakerId": "A1", "roundId": "r2"},
+        {"playerId": "A0", "role": "listener", "speakerId": "A1", "roundId": "r2"},
+        {"playerId": "A2", "role": "listener", "speakerId": "A1", "roundId": "r2"},
+    ])
+    exclusions = pd.DataFrame({"playerId": ["A0"], "reason": ["confirmed AI use"]})
+    out = apply_participant_exclusions(trials, exclusions)
+    assert out["excluded"].tolist() == [True, True, True, False, True, False]
+    assert out["exclusionReason"].tolist() == [
+        "confirmed AI use",
+        "speaker excluded: confirmed AI use",
+        "speaker excluded: confirmed AI use",
+        "",
+        "confirmed AI use",
+        "",
+    ]
+
+
+def _raw_dataset(tmp_path):
+    """A one-group game with two Phase 1 rounds, written as raw Empirica CSVs.
+
+    Round r1: A0 speaks ("the dancer"), A1 and A2 listen and click. Round r2:
+    A1 speaks ("kneeling man"), A0 and A2 listen.
+    """
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    pd.DataFrame({
+        "id": ["g"], "condition": ["refer_separated"], "tangram_set": [0],
+        "actualPlayerCount": [3], "active_groups": ['["A"]'], "phase1Blocks": [6],
+        "phase2Blocks": [6], "batchID": ["b1"], "_sourceRun": ["20260101_000000"],
+    }).to_csv(raw / "game.csv", index=False)
+    pd.DataFrame({
+        "id": ["A0", "A1", "A2"], "gameID": ["g"] * 3, "name": ["Repi", "Minu", "Laju"],
+        "original_group": ["A"] * 3, "original_name": ["Repi", "Minu", "Laju"],
+        "score": [4, 4, 4], "bonus": [0.2] * 3, "is_active": [True] * 3, "idle_rounds": [0] * 3,
+        "player_index": [0, 1, 2],
+    }).to_csv(raw / "player.csv", index=False)
+    pd.DataFrame({
+        "id": ["r1", "r2"], "gameID": ["g", "g"], "trial_num": [0, 1], "phase": ["refgame"] * 2,
+        "phase_num": [1, 1], "block_num": [0, 1],
+    }).to_csv(raw / "round.csv", index=False)
+
+    def chat(sender, name, text, ts):
+        return json.dumps([{"id": f"m{ts}", "text": text, "timestamp": ts,
+                            "sender": {"id": sender, "name": f"{name} (Speaker)"}}])
+
+    rows = []
+    for rid, block, speaker, text, ts in (("r1", 0, "A0", "the dancer", 1000), ("r2", 1, "A1", "kneeling man", 2000)):
+        for pid, name in (("A0", "Repi"), ("A1", "Minu"), ("A2", "Laju")):
+            is_speaker = pid == speaker
+            rows.append({
+                "gameID": "g", "playerID": pid, "roundID": rid, "name": name,
+                "original_group": "A", "current_group": "A",
+                "role": "speaker" if is_speaker else "listener", "block_num": block,
+                "phase": "refgame", "phase_num": 1, "target": "t1",
+                "clicked": None if is_speaker else "t1", "clicked_correct": None if is_speaker else True,
+                "round_score": 2, "chat": chat(speaker, "Repi" if speaker == "A0" else "Minu", text, ts),
+            })
+    pd.DataFrame(rows).to_csv(raw / "playerRound.csv", index=False)
+    return raw
+
+
+def _run_preprocessing(raw, out, monkeypatch, *extra):
+    monkeypatch.setattr(sys, "argv", ["preprocessing.py", str(raw), "--output", str(out), *extra])
+    preprocessing.main()
+
+
+class TestExclusionEndToEnd:
+    def test_an_excluded_players_messages_and_utterances_are_dropped_and_rows_flagged(
+        self, tmp_path, monkeypatch
+    ):
+        raw = _raw_dataset(tmp_path)
+        out = tmp_path / "data"
+        out.mkdir()
+        (out / "participant_exclusions.csv").write_text("playerId,reason\nA0,confirmed AI use\n")
+        _run_preprocessing(raw, out, monkeypatch)
+
+        messages = pd.read_csv(out / "messages.csv")
+        assert "A0" not in set(messages["senderId"]) and len(messages) == 1
+        utterances = pd.read_csv(out / "speaker_utterances.csv")
+        assert utterances["playerId"].tolist() == ["A1"]
+
+        trials = pd.read_csv(out / "trials.csv").set_index(["roundId", "playerId"])
+        assert bool(trials.loc[("r1", "A0"), "excluded"])
+        assert trials.loc[("r1", "A0"), "exclusionReason"] == "confirmed AI use"
+        assert bool(trials.loc[("r1", "A1"), "excluded"])
+        assert trials.loc[("r1", "A1"), "exclusionReason"] == "speaker excluded: confirmed AI use"
+        assert bool(trials.loc[("r2", "A0"), "excluded"])
+        assert not bool(trials.loc[("r2", "A1"), "excluded"])
+        assert not bool(trials.loc[("r2", "A2"), "excluded"])
+        assert pd.isna(trials.loc[("r2", "A2"), "exclusionReason"])  # empty string in the CSV
+        # The response opportunity is what it was: A0 did speak in r1.
+        assert bool(trials.loc[("r1", "A1"), "responseOpportunity"])
+        assert bool(trials.loc[("r1", "A1"), "hasSpeakerMessage"])
+
+        # The derived step reads the utterance file, so every derived measure
+        # is computed without the excluded speaker.
+        from compute_derived import compute_lexical_uniqueness
+        assert set(compute_lexical_uniqueness(utterances)["playerId"]) == {"A1"}
+
+    def test_without_an_exclusion_file_nothing_is_flagged(self, tmp_path, monkeypatch):
+        raw = _raw_dataset(tmp_path)
+        out = tmp_path / "data"
+        out.mkdir()
+        _run_preprocessing(raw, out, monkeypatch)
+        trials = pd.read_csv(out / "trials.csv")
+        assert not trials["excluded"].any()
+        assert trials["exclusionReason"].isna().all()  # written as empty strings
+        assert len(pd.read_csv(out / "messages.csv")) == 2
+
+    def test_an_unknown_player_id_is_refused(self, tmp_path, monkeypatch):
+        raw = _raw_dataset(tmp_path)
+        out = tmp_path / "data"
+        out.mkdir()
+        (out / "participant_exclusions.csv").write_text("playerId,reason\nZZ,typo\n")
+        with pytest.raises(SystemExit, match="not in player.csv"):
+            _run_preprocessing(raw, out, monkeypatch)
+
+
+# ── Dropouts ─────────────────────────────────────────────────────────────────
+
+
+class TestDropouts:
+    @staticmethod
+    def _tables():
+        players_all = pd.DataFrame({
+            "id": ["p_ok", "p_lobby", "p_quiz", "p_late", "p_never", "p_rehearsal"],
+            "gameID": ["REAL", "FAILED", "FAILED", None, "REAL", "REHEARSAL"],
+            "original_group": ["A", None, None, None, None, "A"],
+            "ended": ["game ended", "game failed", "game failed", "no more games", None, "game ended"],
+            "exitReason": [None, None, "quiz failed", None, None, None],
+            "quiz_attempts": [1, None, 3, None, None, 1],
+        })
+        games_all = pd.DataFrame({
+            "id": ["REAL", "FAILED", "REHEARSAL"],
+            "batchID": ["b1", "b1", "b0"],
+            "condition": ["refer_mixed", None, "refer_mixed"],
+        })
+        combined = {
+            "game.csv": games_all[games_all["id"] == "REAL"].copy(),
+            "player.csv": players_all[players_all["gameID"] == "REAL"].copy(),
+        }
+        return players_all, games_all, combined
+
+    def test_every_record_without_a_real_game_is_a_dropout_except_excluded_games(self):
+        players_all, games_all, combined = self._tables()
+        combined, dropouts = split_dropouts(players_all, games_all, combined, ["REHEARSAL"])
+        assert dropouts.columns.tolist() == DROPOUT_COLUMNS
+        by_id = dropouts.set_index("playerId")
+        assert set(by_id.index) == {"p_lobby", "p_quiz", "p_late", "p_never"}
+        assert by_id.loc["p_quiz", "exitReason"] == "quiz failed"
+        assert by_id.loc["p_quiz", "quizAttempts"] == 3
+        assert by_id.loc["p_lobby", "batchId"] == "b1"
+        assert pd.isna(by_id.loc["p_late", "batchId"])  # never reached a game
+        # the never-started record leaves player.csv
+        assert combined["player.csv"]["id"].tolist() == ["p_ok"]
+
+    def test_no_dropouts_gives_an_empty_frame_with_the_header(self):
+        players_all, games_all, combined = self._tables()
+        only_real = players_all[players_all["id"] == "p_ok"]
+        _, dropouts = split_dropouts(only_real, games_all, combined, [])
+        assert dropouts.empty and dropouts.columns.tolist() == DROPOUT_COLUMNS
+
+
+# ── Utterance assembly, malformed JSON, and the command-line guards ─────────
+
+import extract_run  # noqa: E402
+from combine_runs import frozen_dataset_error  # noqa: E402
+from filter_nonreferential import (  # noqa: E402
+    cached_labels,
+    classified_frame,
+    read_human_labels,
+)
+from preprocessing import (  # noqa: E402
+    assemble_speaker_utterances,
+    build_speaker_utterances,
+    parse_json_column,
+    report_malformed_json,
+)
+
+
+def _speaker_messages():
+    return pd.DataFrame({
+        "gameId": ["g"] * 3,
+        "roundId": ["r1", "r1", "r2"],
+        "senderId": ["p1", "p1", "p2"],
+        "senderRole": ["speaker"] * 3,
+        "blockNum": [0, 0, 0],
+        "phase": ["refgame"] * 3,
+        "phaseNum": [1, 1, 1],
+        "target": ["t", "t", "u"],
+        "trialNum": [0, 0, 1],
+        "tangramSet": ["set1"] * 3,
+        "text": ["a bunny", "with ears", "house"],
+        "timestamp": [2, 1, 3],  # out of order on purpose
+    })
+
+
+def _speaker_trials():
+    return pd.DataFrame({
+        "gameId": ["g", "g"],
+        "playerId": ["p1", "p2"],
+        "originalGroup": ["A", "B"],
+        "currentGroup": ["A", "B"],
+        "roundId": ["r1", "r2"],
+        "repNum": [0, 0],
+        "role": ["speaker", "speaker"],
+    })
+
+
+class TestUtteranceAssembly:
+    def test_messages_of_a_round_are_joined_in_timestamp_order(self):
+        out = assemble_speaker_utterances(_speaker_messages(), _speaker_trials())
+        assert len(out) == 2
+        r1 = out[out["playerId"] == "p1"].iloc[0]
+        assert r1["utterance"] == "with ears, a bunny"
+        assert r1["uttLength"] == 4
+        assert r1["originalGroup"] == "A" and r1["repNum"] == 0
+
+    def test_a_missing_key_is_an_error_not_a_silently_dropped_round(self):
+        msgs = _speaker_messages()
+        msgs.loc[2, "tangramSet"] = None
+        with pytest.raises(ValueError, match="tangramSet"):
+            assemble_speaker_utterances(msgs, _speaker_trials())
+
+    def test_filtered_and_unfiltered_files_share_one_definition(self):
+        msgs = _speaker_messages()
+        msgs["is_referential"] = True
+        unfiltered = build_speaker_utterances(msgs, _speaker_trials())
+        filtered, n_dropped = build_filtered_utterances(msgs, _speaker_trials())
+        assert n_dropped == 0
+        key = ["gameId", "playerId", "blockNum", "target"]
+        pd.testing.assert_frame_equal(
+            unfiltered.sort_values(key).reset_index(drop=True),
+            filtered.sort_values(key).reset_index(drop=True),
+        )
+
+
+class TestMalformedJsonReport:
+    def test_malformed_values_are_counted_per_column_and_reported_once(self, capsys):
+        report_malformed_json()  # reset any count left by another test
+        parsed = parse_json_column(
+            pd.Series(['{"a": 1}', "not json", "{oops", None, ""]), "exitSurvey"
+        )
+        assert parsed.iloc[0] == {"a": 1}
+        assert parsed.iloc[1] is None and parsed.iloc[2] is None
+        assert parsed.iloc[3] is None and parsed.iloc[4] is None  # missing, not malformed
+        counts = report_malformed_json()
+        assert counts == {"exitSurvey": 2}
+        out = capsys.readouterr().out
+        assert out.count("exitSurvey") == 1 and "2 value(s)" in out
+        assert report_malformed_json() == {}  # reported once, then reset
+
+
+class TestFrozenPilotGuard:
+    def test_positional_runs_equal_to_runs_txt_pass(self):
+        assert frozen_dataset_error("pilots", ["b", "a"], ["a", "b"], False) is None
+
+    def test_other_runs_are_refused_unless_allowed(self):
+        message = frozen_dataset_error("pilots", ["c"], ["a", "b"], False)
+        assert message and "frozen" in message and "--allow-pilot" in message
+        assert frozen_dataset_error("pilots", ["c"], ["a", "b"], True) is None
+
+    def test_other_datasets_and_the_default_form_are_never_blocked(self):
+        assert frozen_dataset_error("full", ["c"], [], False) is None
+        assert frozen_dataset_error("pilots", [], ["a"], False) is None
+
+
+class TestExtractRunCommandLine:
+    def test_options_may_come_before_or_after_the_zip(self):
+        a = extract_run.parse_args(["x.zip", "--dataset", "smoke", "--no-register"])
+        b = extract_run.parse_args(["--dataset", "smoke", "--no-register", "x.zip"])
+        for args in (a, b):
+            assert args.command == "extract"
+            assert args.zip == "x.zip" and args.dataset == "smoke" and args.no_register
+
+    def test_a_bare_call_and_flags_alone_are_extracts(self):
+        args = extract_run.parse_args([])
+        assert args.command == "extract" and args.zip is None and args.dataset is None
+        assert not args.no_register and not args.all_batches and args.batch is None
+        args = extract_run.parse_args(["--batch", "b1", "--all-batches"])
+        assert args.batch == "b1" and args.all_batches and args.zip is None
+
+    def test_subcommands_keep_their_run_option(self):
+        assert extract_run.parse_args(["list"]).command == "list"
+        args = extract_run.parse_args(["bonuses", "--run", "20260301_132907"])
+        assert args.command == "bonuses" and args.run == "20260301_132907"
+        assert extract_run.parse_args(["early-ended"]).run is None
+
+
+class TestClassifierCache:
+    def _messages(self):
+        return pd.DataFrame({
+            "gameId": ["g"] * 3,
+            "roundId": ["r"] * 3,
+            "senderId": ["p1", "p1", "p2"],
+            "senderRole": ["speaker", "speaker", "listener"],
+            "timestamp": [1, 2, 3],
+            "text": ["bunny", "thanks", "ok"],
+        })
+
+    def test_no_cache_means_every_message_is_unlabeled(self):
+        msgs = self._messages()
+        assert cached_labels(msgs, None).isna().all()
+
+    def test_only_messages_without_a_cached_label_are_left_to_classify(self):
+        msgs = self._messages()
+        cache = classified_frame(msgs, pd.Series(["R", pd.NA, pd.NA], index=msgs.index))
+        labels = cached_labels(msgs, cache)
+        assert labels.iloc[0] == "R" and pd.isna(labels.iloc[1]) and pd.isna(labels.iloc[2])
+        speaker = msgs["senderRole"] == "speaker"
+        assert list(msgs.index[speaker & labels.isna()]) == [1]
+
+    def test_a_changed_text_is_not_matched_to_the_old_label(self):
+        msgs = self._messages()
+        cache = classified_frame(msgs, pd.Series(["R", "NR", pd.NA], index=msgs.index))
+        changed = msgs.copy()
+        changed.loc[1, "text"] = "thanks bunny"
+        labels = cached_labels(changed, cache)
+        assert labels.iloc[0] == "R" and pd.isna(labels.iloc[1])
+
+    def test_classified_frame_marks_unlabeled_and_listener_rows_referential_with_empty_label(self):
+        msgs = self._messages()
+        out = classified_frame(msgs, pd.Series(["NR", pd.NA, pd.NA], index=msgs.index))
+        assert out["llm_label"].tolist() == ["NR", "", ""]
+        assert out["is_referential"].tolist() == [False, True, True]
+
+    def test_labels_survive_a_csv_round_trip(self, tmp_path):
+        msgs = self._messages()
+        path = tmp_path / "messages_classified.csv"
+        classified_frame(msgs, pd.Series(["R", "NR", pd.NA], index=msgs.index)).to_csv(path, index=False)
+        labels = cached_labels(msgs, pd.read_csv(path))
+        assert labels.tolist()[:2] == ["R", "NR"] and pd.isna(labels.iloc[2])
+
+
+class TestHumanLabels:
+    def _write(self, path, labels):
+        pd.DataFrame({
+            "gameId": ["g"] * len(labels),
+            "roundId": ["r"] * len(labels),
+            "senderId": ["p"] * len(labels),
+            "text": [f"m{i}" for i in range(len(labels))],
+            "human_label": labels,
+        }).to_csv(path, index=False)
+
+    def test_empty_labels_are_refused(self, tmp_path):
+        path = tmp_path / "human_labels.csv"
+        self._write(path, ["R", None])
+        with pytest.raises(ValueError, match="no human_label"):
+            read_human_labels(path)
+
+    def test_complete_labels_are_normalized(self, tmp_path):
+        path = tmp_path / "human_labels.csv"
+        self._write(path, ["r", " NR "])
+        assert read_human_labels(path)["human_label"].tolist() == ["R", "NR"]
+
+    def test_a_missing_file_names_the_annotation_step(self, tmp_path):
+        with pytest.raises(FileNotFoundError, match="annotation_sample.csv"):
+            read_human_labels(tmp_path / "human_labels.csv")

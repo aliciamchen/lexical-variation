@@ -17,10 +17,15 @@ The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pil
 | `experiment/data/<timestamp>/` | Raw Empirica export zips from `operations/copy_tajriba.sh` | No |
 | `data/runs/<timestamp>/` | Per-run extracts (raw/, bonuses.csv), shared across datasets | No (gitignored) |
 | `data/<name>/runs.txt` | The export timestamps combined into the dataset, one per line | Yes |
+| `data/<name>/exclude_games.txt` | Optional input: Empirica game ids of test and rehearsal games to drop at the combine step (one per line, `#` comments) | Yes |
 | `data/<name>/raw_anonymized/` | Anonymized raw Empirica CSVs stacked across those runs | Yes |
 | `data/<name>/*.csv` | Preprocessed analysis-ready CSVs (games, players, trials, messages, speaker_utterances, social_guesses) | Yes |
-| `data/<name>/manifest.json` | Provenance: which runs were combined | Yes |
-| `analysis/derived/<name>/` | Computed outputs from `compute_derived.py`: embeddings, similarities, UMAP, and cached model fits | Yes |
+| `data/<name>/manifest.json` | Provenance: which runs were combined, which games were filtered or excluded, how many dropout records | Yes |
+| `data/<name>/dropouts.csv` | Written by `combine_runs.py`: one row per player record with no real game (`playerId,batchId,ended,exitReason,quizAttempts`), for the attrition report | Yes |
+| `data/<name>/participant_exclusions.csv` | Optional input: `playerId,reason` for participants excluded after the fact; preprocessing drops their messages and flags `excluded`/`exclusionReason` on trials.csv and social_guesses.csv | Yes |
+| `data/<name>/speaker_utterances_filtered.source.json` | Sidecar written by `filter_nonreferential.py apply`: the sha256 and row count of the `messages.csv` the filtered utterances were built from | Yes |
+| `data/smoke/`, `analysis/derived/smoke/` | Throwaway dataset written by `make smoke ZIP=<zip>` | No (delete after use) |
+| `analysis/derived/<name>/` | Computed outputs from `compute_derived.py`: embeddings, SBERT similarities, the same pairs scored by content-word Jaccard (`pairwise_similarities_jaccard.csv`, `block_pairwise_similarities_jaccard.csv`), UMAP, and cached model fits | Yes |
 | `figures/<name>/` | Notebook figures (`figures/pilots/` holds the SI figures from `SI_pilot.qmd`) | Yes |
 | `figures/llm_plots/` | SI PDF figures from `SI_llm_simulation.qmd` | Yes |
 
@@ -53,15 +58,23 @@ uv run python analysis/combine_runs.py --dataset <name>        → data/<name>/r
 uv run python analysis/process_data.py --dataset <name>        → data/<name>/, analysis/derived/<name>/
 ```
 
+`combine_runs.py` writes `data/<name>/dropouts.csv` from the player records that never played a real game (quiz failures, lobby timeouts, arrivals after the games were full), and removes from `raw_anonymized/player.csv` any record of a real game that never started; `preprocessing.py` honors `data/<name>/participant_exclusions.csv` (`playerId,reason`, reason required, unknown ids refused): excluded players' messages leave `messages.csv` and `speaker_utterances.csv`, so every derived measure is computed without them, and `excluded`/`exclusionReason` are set on their own rows and on the rows of listeners they spoke to, while `responseOpportunity` is left as computed. `combine_runs.py` also honors `data/<name>/exclude_games.txt` (game ids of rehearsal or deploy-check games that ran on the production server; `#` comments allowed): the listed games and every dependent row are dropped, the count is printed, and the ids go into `manifest.json` under `excluded_games`. `extract_run.py --no-register` extracts a zip without adding it to `runs.txt`; its options (`--dataset`, `--batch`, `--all-batches`, `--no-register`) may come in any order around the zip path, and `list`, `bonuses`, and `early-ended` are subcommands. Positional runs given to `combine_runs.py` for the frozen `pilots` dataset must be exactly the runs in `data/pilots/runs.txt` unless `--allow-pilot` is passed (`dataset_paths.FROZEN_DATASET` names the frozen dataset for both scripts). `preprocessing.py` reports, once per column, how many JSON values of the export it could not parse and treated as missing; silence means every value parsed.
+
 Step 3 runs these sub-steps in order:
 
 | Step | Script | Inputs → Outputs |
 |------|--------|------------------|
 | Preprocess | `preprocessing.py` | `data/<name>/raw_anonymized/` → `data/<name>/*.csv` |
-| Filter | `filter_nonreferential.py` | `data/<name>/messages.csv` → `speaker_utterances_filtered.csv` (requires Vertex AI; `--skip-filter`) |
-| Derived | `compute_derived.py` | `data/<name>/*.csv` → `analysis/derived/<name>/` (`--skip-derived`) |
+| Filter | `filter_nonreferential.py` | `data/<name>/messages.csv` → `messages_classified.csv` (the label cache) → `speaker_utterances_filtered.csv` + `.source.json` (requires Vertex AI for new messages; `--skip-filter`) |
+| Derived | `compute_derived.py` | `data/<name>/*.csv` → `analysis/derived/<name>/`: the SBERT tables plus `pairwise_similarities_jaccard.csv` and `block_pairwise_similarities_jaccard.csv`, which have the rows of `pairwise_similarities.csv` and `block_pairwise_similarities.csv` in the same order with `similarity` replaced by the Jaccard overlap of the two descriptions' content-word sets (NaN where either side has none; the analysis omits those pairs and reports coverage) (`--skip-derived`) |
 
 Quarto notebooks and animations are run separately (see below).
+
+**The classifier's labels are cached.** `filter_nonreferential.py classify` treats `messages_classified.csv` as a cache keyed on (`gameId`, `roundId`, `senderId`, `timestamp`, `text`): only speaker messages of the current `messages.csv` without a cached label are sent, so reprocessing that leaves messages unchanged costs nothing. It prints the number of messages and the estimated API calls (messages / batch size of 30) before any call and proceeds only with `--yes` or an interactive yes; `--dry-run` stops at the estimate (`uv run python analysis/filter_nonreferential.py classify --data-dir data/<name> --dry-run`). Labels obtained before a failed batch are written back, so a rerun resumes. `MODEL_ID` in the script (`gemini-2.0-flash`, which produced the pilot labels) is the default of `--model`. `validate` reads `data/<name>/human_labels.csv` by default, the author's annotation of `annotation_sample.csv` (from `sample`), and refuses a file with empty labels. The utterances themselves are assembled by `preprocessing.assemble_speaker_utterances()` for both the filtered and the unfiltered file.
+
+**Filtered utterances are tied to `messages.csv` by a sidecar.** `apply` writes `speaker_utterances_filtered.source.json` (sha256 and row count of the `messages.csv` it read; the labels in `messages_classified.csv` are joined onto the current `messages.csv` by message key, and an unlabeled speaker message is an error that says to rerun `classify`). `compute_derived.py` refuses `speaker_utterances_filtered.csv` when the sidecar is missing or stale ("filtered utterances are stale; rerun the filter or pass --utterances-file speaker_utterances.csv"); `process_data.py --skip-filter` falls back to `speaker_utterances.csv` with a loud warning instead; and `preprocessing.py` deletes a filtered file whose sidecar no longer matches when it rewrites `messages.csv`, printing what it deleted. `dataset_paths.filtered_utterances_status()` is the one check all three use. Never hand-copy a filtered file between datasets.
+
+**Smoke-testing an export.** `make smoke ZIP=experiment/data/<run>/empirica-export-<run>.zip` runs extract → combine → `process_data.py --skip-filter` → the integrity suite in a throwaway dataset `smoke` (`data/smoke/`, `analysis/derived/smoke/`; delete both afterwards, they are not for committing). The block-count checks are expected to fail for TEST_MODE games. `make extract` resolves each run's zip as `experiment/data/<run>/empirica-export-<run>.zip` or, failing that, `experiment/data/*/empirica-export-<run>.zip`, and aborts naming the run when neither exists.
 
 **Other scripts** (not pipeline steps):
 
@@ -85,8 +98,8 @@ Quarto notebooks and animations are run separately (see below).
 | `tests/` | Plain `stopifnot` tests of the R helpers on simulated data, one file per helper (`Rscript analysis/tests/run_all.R`, also run by `make test` and the pre-commit hook) |
 | `plot_style.py` | Shared Python plotting constants (imported, not run directly) |
 | `test_data_integrity.py` | Pytest validation of `data/<name>/` CSV structure for the active dataset |
-| `test_compute_derived.py` | Pytest unit tests for the derived-metric definitions (latest-utterance selection, trajectory start rule, lexical uniqueness) |
-| `test_preprocessing.py` | Pytest unit tests for `preprocessing.flag_length_increase` (the AI-use trigger in `players.csv`), `filter_nonreferential.build_filtered_utterances` (rounds with no referential message are dropped, not emptied), and the response-opportunity columns (`add_response_opportunity`, the social-guess opportunity frame) |
+| `test_compute_derived.py` | Pytest unit tests for the derived-metric definitions (latest-utterance selection, trajectory start rule, lexical uniqueness, the Jaccard tables lining up with the SBERT ones, refusal of a stale filtered file) |
+| `test_preprocessing.py` | Pytest unit tests for the preprocessing rules and the pipeline's guards: `flag_length_increase` (the AI-use trigger in `players.csv`), utterance assembly (one definition for both utterance files, NaN keys refused), `build_filtered_utterances` (rounds with no referential message are dropped, not emptied), the response-opportunity columns, `activeGroups`/`activeGroupsMin`, the server network columns, participant and game exclusions, dropouts, the filtered-utterance sidecar, the classifier's label cache and human-label checks, the frozen-pilot guard, and `extract_run.py`'s command line |
 | `simulate_mm_speaker.R` | Design-matched simulations for the multiple-membership speaker intercept: convergence, pair-ordering invariance, interval calibration, and the inverse-variance weights in the game-level regression, under incomplete endpoint coverage and omitted pair-level dependence. Writes `analysis/derived/simulations/mm_speaker.rds` |
 
 ## Processing new data

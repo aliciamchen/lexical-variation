@@ -11,9 +11,13 @@ Run with:
     uv run pytest analysis/test_compute_derived.py -v
 """
 
+import sys
+
 import numpy as np
 import pandas as pd
+import pytest
 
+import compute_derived
 from compute_derived import (
     compute_block_pairwise,
     compute_lexical_uniqueness,
@@ -171,3 +175,105 @@ def test_social_guess_retention_uses_phase2_retention_and_speaker_attribution():
     assert out.iloc[0]["speakerRetention"] == 0.9
     assert out.iloc[0]["speakerOriginalGroup"] == "A"
     assert out.iloc[0]["speakerWasSameGroup"] == 1
+
+
+def test_a_filtered_file_without_a_matching_sidecar_is_refused(tmp_path, monkeypatch, capsys):
+    """The derived step must never analyze filtered utterances built from a
+    different messages.csv; it stops before loading the model."""
+    pd.DataFrame({"gameId": ["g"], "text": ["a"]}).to_csv(tmp_path / "messages.csv", index=False)
+    (tmp_path / "speaker_utterances_filtered.csv").write_text("gameId,utterance\n")
+    monkeypatch.setattr(sys, "argv", ["compute_derived.py", str(tmp_path)])
+    with pytest.raises(SystemExit) as excinfo:
+        compute_derived.main()
+    assert excinfo.value.code == 1
+    assert "filtered utterances are stale" in capsys.readouterr().err
+
+
+# ── Content-word overlap (Jaccard) robustness tables ────────────────────────
+
+from compute_derived import (  # noqa: E402
+    compute_block_pairwise_jaccard,
+    compute_pairwise_similarities_jaccard,
+    jaccard_similarity,
+)
+
+
+class TestJaccardSimilarity:
+    def test_overlap_of_distinct_content_word_sets(self):
+        # {big, red, bunny} vs {bunny, rabbit}: one shared word of four distinct
+        sim = jaccard_similarity(
+            pd.Series({"utterance": "the big red bunny"}),
+            pd.Series({"utterance": "a bunny, rabbit"}),
+        )
+        assert sim == pytest.approx(0.25)
+
+    def test_stopwords_one_character_words_and_repeats_do_not_count(self):
+        # "the", "is", "a", "on" are NLTK stopwords, "x" is one character, and
+        # "bunny" twice counts once; case and punctuation are ignored.
+        sim = jaccard_similarity(
+            pd.Series({"utterance": "the bunny is a bunny on x"}),
+            pd.Series({"utterance": "Bunny!"}),
+        )
+        assert sim == 1.0
+
+    def test_nan_when_either_description_has_no_content_words(self):
+        assert np.isnan(
+            jaccard_similarity(pd.Series({"utterance": "the a"}), pd.Series({"utterance": "bunny"}))
+        )
+        assert np.isnan(
+            jaccard_similarity(pd.Series({"utterance": float("nan")}), pd.Series({"utterance": "bunny"}))
+        )
+
+
+def test_jaccard_pairwise_table_lines_up_with_the_sbert_table():
+    """Same rows in the same order as the SBERT table; only `similarity` differs."""
+    rows = [
+        _utt("g", "p1", "A", "t", 1, 5, "big red bunny"),
+        _utt("g", "p1", "A", "t", 1, 3, "early"),
+        _utt("g", "p2", "B", "t", 1, 4, "bunny rabbit"),
+        _utt("g", "p3", "B", "t", 1, 4, "the"),
+        _utt("g", "p1", "A", "u", 1, 2, "house"),
+        _utt("g", "p2", "B", "u", 1, 2, "house"),
+    ]
+    df = pd.DataFrame(rows)
+    model = FakeModel()
+    sbert = compute_pairwise_similarities(
+        df, model.encode(df["utterance"].tolist()), model, "phase1_final"
+    )
+    jaccard = compute_pairwise_similarities_jaccard(df, "phase1_final")
+
+    assert list(jaccard.columns) == list(sbert.columns)
+    other = [c for c in sbert.columns if c != "similarity"]
+    pd.testing.assert_frame_equal(jaccard[other], sbert[other])
+
+    by_pair = jaccard.set_index(["target", "speaker1", "speaker2"])["similarity"]
+    assert by_pair[("t", "p1", "p2")] == pytest.approx(0.25)  # p1's block-5 description
+    assert np.isnan(by_pair[("t", "p1", "p3")])  # "the" has no content words
+    assert by_pair[("u", "p1", "p2")] == 1.0
+    # the SBERT table has a value where Jaccard is undefined: the row stays
+    assert not np.isnan(sbert.set_index(["target", "speaker1", "speaker2"])["similarity"][("t", "p1", "p3")])
+
+
+def test_jaccard_block_table_lines_up_with_the_sbert_block_table():
+    rows = [
+        _utt("g", "a1", "A", "t", 1, 0, "bunny"),
+        _utt("g", "b1", "B", "t", 1, 0, "rabbit"),
+        _utt("g", "a2", "A", "t", 1, 1, "bunny ears"),
+        _utt("g", "b2", "B", "t", 1, 1, "hare"),
+    ]
+    df = pd.DataFrame(rows)
+    games = pd.DataFrame({"gameId": ["g"], "phase1Blocks": [6], "phase2Blocks": [6]})
+
+    sbert = compute_block_pairwise(df, FakeModel(), games)
+    jaccard = compute_block_pairwise_jaccard(df)
+
+    assert list(jaccard.columns) == list(sbert.columns)
+    other = [c for c in sbert.columns if c != "similarity"]
+    pd.testing.assert_frame_equal(jaccard[other], sbert[other])
+    within = jaccard[jaccard["sameGroup"] == 1].set_index("group1")["similarity"]
+    assert within["A"] == pytest.approx(0.5)  # {bunny} vs {bunny, ears}
+    assert within["B"] == 0.0
+
+
+def test_jaccard_block_table_is_empty_for_no_utterances():
+    assert compute_block_pairwise_jaccard(pd.DataFrame()).empty

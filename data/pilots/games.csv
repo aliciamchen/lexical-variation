@@ -1,5 +1,5 @@
-gameId,condition,tangramSet,numPlayers,activeGroups,phase1Blocks,phase2Blocks,ended,endedReason
-01KJN6MMPQTMDYRN709968YFN1,refer_mixed,0.0,9.0,2,6.0,6.0,True,end of game
-01KJN6MMPQTMDYRN709DP5DSDA,refer_separated,0.0,9.0,3,6.0,6.0,True,end of game
-01KJN6MMQ03KZPZN0275VZXK6R,social_mixed,0.0,9.0,3,6.0,6.0,True,end of game
-01KJP22PXRH9VYFY7Z1HZVNSMN,social_first,0.0,9.0,3,6.0,6.0,True,end of game
+gameId,condition,tangramSet,numPlayers,activeGroups,phase1Blocks,phase2Blocks,ended,endedReason,batchId,sourceRun,activeGroupsMin
+01KJN6MMPQTMDYRN709968YFN1,refer_mixed,0.0,9.0,2,6.0,6.0,True,end of game,01KJN6MMNFZE55V1CSSMTQD90D,20260301_132907,2
+01KJN6MMPQTMDYRN709DP5DSDA,refer_separated,0.0,9.0,3,6.0,6.0,True,end of game,01KJN6MMNFZE55V1CSSMTQD90D,20260301_132907,3
+01KJN6MMQ03KZPZN0275VZXK6R,social_mixed,0.0,9.0,3,6.0,6.0,True,end of game,01KJN6MMNFZE55V1CSSMTQD90D,20260301_132907,3
+01KJP22PXRH9VYFY7Z1HZVNSMN,social_first,0.0,9.0,3,6.0,6.0,True,end of game,01KJP22PWG1Y2G4YMBC8YXBSPW,20260301_214147,3

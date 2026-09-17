@@ -4,13 +4,18 @@ Extract an Empirica export zip into data/runs/{timestamp}/.
 Unzips, extracts bonuses (with Prolific IDs), and saves anonymized raw CSVs.
 
 Usage:
-    uv run python analysis/extract_run.py experiment/data/20260301_132907/empirica-export-20260301_132907.zip
-    uv run python analysis/extract_run.py                    # most recent zip under experiment/data/
-    uv run python analysis/extract_run.py --batch <batch_id>  # pay a specific batch, not the newest
-    uv run python analysis/extract_run.py --all-batches       # every batch in the export (rarely right)
-    uv run python analysis/extract_run.py list               # list extracted runs
-    uv run python analysis/extract_run.py bonuses            # print bonuses for latest run
-    uv run python analysis/extract_run.py early-ended        # print early-ended players
+    uv run python analysis/extract_run.py <zip> --dataset full          # extract one export and register it
+    uv run python analysis/extract_run.py --dataset full                # most recent zip under experiment/data/
+    uv run python analysis/extract_run.py <zip> --dataset full --batch <batch_id>  # pay a specific batch, not the newest
+    uv run python analysis/extract_run.py <zip> --dataset full --all-batches       # every batch in the export (rarely right)
+    uv run python analysis/extract_run.py <zip> --dataset smoke --no-register      # extract without touching runs.txt
+    uv run python analysis/extract_run.py list                          # list extracted runs
+    uv run python analysis/extract_run.py bonuses [--run <timestamp>]   # print bonuses for a run (default: latest)
+    uv run python analysis/extract_run.py early-ended [--run <timestamp>]  # print early-ended players
+
+The options of the default (extract) form may come in any order around the zip
+path. The pilot dataset is frozen: without --dataset (or DATASET) the script
+refuses to extract, so a full-sample export is never registered into it.
 """
 
 import argparse
@@ -25,26 +30,22 @@ from pathlib import Path
 
 import pandas as pd
 
-SUBCOMMANDS = {"list", "bonuses", "early-ended"}
-TIMESTAMP_DIR_PATTERN = re.compile(r"^\d{8}_\d{6}$")
+from dataset_paths import (
+    FROZEN_DATASET,
+    PROJECT_ROOT,
+    RAW_CSV_FILES,
+    RUNS_DIR,
+    TIMESTAMP_DIR_PATTERN,
+    add_dataset_argument,
+    dataset_dirs,
+)
 
-from dataset_paths import PROJECT_ROOT, RUNS_DIR, dataset_dirs
+# The inspection subcommands; anything else on the command line is an extract.
+SUBCOMMANDS = {"list", "bonuses", "early-ended"}
 
 EXPERIMENT_DATA_DIR = PROJECT_ROOT / "experiment" / "data"
 
 ZIP_PATTERN = re.compile(r"empirica-export-(\d{8}_\d{6})\.zip")
-
-RAW_CSV_FILES = [
-    "batch.csv",
-    "game.csv",
-    "global.csv",
-    "player.csv",
-    "playerGame.csv",
-    "playerRound.csv",
-    "playerStage.csv",
-    "round.csv",
-    "stage.csv",
-]
 
 # Columns to strip from player.csv for anonymization.
 # `userAgent` is recorded so a live session can be debugged against the real
@@ -309,8 +310,9 @@ def cmd_extract(
     dataset: str | None = None,
     batch: str | None = None,
     all_batches: bool = False,
+    register: bool = True,
 ):
-    """Extract a single zip and register it in the dataset's runs.txt."""
+    """Extract a single zip and, unless `register` is false, add it to the dataset's runs.txt."""
     # The pilot dataset is complete and committed. Registering a new export into
     # it by default -- which is what happens when neither --dataset nor DATASET is
     # given -- would fold full-sample games into the pilot on the next combine.
@@ -334,7 +336,7 @@ def cmd_extract(
     raw_dir = output_dir / "raw"
 
     dirs = dataset_dirs(dataset)
-    if dirs.name == "pilots" and datetime_str not in dirs.read_runs():
+    if dirs.name == FROZEN_DATASET and datetime_str not in dirs.read_runs():
         print(
             f"Refusing to add run {datetime_str} to the pilot dataset, which is frozen: "
             f"only the runs already in {dirs.runs_file} may be re-extracted.\n"
@@ -362,52 +364,87 @@ def cmd_extract(
     print(f"\nDone. Raw CSVs in {raw_dir}")
     print(f"Bonuses in {output_dir / 'bonuses.csv'}")
 
-    if dirs.register_run(datetime_str):
+    if not register:
+        print(f"Not registered in {dirs.runs_file} (--no-register)")
+    elif dirs.register_run(datetime_str):
         print(f"Registered {datetime_str} in {dirs.runs_file}")
     else:
         print(f"Already registered in {dirs.runs_file}")
     print(f"Next: uv run python analysis/combine_runs.py --dataset {dirs.name}")
 
 
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Extract an Empirica export zip into data/runs/<timestamp>/ (the default "
+            "form), or inspect the runs already extracted."
+        )
+    )
+    sub = parser.add_subparsers(dest="command")
+
+    extract = sub.add_parser(
+        "extract",
+        help="Extract one export zip (implied when no subcommand is given)",
+        description="Unzip an export, strip the sensitive participant columns, write bonuses.csv, "
+        "and register the run in data/<dataset>/runs.txt.",
+    )
+    extract.add_argument(
+        "zip", nargs="?", default=None,
+        help="Path to empirica-export-<timestamp>.zip (default: the most recent zip under experiment/data/)",
+    )
+    add_dataset_argument(extract)
+    extract.add_argument(
+        "--batch", default=None,
+        help="Pay this batch id rather than the newest batch in the export",
+    )
+    extract.add_argument(
+        "--all-batches", action="store_true",
+        help="Pay every batch in the export (rarely right: exports are cumulative)",
+    )
+    extract.add_argument(
+        "--no-register", action="store_true",
+        help="Do not add the run to data/<dataset>/runs.txt (used by make smoke)",
+    )
+
+    sub.add_parser("list", help="List the extracted runs in data/runs/")
+    for name, help_text in (
+        ("bonuses", "Print the bonuses of a run"),
+        ("early-ended", "Print the early-ended players of a run"),
+    ):
+        p = sub.add_parser(name, help=f"{help_text} (default: the latest)")
+        p.add_argument("--run", default=None, help="Run timestamp (default: the most recent extracted run)")
+    return parser
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse the command line, treating a call without a subcommand as `extract`.
+
+    `extract_run.py <zip> --dataset full`, `extract_run.py --dataset full <zip>`,
+    and a bare `extract_run.py --dataset full` (most recent zip) are all the
+    extract form; `list`, `bonuses`, and `early-ended` are the subcommands.
+    """
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if not argv or (argv[0] not in SUBCOMMANDS | {"extract"} and argv[0] not in ("-h", "--help")):
+        argv.insert(0, "extract")
+    return build_parser().parse_args(argv)
+
+
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] in SUBCOMMANDS:
-        subcmd = sys.argv[1]
-        if subcmd == "list":
-            cmd_list()
-        elif subcmd == "bonuses":
-            run_name = None
-            if "--run" in sys.argv:
-                idx = sys.argv.index("--run")
-                if idx + 1 < len(sys.argv):
-                    run_name = sys.argv[idx + 1]
-            cmd_bonuses(run_name)
-        elif subcmd == "early-ended":
-            run_name = None
-            if "--run" in sys.argv:
-                idx = sys.argv.index("--run")
-                if idx + 1 < len(sys.argv):
-                    run_name = sys.argv[idx + 1]
-            cmd_early_ended(run_name)
-        return
-
-    # Default: extract a zip
-    argv = sys.argv[1:]
-
-    def take_value(flag):
-        if flag not in argv:
-            return None
-        idx = argv.index(flag)
-        value = argv[idx + 1] if idx + 1 < len(argv) else None
-        del argv[idx : idx + 2]
-        return value
-
-    dataset = take_value("--dataset")
-    batch = take_value("--batch")
-    all_batches = "--all-batches" in argv
-    if all_batches:
-        argv.remove("--all-batches")
-    zip_path_arg = argv[0] if argv else None
-    cmd_extract(zip_path_arg, dataset, batch=batch, all_batches=all_batches)
+    args = parse_args()
+    if args.command == "list":
+        cmd_list()
+    elif args.command == "bonuses":
+        cmd_bonuses(args.run)
+    elif args.command == "early-ended":
+        cmd_early_ended(args.run)
+    else:
+        cmd_extract(
+            args.zip,
+            args.dataset,
+            batch=args.batch,
+            all_batches=args.all_batches,
+            register=not args.no_register,
+        )
 
 
 if __name__ == "__main__":

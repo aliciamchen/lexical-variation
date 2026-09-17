@@ -11,6 +11,7 @@ Usage:
 
 import argparse
 import re
+import sys
 from itertools import combinations
 from pathlib import Path
 
@@ -18,6 +19,12 @@ import nltk
 import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
+
+from dataset_paths import (
+    FILTERED_UTTERANCES_FILE,
+    filtered_utterances_status,
+    stale_filtered_message,
+)
 
 # NLTK English stopwords for content-word extraction
 nltk.download("stopwords", quiet=True)
@@ -81,18 +88,62 @@ def _word_count(row) -> int:
     return len(str(row.get("utterance", "") or "").split())
 
 
-def compute_pairwise_similarities(
-    utterances: pd.DataFrame,
-    embeddings: np.ndarray,
-    model: SentenceTransformer,
-    window_name: str,
+# ── Pair construction shared by the SBERT and Jaccard similarity tables ─────
+#
+# The preregistration's content-word overlap check repeats the SBERT analyses
+# with Jaccard similarity on the *same* pairs, so the two tables must have the
+# same rows in the same order and differ only in `similarity`. Building the
+# pairs once, with the similarity function passed in, is what guarantees that;
+# the two `compute_*` entry points below are thin wrappers.
+#
+# A similarity function takes the two chosen utterance rows (pandas Series
+# with the utterance's columns plus `_row`, its position in the input frame)
+# and returns a float, or NaN when the measure is undefined for that pair.
+
+
+def embedding_similarity(embeddings: np.ndarray, model) -> callable:
+    """Cosine similarity of two rows' SBERT embeddings (indexed by `_row`)."""
+
+    def similarity(row1, row2) -> float:
+        emb1 = embeddings[int(row1["_row"])]
+        emb2 = embeddings[int(row2["_row"])]
+        return model.similarity(emb1, emb2).item()
+
+    return similarity
+
+
+def content_word_set(text) -> set[str]:
+    """The distinct content words of a description, as the preregistration
+    defines them for H3c and the overlap check: lowercased alphabetic
+    sequences, NLTK English stopwords removed, one-character words dropped,
+    no stemming, repeated tokens counted once."""
+    if not isinstance(text, str):
+        return set()
+    return extract_content_words(text)
+
+
+def jaccard_similarity(row1, row2) -> float:
+    """Jaccard overlap of two descriptions' content-word sets.
+
+    |A ∩ B| / |A ∪ B|. When either description has no content words the
+    preregistration omits the pair from the overlap check; the pair keeps its
+    row here (so the table lines up with the SBERT one) with NaN similarity,
+    and the analysis drops those rows and reports the coverage.
+    """
+    words1 = content_word_set(row1.get("utterance"))
+    words2 = content_word_set(row2.get("utterance"))
+    if not words1 or not words2:
+        return float("nan")
+    return len(words1 & words2) / len(words1 | words2)
+
+
+def build_pairwise_table(
+    utterances: pd.DataFrame, window_name: str, similarity
 ) -> pd.DataFrame:
-    """
-    For each game and tangram in the given time window, compute pairwise cosine
-    similarity between all speaker pairs.
-    """
+    """For each game and tangram in one time window, every pair of speakers'
+    most recent descriptions, scored with `similarity`."""
     df = utterances.copy()
-    df["embedding_idx"] = range(len(df))
+    df["_row"] = range(len(df))
 
     rows = []
     for (game, target), group_data in df.groupby(["gameId", "target"]):
@@ -109,10 +160,6 @@ def compute_pairwise_similarities(
             s1_data = group_data[group_data["playerId"] == s1].iloc[-1]
             s2_data = group_data[group_data["playerId"] == s2].iloc[-1]
 
-            emb1 = embeddings[int(s1_data["embedding_idx"])]
-            emb2 = embeddings[int(s2_data["embedding_idx"])]
-            sim = model.similarity(emb1, emb2).item()
-
             group1 = s1_data.get("originalGroup", "")
             group2 = s2_data.get("originalGroup", "")
             same_group = 1 if group1 == group2 else 0
@@ -128,7 +175,7 @@ def compute_pairwise_similarities(
                 "group1": group1,
                 "group2": group2,
                 "sameGroup": same_group,
-                "similarity": sim,
+                "similarity": similarity(s1_data, s2_data),
                 "participantPair": participant_pair,
                 "window": window_name,
                 # Word counts of the two descriptions, for the preregistered
@@ -139,6 +186,30 @@ def compute_pairwise_similarities(
             })
 
     return pd.DataFrame(rows)
+
+
+def compute_pairwise_similarities(
+    utterances: pd.DataFrame,
+    embeddings: np.ndarray,
+    model: SentenceTransformer,
+    window_name: str,
+) -> pd.DataFrame:
+    """
+    For each game and tangram in the given time window, compute pairwise cosine
+    similarity between all speaker pairs. `embeddings` is aligned with the rows
+    of `utterances`.
+    """
+    return build_pairwise_table(
+        utterances, window_name, embedding_similarity(embeddings, model)
+    )
+
+
+def compute_pairwise_similarities_jaccard(
+    utterances: pd.DataFrame, window_name: str
+) -> pd.DataFrame:
+    """The same pairs as `compute_pairwise_similarities`, scored by Jaccard
+    overlap of content words (the preregistered robustness check)."""
+    return build_pairwise_table(utterances, window_name, jaccard_similarity)
 
 
 def compute_phase_change_similarities(
@@ -254,25 +325,15 @@ def compute_first_phrase_pairwise(
     return pd.DataFrame(rows)
 
 
-def compute_block_pairwise(
-    utterances: pd.DataFrame,
-    model: SentenceTransformer,
-    games: pd.DataFrame,
-) -> pd.DataFrame:
-    """
-    For each block and tangram (both phases), compute pairwise cosine
-    similarity between all speakers using their most recent description
-    (from that block or any earlier block within the same phase). This
-    produces both within-group and between-group pairs, enabling
-    group-specificity trajectory analysis.
-    """
+def build_block_pairwise_table(utterances: pd.DataFrame, similarity) -> pd.DataFrame:
+    """For each block and tangram (both phases), every pair of speakers' most
+    recent descriptions up to that block within the phase, scored with
+    `similarity`. Shared by the SBERT and Jaccard block tables so that they
+    have the same rows in the same order."""
     df = utterances.copy()
     if df.empty:
         return pd.DataFrame()
-
-    # Embed all utterances
-    embeddings = model.encode(df["utterance"].fillna("").tolist(), show_progress_bar=False)
-    df["embedding_idx"] = range(len(df))
+    df["_row"] = range(len(df))
 
     rows = []
     for game, game_data in df.groupby("gameId"):
@@ -308,9 +369,6 @@ def compute_block_pairwise(
                     for s1, s2 in combinations(players, 2):
                         s1_data = latest.loc[s1]
                         s2_data = latest.loc[s2]
-                        emb1 = embeddings[int(s1_data["embedding_idx"])]
-                        emb2 = embeddings[int(s2_data["embedding_idx"])]
-                        sim = model.similarity(emb1, emb2).item()
 
                         group1 = s1_data.get("originalGroup", "")
                         group2 = s2_data.get("originalGroup", "")
@@ -323,12 +381,38 @@ def compute_block_pairwise(
                             "group1": group1,
                             "group2": group2,
                             "sameGroup": 1 if group1 == group2 else 0,
-                            "similarity": sim,
+                            "similarity": similarity(s1_data, s2_data),
                             "blockNum": block,
                             "phaseNum": phase_num,
                         })
 
     return pd.DataFrame(rows)
+
+
+def compute_block_pairwise(
+    utterances: pd.DataFrame,
+    model: SentenceTransformer,
+    games: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    For each block and tangram (both phases), compute pairwise cosine
+    similarity between all speakers using their most recent description
+    (from that block or any earlier block within the same phase). This
+    produces both within-group and between-group pairs, enabling
+    group-specificity trajectory analysis.
+    """
+    if utterances.empty:
+        return pd.DataFrame()
+    embeddings = model.encode(
+        utterances["utterance"].fillna("").tolist(), show_progress_bar=False
+    )
+    return build_block_pairwise_table(utterances, embedding_similarity(embeddings, model))
+
+
+def compute_block_pairwise_jaccard(utterances: pd.DataFrame) -> pd.DataFrame:
+    """The same block-by-block pairs as `compute_block_pairwise`, scored by
+    Jaccard overlap of content words."""
+    return build_block_pairwise_table(utterances, jaccard_similarity)
 
 
 def extract_content_words(text: str) -> set[str]:
@@ -956,12 +1040,18 @@ def main():
     output_dir = Path(args.output) if args.output else data_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Default to filtered utterances if available
+    # Default to the filtered utterances when they exist and were built from the
+    # current messages.csv. A filtered file whose sidecar is missing or names a
+    # different messages.csv is refused, even when asked for by name: using it
+    # would silently analyze descriptions from a previous version of the data.
+    status, detail = filtered_utterances_status(data_dir)
     if args.utterances_file is None:
-        if (data_dir / "speaker_utterances_filtered.csv").exists():
-            args.utterances_file = "speaker_utterances_filtered.csv"
-        else:
-            args.utterances_file = "speaker_utterances.csv"
+        args.utterances_file = (
+            FILTERED_UTTERANCES_FILE if status != "absent" else "speaker_utterances.csv"
+        )
+    if args.utterances_file == FILTERED_UTTERANCES_FILE and status in ("stale", "unverified"):
+        print(f"Error: {stale_filtered_message(status, detail)}", file=sys.stderr)
+        sys.exit(1)
 
     print(f"Loading preprocessed data ({args.utterances_file})...")
     utterances = pd.read_csv(data_dir / args.utterances_file)
@@ -1023,6 +1113,32 @@ def main():
     pairwise.to_csv(output_dir / "pairwise_similarities.csv", index=False)
     print(f"  Total pairwise: {len(pairwise)} rows")
 
+    # --- Preregistered robustness check: the same pairs by content-word overlap ---
+    # Built from the same windows in the same order as the SBERT table, so the
+    # two files line up row for row; only `similarity` differs. Pairs where
+    # either description has no content words carry NaN (the analysis omits
+    # them and reports the coverage).
+    print("Computing Jaccard (content-word overlap) pairwise similarities...")
+    pairwise_jaccard = pd.concat(
+        [
+            compute_pairwise_similarities_jaccard(utts, window)
+            for utts, window in (
+                (p1_utts, "phase1_final"),
+                (p2e_utts, "phase2_early"),
+                (p2_utts, "phase2_final"),
+            )
+            if not utts.empty
+        ],
+        ignore_index=True,
+    ) if not pairwise.empty else pd.DataFrame(columns=pairwise.columns)
+    assert len(pairwise_jaccard) == len(pairwise), "Jaccard and SBERT pair tables differ in rows"
+    pairwise_jaccard.to_csv(output_dir / "pairwise_similarities_jaccard.csv", index=False)
+    print(
+        f"  Total pairwise (Jaccard): {len(pairwise_jaccard)} rows, "
+        f"{int(pairwise_jaccard['similarity'].isna().sum()) if not pairwise_jaccard.empty else 0} "
+        "without content words on one side"
+    )
+
     # --- New metric 1: First-phrase pairwise similarity ---
     print("Computing first-phrase pairwise similarities...")
     fp_frames = []
@@ -1047,6 +1163,12 @@ def main():
     block_pw = compute_block_pairwise(utterances, model, games)
     block_pw.to_csv(output_dir / "block_pairwise_similarities.csv", index=False)
     print(f"  Block pairwise: {len(block_pw)} rows")
+
+    print("Computing block-by-block Jaccard (content-word overlap) similarities...")
+    block_pw_jaccard = compute_block_pairwise_jaccard(utterances)
+    assert len(block_pw_jaccard) == len(block_pw), "Jaccard and SBERT block tables differ in rows"
+    block_pw_jaccard.to_csv(output_dir / "block_pairwise_similarities_jaccard.csv", index=False)
+    print(f"  Block pairwise (Jaccard): {len(block_pw_jaccard)} rows")
 
     # --- New metric 3: Phase 1 term retention ---
     print("Computing Phase 1 term retention...")

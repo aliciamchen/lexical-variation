@@ -53,7 +53,8 @@ LLM-based classifier to filter non-referential messages (e.g., "thanks", "good j
 uv run python analysis/filter_nonreferential.py sample --data-dir data/pilots/ --n 200
 
 # Classify all speaker messages with LLM
-uv run python analysis/filter_nonreferential.py classify --data-dir data/pilots/
+uv run python analysis/filter_nonreferential.py classify --data-dir data/pilots/ --dry-run   # count first: labels are cached in messages_classified.csv, only unlabeled messages are sent
+uv run python analysis/filter_nonreferential.py classify --data-dir data/pilots/             # asks for confirmation (or --yes) before the first API call
 
 # Validate against human labels (target: 95% agreement)
 uv run python analysis/filter_nonreferential.py validate --data-dir data/pilots/ --labels data/pilots/human_labels.csv

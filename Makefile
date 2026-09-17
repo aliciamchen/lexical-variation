@@ -21,6 +21,17 @@
 #   make test           # validate processed data (pytest integrity suite)
 #   make notebooks      # render the dataset's notebooks
 #   make llm-process    # process LLM simulation JSONs → CSVs
+#
+# Smoke-testing one export before it joins a dataset:
+#   make smoke ZIP=experiment/data/<run>/empirica-export-<run>.zip
+# runs extract → combine → process (no Vertex AI) → integrity suite in a
+# throwaway dataset named `smoke` (data/smoke/, analysis/derived/smoke/), which
+# is never committed. The block-count checks are expected to fail for games
+# played in TEST_MODE, whose phases are shorter than production.
+#
+# Each run's zip is looked up as experiment/data/<run>/empirica-export-<run>.zip
+# or, failing that, as experiment/data/*/empirica-export-<run>.zip, because the
+# old backup loop wrote every zip of a session into the directory of the first.
 
 DATASET ?= pilots
 export DATASET
@@ -32,7 +43,11 @@ FIGURES_DIR = figures/$(DATASET)
 RUNS_FILE = $(DATA_DIR)/runs.txt
 # Run timestamps from runs.txt (comments and blank lines dropped)
 RUNS := $(shell [ -f $(RUNS_FILE) ] && sed -e 's/\#.*//' $(RUNS_FILE) | tr -s '[:space:]' '\n' | grep -v '^$$' | tr '\n' ' ')
-ZIPS = $(foreach run,$(RUNS),experiment/data/$(run)/empirica-export-$(run).zip)
+# The export zip of one run: in its own directory, or in any other export
+# directory (old backup loops put many zips in one). Make aborts with the run's
+# name when neither exists, so a typo in runs.txt cannot start a partial extract.
+zip_for_run = $(or $(firstword $(wildcard experiment/data/$(1)/empirica-export-$(1).zip experiment/data/*/empirica-export-$(1).zip)),$(error No export zip for run $(1): expected experiment/data/$(1)/empirica-export-$(1).zip or experiment/data/*/empirica-export-$(1).zip))
+ZIPS = $(foreach run,$(RUNS),$(call zip_for_run,$(run)))
 LLM_SIM_DIR = analysis/llm_simulation
 LLM_RESULTS = $(shell ls -d $(LLM_SIM_DIR)/llm_results_*/ 2>/dev/null | sort | tail -1)
 
@@ -44,7 +59,7 @@ else
 NOTEBOOKS = $(wildcard analysis/0[0-9]_*.qmd)
 endif
 
-.PHONY: all pilot extract combine process process-no-filter notebooks llm-process test runs help
+.PHONY: all pilot extract combine process process-no-filter notebooks llm-process test test-ops smoke runs help
 
 # ── Main targets ────────────────────────────────────────────
 
@@ -81,6 +96,30 @@ test: ## Validate processed data against the integrity suite and run the Python 
 
 test-ops: ## Run only the Prolific session tooling tests (no API calls, no data needed)
 	uv run pytest operations/test_session.py -q
+
+# The zip is extracted into data/runs/<run>/ like any other and registered in
+# data/smoke/runs.txt, so the combine step reads the same file it always does.
+# Nothing under data/smoke/ or analysis/derived/smoke/ is meant to be committed.
+smoke: ## Smoke-test one export end to end in a throwaway dataset: make smoke ZIP=<path to zip>
+	@if [ -z "$(ZIP)" ]; then \
+		echo "Usage: make smoke ZIP=experiment/data/<run>/empirica-export-<run>.zip"; exit 1; \
+	fi
+	@if [ ! -f "$(ZIP)" ]; then echo "Error: $(ZIP) does not exist"; exit 1; fi
+	rm -rf data/smoke analysis/derived/smoke
+	uv run python analysis/extract_run.py "$(ZIP)" --dataset smoke
+	uv run python analysis/combine_runs.py --dataset smoke
+	uv run python analysis/process_data.py --dataset smoke --skip-filter
+	@echo
+	@echo "=== Integrity suite on the smoke dataset ==="
+	@echo "The block-count checks (blocks per phase, trials per block, speaker rotation)"
+	@echo "are expected to fail for games played in TEST_MODE, which shortens the phases"
+	@echo "to 3 + 2 blocks. The bonus checks apply the production pay rate, so an export"
+	@echo "from before it was set (such as a pilot zip) fails them too. Anything else"
+	@echo "that fails is a real problem with the export."
+	-DATASET=smoke uv run pytest analysis/test_data_integrity.py -q
+	@echo
+	@echo "Smoke test finished. Outputs: data/smoke/ and analysis/derived/smoke/ (throwaway;"
+	@echo "remove with: rm -rf data/smoke analysis/derived/smoke)"
 
 # ── LLM simulation ─────────────────────────────────────────
 

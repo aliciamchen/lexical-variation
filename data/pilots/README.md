@@ -2,6 +2,20 @@
 
 This directory contains preprocessed analysis-ready CSVs from the pilot experiment sessions. The anonymized raw Empirica exports are in `raw_anonymized/`; the CSVs at this level are produced by the analysis pipeline (see the project README for details).
 
+## Provenance and exclusion files
+
+Besides the data tables, the directory holds a few small files that say where the data came from and what was left out. The same files exist, with the same names, in every dataset directory (`data/<name>/`).
+
+| File | Written by | Contents |
+|------|-----------|----------|
+| `runs.txt` | `extract_run.py` (or by hand) | The Empirica export timestamps combined into this dataset, one per line, with `#` comments. Exports are cumulative snapshots of one server, so listing several from the same server is safe: `combine_runs.py` keeps the newest version of each record |
+| `manifest.json` | `combine_runs.py` | Provenance of `raw_anonymized/`: the source runs, per-table row counts, the lobby-timeout games that were filtered out (`filtered_failed_games`), the games dropped through `exclude_games.txt` (`excluded_games`), and which records were seen in more than one export |
+| `exclude_games.txt` | by hand (input, optional) | Empirica game ids of games that ran on the production server but are not data -- a rehearsal with lab members, a game started to check a deploy, a session the researcher stopped. One id per line; blank lines and `#` comments are ignored, so each entry can carry its reason. `combine_runs.py` drops the listed games and every player, round, stage, and message that belongs to them before anything is written, prints how many rows went, and records the ids in `manifest.json`. An id that matches no game is reported as a warning, since it usually means a typo. The pilot has none |
+| `participant_exclusions.csv` | by hand (input, optional) | Participants whose data are excluded after the fact, with the columns `playerId,reason` (both required on every row; a player may be listed once; an id that is not in `player.csv` is an error). `preprocessing.py` drops their messages from `messages.csv` and `speaker_utterances.csv`, so every derived measure is computed without them, and flags rows in `trials.csv` and `social_guesses.csv` through the `excluded` and `exclusionReason` columns: the excluded player's own rows carry their reason, and every listener row of a trial the excluded player spoke in carries `speaker excluded: <reason>`, because a selection is only as good as the description it answered. `responseOpportunity` is left as computed. Players remain in `players.csv`. The pilot has none, so both columns are `False` and empty throughout |
+| `dropouts.csv` | `combine_runs.py` | One row per player record that never played a real game, with the columns `playerId,batchId,ended,exitReason,quizAttempts`: participants who failed the comprehension quiz (`exitReason` = `quiz failed`, with the number of attempts), who waited in a lobby that timed out (`ended` = `game failed`), or who arrived after the games were full (`ended` = `no more games`). `batchId` is the batch of the game the record was attached to and is empty for a participant who never reached one. These records are dropped from `raw_anonymized/player.csv`, so this file is what the attrition report counts; it is written with just the header when there are none. Players of games listed in `exclude_games.txt` are neither data nor dropouts and do not appear. The pilot has 21 |
+| `messages_classified.csv` | `filter_nonreferential.py classify` | `messages.csv` with the classifier's verdict on each speaker message (`llm_label` = `R` or `NR`, `is_referential`). It doubles as the label cache: labels are keyed on game, round, sender, timestamp, and text, and `classify` sends only the speaker messages that have no label here, so reprocessing costs API calls only for new or changed messages. `apply` joins these labels onto the current `messages.csv` to build the filtered utterances |
+| `speaker_utterances_filtered.source.json` | `filter_nonreferential.py apply` | The sha256 and row count of the `messages.csv` that `speaker_utterances_filtered.csv` was built from. The filtered utterances are derived from `messages.csv` through the classifier's labels, and every downstream step prefers them when they exist, so without this record a filtered file left over from an earlier `messages.csv` would be analyzed in place of the current data. `compute_derived.py` and `process_data.py` refuse a filtered file whose sidecar is missing or does not match (`process_data.py --skip-filter` falls back to the unfiltered file with a warning instead), and `preprocessing.py` deletes a filtered file whose sidecar no longer matches when it rewrites `messages.csv`, printing what it deleted. Rerunning `classify` and `apply` rebuilds both |
+
 ## games.csv
 
 One row per game session.
@@ -12,11 +26,14 @@ One row per game session.
 | `condition` | Experimental condition: `refer_separated`, `refer_mixed`, `social_mixed`, or `social_first` |
 | `tangramSet` | Which tangram image set was used |
 | `numPlayers` | Number of players in the game |
-| `activeGroups` | Number of groups that remained active throughout the game |
+| `activeGroups` | Number of original groups still viable when the game ended (0 if every group was disbanded) |
+| `activeGroupsMin` | The fewest groups any Phase 2 trial was played with: per Phase 2 round, the server's `reshuffle_groups` count where the export has it (September 2026 onward), otherwise the number of groups with a speaker in that round's trials, minimized over rounds. Differs from `activeGroups` in the mixed conditions when a reduced roster forms fewer groups than there are viable original groups; equals `activeGroups` for a game with no Phase 2 trials |
 | `phase1Blocks` | Number of blocks in Phase 1 |
 | `phase2Blocks` | Number of blocks in Phase 2 |
 | `ended` | Whether Empirica marked the game as ended |
 | `endedReason` | Why the game ended: `end of game` when it ran to completion, `all players removed` when it terminated early |
+| `batchId` | The Empirica batch the game ran in. A data-collection session is one batch, so this groups the games of a session and ties each game to the payment ledger of `operations/session.py` |
+| `sourceRun` | The export timestamp (`YYYYMMDD_HHMMSS`, an entry of `runs.txt`) the game's records were read from, which is the newest export that contained it |
 
 ## players.csv
 
@@ -102,6 +119,10 @@ One row per player per reference game round. Grouping rows by `gameId`, `roundId
 | `groupSize` | Number of players in this player's group on this trial: 3, or 2 after dropout |
 | `speakerReassigned` | Whether the group's speaker was not the block's designated one (the member with rotation index `blockNum` mod 3), which happens after a removal. Recorded by the server from September 2026 and derived from `playerIndex` for earlier exports such as the pilot |
 | `reshuffleMode` | In Phase 2 of the mixed conditions, the server's record of that trial's reshuffle: `constrained` when every group was a trio with exactly one in-group listener, `reduced` otherwise. Empty in Phase 1, in the separated condition, and throughout the pilot, whose exports predate the record |
+| `hasSpeakerMessage`, `responseOpportunity` | Whether this trial's speaker sent a message, and whether the row is an eligible listener response opportunity (a listener with a speaker message), which is the accuracy denominator |
+| `serverSpeakerId`, `serverInGroupListener`, `serverGroupSize` | The server's own record of the speaker, the listener's in-group status, and the group size, written at role assignment from September 2026 onward. `speakerId`, `inGroupSpeaker`, and `groupSize` above are derived from the trio membership in this table; these three are what the server saw, and the integrity suite checks that the two agree wherever these are non-empty. Empty in the pilot |
+| `reshuffleGroups`, `reshuffleTrios`, `reshuffleTriosOk`, `reshufflePairs` | The reshuffle's own tally for a mixed Phase 2 trial: how many groups it formed, how many were trios, how many of those trios had exactly one in-group listener, and how many were pairs. Same for every player in the round; empty in Phase 1, in the separated condition, and in the pilot |
+| `excluded`, `exclusionReason` | Whether the row is excluded through `participant_exclusions.csv` and why: the participant's own reason on their rows, `speaker excluded: <reason>` on the rows of listeners they described to. `False` and empty everywhere in the pilot |
 
 ## messages.csv
 
@@ -182,4 +203,8 @@ Listener guesses about whether the speaker belongs to their original group. Only
 | `socialRoundScore` | Points awarded for the guess |
 | `socialGuessSelectedAt` | When the listener chose their answer (ms since epoch, their own clock). The answer is held locally until submit, so this is earlier than the moment it reached the server. Full sample only |
 | `socialGuessRt` | How long after the Selection stage rendered the answer was chosen, in milliseconds. Comparable with `selectionRt` in `trials.csv`, which shows which of the two decisions the listener made first. Full sample only |
+| `hasSpeakerMessage`, `responseOpportunity` | Whether the speaker sent a message, and whether the row counts in the social-guess accuracy denominator |
+| `socialTimeout`, `lateSocialGuess` | Whether no guess was submitted, and whether the guess arrived after the Selection deadline (unscored) |
 | `tangramSet` | Which tangram set |
+| `speakerWasSameGroup` | The server's record, written when it scored the guess, of whether the speaker belonged to the listener's original group: the ground truth the guess is judged against, so `socialGuessCorrect` is exactly this compared with `socialGuess`. Empty where no guess was scored |
+| `excluded`, `exclusionReason` | As in `trials.csv`: the guesser's own exclusion or their speaker's |
