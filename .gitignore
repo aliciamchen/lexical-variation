@@ -16,13 +16,15 @@ tajriba.json
 *.zip
 lexical-variation*/
 .playwright-mcp
-*export*
+# Empirica export zips wherever a backup lands (experiment/data is ignored as a whole)
+**/empirica-export-*
 
 *.tar.zst
 .zed
 reviews/
 analysis/outputs
-raw
+# Old raw-export layout; the anonymized raw tables in data/<dataset>/raw_anonymized/ are committed
+/data/raw/
 # Writing projects (each an Overleaf project mirrored through Dropbox)
 writing/
 *.ai
@@ -38,3 +40,11 @@ analysis/derived/*/bayes_factors/
 
 # Local session state written by operations/session.py
 operations/.sessions/
+
+# Admin password and tajriba service token; see experiment/.empirica/empirica.toml.example
+experiment/.empirica/empirica.toml
+
+# Throwaway dataset written by `make smoke`
+data/smoke/
+analysis/derived/smoke/
+figures/smoke/

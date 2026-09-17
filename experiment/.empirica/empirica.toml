@@ -1,9 +1,0 @@
-name = "lexical-variation"
-
-[tajriba.auth]
-srtoken = "sbHncYyXDoVnxpSz"
-
-[[tajriba.auth.users]]
-name = "Admin"
-username = "admin"
-password = "BHwjsRxR"

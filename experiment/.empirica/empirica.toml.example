@@ -1,0 +1,13 @@
+# Copy to empirica.toml and fill in fresh random values. The real file is
+# gitignored: it holds the admin panel password and the service token the
+# callbacks server uses to authenticate to tajriba, and `empirica bundle`
+# ships it to the production server. Rotate both values if they ever leak.
+name = "lexical-variation"
+
+[tajriba.auth]
+srtoken = "replace-with-a-long-random-token"
+
+[[tajriba.auth.users]]
+name = "Admin"
+username = "admin"
+password = "replace-with-a-long-random-password"
