@@ -54,8 +54,108 @@ check("unnamed macros are rejected", inherits(err, "error"))
 
 # ── write_stats_lines (pre-formatted lines from the SI notebooks) ─────────────
 tmp2 <- file.path(tempdir(), "stats_test", "lines.tex")
-write_stats_lines(c("\\newcommand{\\pilotNGames}{4}", "\\newcommand{\\pilotNSig}{4}"), tmp2, source = "test")
-check("write_stats_lines writes the header and the lines as given",
-      identical(readLines(tmp2)[2:3], c("\\newcommand{\\pilotNGames}{4}", "\\newcommand{\\pilotNSig}{4}")))
-err <- tryCatch(write_stats_lines("\\newcommand{\\pilotN2}{1}", tmp2), error = function(e) e)
-check("write_stats_lines rejects a digit in a macro name", inherits(err, "error") && grepl("letters only", conditionMessage(err)))
+write_stats_lines(
+  c("\\newcommand{\\pilotNGames}{4}", "\\newcommand{\\pilotNSig}{4}"),
+  tmp2,
+  source = "test"
+)
+check(
+  "write_stats_lines writes the header and the lines as given",
+  identical(
+    readLines(tmp2)[2:3],
+    c("\\newcommand{\\pilotNGames}{4}", "\\newcommand{\\pilotNSig}{4}")
+  )
+)
+err <- tryCatch(
+  write_stats_lines("\\newcommand{\\pilotN2}{1}", tmp2),
+  error = function(e) e
+)
+check(
+  "write_stats_lines rejects a digit in a macro name",
+  inherits(err, "error") && grepl("letters only", conditionMessage(err))
+)
+
+# ── Macro-building helpers ───────────────────────────────────────────────────
+
+check(
+  "fmt_stat formats to fixed digits and NA as NA",
+  fmt_stat(0.12345) == "0.123" &&
+    fmt_stat(-2, 1) == "-2.0" &&
+    fmt_stat(NA) == "NA" &&
+    fmt_stat(numeric(0)) == "NA" &&
+    fmt_stat(NULL) == "NA"
+)
+check(
+  "fmt_count uses LaTeX-safe thousands separators",
+  fmt_count(24000) == "24{,}000" && fmt_count(9) == "9" && fmt_count(NA) == "NA"
+)
+
+macro_df <- tibble(
+  gameId = paste0("m", 1:9),
+  condition = rep(
+    c("refer_separated", "refer_mixed", "social_mixed"),
+    each = 3
+  ),
+  gs_phase1 = c(0.1, 0.2, 0.3, 0.1, 0.25, 0.3, 0.12, 0.2, 0.31),
+  gs_phase2 = c(0.5, 0.6, 0.7, 0.1, 0.2, 0.3, 0.4, 0.5, 0.55)
+)
+fit <- fit_h12(macro_df)
+ct_est <- as.data.frame(summary(fit$contrasts))$estimate
+cm <- contrast_macros("primaryHOne", fit$contrasts, row = 1)
+check(
+  "contrast_macros gives Est, Lo, Hi, and P for one contrast of an emmeans object",
+  identical(
+    names(cm),
+    c("primaryHOneEst", "primaryHOneLo", "primaryHOneHi", "primaryHOneP")
+  ) &&
+    abs(as.numeric(cm$primaryHOneEst) - ct_est[1]) < 1e-3 &&
+    as.numeric(cm$primaryHOneLo) < as.numeric(cm$primaryHOneHi) &&
+    grepl("^(< )?\\.[0-9]{3}$|^NA$", cm$primaryHOneP)
+)
+cm2 <- contrast_macros(
+  "primaryHTwo",
+  contrast_table(fit$contrasts, "primary"),
+  row = 2
+)
+check(
+  "contrast_macros accepts the contrast_table() form and picks the requested row",
+  abs(as.numeric(cm2$primaryHTwoEst) - ct_est[2]) < 1e-3
+)
+check(
+  "contrast_macros gives nothing for a missing contrast",
+  length(contrast_macros("x", NULL)) == 0 &&
+    length(contrast_macros("x", fit$contrasts, row = 5)) == 0
+)
+km <- coef_macros("primaryCov", fit$model, "gs_phase1")
+check(
+  "coef_macros gives Est, SE, Stat, and P for a coefficient",
+  identical(
+    names(km),
+    c("primaryCovEst", "primaryCovSE", "primaryCovStat", "primaryCovP")
+  ) &&
+    abs(as.numeric(km$primaryCovEst) - coef(fit$model)[["gs_phase1"]]) < 1e-3
+)
+check(
+  "coef_macros gives nothing for a term the model lacks or a NULL model",
+  length(coef_macros("x", fit$model, "not_there")) == 0 &&
+    length(coef_macros("x", NULL, "a")) == 0
+)
+check(
+  "bf_macros formats a computed Bayes factor and skips a missing one",
+  identical(
+    bf_macros("primaryHOne", list(bf10 = 0.2531)),
+    list(primaryHOneBF = "0.253")
+  ) &&
+    length(bf_macros("x", list(bf10 = NA_real_))) == 0 &&
+    length(bf_macros("x", NULL)) == 0
+)
+check("the macro helpers produce names write_stats_tex accepts", {
+  p <- file.path(tempdir(), "stats_test", "macros.tex")
+  write_stats_tex(c(cm, km, bf_macros("primaryHOne", list(bf10 = 2))), p)
+  setequal(stats_tex_names(p), c(names(cm), names(km), "primaryHOneBF"))
+})
+check(
+  "stats_file points into the manuscript project's stats directory with a letters-only stem",
+  stats_file("primary") == file.path(manuscript_dir, "stats", "primary.tex") &&
+    inherits(try(stats_file("02_primary"), silent = TRUE), "try-error")
+)

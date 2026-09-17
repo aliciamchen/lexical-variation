@@ -84,17 +84,29 @@ has_field <- function(survey, field) {
   field %in% names(survey) && any(!is.na(survey[[field]]))
 }
 
-# Games in which any respondent answered "no" to playing with humans; the
-# preregistration flags these for detailed inspection.
-felt_human_flags <- function(survey) {
+# Games (level = "game") or original groups (level = "group") in which any
+# respondent answered "no" to playing with humans; the preregistration flags
+# these groups for detailed inspection of their chat logs, and the game they
+# belong to is listed too.
+felt_human_flags <- function(survey, level = c("game", "group")) {
+  level <- match.arg(level)
   if (!has_field(survey, "feltHuman")) {
     return(tibble())
   }
+  keys <- if (level == "game") {
+    c("gameId", "condition")
+  } else {
+    c("gameId", "condition", "originalGroup")
+  }
   survey |>
-    group_by(gameId, condition) |>
+    group_by(across(all_of(keys))) |>
     summarise(
       respondents = sum(!is.na(feltHuman)),
       said_no = sum(feltHuman == "no", na.rm = TRUE),
+      groups_saying_no = paste(
+        sort(unique(originalGroup[feltHuman == "no" & !is.na(feltHuman)])),
+        collapse = ", "
+      ),
       players_saying_no = paste(
         originalName[feltHuman == "no" & !is.na(feltHuman)],
         collapse = ", "

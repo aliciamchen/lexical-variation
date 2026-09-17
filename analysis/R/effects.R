@@ -19,10 +19,34 @@ report_effect_sizes <- function(model) {
   invisible(std_params)
 }
 
+# Odds ratios for the fixed effects of a logistic model (glmer or glm), the
+# effect size the preregistration names for binary outcomes, with Wald
+# confidence intervals on the log-odds scale exponentiated.
+odds_ratio_table <- function(model, level = 0.95) {
+  b <- if (inherits(model, "merMod")) lme4::fixef(model) else coef(model)
+  se <- sqrt(diag(as.matrix(vcov(model))))
+  z <- qnorm(1 - (1 - level) / 2)
+  tibble(
+    term = names(b),
+    log_odds = unname(b),
+    odds_ratio = exp(unname(b)),
+    lower = exp(unname(b) - z * se),
+    upper = exp(unname(b) + z * se),
+    p.value = 2 * pnorm(-abs(unname(b) / se))
+  )
+}
+
+report_odds_ratios <- function(model, level = 0.95) {
+  cat(sprintf("\nOdds ratios (Wald %.0f%% CI):\n", 100 * level))
+  tab <- odds_ratio_table(model, level)
+  print(knitr::kable(tab, digits = 3))
+  invisible(tab)
+}
+
 # Cohen's d between two conditions on game-level estimates (the unit of the
-# weighted regressions for H1, H2, and H3a), with a pooled SD and 95% CI.
+# equal-weight regressions for H1, H2, and H3a), with a pooled SD and 95% CI.
 # This is the unadjusted between-condition difference that the power analysis
-# was based on; the WLS contrast remains the inferential test. Returns NA when
+# was based on; the OLS contrast remains the inferential test. Returns NA when
 # either condition has fewer than two games (e.g. the pilot).
 cohens_d_games <- function(df, value, condition, a, b) {
   x <- df[[value]][df[[condition]] == a]

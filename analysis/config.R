@@ -66,6 +66,59 @@ use_dataset()
 prereg_dir <- here("writing", "preregistration")
 manuscript_dir <- here("writing", "manuscript")
 
+# Where a full-sample notebook writes its statistics macros
+# (writing/manuscript/stats/<notebook>.tex, \input by the manuscript). The
+# stem is the notebook's macro prefix, letters only, so the file name and the
+# macro names agree.
+stats_file <- function(notebook) {
+  stopifnot(
+    is.character(notebook),
+    length(notebook) == 1,
+    grepl("^[A-Za-z]+$", notebook)
+  )
+  file.path(manuscript_dir, "stats", paste0(notebook, ".tex"))
+}
+
+# ── Dataset banner ───────────────────────────────────────────
+# Every full-sample notebook prints this right after its setup chunk, in a
+# chunk with results = "asis", so the rendered page says which dataset it was
+# built from. The pilot stands in for the full sample until that exists; a
+# render on the pilot gets a warning callout so its numbers are never read as
+# results. `games` (the loaded games table) adds the game count.
+dataset_banner <- function(name = DATASET, games = NULL) {
+  n_games <- if (is.data.frame(games) && "condition" %in% names(games)) {
+    sum(!is.na(games$condition))
+  } else {
+    NA_integer_
+  }
+  where <- sprintf(
+    "This render uses `data/%s/` and `analysis/derived/%s/`%s.",
+    name,
+    name,
+    if (is.na(n_games)) "" else sprintf(" (%d games with a condition)", n_games)
+  )
+  if (name == DEFAULT_DATASET) {
+    kind <- "warning"
+    title <- "Pilot data, not the full sample"
+    body <- paste(
+      where,
+      "The pilot has one game per condition, so the game-level contrasts,",
+      "Bayes factors, and between-game intervals below are not estimable or",
+      "not meaningful; this render exercises the preregistered code and its",
+      "numbers are not results. The statistics macros it writes to",
+      "`writing/manuscript/stats/` are placeholders until the full sample is",
+      "processed (`DATASET=<name>`)."
+    )
+  } else {
+    kind <- "note"
+    title <- sprintf("Dataset: %s", name)
+    body <- where
+  }
+  txt <- sprintf("\n::: {.callout-%s}\n## %s\n%s\n:::\n\n", kind, title, body)
+  cat(txt)
+  invisible(txt)
+}
+
 # ── Design constants ─────────────────────────────────────────
 
 CONDITION_ORDER <- c(

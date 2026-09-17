@@ -206,3 +206,111 @@ check(
     nrow(kept) == 3 && !("p4" %in% kept$playerId)
   }
 )
+
+# ── Post-hoc participant exclusions ─────────────────────────────────────────
+# preprocessing.py flags `excluded` / `exclusionReason` on the excluded
+# participant's own rows and on the rows of listeners they spoke to. Both
+# become missing outcomes, reported apart from technical failures.
+
+excl_trials <- acc_trials |>
+  mutate(
+    excluded = c(FALSE, TRUE, FALSE, FALSE, FALSE, FALSE),
+    exclusionReason = c("", "speaker excluded: adversarial messages", "", "", "", "")
+  )
+lt_part <- listener_trials(excl_trials, acc_games, phase = 2, exclusions = no_exclusions)
+check(
+  "a post-hoc participant exclusion is missing, not unsuccessful, and keeps its row",
+  nrow(lt_part) == 4 &&
+    is.na(lt_part$correct[lt_part$playerId == "p2"]) &&
+    lt_part$participantExcluded[lt_part$playerId == "p2"] &&
+    lt_part$exclusionReason[lt_part$playerId == "p2"] == "speaker excluded: adversarial messages" &&
+    lt_part$correct[lt_part$playerId == "p1"] == 1 &&
+    lt_part$correct[lt_part$playerId == "p3"] == 0
+)
+check(
+  "a frame without the exclusion columns is coded as nobody excluded",
+  all(!lt$participantExcluded) && all(is.na(lt$exclusionReason)) &&
+    !exclusion_columns_present(acc_trials) && exclusion_columns_present(excl_trials)
+)
+s_part <- response_opportunity_summary(lt_part, by = "phaseNum")
+check(
+  "the summary reports participant exclusions apart from technical ones and leaves them out of the rates",
+  s_part$opportunities == 4 && s_part$excluded_participant == 1 &&
+    s_part$excluded_technical == 0 && s_part$scored == 3 &&
+    abs(s_part$accuracy - 1 / 3) < 1e-12
+)
+check(
+  "a technical failure and a participant exclusion are counted once each",
+  {
+    dir.create(excl_dir, showWarnings = FALSE)
+    readr::write_csv(
+      tibble(gameId = "g1", playerId = "p3", roundId = "r1",
+             outcome = "referential", reason = "listener browser crashed"),
+      file.path(excl_dir, "technical_exclusions.csv")
+    )
+    s <- response_opportunity_summary(
+      listener_trials(excl_trials, acc_games, phase = 2,
+                      exclusions = technical_exclusions(excl_dir)),
+      by = "phaseNum"
+    )
+    unlink(excl_dir, recursive = TRUE)
+    s$excluded_technical == 1 && s$excluded_participant == 1 && s$scored == 2
+  }
+)
+pes <- participant_exclusion_summary(lt_part)
+check(
+  "participant_exclusion_summary lists the excluded rows by reason and kind",
+  nrow(pes) == 1 && pes$observations == 1 &&
+    pes$kind == "listener of an excluded speaker" &&
+    pes$exclusionReason == "speaker excluded: adversarial messages"
+)
+check(
+  "participant_exclusion_summary is empty when nothing was excluded",
+  nrow(participant_exclusion_summary(lt)) == 0
+)
+sg_part <- social_guess_trials(
+  acc_guesses |>
+    mutate(
+      excluded = c(TRUE, FALSE, FALSE, FALSE, FALSE),
+      exclusionReason = c("bot-like responses", "", "", "", "")
+    ),
+  acc_games,
+  exclusions = no_exclusions
+)
+check(
+  "an excluded participant's own social guess is missing with its reason",
+  is.na(sg_part$correct[sg_part$playerId == "p1"]) &&
+    sg_part$exclusionReason[sg_part$playerId == "p1"] == "bot-like responses" &&
+    participant_exclusion_summary(sg_part)$kind == "excluded participant's own" &&
+    sg_part$correct[sg_part$playerId == "p2"] == 0
+)
+check(
+  "an excluded row with a blank reason is still excluded and says so",
+  {
+    blank <- listener_trials(
+      excl_trials |> mutate(exclusionReason = ""), acc_games, phase = 2,
+      exclusions = no_exclusions
+    )
+    is.na(blank$correct[blank$playerId == "p2"]) &&
+      blank$exclusionReason[blank$playerId == "p2"] == "excluded (no reason recorded)"
+  }
+)
+
+pe_dir <- file.path(tempdir(), "pe")
+dir.create(pe_dir, showWarnings = FALSE)
+check(
+  "participant_exclusions is empty without the file",
+  nrow(participant_exclusions(pe_dir)) == 0
+)
+readr::write_csv(
+  tibble(playerId = "p9", reason = "adversarial messages"),
+  file.path(pe_dir, "participant_exclusions.csv")
+)
+check(
+  "participant_exclusions reads playerId and reason",
+  {
+    pe <- participant_exclusions(pe_dir)
+    nrow(pe) == 1 && pe$playerId == "p9" && pe$reason == "adversarial messages"
+  }
+)
+unlink(pe_dir, recursive = TRUE)

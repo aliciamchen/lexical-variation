@@ -72,11 +72,32 @@ flags <- felt_human_flags(bind_rows(
     )
 ))
 check(
-  "felt_human_flags lists games with a no and who said it",
+  "felt_human_flags lists games with a no, who said it, and which groups",
   nrow(flags) == 1 &&
     flags$gameId == "g2" &&
     flags$said_no == 2 &&
-    grepl("Zuda", flags$players_saying_no)
+    grepl("Zuda", flags$players_saying_no) &&
+    flags$groups_saying_no == "A"
+)
+survey_groups <- bind_rows(
+  s,
+  s |>
+    mutate(
+      gameId = "g2",
+      condition = factor("refer_separated", levels = CONDITION_ORDER),
+      originalGroup = c("B", "C"),
+      feltHuman = c("no", "yes"),
+      originalName = c("Zuda", "Kemi")
+    )
+)
+group_flags <- felt_human_flags(survey_groups, level = "group")
+check(
+  "felt_human_flags at the group level flags the original group that said no, not its game-mates",
+  nrow(group_flags) == 1 &&
+    group_flags$gameId == "g2" &&
+    group_flags$originalGroup == "B" &&
+    group_flags$said_no == 1 &&
+    group_flags$players_saying_no == "Zuda"
 )
 
 lk <- likert_by_condition(s, "groupIdentification")

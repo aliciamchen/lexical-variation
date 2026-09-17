@@ -121,3 +121,105 @@ none <- differential_dropout_tests(
   status |> mutate(complete_nine = TRUE)
 )
 check("no test is run when nobody dropped out", length(none) == 0)
+
+# ── The two September 2026 exit reasons and the no-fault label ───────────────
+
+new_games <- tibble(
+  gameId = c("g4", "g5"),
+  condition = c("social_first", "refer_separated"),
+  activeGroups = c(0, 2)
+)
+new_players <- bind_rows(
+  mk_players("g4", c("game terminated", "game terminated", "player timeout")),
+  mk_players("g5", c("insufficient groups", "low accuracy"))
+)
+pa_new <- player_attrition(new_players, new_games)
+check(
+  "game terminated and insufficient groups are labeled as their own categories",
+  identical(
+    as.character(pa_new$reason[pa_new$removed]),
+    c("game terminated", "game terminated", "idle", "insufficient groups", "low accuracy")
+  ) && all(REASON_LEVELS %in% levels(pa_new$reason))
+)
+check(
+  "disbanded, insufficient groups, and game terminated are not the participant's fault; idle and low accuracy are",
+  identical(pa_new$no_fault[pa_new$removed], c(TRUE, TRUE, FALSE, TRUE, FALSE)) &&
+    setequal(NO_FAULT_REASONS, c("group disbanded", "insufficient groups", "game terminated")) &&
+    pa$no_fault[pa$gameId == "g3" & pa$reason == "group disbanded"]
+)
+abc_new <- attrition_by_condition(pa_new)
+check(
+  "attrition_by_condition counts no-fault removals and the new reason columns",
+  abc_new$removed_no_fault[abc_new$condition == "social_first"] == 2 &&
+    abc_new$`game terminated`[abc_new$condition == "social_first"] == 2 &&
+    abc_new$`insufficient groups`[abc_new$condition == "refer_separated"] == 1 &&
+    abc_new$removed_no_fault[abc_new$condition == "refer_separated"] == 1
+)
+
+# ── Group level ──────────────────────────────────────────────────────────────
+
+ga <- group_attrition(players, games)
+check(
+  "group_attrition has one row per original group of a real game",
+  nrow(ga) == 9 && all(ga$players == 3) && !"g0" %in% ga$gameId
+)
+g3A <- ga |> filter(gameId == "g3", originalGroup == "A")
+g3B <- ga |> filter(gameId == "g3", originalGroup == "B")
+check(
+  "a group with fewer than two active members at the end is lost; one removal alone is not",
+  g3A$active_at_end == 0 && g3A$lost && g3A$disbanded && g3A$removed_no_fault == 1 &&
+    g3B$active_at_end == 2 && !g3B$lost && g3B$removed_no_fault == 1
+)
+gbc_groups <- groups_by_condition(ga)
+check(
+  "groups_by_condition counts intact and lost groups per condition, including empty conditions",
+  nrow(gbc_groups) == 4 &&
+    gbc_groups$intact[gbc_groups$condition == "refer_separated"] == 3 &&
+    gbc_groups$lost[gbc_groups$condition == "social_mixed"] == 1 &&
+    gbc_groups$intact[gbc_groups$condition == "social_mixed"] == 1 &&
+    gbc_groups$groups[gbc_groups$condition == "social_first"] == 0
+)
+check(
+  "a group screened out for low accuracy is flagged as such",
+  {
+    screened <- group_attrition(
+      mk_players("g6", c("low accuracy", "low accuracy", "low accuracy")),
+      tibble(gameId = "g6", condition = "refer_mixed", activeGroups = 2)
+    )
+    screened$low_accuracy[screened$originalGroup == "A"] &&
+      screened$lost[screened$originalGroup == "A"] &&
+      all(screened$removed_no_fault == 0) &&
+      groups_by_condition(screened)$low_accuracy[2] == 1
+  }
+)
+
+# ── Players who never played a real game ─────────────────────────────────────
+
+dropouts <- tibble(
+  playerId = paste0("d", 1:6),
+  batchId = NA_character_,
+  ended = c("game failed", "game failed", "no more games", "game failed", "game ended", NA),
+  exitReason = c("quiz failed", "quiz failed", NA, NA, NA, NA),
+  quizAttempts = c(3, 3, NA, 1, NA, NA)
+)
+ds <- dropout_summary(dropouts)
+check(
+  "dropout_summary labels quiz failures, lobby timeouts, and late arrivals",
+  nrow(ds) == 5 &&
+    ds$players[ds$outcome == "quiz failed"] == 2 &&
+    ds$label[ds$outcome == "quiz failed"] == "failed the comprehension quiz (three attempts)" &&
+    ds$players[ds$outcome == "game failed"] == 1 &&
+    ds$label[ds$outcome == "game failed"] == "lobby timed out before a game started" &&
+    ds$players[ds$outcome == "no more games"] == 1 &&
+    ds$players[ds$outcome == "unknown"] == 1
+)
+check(
+  "the mean number of quiz attempts is reported where recorded",
+  ds$mean_quiz_attempts[ds$outcome == "quiz failed"] == 3 &&
+    is.na(ds$mean_quiz_attempts[ds$outcome == "no more games"])
+)
+check(
+  "quiz_failures counts the players who failed the quiz, zero without a file",
+  quiz_failures(dropouts) == 2 && quiz_failures(tibble()) == 0 &&
+    nrow(dropout_summary(tibble())) == 0
+)

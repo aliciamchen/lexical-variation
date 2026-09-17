@@ -15,16 +15,33 @@
 #
 # Tests: analysis/tests/test_attrition.R
 
+# The server's exit reasons (EXIT_REASONS in experiment/shared/constants.js)
+# and the report category each one falls in. "insufficient groups" (too few
+# viable groups left mid-game) and "game terminated" (the researcher stopped
+# the batch) were added in September 2026.
 REMOVAL_REASONS <- c(
   "player timeout" = "idle",
   "low accuracy" = "low accuracy",
   "group disbanded" = "group disbanded",
-  "insufficient groups after accuracy check" = "insufficient groups"
+  "insufficient groups" = "insufficient groups",
+  "insufficient groups after accuracy check" = "insufficient groups",
+  "game terminated" = "game terminated"
 )
-REASON_LEVELS <- c("completed", unname(REMOVAL_REASONS))
+REASON_LEVELS <- c("completed", unique(unname(REMOVAL_REASONS)))
 
-# One row per player of a real game: condition, removed, reason, and the
-# AI-use flag when present
+# Removals that are not the participant's fault: their own group fell apart,
+# too few groups remained for the game to go on, or the batch was stopped.
+# These players are compensated for their time
+# (experiment/server/src/compensation.js) and are reported apart from the
+# players removed for their own inactivity or their group's low accuracy.
+NO_FAULT_REASONS <- c(
+  "group disbanded",
+  "insufficient groups",
+  "game terminated"
+)
+
+# One row per player of a real game: condition, removed, reason, whether the
+# removal was through no fault of their own, and the AI-use flag when present
 player_attrition <- function(players, games) {
   real <- games |> filter(!is.na(condition)) |> select(gameId, condition)
   out <- players |>
@@ -38,7 +55,8 @@ player_attrition <- function(players, games) {
         "completed"
       ),
       reason = ifelse(removed & is.na(reason), "other", reason),
-      reason = factor(reason, levels = c(REASON_LEVELS, "other"))
+      reason = factor(reason, levels = c(REASON_LEVELS, "other")),
+      no_fault = removed & reason %in% NO_FAULT_REASONS
     )
   if (!"lengthIncreaseFlag" %in% names(out)) {
     out$lengthIncreaseFlag <- NA
@@ -55,13 +73,14 @@ player_attrition <- function(players, games) {
       originalGroup,
       removed,
       reason,
+      no_fault,
       idleRounds,
       lengthIncreaseFlag
     )
 }
 
-# Per-condition player counts: removed overall, by reason, and flagged for a
-# Phase 1 length increase
+# Per-condition player counts: removed overall, removed through no fault of
+# their own, by reason, and flagged for a Phase 1 length increase
 attrition_by_condition <- function(pa) {
   by_reason <- pa |>
     filter(removed) |>
@@ -74,10 +93,99 @@ attrition_by_condition <- function(pa) {
       players = n(),
       removed = sum(removed),
       prop_removed = if (n() > 0) removed / players else NA_real_,
+      removed_no_fault = sum(no_fault),
       length_flagged = sum(lengthIncreaseFlag, na.rm = TRUE),
       .groups = "drop"
     ) |>
     left_join(by_reason, by = "condition")
+}
+
+# One row per original group of a real game: its players, how many were still
+# active at the end, removals by kind, whether the group failed the Phase 1
+# accuracy screen or disbanded, and whether it was lost (fewer than
+# MIN_GROUP_SIZE = 2 active members at the end, the server's rule for
+# removing a group's remaining member)
+group_attrition <- function(players, games) {
+  player_attrition(players, games) |>
+    group_by(gameId, condition, originalGroup) |>
+    summarise(
+      players = n(),
+      active_at_end = sum(!removed),
+      removed = sum(removed),
+      removed_no_fault = sum(no_fault),
+      low_accuracy = any(reason == "low accuracy"),
+      disbanded = any(reason == "group disbanded"),
+      lost = active_at_end < 2,
+      .groups = "drop"
+    )
+}
+
+# Per-condition group counts: groups, intact groups (no removal), groups lost,
+# and the two ways a whole group leaves the game
+groups_by_condition <- function(ga) {
+  ga |>
+    group_by(condition, .drop = FALSE) |>
+    summarise(
+      groups = n(),
+      intact = sum(removed == 0),
+      lost = sum(lost),
+      prop_lost = if (n() > 0) lost / groups else NA_real_,
+      low_accuracy = sum(low_accuracy),
+      disbanded = sum(disbanded),
+      .groups = "drop"
+    )
+}
+
+# ── Players who never played a real game ─────────────────────────────────────
+#
+# data/<dataset>/dropouts.csv (combine_runs.py): one row per player record
+# with no real game, with how Empirica ended it, the exit reason the server
+# set, and the number of quiz attempts. These players have no condition, so
+# the counts are for the dataset as a whole.
+
+DROPOUT_LABELS <- c(
+  "quiz failed" = "failed the comprehension quiz (three attempts)",
+  "game failed" = "lobby timed out before a game started",
+  "no more games" = "arrived after the games were full",
+  "game terminated" = "batch stopped before a game started",
+  "game ended" = "left before being assigned to a game"
+)
+
+# Counts by outcome (the exit reason when the server set one, otherwise how
+# Empirica ended the record), with the mean number of quiz attempts where
+# recorded
+dropout_summary <- function(dropouts) {
+  if (!has_rows(dropouts)) {
+    return(tibble())
+  }
+  dropouts |>
+    mutate(
+      outcome = coalesce(as.character(exitReason), as.character(ended)),
+      outcome = ifelse(is.na(outcome) | !nzchar(outcome), "unknown", outcome),
+      label = ifelse(
+        outcome %in% names(DROPOUT_LABELS),
+        unname(DROPOUT_LABELS[outcome]),
+        outcome
+      )
+    ) |>
+    group_by(outcome, label) |>
+    summarise(
+      players = n(),
+      mean_quiz_attempts = if (all(is.na(quizAttempts))) {
+        NA_real_
+      } else {
+        mean(as.numeric(quizAttempts), na.rm = TRUE)
+      },
+      .groups = "drop"
+    ) |>
+    arrange(desc(players))
+}
+
+quiz_failures <- function(dropouts) {
+  if (!has_rows(dropouts)) {
+    return(0L)
+  }
+  sum(dropouts$exitReason %in% "quiz failed")
 }
 
 # One row per real game: players, removed players, active groups at the end,

@@ -9,14 +9,19 @@
 # inconclusive.
 #
 # Implementation notes
-# - Each contrast is tested on the two conditions it compares: the full model
-#   includes `condition`, the null model drops it, and BF10 is the ratio of
-#   marginal likelihoods estimated by bridge sampling (bridgesampling::bf).
-# - Game-level weighted regressions: the outcome and continuous covariates
-#   are z-scored so the condition coefficient is in SD units, and the
-#   inverse-variance weights are rescaled to mean 1. With mean-1 weights the
-#   brms weighted likelihood equals the WLS likelihood up to a constant that
-#   is identical in the full and null models, so it cancels in the BF.
+# - BF10 is the ratio of marginal likelihoods of a full and a null model,
+#   estimated by bridge sampling (bridgesampling::bf). The null removes
+#   exactly the planned contrast and nothing else.
+# - Game-level regressions (H1, H2, H3a): the full model is the primary
+#   equal-weight OLS model refit in brms with every condition of that model
+#   (three for H1/H2, two for H3a) and the same covariates, unweighted; the
+#   null equates the two contrasted conditions. The outcome and continuous
+#   covariates are z-scored so the condition coefficients are in SD units and
+#   the Cauchy(0, sqrt(2)/2) prior on them is a prior on a standardized
+#   effect (two-sided).
+# - Bayes factors are computed for the primary hypotheses H1, H2, H3a, H4a,
+#   and H4b only; H3b, H3c, and the secondary analyses report frequentist
+#   results without Bayes factors.
 # - Trial-level logistic mixed models: the Cauchy prior is placed on the
 #   condition log-odds coefficient; the random-effects structure is kept
 #   identical in the full and null models so the BF concerns the fixed
@@ -94,40 +99,65 @@ fit_bf_pair <- function(formula_full, formula_null, data, family, priors_full,
   list(bf10 = bf10, interpretation = interpret_bf(bf10), full = full, null = null)
 }
 
-# Bayes factor for a game-level weighted regression contrast between two
-# conditions, e.g. gs_phase2 ~ condition + gs_phase1 weighted by 1/SE^2.
-#   data       game-level data frame
-#   outcome    outcome column
-#   condition  condition column (character or factor)
-#   levels     the two conditions compared; the second is the "treatment"
-#   covariates continuous covariates (z-scored)
-#   weights    column with inverse-variance weights (rescaled to mean 1)
-bf_wls_contrast <- function(data, outcome, condition = "condition", levels,
-                            covariates = character(), weights = NULL,
-                            name = "contrast", cache_dir = bf_cache_dir(),
-                            iter = 10000, warmup = 2000, chains = 4, seed = 67) {
+# Bayes factor for one planned contrast of a game-level regression, e.g. H1 in
+# gs_phase2 ~ condition + gs_phase1 on the three shared-Phase-1 conditions.
+#
+# The full model is the primary OLS model refit in brms: all `levels` of the
+# condition factor, the same covariates, every game with equal weight
+# (unweighted, like the primary analysis). The null model for the contrast
+# "a minus b" equates conditions a and b (their two levels are merged into
+# one), keeping every other condition and covariate, so BF10 concerns exactly
+# the planned contrast and nothing else in the model. With two conditions the
+# merged factor has one level and the null drops condition altogether.
+#
+# The outcome and continuous covariates are z-scored so the condition
+# coefficients are standardized, and the Cauchy(0, sqrt(2)/2) prior is placed
+# on every population-level coefficient (two-sided).
+#   data        game-level data frame (gs_wide() output restricted as in the
+#               primary fit; rows with a missing outcome/covariate are dropped)
+#   outcome     outcome column
+#   condition   condition column (character or factor)
+#   levels      every condition in the primary model, in factor order
+#   contrast    c(a, b): the two conditions the planned contrast compares
+#   covariates  continuous covariates (z-scored)
+bf_game_level_contrast <- function(data, outcome, condition = "condition", levels,
+                                   contrast, covariates = character(),
+                                   name = "contrast", cache_dir = bf_cache_dir(),
+                                   iter = 10000, warmup = 2000, chains = 4, seed = 67) {
   .load_bf_packages()
+  stopifnot(length(contrast) == 2, all(contrast %in% levels))
   d <- data[data[[condition]] %in% levels, , drop = FALSE]
-  if (nrow(d) < 4 || any(table(d[[condition]]) < 2)) {
-    return(list(bf10 = NA_real_, interpretation = "not computed (fewer than two games per condition)"))
+  keep <- stats::complete.cases(d[, c(outcome, covariates), drop = FALSE])
+  d <- d[keep, , drop = FALSE]
+  counts <- table(factor(d[[condition]], levels = levels))
+  if (nrow(d) < 4 || any(counts < 2)) {
+    return(list(bf10 = NA_real_,
+                interpretation = "not computed (fewer than two games per condition)"))
   }
   d[[condition]] <- factor(d[[condition]], levels = levels)
   d[[outcome]] <- as.numeric(scale(d[[outcome]]))
   for (cv in covariates) d[[cv]] <- as.numeric(scale(d[[cv]]))
-  lhs <- outcome
-  if (!is.null(weights)) {
-    d[[".w"]] <- d[[weights]] / mean(d[[weights]])
-    lhs <- sprintf("%s | weights(.w)", outcome)
-  }
-  rhs_null <- if (length(covariates)) paste(covariates, collapse = " + ") else "1"
-  f_full <- as.formula(sprintf("%s ~ %s + %s", lhs, condition, rhs_null))
-  f_null <- as.formula(sprintf("%s ~ %s", lhs, rhs_null))
+  # The null equates the two contrasted conditions
+  merged <- paste(contrast, collapse = "_eq_")
+  null_levels <- as.character(d[[condition]])
+  null_levels[null_levels %in% contrast] <- merged
+  # Same level order as the full model, with the merged level taking the
+  # place of the first contrasted condition (so the reference level is the
+  # same whenever the contrast includes it)
+  d[["condition_null"]] <- factor(
+    null_levels,
+    levels = unique(ifelse(levels %in% contrast, merged, levels))
+  )
+  cov_txt <- if (length(covariates)) paste(covariates, collapse = " + ") else NULL
+  f_full <- as.formula(paste(outcome, "~", paste(c(condition, cov_txt), collapse = " + ")))
+  null_terms <- c(if (nlevels(d[["condition_null"]]) > 1) "condition_null", cov_txt)
+  f_null <- as.formula(paste(outcome, "~", if (length(null_terms)) paste(null_terms, collapse = " + ") else "1"))
   base_priors <- c(
     set_prior("normal(0, 1)", class = "Intercept"),
     set_prior("exponential(1)", class = "sigma")
   )
   priors_full <- c(set_prior(EFFECT_SIZE_PRIOR, class = "b"), base_priors)
-  priors_null <- if (length(covariates)) c(set_prior(EFFECT_SIZE_PRIOR, class = "b"), base_priors) else base_priors
+  priors_null <- if (length(null_terms)) c(set_prior(EFFECT_SIZE_PRIOR, class = "b"), base_priors) else base_priors
   fit_bf_pair(f_full, f_null, d, gaussian(), priors_full, priors_null,
               name, cache_dir, iter, warmup, chains, seed)
 }

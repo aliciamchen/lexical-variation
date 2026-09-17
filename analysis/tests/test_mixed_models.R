@@ -6,8 +6,12 @@
 #   Rscript analysis/tests/run_all.R          # all R tests
 #   Rscript analysis/tests/test_mixed_models.R
 
-if (!exists("fit_progressively")) source(here::here("analysis", "config.R"))
-if (!exists("check")) source(here::here("analysis", "tests", "check.R"))
+if (!exists("fit_progressively")) {
+  source(here::here("analysis", "config.R"))
+}
+if (!exists("check")) {
+  source(here::here("analysis", "tests", "check.R"))
+}
 
 set.seed(2026)
 
@@ -133,6 +137,34 @@ check(
     grepl("intercepts only", random_effects_structure(m_flat))
 )
 check("the returned model still has random effects", inherits(m_flat, "merMod"))
+check(
+  "simplification drops slopes but never an intercept term",
+  setequal(re_intercept_groups(m_flat), c("subj", "item")) &&
+    setequal(
+      re_intercept_groups(y ~ x + (x | subj) + (x | item)),
+      c("subj", "item")
+    )
+)
+check(
+  "a slope-only term is recognized as having no intercept",
+  identical(re_intercept_groups(y ~ x + (0 + x | subj) + (1 | item)), "item")
+)
+
+# Game and group intercepts specified beside slopes survive the whole
+# procedure, including when every slope has to go.
+d_nested <- d_flat
+d_nested$game <- factor(as.integer(d_nested$subj) %% 3)
+m_nested <- fit_progressively(
+  y ~ x + (1 | game) + (x | subj) + (x | item),
+  data = d_nested,
+  verbose = FALSE
+)
+check(
+  "intercept-only terms such as (1 | game) are retained through simplification",
+  "game" %in%
+    re_intercept_groups(m_nested) &&
+    setequal(re_intercept_groups(m_nested), c("game", "subj", "item"))
+)
 refit <- lme4::lmer(
   formula(m_flat),
   data = m_flat@frame,
@@ -206,6 +238,52 @@ m_bin <- fit_progressively(
 check(
   "the binomial path returns a glmer fit with a simplification log",
   inherits(m_bin, "glmerMod") && is.data.frame(simplification_log(m_bin))
+)
+check(
+  "the binomial path keeps every intercept term too",
+  setequal(re_intercept_groups(m_bin), c("subj", "item"))
+)
+
+# The convention-check accuracy model: a binary listener-trial outcome with a
+# game intercept beside group and tangram slopes, fit by glmer through the
+# same procedure (the paper fits binary outcomes with glmer).
+d_acc <- expand.grid(
+  trial = 1:6,
+  listener = 1:2,
+  group = factor(1:12),
+  tangram = factor(1:6)
+)
+d_acc$gameId <- factor((as.integer(d_acc$group) - 1) %/% 3)
+d_acc$blockNum_c <- d_acc$trial - mean(d_acc$trial)
+d_acc$correct <- rbinom(
+  nrow(d_acc),
+  1,
+  plogis(0.5 + 0.4 * d_acc$blockNum_c + rnorm(12, 0, 0.5)[d_acc$group])
+)
+m_acc <- fit_progressively(
+  correct ~ blockNum_c +
+    (blockNum_c | group) +
+    (blockNum_c | tangram) +
+    (1 | gameId),
+  data = d_acc,
+  family = binomial,
+  verbose = FALSE
+)
+check(
+  "the logistic accuracy trend fits through glmer with the game intercept retained",
+  inherits(m_acc, "glmerMod") &&
+    setequal(re_intercept_groups(m_acc), c("group", "tangram", "gameId")) &&
+    fixef(m_acc)["blockNum_c"] > 0
+)
+or_acc <- odds_ratio_table(m_acc)
+check(
+  "odds ratios exponentiate the fixed effects with a CI around them",
+  abs(
+    or_acc$odds_ratio[or_acc$term == "blockNum_c"] -
+      exp(fixef(m_acc)["blockNum_c"])
+  ) <
+    1e-12 &&
+    all(or_acc$lower < or_acc$odds_ratio & or_acc$odds_ratio < or_acc$upper)
 )
 
 cat("\nAll mixed_models.R tests passed.\n")

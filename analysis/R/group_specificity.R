@@ -8,8 +8,12 @@
 #   (sourced by config.R together with the other helpers in analysis/R/)
 #   results <- compute_group_specificity(pairwise_df, derived_dir, n_perm = 1000)
 #   # returns list(gs_results, perm_results) — loaded from cache if available
-#   gs <- gs_wide(game_specificity_table(pairwise_sim, games))
-#   # one row per game: gs_phase1, se_phase1, gs_phase2, se_phase2, weight, condition
+#   gs_table <- game_specificity_table(pairwise_sim, games)
+#   # one row per game and endpoint window: coefficient, std_error, eligible,
+#   # estimable, note (why a game-window has no estimate), condition
+#   gs <- gs_wide(gs_table)
+#   # one row per game: gs_phase1, se_phase1, gs_phase2, se_phase2 (NA where an
+#   # endpoint is not estimable), weight, weight_p1, both_endpoints, condition
 #
 # Tests: analysis/tests/test_group_specificity.R
 
@@ -50,9 +54,14 @@ SPEAKER_STRUCTURES <- c("multimembership_pair", "multimembership", "separate")
 # `covariates` adds fixed-effect terms to every game's similarity model; the
 # preregistration uses this for the robustness check that includes description
 # length (the pair's length difference and mean length).
-fit_group_specificity <- function(pairwise_df, covariates = NULL,
-                                  speaker_structure = "multimembership_pair") {
+fit_group_specificity <- function(
+  pairwise_df,
+  covariates = NULL,
+  speaker_structure = "multimembership_pair"
+) {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
+  # A game whose model cannot be fit comes back as an NA row with the error in
+  # `note`, so game_specificity_table() can report it instead of losing it.
   if (speaker_structure != "separate") {
     return(
       fit_group_specificity_mm(
@@ -60,35 +69,52 @@ fit_group_specificity <- function(pairwise_df, covariates = NULL,
         covariates = covariates,
         pair_term = speaker_structure == "multimembership_pair"
       ) |>
-        select(gameId, coefficient, std_error, t_value) |>
-        filter(!is.na(coefficient))
+        select(gameId, coefficient, std_error, t_value, note)
     )
   }
   game_ids <- unique(pairwise_df$gameId)
   rhs <- paste(c("sameGroup", covariates), collapse = " + ")
   model_formula <- as.formula(paste(
-    "similarity ~", rhs, "+ (1 | target) + (1 | speaker1) + (1 | speaker2)"
+    "similarity ~",
+    rhs,
+    "+ (1 | target) + (1 | speaker1) + (1 | speaker2)"
   ))
 
   results <- map_dfr(game_ids, function(gid) {
     game_data <- pairwise_df |> filter(gameId == gid)
-    if (nrow(game_data) < 5) return(NULL)
-    if (n_distinct(game_data$sameGroup) < 2) return(NULL)
+    if (nrow(game_data) < 5) {
+      return(NULL)
+    }
+    if (n_distinct(game_data$sameGroup) < 2) {
+      return(NULL)
+    }
 
-    tryCatch({
-      model <- lmer(
-        model_formula,
-        data = game_data,
-        control = lmerControl(optimizer = "bobyqa")
-      )
-      coefs <- coef(summary(model))
-      tibble(
-        gameId = gid,
-        coefficient = coefs["sameGroup", "Estimate"],
-        std_error = coefs["sameGroup", "Std. Error"],
-        t_value = coefs["sameGroup", "t value"]
-      )
-    }, error = function(e) NULL)
+    tryCatch(
+      {
+        model <- lmer(
+          model_formula,
+          data = game_data,
+          control = lmerControl(optimizer = "bobyqa")
+        )
+        coefs <- coef(summary(model))
+        tibble(
+          gameId = gid,
+          coefficient = coefs["sameGroup", "Estimate"],
+          std_error = coefs["sameGroup", "Std. Error"],
+          t_value = coefs["sameGroup", "t value"],
+          note = NA_character_
+        )
+      },
+      error = function(e) {
+        tibble(
+          gameId = gid,
+          coefficient = NA_real_,
+          std_error = NA_real_,
+          t_value = NA_real_,
+          note = conditionMessage(e)
+        )
+      }
+    )
   })
 
   results
@@ -97,8 +123,12 @@ fit_group_specificity <- function(pairwise_df, covariates = NULL,
 # The permutations are drawn from their own seeded RNG stream so the p-values
 # are identical whichever notebook computes them (and the caller's RNG state is
 # left untouched).
-permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67,
-                             speaker_structure = "multimembership_pair") {
+permutation_test <- function(
+  pairwise_df,
+  n_perm = 1000,
+  seed = 67,
+  speaker_structure = "multimembership_pair"
+) {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
   # One fitter, used for both the observed model and every permutation, so
   # the null distribution is always built from the same structure as the
@@ -107,20 +137,24 @@ permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67,
     if (speaker_structure == "separate") {
       model <- lmer(
         similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
-        data = d, control = lmerControl(optimizer = "bobyqa")
+        data = d,
+        control = lmerControl(optimizer = "bobyqa")
       )
       return(coef(summary(model))["sameGroup", "Estimate"])
     }
     d <- as.data.frame(d)
-    d$speakerPair <- paste(pmin(d$speaker1, d$speaker2),
-                           pmax(d$speaker1, d$speaker2))
+    d$speakerPair <- paste(
+      pmin(d$speaker1, d$speaker2),
+      pmax(d$speaker1, d$speaker2)
+    )
     f <- if (speaker_structure == "multimembership_pair") {
       similarity ~ sameGroup + (1 | target) + (1 | speakerPair) + (1 | speaker)
     } else {
       similarity ~ sameGroup + (1 | target) + (1 | speaker)
     }
     model <- lmer_multimember(
-      f, data = d,
+      f,
+      data = d,
       memberships = list(speaker = speaker_pair_weights(d$speaker1, d$speaker2))
     )
     coef(summary(model))["sameGroup", "Estimate"]
@@ -131,8 +165,11 @@ permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67,
     old_seed <- if (had_seed) get(".Random.seed", envir = globalenv()) else NULL
     set.seed(seed)
     on.exit(
-      if (had_seed) assign(".Random.seed", old_seed, envir = globalenv()) else
-        rm(".Random.seed", envir = globalenv()),
+      if (had_seed) {
+        assign(".Random.seed", old_seed, envir = globalenv())
+      } else {
+        rm(".Random.seed", envir = globalenv())
+      },
       add = TRUE
     )
   }
@@ -140,28 +177,40 @@ permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67,
 
   results <- map_dfr(game_ids, function(gid) {
     game_data <- pairwise_df |> filter(gameId == gid)
-    if (nrow(game_data) < 5) return(NULL)
-    if (n_distinct(game_data$sameGroup) < 2) return(NULL)
+    if (nrow(game_data) < 5) {
+      return(NULL)
+    }
+    if (n_distinct(game_data$sameGroup) < 2) {
+      return(NULL)
+    }
 
     obs_coef <- tryCatch(fit_one(game_data), error = function(e) NULL)
-    if (is.null(obs_coef)) return(NULL)
+    if (is.null(obs_coef)) {
+      return(NULL)
+    }
 
     speakers <- game_data |>
       select(speaker1, group1) |>
       rename(speaker = speaker1, group = group1) |>
       bind_rows(
-        game_data |> select(speaker2, group2) |> rename(speaker = speaker2, group = group2)
+        game_data |>
+          select(speaker2, group2) |>
+          rename(speaker = speaker2, group = group2)
       ) |>
       distinct()
 
     perm_coefs <- map_dbl(seq_len(n_perm), function(i) {
       perm_groups <- speakers |> mutate(perm_group = sample(group))
       perm_data <- game_data |>
-        left_join(perm_groups |> select(speaker, perm_group),
-                  by = c("speaker1" = "speaker")) |>
+        left_join(
+          perm_groups |> select(speaker, perm_group),
+          by = c("speaker1" = "speaker")
+        ) |>
         rename(perm_group1 = perm_group) |>
-        left_join(perm_groups |> select(speaker, perm_group),
-                  by = c("speaker2" = "speaker")) |>
+        left_join(
+          perm_groups |> select(speaker, perm_group),
+          by = c("speaker2" = "speaker")
+        ) |>
         rename(perm_group2 = perm_group) |>
         mutate(sameGroup = as.numeric(perm_group1 == perm_group2))
 
@@ -191,9 +240,14 @@ permutation_test <- function(pairwise_df, n_perm = 1000, seed = 67,
 #' @param n_perm       Number of permutations (default 1000).
 #' @param force        If TRUE, recompute even if cache exists.
 #' @return A list with elements `gs_results` and `perm_results`.
-compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
-                                      force = FALSE, seed = 67,
-                                      speaker_structure = "multimembership_pair") {
+compute_group_specificity <- function(
+  pairwise_df,
+  cache_dir,
+  n_perm = 1000,
+  force = FALSE,
+  seed = 67,
+  speaker_structure = "multimembership_pair"
+) {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
   # One set of cache files per speaker structure. They must not share a name:
   # SI_pilot.qmd asks for "separate" and the full-sample notebooks use the
@@ -203,7 +257,8 @@ compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
   gs_cache <- file.path(cache_dir, paste0("gs_results", suffix, ".rds"))
   perm_cache <- file.path(cache_dir, paste0("perm_results", suffix, ".rds"))
   key_file <- file.path(
-    cache_dir, paste0("group_specificity_cache_key", suffix, ".txt")
+    cache_dir,
+    paste0("group_specificity_cache_key", suffix, ".txt")
   )
 
   # The cache is keyed by a hash of the input data and the permutation count,
@@ -211,19 +266,36 @@ compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
   # silently reuse stale fits. Force = TRUE recomputes regardless.
   # Only the columns the models use enter the hash, so adding descriptive
   # columns to the pairwise file does not invalidate the cache.
-  key_cols <- intersect(c("gameId", "target", "speaker1", "speaker2", "sameGroup", "similarity"),
-                        names(pairwise_df))
-  key_df <- as.data.frame(pairwise_df)[order(pairwise_df$gameId, pairwise_df$target,
-                                             pairwise_df$speaker1, pairwise_df$speaker2), key_cols]
+  key_cols <- intersect(
+    c("gameId", "target", "speaker1", "speaker2", "sameGroup", "similarity"),
+    names(pairwise_df)
+  )
+  key_df <- as.data.frame(pairwise_df)[
+    order(
+      pairwise_df$gameId,
+      pairwise_df$target,
+      pairwise_df$speaker1,
+      pairwise_df$speaker2
+    ),
+    key_cols
+  ]
   rownames(key_df) <- NULL
   # The structure is part of the key: the two speaker structures give
   # different coefficients, so a cache written under one must never be
   # reused under the other.
   key <- rlang::hash(list(key_df, n_perm, seed, speaker_structure))
-  cached_key <- if (file.exists(key_file)) readLines(key_file, n = 1, warn = FALSE) else ""
+  cached_key <- if (file.exists(key_file)) {
+    readLines(key_file, n = 1, warn = FALSE)
+  } else {
+    ""
+  }
 
-  if (!force && file.exists(gs_cache) && file.exists(perm_cache) &&
-      identical(cached_key, key)) {
+  if (
+    !force &&
+      file.exists(gs_cache) &&
+      file.exists(perm_cache) &&
+      identical(cached_key, key)
+  ) {
     cat("Loading cached group-specificity results from", cache_dir, "\n")
     return(list(
       gs_results = readRDS(gs_cache),
@@ -232,13 +304,21 @@ compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
   }
 
   if (file.exists(gs_cache) && !identical(cached_key, key)) {
-    cat("Cached group-specificity results do not match the current data; recomputing.\n")
+    cat(
+      "Cached group-specificity results do not match the current data; recomputing.\n"
+    )
   }
   cat("Computing group-specificity (this may take a few minutes)...\n")
-  gs_results <- fit_group_specificity(pairwise_df,
-                                      speaker_structure = speaker_structure)
-  perm_results <- permutation_test(pairwise_df, n_perm = n_perm, seed = seed,
-                                   speaker_structure = speaker_structure)
+  gs_results <- fit_group_specificity(
+    pairwise_df,
+    speaker_structure = speaker_structure
+  )
+  perm_results <- permutation_test(
+    pairwise_df,
+    n_perm = n_perm,
+    seed = seed,
+    speaker_structure = speaker_structure
+  )
 
   dir.create(cache_dir, showWarnings = FALSE, recursive = TRUE)
   saveRDS(gs_results, gs_cache)
@@ -250,37 +330,257 @@ compute_group_specificity <- function(pairwise_df, cache_dir, n_perm = 1000,
 }
 
 
-# ── Per-game estimates for the game-level analyses ────────────────────────────
+# ── Endpoint coverage and per-game estimates for the game-level analyses ──────
+#
+# The preregistration's endpoint rule: a game-window estimate requires
+# analyzable descriptions from at least two speakers in each of at least two
+# original groups within that window, and valid within-group and between-group
+# comparisons (both sameGroup levels present) from which to estimate the
+# same-group coefficient. H1/H2 require both endpoints; H3a requires the Phase 1
+# endpoint only. Missing endpoints are never replaced from another window.
 
-# The group-specificity coefficient and its standard error for every game in
-# each window, with condition. This is the one place the estimates that feed
-# the H1/H2, H3a, and social-accuracy regressions are computed; `covariates`
-# passes extra fixed effects (e.g. the description-length robustness check).
-game_specificity_table <- function(pairwise_sim, games,
-                                   windows = c("phase1_final", "phase2_final"),
-                                   covariates = NULL,
-                                   speaker_structure = "multimembership_pair") {
-  if (!is.data.frame(pairwise_sim) || nrow(pairwise_sim) == 0) return(tibble())
-  map_dfr(windows, function(w) {
-    fit_group_specificity(pairwise_sim |> filter(window == w),
-                          covariates = covariates,
-                          speaker_structure = speaker_structure) |>
-      mutate(window = w)
-  }) |>
-    left_join(games |> select(gameId, condition), by = "gameId") |>
-    mutate(condition = factor(as.character(condition), levels = CONDITION_ORDER))
+# The similarity file for a measure: SBERT cosine (the primary measure) or
+# content-word Jaccard (the preregistered robustness measure).
+SIMILARITY_MEASURES <- c("sbert", "jaccard")
+pairwise_file <- function(measure = "sbert") {
+  measure <- match.arg(measure, SIMILARITY_MEASURES)
+  if (measure == "sbert") {
+    "pairwise_similarities.csv"
+  } else {
+    "pairwise_similarities_jaccard.csv"
+  }
+}
+block_pairwise_file <- function(measure = "sbert") {
+  measure <- match.arg(measure, SIMILARITY_MEASURES)
+  if (measure == "sbert") {
+    "block_pairwise_similarities.csv"
+  } else {
+    "block_pairwise_similarities_jaccard.csv"
+  }
 }
 
-# One row per game with gs_phase1/se_phase1, gs_phase2/se_phase2, the H1/H2
-# inverse-variance weight, and condition. Games missing either window are
-# dropped.
+# One row per real game and window: how many pairs, how many original groups
+# have at least two speakers with analyzable descriptions, whether both
+# sameGroup levels are present, the eligibility flag, and the reason when a
+# game-window is not eligible.
+endpoint_coverage <- function(pairwise_sim, games, windows) {
+  real_games <- games |>
+    filter(!is.na(condition)) |>
+    select(gameId, condition) |>
+    mutate(gameId = as.character(gameId))
+  empty_window <- tibble(
+    gameId = character(),
+    window = character(),
+    n_pairs = integer(),
+    n_speakers = integer(),
+    n_groups_two_speakers = integer(),
+    both_levels = logical()
+  )
+  per_window <- map_dfr(windows, function(w) {
+    d <- pairwise_sim |> filter(window == w)
+    if (nrow(d) == 0) {
+      return(empty_window)
+    }
+    speakers <- bind_rows(
+      d |> select(gameId, speaker = speaker1, group = group1),
+      d |> select(gameId, speaker = speaker2, group = group2)
+    ) |>
+      distinct() |>
+      count(gameId, group, name = "speakers")
+    groups <- speakers |>
+      group_by(gameId) |>
+      summarise(
+        n_speakers = sum(speakers),
+        n_groups_two_speakers = sum(speakers >= 2),
+        .groups = "drop"
+      )
+    d |>
+      group_by(gameId) |>
+      summarise(
+        n_pairs = n(),
+        both_levels = n_distinct(sameGroup) == 2,
+        .groups = "drop"
+      ) |>
+      left_join(groups, by = "gameId") |>
+      mutate(window = w, gameId = as.character(gameId))
+  })
+  expand_grid(real_games, window = windows) |>
+    left_join(per_window, by = c("gameId", "window")) |>
+    mutate(
+      n_pairs = coalesce(n_pairs, 0L),
+      n_speakers = coalesce(n_speakers, 0L),
+      n_groups_two_speakers = coalesce(n_groups_two_speakers, 0L),
+      both_levels = coalesce(both_levels, FALSE),
+      eligible = n_pairs > 0 & n_groups_two_speakers >= 2 & both_levels,
+      coverage_note = case_when(
+        n_pairs == 0 ~ "no analyzable pairs in the window",
+        n_groups_two_speakers < 2 ~
+          "fewer than two original groups with at least two speakers",
+        !both_levels ~ "within-group or between-group pairs missing",
+        TRUE ~ NA_character_
+      )
+    )
+}
+
+# The group-specificity coefficient and its standard error for every real game
+# in each window, with condition, the eligibility flag from the endpoint rule,
+# and a `note` explaining every game-window without an estimate (ineligible
+# under the rule, or a model that could not be fit). Nothing is dropped:
+# callers filter on `estimable`. This is the one place the estimates that feed
+# the H1/H2, H3a, and social-accuracy regressions are computed; `covariates`
+# passes extra fixed effects (e.g. the description-length robustness check),
+# and `measure` labels which similarity file the estimates come from.
+game_specificity_table <- function(
+  pairwise_sim,
+  games,
+  windows = c("phase1_final", "phase2_final"),
+  covariates = NULL,
+  speaker_structure = "multimembership_pair",
+  measure = "sbert"
+) {
+  if (!is.data.frame(pairwise_sim) || nrow(pairwise_sim) == 0) {
+    return(tibble())
+  }
+  coverage <- endpoint_coverage(pairwise_sim, games, windows)
+  empty_fit <- tibble(
+    gameId = character(),
+    coefficient = numeric(),
+    std_error = numeric(),
+    t_value = numeric(),
+    fit_note = character(),
+    window = character()
+  )
+  fits <- map_dfr(windows, function(w) {
+    eligible_ids <- coverage$gameId[coverage$window == w & coverage$eligible]
+    d <- pairwise_sim |>
+      mutate(gameId = as.character(gameId)) |>
+      filter(window == w, gameId %in% eligible_ids)
+    if (nrow(d) == 0) {
+      return(empty_fit)
+    }
+    fit_group_specificity(
+      d,
+      covariates = covariates,
+      speaker_structure = speaker_structure
+    ) |>
+      rename(fit_note = note) |>
+      mutate(window = w)
+  })
+  coverage |>
+    left_join(fits, by = c("gameId", "window")) |>
+    mutate(
+      condition = factor(as.character(condition), levels = CONDITION_ORDER),
+      estimable = eligible & is.finite(coefficient),
+      note = case_when(
+        !eligible ~ coverage_note,
+        estimable ~ NA_character_,
+        !is.na(fit_note) ~ paste("model not fit:", fit_note),
+        TRUE ~ "model not fit"
+      ),
+      measure = measure
+    ) |>
+    select(
+      gameId,
+      condition,
+      window,
+      coefficient,
+      std_error,
+      t_value,
+      n_pairs,
+      n_speakers,
+      n_groups_two_speakers,
+      both_levels,
+      eligible,
+      estimable,
+      note,
+      measure
+    ) |>
+    arrange(window, condition, gameId)
+}
+
+# Coverage by window and condition: games, eligible and estimable game-windows,
+# and the reasons for the rest.
+endpoint_coverage_summary <- function(gs_table) {
+  if (!is.data.frame(gs_table) || nrow(gs_table) == 0) {
+    return(tibble())
+  }
+  reasons <- function(note) {
+    r <- note[!is.na(note)]
+    if (length(r) == 0) {
+      return("")
+    }
+    tab <- table(r)
+    paste(sprintf("%s (%d)", names(tab), as.integer(tab)), collapse = "; ")
+  }
+  gs_table |>
+    group_by(window, condition, .drop = FALSE) |>
+    summarise(
+      games = n(),
+      eligible = sum(eligible),
+      estimable = sum(estimable),
+      reasons = reasons(note),
+      .groups = "drop"
+    ) |>
+    filter(games > 0)
+}
+
+# One row per real game with gs_phase1/se_phase1, gs_phase2/se_phase2, the
+# inverse-variance weights for the robustness checks, condition, and the
+# endpoint flags. A game missing an endpoint keeps its row with NA for that
+# endpoint: fit_h12() uses games with both endpoints, fit_h3a() games with the
+# Phase 1 endpoint. Nothing is imputed from another window.
 gs_wide <- function(gs_table) {
-  if (!is.data.frame(gs_table) || nrow(gs_table) == 0) return(tibble())
-  p1 <- gs_table |> filter(window == "phase1_final") |>
-    select(gameId, condition, gs_phase1 = coefficient, se_phase1 = std_error)
-  p2 <- gs_table |> filter(window == "phase2_final") |>
-    select(gameId, gs_phase2 = coefficient, se_phase2 = std_error)
-  inner_join(p1, p2, by = "gameId") |>
-    mutate(weight = 1 / se_phase2^2, weight_p1 = 1 / se_phase1^2) |>
+  if (!is.data.frame(gs_table) || nrow(gs_table) == 0) {
+    return(tibble())
+  }
+  one_window <- function(w, suffix) {
+    gs_table |>
+      filter(window == w) |>
+      transmute(
+        gameId,
+        condition,
+        "gs_{suffix}" := ifelse(estimable, coefficient, NA_real_),
+        "se_{suffix}" := ifelse(estimable, std_error, NA_real_),
+        "eligible_{suffix}" := estimable,
+        "note_{suffix}" := note
+      )
+  }
+  full_join(
+    one_window("phase1_final", "phase1"),
+    one_window("phase2_final", "phase2"),
+    by = c("gameId", "condition")
+  ) |>
+    mutate(
+      weight = 1 / se_phase2^2,
+      weight_p1 = 1 / se_phase1^2,
+      both_endpoints = eligible_phase1 %in% TRUE & eligible_phase2 %in% TRUE
+    ) |>
     relocate(condition, .after = gameId)
+}
+
+# Coverage of a similarity table by window and condition: how many pairs there
+# are and how many carry a similarity. In the Jaccard table a pair in which
+# either description has no content words has NA similarity and is omitted
+# from the robustness check, as the preregistration specifies; the SBERT table
+# has a similarity for every pair. Callers drop the NA rows before fitting and
+# report this table beside the result.
+similarity_coverage <- function(
+  pairwise_sim,
+  games,
+  by = c("window", "condition")
+) {
+  if (!has_rows(pairwise_sim)) {
+    return(tibble())
+  }
+  d <- pairwise_sim |> add_condition(games)
+  by <- intersect(by, names(d))
+  d |>
+    group_by(across(all_of(by)), .drop = TRUE) |>
+    summarise(
+      pairs = n(),
+      with_similarity = sum(is.finite(similarity)),
+      omitted = pairs - with_similarity,
+      prop_omitted = omitted / pairs,
+      .groups = "drop"
+    )
 }

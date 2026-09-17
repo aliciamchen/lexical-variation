@@ -20,6 +20,13 @@
 #     slope for each level be dropped on its own.
 #   - Slopes are dropped one at a time, always the one with the smallest
 #     estimated variance in the last fit that produced variance estimates.
+#   - Random intercepts are never dropped. The preregistration specifies game
+#     and original-group intercepts in several models and commits to retaining
+#     them during simplification; here every intercept term in the maximal
+#     formula (for any grouping factor) survives every step, because the
+#     procedure only removes correlations and slopes. A grouping factor that
+#     appears with slopes but without an intercept, `(0 + x | g)`, keeps that
+#     form and loses only the slope.
 #   - The random-intercepts-only model is the end of the procedure: it is
 #     returned even if singular (a zero intercept variance is a valid, if
 #     uninformative, estimate), with the problem recorded in the log. There is
@@ -150,7 +157,9 @@ suppressPackageStartupMessages({
         }
       },
       message = function(m) {
-        if (grepl("singular", conditionMessage(m))) invokeRestart("muffleMessage")
+        if (grepl("singular", conditionMessage(m))) {
+          invokeRestart("muffleMessage")
+        }
       },
       warning = function(w) {
         warnings <<- c(warnings, conditionMessage(w))
@@ -355,6 +364,25 @@ fit_progressively <- function(
 
 simplification_log <- function(model) {
   attr(model, "simplification")
+}
+
+# The grouping factors that carry a random intercept in a formula (or a fitted
+# merMod). Used to check that simplification retained every specified
+# intercept term.
+re_intercept_groups <- function(x) {
+  f <- if (inherits(x, "merMod")) formula(x) else x
+  bars <- .re_findbars(f)
+  keep <- vapply(
+    bars,
+    function(bar) {
+      lhs <- bar[[2]]
+      # An intercept is present unless the left-hand side removes it with 0 or -1
+      txt <- paste(deparse(lhs), collapse = "")
+      !grepl("(^|\\+)\\s*0\\s*(\\+|$)|-\\s*1", txt)
+    },
+    logical(1)
+  )
+  unique(vapply(bars[keep], function(bar) deparse(bar[[3]]), character(1)))
 }
 
 random_effects_structure <- function(model) {

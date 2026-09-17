@@ -133,29 +133,51 @@ check_utts <- tibble(
 )
 check_trials <- check_utts |>
   mutate(
-    roundId = paste0("r", row_number()), role = "listener",
-    clicked = "t1", clickedCorrect = FALSE, lateClick = FALSE,
-    hasSpeakerMessage = TRUE, responseOpportunity = TRUE
+    roundId = paste0("r", row_number()),
+    role = "listener",
+    clicked = "t1",
+    clickedCorrect = FALSE,
+    lateClick = FALSE,
+    hasSpeakerMessage = TRUE,
+    responseOpportunity = TRUE
   )
 check_adjacent <- check_utts |> mutate(simAdjacent = 0.1)
-convention_data <- convention_check_data(check_utts, check_trials, check_adjacent, check_games)
+convention_data <- convention_check_data(
+  check_utts,
+  check_trials,
+  check_adjacent,
+  check_games
+)
 
 check(
   "convention checks retain all conditions for descriptive reporting",
-  all(vapply(convention_data$all_conditions, function(d) {
-    nrow(d) == 8 && setequal(as.character(d$condition), CONDITION_ORDER)
-  }, logical(1)))
+  all(vapply(
+    convention_data$all_conditions,
+    function(d) {
+      nrow(d) == 8 && setequal(as.character(d$condition), CONDITION_ORDER)
+    },
+    logical(1)
+  ))
 )
 check(
   "pooled convention checks contain exactly the three shared-Phase-1 conditions",
-  all(vapply(convention_data$shared_phase1, function(d) {
-    nrow(d) == 6 && setequal(as.character(d$condition), H12_CONDITIONS) &&
-      identical(levels(d$condition), H12_CONDITIONS)
-  }, logical(1)))
+  all(vapply(
+    convention_data$shared_phase1,
+    function(d) {
+      nrow(d) == 6 &&
+        setequal(as.character(d$condition), H12_CONDITIONS) &&
+        identical(levels(d$condition), H12_CONDITIONS)
+    },
+    logical(1)
+  ))
 )
 check(
   "shared Phase 1 blocks are recentered after excluding social-first",
-  all(vapply(convention_data$shared_phase1, function(d) abs(mean(d$blockNum_c)) < 1e-12, logical(1)))
+  all(vapply(
+    convention_data$shared_phase1,
+    function(d) abs(mean(d$blockNum_c)) < 1e-12,
+    logical(1)
+  ))
 )
 check(
   "poor accuracy and lengthening descriptions do not exclude games from checks",
@@ -167,7 +189,20 @@ check(
   "groups in pooled convention checks remain game-qualified",
   length(unique(convention_data$shared_phase1$accuracy$group)) == 3
 )
-no_adjacent <- convention_check_data(check_utts, check_trials, tibble(), check_games)
+check(
+  "the listener-trial frame for the logistic accuracy check carries a 0/1 outcome, group, tangram, and game",
+  all(
+    c("correct", "group", "tangram", "gameId", "blockNum_c", "condition") %in%
+      names(convention_data$shared_phase1$listener_trials)
+  ) &&
+    all(convention_data$shared_phase1$listener_trials$correct %in% c(0, 1))
+)
+no_adjacent <- convention_check_data(
+  check_utts,
+  check_trials,
+  tibble(),
+  check_games
+)
 check(
   "missing adjacent similarities do not remove length or accuracy observations",
   nrow(no_adjacent$shared_phase1$adjacent) == 0 &&
@@ -185,8 +220,10 @@ labelled <- label_window(win_df)
 check(
   "each window keeps its own label rather than collapsing into two phases",
   nrow(labelled) == 3 &&
-    identical(as.character(labelled$window_label),
-              c("Phase 1 final", "Phase 2 early", "Phase 2 final")) &&
+    identical(
+      as.character(labelled$window_label),
+      c("Phase 1 final", "Phase 2 early", "Phase 2 final")
+    ) &&
     identical(levels(labelled$window_label), unname(WINDOW_LABELS))
 )
 two_windows <- label_window(win_df, windows = c("phase1_final", "phase2_final"))
@@ -197,8 +234,10 @@ check(
 )
 check(
   "an unrecognized window is an error, not a silent relabel",
-  inherits(try(label_window(tibble(window = "phase3_final")), silent = TRUE),
-           "try-error")
+  inherits(
+    try(label_window(tibble(window = "phase3_final")), silent = TRUE),
+    "try-error"
+  )
 )
 check(
   "an empty similarity table passes through label_window",
@@ -244,15 +283,33 @@ check(
 # ── final_phase_properties ───────────────────────────────────────────────────
 
 props <- tibble(
-  gameId = c("g1", "g1", "g1", "g2"), playerId = c("s1", "s1", "s1", "s3"), target = "t1",
-  phaseNum = c(1, 1, 2, 2), blockNum = c(2, 4, 5, 3), phase = "refgame",
-  concreteness = c(0.5, 0.25, 0.1, 0.6), mean_zipf_freq = c(5, 4, 3, 4.5)
+  gameId = c("g1", "g1", "g1", "g2"),
+  playerId = c("s1", "s1", "s1", "s3"),
+  originalGroup = c("A", "A", "A", "B"),
+  target = "t1",
+  phaseNum = c(1, 1, 2, 2),
+  blockNum = c(2, 4, 5, 3),
+  phase = "refgame",
+  concreteness = c(0.5, 0.25, 0.1, 0.6),
+  mean_zipf_freq = c(5, 4, 3, 4.5)
 )
-uniq <- props |> select(gameId, playerId, target, blockNum, phaseNum) |> mutate(uniqueness = c(0.1, 0.2, 0.9, 0.4))
+uniq <- props |>
+  select(gameId, playerId, target, blockNum, phaseNum) |>
+  mutate(uniqueness = c(0.1, 0.2, 0.9, 0.4))
 p1 <- final_phase_properties(props, uniq, games, phase = 1)
 check(
   "final_phase_properties keeps each speaker's last description of the phase",
   nrow(p1) == 1 && p1$blockNum == 4 && p1$uniqueness == 0.2 && p1$gameId == "g1"
+)
+check(
+  "final_phase_properties carries the game-qualified group id for the group intercept",
+  "group" %in% names(p1) && p1$group == "g1 A"
+)
+check(
+  "phase2_utterances carries the game-qualified group id",
+  "group" %in%
+    names(phase2_utterances(utts, games)) &&
+    phase2_utterances(utts, games)$group == "g1 A"
 )
 p2 <- final_phase_properties(props, uniq, games, phase = 2)
 check(
@@ -262,5 +319,60 @@ check(
 check(
   "final_phase1_properties is the social-conditions Phase 1 case",
   nrow(final_phase1_properties(props, uniq, games)) == 1 &&
-    identical(levels(final_phase1_properties(props, uniq, games)$condition), SOCIAL_CONDITIONS)
+    identical(
+      levels(final_phase1_properties(props, uniq, games)$condition),
+      SOCIAL_CONDITIONS
+    )
 )
+
+# ── speaker_description_coverage ─────────────────────────────────────────────
+
+cov_trials <- tribble(
+  ~gameId, ~playerId, ~role,      ~phaseNum, ~blockNum, ~target, ~hasSpeakerMessage, ~excluded,
+  "g1",    "s1",      "speaker",  1,         0,         "t1",    TRUE,               FALSE, # described
+  "g1",    "s1",      "speaker",  1,         1,         "t1",    FALSE,              FALSE, # silent
+  "g1",    "s2",      "speaker",  1,         0,         "t2",    TRUE,               TRUE,  # excluded
+  "g1",    "s3",      "speaker",  2,         0,         "t3",    TRUE,               FALSE, # non-referential only
+  "g1",    "l1",      "listener", 1,         0,         "t1",    TRUE,               FALSE
+)
+cov_utts <- tibble(
+  gameId = "g1", playerId = "s1", phaseNum = 1, blockNum = 0, target = "t1",
+  utterance = "a", uttLength = 1
+)
+cov <- speaker_description_coverage(cov_trials, cov_utts, games)
+cov_p1 <- cov |> filter(phaseNum == 1)
+cov_p2 <- cov |> filter(phaseNum == 2)
+check(
+  "speaker_description_coverage counts speaker trials without an analyzable description by reason",
+  nrow(cov) == 2 && cov_p1$speaker_trials == 3 && cov_p1$with_description == 1 &&
+    cov_p1$without_description == 2 && abs(cov_p1$prop_without - 2 / 3) < 1e-12 &&
+    cov_p1$silent == 1 && cov_p1$excluded == 1 && cov_p1$non_referential_only == 0 &&
+    cov_p2$non_referential_only == 1 && cov_p2$prop_without == 1 &&
+    all(as.character(cov$condition) == "social_mixed")
+)
+check(
+  "speaker_description_coverage works without the exclusion column",
+  {
+    c2 <- speaker_description_coverage(cov_trials |> select(-excluded), cov_utts, games)
+    sum(c2$excluded) == 0 && sum(c2$non_referential_only) == 2
+  }
+)
+check(
+  "speaker_description_coverage is empty without speaker trials",
+  nrow(speaker_description_coverage(cov_trials |> filter(role == "listener"), cov_utts, games)) == 0
+)
+
+# ── add_global_block ─────────────────────────────────────────────────────────
+# One-indexed and continuous across the phase boundary, because every block
+# number in the manuscript counts from 1 while the export counts from 0.
+local({
+  games <- data.frame(gameId = "g1", phase1Blocks = 6)
+  df <- data.frame(
+    gameId = "g1",
+    phaseNum = c(1, 1, 2, 2),
+    blockNum = c(0, 5, 0, 5)
+  )
+  out <- add_global_block(df, games)
+  check("globalBlock is one-indexed and continuous across the phases",
+        identical(out$globalBlock, c(1, 6, 7, 12)))
+})
