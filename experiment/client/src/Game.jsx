@@ -7,9 +7,10 @@ import {
 } from "@empirica/core/player/classic/react";
 import { Chat } from "./components/Chat";
 import { hasSocialGuessing, isMixedCondition } from "./constants";
+import { allGroupResponded } from "./groupResponse";
 import { useEngagementLog } from "./instrumentation";
 
-import { React, useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Profile } from "./Profile";
 import { Task } from "./Task";
 
@@ -29,24 +30,28 @@ export function Game() {
   // real browser event reached the player scope.
   const engagementCount = useEngagementLog(player);
 
-  // play sounds when the round or game changes
-  useEffect(() => {
-    if (game.get("justStarted")) {
-      gameSound
-        .play()
-        .catch((e) => console.warn("Error playing game sound:", e));
-      game.set("justStarted", false);
-    }
-  }, [game.get("justStarted")]);
+  // Play a sound when the game starts and when each round starts. Whether a
+  // sound has played is tracked here, per game and round id, rather than by
+  // writing a flag back to the game or round scope: those scopes are shared,
+  // so a flag reset by the first client to see it silenced everyone else
+  // (and nine clients racing to write it). The server still sets `justStarted`
+  // on both scopes; nothing reads it here.
+  const playedGameRef = useRef(null);
+  const playedRoundRef = useRef(null);
 
   useEffect(() => {
-    if (round?.get("justStarted")) {
-      roundSound
-        .play()
-        .catch((e) => console.warn("Error playing round sound:", e));
-      round.set("justStarted", false);
-    }
-  }, [round?.get("justStarted")]);
+    if (!game?.id || playedGameRef.current === game.id) return;
+    playedGameRef.current = game.id;
+    gameSound.play().catch((e) => console.warn("Error playing game sound:", e));
+  }, [game?.id]);
+
+  useEffect(() => {
+    if (!round?.id || playedRoundRef.current === round.id) return;
+    playedRoundRef.current = round.id;
+    roundSound
+      .play()
+      .catch((e) => console.warn("Error playing round sound:", e));
+  }, [round?.id]);
 
   // Get current group for chat display
   const playerGroup = player.get("current_group");
@@ -54,20 +59,17 @@ export function Game() {
   const phase_num = round?.get("phase_num");
   const isSocialMixed = hasSocialGuessing(condition) && phase_num === 2;
 
-  // Check if all players in group have responded
+  // Check if all players in group have responded (see groupResponse.js)
   const playersInGroup = players.filter(
     (p) => p.get("current_group") === playerGroup && p.get("is_active")
   );
-  const allGroupResponded = playersInGroup.every((p) => {
-    if (p.round.get("role") === "speaker") return true;
-    const clicked = p.round.get("clicked");
-    const socialGuess = p.round.get("social_guess");
-    return clicked && (!isSocialMixed || socialGuess);
+  const groupResponded = allGroupResponded(playersInGroup, {
+    needsSocialGuess: isSocialMixed,
   });
 
   // Show chat for any group during Selection stage (groups A, B, C)
   const showChat =
-    stage?.get("name") === "Selection" && !allGroupResponded && playerGroup;
+    stage?.get("name") === "Selection" && !groupResponded && playerGroup;
 
   // In mixed conditions during Phase 2, use display_name and display_avatar
   const isMixed = isMixedCondition(condition) && phase_num === 2;

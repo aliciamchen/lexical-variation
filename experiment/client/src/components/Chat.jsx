@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { usePlayer } from "@empirica/core/player/classic/react";
 
+// Typing indicator timing. Each `${group}_typing` write is a round trip to the
+// server and a re-render for every group member, so a keystroke does not
+// write more often than TYPING_WRITE_INTERVAL_MS: the first keystroke of a
+// burst writes at once, later ones only once that long has passed. The
+// "stopped" write goes out after TYPING_STOP_MS of silence, and readers treat
+// a timestamp older than TYPING_STALE_MS as stopped anyway, so the interval
+// must stay shorter than the stale window or the indicator would flicker.
+export const TYPING_WRITE_INTERVAL_MS = 1500;
+export const TYPING_STOP_MS = 2000;
+export const TYPING_STALE_MS = 3000;
+
 /**
  * Custom Chat component for the reference game experiment.
  *
@@ -77,7 +88,7 @@ export function Chat({
     const now = Date.now();
     for (const [pid, timestamp] of Object.entries(typingState)) {
       if (pid === player.id) continue;
-      if (now - timestamp > 3000) continue;
+      if (now - timestamp > TYPING_STALE_MS) continue;
       const p = groupPlayers.find((gp) => gp.id === pid);
       if (p) {
         const name = customPlayerName ? customPlayerName(p) : p.get("name") || "Player";
@@ -213,6 +224,9 @@ function TypingIndicator({ names }) {
 function Input({ onNewMessage, setTyping }) {
   const [text, setText] = useState("");
   const typingTimeoutRef = useRef(null);
+  // When the last "typing" write went out; null once "stopped" has been sent,
+  // so the next burst writes immediately again.
+  const lastTypingWriteRef = useRef(null);
   // When the current message started being composed, and whether any of it was
   // pasted. Refs rather than state: they must not trigger a re-render on every
   // keystroke, and they are read only when the message is sent. Both reset
@@ -233,13 +247,26 @@ function Input({ onNewMessage, setTyping }) {
     };
   }, []);
 
-  const handleTyping = useCallback(() => {
-    setTyping(true);
+  const stopTyping = useCallback(() => {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      setTyping(false);
-    }, 2000);
+    typingTimeoutRef.current = null;
+    lastTypingWriteRef.current = null;
+    setTyping(false);
   }, [setTyping]);
+
+  const handleTyping = useCallback(() => {
+    const now = Date.now();
+    if (
+      lastTypingWriteRef.current === null ||
+      now - lastTypingWriteRef.current >= TYPING_WRITE_INTERVAL_MS
+    ) {
+      lastTypingWriteRef.current = now;
+      setTyping(true);
+    }
+    // Every keystroke pushes the "stopped" write back, throttled or not.
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(stopTyping, TYPING_STOP_MS);
+  }, [setTyping, stopTyping]);
 
   const resize = (e) => {
     const target = e.target;
@@ -262,8 +289,7 @@ function Input({ onNewMessage, setTyping }) {
     setText("");
     resetComposition();
     // Clear typing state on send
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    setTyping(false);
+    stopTyping();
   };
 
   const handleKeyDown = (e) => {
