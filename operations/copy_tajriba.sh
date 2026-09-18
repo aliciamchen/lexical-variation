@@ -35,6 +35,11 @@ REMOTE="root@${EMPIRICA_SERVER}"
 REMOTE_DIR="~/empirica"
 INTERVAL=300  # seconds between backups
 MAX_FAILURES=3
+# How much of the server's own log to keep beside each export. The window is
+# wider than the backup interval so consecutive files overlap rather than leave
+# gaps; LOG_LINES is the fallback when the host has no journal.
+LOG_WINDOW="20 min ago"
+LOG_LINES=2000
 
 # --- help ---
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
@@ -95,6 +100,32 @@ do_backup() {
 
     # Clean up remote zip
     ssh "$REMOTE" "rm -f $remote_zip" 2>/dev/null || true
+
+    # The server's own log, next to the export it belongs to.
+    #
+    # Nothing else retrieves it, and it is the only place a server-side failure
+    # appears: Empirica does not catch what a callback throws, and the guard
+    # that contains those errors (server/src/guard.js) deliberately keeps the
+    # game alive, so the browser looks healthy while the log is the only
+    # record. Fetching it must never fail a backup -- the export is what
+    # participants' data depends on -- so this is best effort and does not
+    # touch the failure counter.
+    local log_file errs
+    log_file="$dest/server-log-$stamp.txt"
+    if ! ssh "$REMOTE" "journalctl -u empirica --since '$LOG_WINDOW' --no-pager 2>/dev/null || tail -n $LOG_LINES $REMOTE_DIR/empirica.log 2>/dev/null" \
+        > "$log_file" 2>/dev/null; then
+        echo "[$(now)] NOTE: could not fetch the server log; the export itself is fine." >&2
+        rm -f "$log_file"
+    elif [[ ! -s "$log_file" ]]; then
+        # An empty file is worse than no file: it reads like "no errors".
+        echo "[$(now)] NOTE: the server log came back empty -- check the unit name in this script." >&2
+        rm -f "$log_file"
+    else
+        errs=$(grep -cE "CALLBACK ERROR|Unhandled Promise Rejection" "$log_file" || true)
+        if [[ "${errs:-0}" -gt 0 ]]; then
+            echo "[$(now)] *** $errs server error(s) in $log_file ***" >&2
+        fi
+    fi
 
     consecutive_failures=0
     echo "[$(now)] Backup succeeded -> $dest/$(basename "$remote_zip")"

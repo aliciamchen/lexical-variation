@@ -40,8 +40,9 @@ import { classifyIdle, isLateClick, isLateSocialGuess, updateIdleRounds } from "
 import { accuracyCheckBlocks, evaluateGroupAccuracy, playerAccuracyOverBlocks } from "./accuracy";
 import { selectSpeaker } from "./roles";
 import { gameCanContinue, strandedPlayers, viableOriginalGroups } from "./viability";
+import { guard } from "./guard";
 
-Empirica.onGameStart(({ game }) => {
+Empirica.onGameStart(guard("onGameStart", ({ game }) => {
   console.log(`Game ${game.id} started`);
   game.set("justStarted", true);
 
@@ -218,9 +219,9 @@ Empirica.onGameStart(({ game }) => {
     name: "Bonus info",
     duration: BONUS_INFO_DURATION,
   });
-});
+}));
 
-Empirica.onRoundStart(({ round }) => {
+Empirica.onRoundStart(guard("onRoundStart", ({ round }) => {
   round.set("justStarted", true);
   const game = round.currentGame;
   const condition = game.get("condition");
@@ -361,14 +362,14 @@ Empirica.onRoundStart(({ round }) => {
       player.round.set("target", round.get("target"));
     });
   }
-});
+}));
 
-Empirica.onStageStart(({ stage }) => {
+Empirica.onStageStart(guard("onStageStart", ({ stage }) => {
   // Stage start - no special handling needed
   // Speaker reassignment is handled in onRoundStart via fallback logic
-});
+}));
 
-Empirica.onStageEnded(({ stage }) => {
+Empirica.onStageEnded(guard("onStageEnded", ({ stage }) => {
   const game = stage.currentGame;
   const players = game.players;
   const condition = game.get("condition");
@@ -532,7 +533,7 @@ Empirica.onStageEnded(({ stage }) => {
     stage.set("idle_checked", true);
     runIdleDetection();
   }
-});
+}));
 
 // Helper function to check if groups are still viable. Runs at the end of the
 // Feedback stage, after idle detection. In Phase 2 of the mixed conditions a
@@ -704,7 +705,7 @@ function checkPhase1AccuracyThreshold(game) {
   }
 }
 
-Empirica.onRoundEnded(({ round }) => {
+Empirica.onRoundEnded(guard("onRoundEnded", ({ round }) => {
   // Calculate and update bonuses at end of each round
   const game = round.currentGame;
 
@@ -723,9 +724,9 @@ Empirica.onRoundEnded(({ round }) => {
     const totalScore = player.get("score") || 0;
     player.set("bonus", totalScore * multiplier);
   });
-});
+}));
 
-Empirica.onGameEnded(({ game }) => {
+Empirica.onGameEnded(guard("onGameEnded", ({ game }) => {
   console.log(`Game ${game.id} ended`);
 
   // Final bonus calculation
@@ -776,4 +777,4 @@ Empirica.onGameEnded(({ game }) => {
       `Player ${player.id}: TotalScore=${totalScore}, Bonus=$${player.get("bonus").toFixed(2)}, Minutes=${player.get("minutesSpent")}`,
     );
   });
-});
+}));

@@ -88,6 +88,8 @@ npm run test:report
 
 Pipe long runs through `tee` to a stable file so results can be read without re-running: `npm run test:group4 2>&1 | tee /tmp/test-results.txt`
 
+**Server-side errors:** the harness writes the Empirica server's stdout and stderr to `experiment/test-results/empirica-server.log` (it used to discard them with `stdio: 'ignore'`, so no spec could see a server failure) and the global teardown fails the run if that log contains a `CALLBACK ERROR` or an unhandled rejection. This matters because `server/src/guard.js` deliberately contains callback errors so the remaining players can finish, which leaves the browser looking healthy: before this, a run could pass while every round threw. If a run fails only in teardown, read that log.
+
 **Test architecture:**
 
 Tests are split into 5 project groups in `playwright.config.ts`. Between each group, the Empirica server is restarted (tajriba.json deleted) to prevent state accumulation. Full-suite execution order: `setup-1 → group-1 → ... → setup-4 → group-4 → setup-5 → group-holistic`.

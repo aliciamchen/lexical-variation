@@ -85,8 +85,20 @@ def build_games(game_df: pd.DataFrame) -> pd.DataFrame:
         "phase2Blocks",
     ]
     # Termination fields for attrition reporting; only present in exports
-    # where a game actually ended early
-    optional_cols = ["ended", "endedReason", "gameTerminated"]
+    # where a game actually ended early. `callbackErrors` and
+    # `lastCallbackError` are written by the server's callback guard
+    # (experiment/server/src/guard.js): Empirica does not catch what a callback
+    # throws, and the guard contains the error so the other players can finish,
+    # which means the game looks healthy from the browser and this count is the
+    # only trace in the data. A game with a non-zero count is one to inspect
+    # before trusting its rows.
+    optional_cols = [
+        "ended",
+        "endedReason",
+        "gameTerminated",
+        "callbackErrors",
+        "lastCallbackError",
+    ]
     cols = required_cols + [c for c in optional_cols if c in game_df.columns]
     games = game_df[cols].copy()
 

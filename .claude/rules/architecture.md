@@ -34,6 +34,29 @@ All reasons come from `EXIT_REASONS` in `shared/constants.js`; never compare aga
 
 `insufficientGroups` (too few viable groups remain mid-game) and `gameTerminated` (the researcher stopped the batch; set by `onGameEnded`) are distinct from `groupDisbanded` so the participant text can say what happened.
 
+## Callback errors (`experiment/server/src/guard.js`)
+
+Empirica does not catch what a callback throws. Its dispatch wrapper awaits the
+callback and only then sets the "already ran" sentinel, so a throw leaves the
+writes it had already made in place **and** leaves the callback eligible to run
+again; the exception becomes an unhandled rejection that `index.js` logs. For a
+nine-player synchronous game that is the worst shape of failure: not a crash,
+but one group with half-assigned roles while everyone else plays on.
+
+Every callback is therefore wrapped in `guard(name, fn)`, which logs one
+greppable `CALLBACK ERROR in <name>` line with the game, condition, active
+player count, phase, block, target and stage, swallows the error so the other
+players can finish, and counts it on the game as `callbackErrors` with
+`lastCallbackError`. Those two reach `games.csv`, and the integrity suite
+asserts the count is zero, because a contained error is invisible everywhere
+else. Do not "simplify" a callback by unwrapping it.
+
+Three places read those errors: the test harness writes the server's output to
+`test-results/empirica-server.log` and the Playwright teardown fails a run whose
+log contains one (without this the suite passed while the server threw);
+`operations/copy_tajriba.sh` fetches the server log beside each export and
+flags any it finds; and `games.csv` carries the count into the analysis.
+
 ## Session instrumentation (`experiment/client/src/instrumentation.js`)
 
 - `recordClientContext(player)`: called once from `Introduction.jsx`, beside the Prolific URL params. Writes the coarse device/viewport blob `client_context` and the raw `userAgent` (stripped at anonymization).

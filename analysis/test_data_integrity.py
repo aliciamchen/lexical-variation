@@ -845,6 +845,29 @@ def _truthy(series):
     return series.isin([True, "True", "true"])
 
 
+class TestServerCallbackErrors:
+    """The server's callback guard must not have fired during collection.
+
+    Empirica does not catch what a callback throws, and the guard contains the
+    error so the remaining players can finish, so a failure leaves no trace in
+    the browser and none in the trial rows either -- only this count on the
+    game. A non-zero count means some part of a round was half-applied, so the
+    affected game needs inspecting before its rows are trusted.
+    """
+
+    def test_no_game_recorded_a_contained_callback_error(self, games):
+        if "callbackErrors" not in games.columns:
+            pytest.skip("no callbackErrors column (export predates the guard)")
+        counts = pd.to_numeric(games["callbackErrors"], errors="coerce").fillna(0)
+        affected = games.loc[counts > 0, "gameId"].tolist()
+        assert not affected, (
+            "the server contained a callback error in "
+            f"{len(affected)} game(s): {affected}. The game will look normal in "
+            "the browser and in trials.csv; check the server log and the "
+            "lastCallbackError column before using these rows."
+        )
+
+
 class TestReshuffleNetwork:
     """The interaction structure recorded in trials.csv.
 

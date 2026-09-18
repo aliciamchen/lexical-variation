@@ -5,6 +5,14 @@ import * as fs from 'fs';
 const EXPERIMENT_DIR = path.resolve(__dirname, '../..');
 const TAJRIBA_PATH = path.join(EXPERIMENT_DIR, '.empirica/local/tajriba.json');
 const SERVER_URL = 'http://localhost:3000';
+// Where the server's stdout and stderr go. The output used to be discarded
+// (stdio: 'ignore'), which meant no spec could see a server-side failure: a
+// callback that threw surfaced only if it happened to break something a test
+// asserted, and Empirica does not catch callback throws (see
+// server/src/guard.js). The teardown greps this file, so a run now fails on an
+// unhandled rejection or a contained callback error even when the game looked
+// fine from the browser.
+export const SERVER_LOG_PATH = path.join(EXPERIMENT_DIR, 'test-results/empirica-server.log');
 const TAJRIBA_URL = 'http://localhost:8844';
 const PORTS = [3000, 8844];
 
@@ -80,9 +88,12 @@ export async function startServer(): Promise<void> {
   // Pass TEST_MODE=true so the server uses test-friendly timing and block counts.
   const testMode = process.env.TEST_MODE ?? 'true';
   console.log(`[server-manager] Starting empirica with TEST_MODE=${testMode}`);
+  fs.mkdirSync(path.dirname(SERVER_LOG_PATH), { recursive: true });
+  // Appended across the resets within one run, so the log covers every group.
+  const logFd = fs.openSync(SERVER_LOG_PATH, 'a');
   serverProcess = spawn('empirica', [], {
     cwd: EXPERIMENT_DIR,
-    stdio: 'ignore',
+    stdio: ['ignore', logFd, logFd],
     detached: true,
     env: { ...process.env, TEST_MODE: testMode },
   });
@@ -140,4 +151,21 @@ export async function resetServer(): Promise<void> {
 
 export function getServerProcess(): ChildProcess | null {
   return serverProcess;
+}
+
+/**
+ * Server-side failures recorded in the log, as one line each.
+ *
+ * Two shapes matter. An unhandled promise rejection is what an uncaught throw
+ * inside an Empirica callback becomes (index.js logs it). A CALLBACK ERROR line
+ * is one that guard() caught and contained, which keeps the game alive and is
+ * therefore invisible from the browser -- exactly the case a passing suite used
+ * to hide.
+ */
+export function serverErrors(): string[] {
+  if (!fs.existsSync(SERVER_LOG_PATH)) return [];
+  return fs
+    .readFileSync(SERVER_LOG_PATH, 'utf8')
+    .split(/\r?\n/)
+    .filter((line) => /CALLBACK ERROR|Unhandled Promise Rejection/.test(line));
 }
