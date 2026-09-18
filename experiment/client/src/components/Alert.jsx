@@ -29,7 +29,10 @@ export function Alert({ children, title, kind = "normal" }) {
   }
 
   return (
-    <div className={`rounded-md p-4 ${bg}`}>
+    // Readable in a Sentry replay: this is where the idle warning and the
+    // error copy appear, which is the text worth having when diagnosing a
+    // session. Participants' own answers are inputs and stay masked.
+    <div className={`rounded-md p-4 ${bg}`} data-sentry-unmask>
       <div className="flex">
         <div className="flex-shrink-0">
           <svg

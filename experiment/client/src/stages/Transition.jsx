@@ -97,6 +97,9 @@ export function Transition(props) {
     return (
       <div
         className="prompt-container"
+        // Readable in a Sentry replay: static instruction copy, no participant
+        // data.
+        data-sentry-unmask
         style={{ textAlign: "left", paddingTop: 24, maxWidth: "60vw" }}
       >
         <div className="text-2xl">
@@ -181,6 +184,9 @@ export function Transition(props) {
     return (
       <div
         className="prompt-container"
+        // Readable in a Sentry replay: static instruction copy, no participant
+        // data.
+        data-sentry-unmask
         style={{ textAlign: "left", paddingTop: 24, maxWidth: "60vw" }}
       >
         <div className="text-2xl">

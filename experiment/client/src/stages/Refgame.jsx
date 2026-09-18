@@ -521,6 +521,10 @@ export function Refgame(props) {
   return (
     <div
       className="task"
+      // Readable in a Sentry replay (see index.jsx): the block header, the role
+      // instruction and the feedback line. The chat lives outside this
+      // subtree, so message text stays masked.
+      data-sentry-unmask
       data-tangram-set={game.get("tangram_set")}
       data-target={target}
       data-target-index={targetIndex}

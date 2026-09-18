@@ -19,6 +19,9 @@ export function Button({
   return (
     <button
       type={type}
+      // Readable in a Sentry replay: a label like Continue or Submit shows
+      // what the participant was offered at the moment of a fault.
+      data-sentry-unmask
       onClick={handleClick}
       className={`${base} ${primary ? prim : sec} ${className} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       autoFocus={autoFocus}

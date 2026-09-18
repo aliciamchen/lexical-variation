@@ -22,6 +22,9 @@ export function Profile() {
   return (
     <div
       className="min-w-lg md:min-w-2xl mt-2 m-x-auto px-3 py-2 text-gray-500 rounded-md grid grid-cols-3 items-center border-.5"
+      // Readable in a Sentry replay: the round, the stage, the timer and the
+      // score are what tell you where a participant was when something broke.
+      data-sentry-unmask
       data-player-name={playerName}
       data-player-group={originalGroup}
     >

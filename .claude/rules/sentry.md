@@ -5,7 +5,11 @@ paths:
 
 # Sentry (error monitoring)
 
-The client app reports errors to Sentry via `@sentry/react`, initialized in `experiment/client/src/index.jsx` with error tracking, session replays for sessions that hit an error only (`replaysSessionSampleRate: 0`, `replaysOnErrorSampleRate: 1.0`, all text and inputs masked), browser tracing, and structured logs. `beforeSend`, `beforeSendTransaction`, and `beforeBreadcrumb` in `index.jsx` cut every reported URL at the `?`, so the Prolific ids in the study link's query string (and Empirica's `ns` parameter) never reach Sentry; the location itself is not rewritten because a reload needs `ns`. `Introduction.jsx` sets the Sentry user to the Empirica player id only.
+The client app reports errors to Sentry via `@sentry/react`, initialized in `experiment/client/src/index.jsx` with error tracking, browser tracing, structured logs, and session replays for sessions that hit an error only (`replaysSessionSampleRate: 0`, `replaysOnErrorSampleRate: 1.0`).
+
+Replays mask all text and inputs by default and unmask an allowlist: the elements carrying `data-sentry-unmask`, which are the stage header (`Profile.jsx`), the task panel (`Refgame.jsx`'s `.task`), alerts, button labels, and the transition screens. The allowlist direction is deliberate, so anything added to the UI later stays masked until someone decides otherwise. Chat message text stays masked, being both the participants' own language and the study's data, and so does every form input, which covers the typed identifier and the survey's free-text answers. Media is deliberately not blocked, so the tangram grid is recorded: seeing which images a participant was looking at is most of the diagnostic value in a reference game.
+
+`beforeSend`, `beforeSendTransaction`, and `beforeBreadcrumb` in `index.jsx` cut every reported URL at the `?`, so the Prolific ids in the study link's query string (and Empirica's `ns` parameter) never reach Sentry; the location itself is not rewritten because a reload needs `ns`. Those hooks do not cover the replay upload pipeline, so an error session's replay metadata can still carry the query string; only erroring sessions are affected and the decision was to leave it rather than add an unverified hook. `Introduction.jsx` sets the Sentry user to the Empirica player id only.
 
 **Project details:**
 - Organization: set via `SENTRY_ORG` in `.env`

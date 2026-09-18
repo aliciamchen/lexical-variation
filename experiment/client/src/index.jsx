@@ -45,13 +45,25 @@ Sentry.init({
   integrations: [
     Sentry.browserTracingIntegration(),
     // Replays are recorded only for sessions in which an error occurs, for
-    // diagnosing disconnections and layout problems; all text and typed input
-    // are masked so chat content and survey answers never leave the
-    // experiment server.
+    // diagnosing disconnections and layout problems.
+    //
+    // Everything is masked by default and the interface chrome is unmasked by
+    // an allowlist: elements carrying `data-sentry-unmask` (the stage header,
+    // the task panel, alerts and button labels). The allowlist direction is
+    // deliberate -- anything added to the UI later is masked until someone
+    // decides otherwise, whereas a blocklist would leak a new field silently.
+    //
+    // Still masked, and to stay that way: chat message text, which is both the
+    // participants' own language and the study's data, and every form input,
+    // which covers the typed identifier and the survey's free-text answers.
+    // Media is deliberately NOT blocked, so the tangram grid is recorded --
+    // seeing which images a participant was looking at is most of the
+    // diagnostic value in a reference game.
     Sentry.replayIntegration({
       maskAllText: true,
       maskAllInputs: true,
       blockAllMedia: false,
+      unmask: ["[data-sentry-unmask]", ".sentry-unmask"],
     }),
   ],
   beforeSend: scrubEvent,
