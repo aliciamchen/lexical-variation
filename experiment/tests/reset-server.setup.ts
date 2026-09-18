@@ -7,7 +7,7 @@
 import { test as setup } from '@playwright/test';
 import { resetServer } from './helpers/server-manager';
 
-setup('reset empirica server', async () => {
+setup('reset empirica server @setup', async () => {
   // The groups this setup serves are written for TEST_MODE (3+2 blocks). If
   // the environment says otherwise the whole group would play production-length
   // games and fail late and confusingly, so refuse up front.

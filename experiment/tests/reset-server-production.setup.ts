@@ -8,7 +8,7 @@ import { test as setup } from '@playwright/test';
 import './helpers/set-production-mode';
 import { resetServer } from './helpers/server-manager';
 
-setup('reset empirica server (production mode)', async () => {
+setup('reset empirica server (production mode) @setup', async () => {
   console.log('[setup] Resetting Empirica server (production mode, TEST_MODE=false)...');
   await resetServer();
   console.log('[setup] Server is ready (production mode).');

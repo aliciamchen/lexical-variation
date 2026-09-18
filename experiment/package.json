@@ -14,7 +14,7 @@
     "test:unit": "npm run test --prefix server",
     "test:free-ports": "node scripts/free-ports.mjs",
     "test:report": "playwright show-report",
-    "test:smoke": "playwright test --grep @smoke --project=setup-1 --project=group-1 --no-deps"
+    "test:smoke": "playwright test --grep \"@smoke|@setup\" --project=setup-1 --project=group-1 --no-deps"
   },
   "keywords": [],
   "author": "",
