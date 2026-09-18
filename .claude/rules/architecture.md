@@ -87,6 +87,19 @@ flags any it finds; and `games.csv` carries the count into the analysis.
 5. Phase 2 groups → "Mixed up"
 6. Tangram positions → "Different positions for each player"
 
+### Avatars
+
+Served from `client/public/avatars/`, not fetched from DiceBear at play time. The anonymous
+seed changes every trial in the mixed conditions, so the old `<img src>` pointing at
+api.dicebear.com meant nine players each requesting a fresh avatar on all 36 Phase 2 trials:
+hundreds of third-party requests per game, on the critical path, in the condition where
+identity is the manipulation. Every seed is deterministic, so the set is downloaded once by
+`scripts/fetch-avatars.mjs` and committed; `anonymousAvatarSeeds()` enumerates them from the
+production block count and roster, and `server/src/avatars.test.js` fails if a seed the
+server can generate has no file. The DiceBear URLs remain in `shared/constants.js` as the
+record of how each file was made. Re-run the script after changing the block count, the
+roster size or the style.
+
 ### Identity Masking (Phase 2 Mixed Conditions)
 
 In `refer_mixed` and `social_mixed`, groups are reshuffled every trial (not per-block). Anonymous avatars are seeded per trial (`anon_block${blockNum}_trial${targetNum}_player${anonIndex}`) so the same player gets different avatars each round:

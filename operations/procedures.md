@@ -297,6 +297,28 @@ part-way leaves the ids made so far in `operations/.sessions/`.
 
 ### T-30: bring up Empirica
 
+**Freeze the bundle from here on.** The server restarts itself whenever
+`~/empirica/empirica.tar.zst` changes, so an `scp` during a session restarts Empirica under
+live participants and ends their game. Deploy before you invite anyone, never after. If a fix
+is genuinely urgent mid-session, stop the batch first and pay the players out: participants
+removed that way now get the exit survey, the partial code, and base pay prorated to their
+time plus the bonus earned so far.
+
+**Wipe the server's database before the first session, and after any rehearsal or deploy
+check.** Empirica exports are cumulative, so players created while clicking through the
+deployed site land in the first real export and then in `data/full/`. On the server, stop the
+process, delete `~/empirica/.empirica/local/tajriba.json`, and start it again. If you would
+rather keep the file, the alternative is listing those game ids in
+`data/full/exclude_games.txt`, which `combine_runs.py` honors, but wiping is cleaner.
+
+**Have three windows open, not one**: the admin panel, Sentry filtered to the `production`
+environment, and the server's own log (`journalctl -u empirica -f`, or whatever the unit is
+called on this host). The third one matters because server-side callback errors never reach
+Sentry, which is browser-only: `guard()` catches them so the other players can finish, which
+means the game looks healthy while that log is the only place the failure appears. The backup
+loop also saves a copy of it beside each export, and shouts if it finds an error. While you
+are there, check there is disk space for the session's exports.
+
 **3. [Empirica] Confirm the server is alive**, open the admin panel and Sentry, and **create
 and start the batch before any participant can arrive**, sized for all the games you intend
 to run, all of one treatment, with `preferUnderassignedGames: true`. Empirica cannot move

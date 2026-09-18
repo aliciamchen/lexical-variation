@@ -120,13 +120,46 @@ export const avatar_seeds = [
   "morgan",
 ];
 
-// Generate DiceBear identicon URL (consistent blue color scheme)
-export const getAvatarUrl = (seed) =>
+// Avatars are served from our own origin, not fetched from DiceBear at play
+// time. In the mixed conditions the anonymous seed changes every trial, so
+// nine players would each request a fresh avatar on all 36 Phase 2 trials --
+// hundreds of third-party requests per game, on the critical path, in the
+// condition where identity IS the manipulation. Every seed is deterministic,
+// so the set is downloaded once by scripts/fetch-avatars.mjs and committed.
+// The DiceBear URLs stay here as the record of how each file was generated.
+export const DICEBEAR_IDENTICON = (seed) =>
   `https://api.dicebear.com/9.x/identicon/svg?seed=${seed}&backgroundColor=e0f2fe&rowColor=0369a1`;
-
-// Generate anonymous avatar URL (shapes style, grayscale)
-export const getAnonymousAvatarUrl = (seed) =>
+export const DICEBEAR_SHAPES = (seed) =>
   `https://api.dicebear.com/9.x/shapes/svg?seed=${seed}&backgroundColor=e5e7eb&shape1Color=9ca3af&shape2Color=6b7280&shape3Color=4b5563`;
+
+/** The file a seed is stored under. Seeds are alphanumeric plus underscores. */
+export const avatarFileName = (seed) => `${String(seed).replace(/[^a-zA-Z0-9_-]/g, "_")}.svg`;
+
+/** Served path for a seed; both helpers below resolve to one of these. */
+export const avatarPath = (seed) => `/avatars/${avatarFileName(seed)}`;
+
+export const getAvatarUrl = (seed) => avatarPath(seed);
+export const getAnonymousAvatarUrl = (seed) => avatarPath(seed);
+
+/**
+ * Every anonymous seed the server can generate, in the shape callbacks.js
+ * builds it: `anon_block{block}_trial{trial}_player{index}`. Enumerated from
+ * the production block count and roster so the download script and the test
+ * cover every avatar a real session can ask for, whatever TEST_MODE says.
+ */
+export function anonymousAvatarSeeds() {
+  const seeds = [];
+  const blocks = Math.max(PHASE_2_BLOCKS, 6);
+  const players = GROUP_NAMES.length * GROUP_SIZE;
+  for (let block = 0; block < blocks; block++) {
+    for (let trial = 0; trial < NUM_TANGRAMS; trial++) {
+      for (let index = 0; index < players; index++) {
+        seeds.push(`anon_block${block}_trial${trial}_player${index}`);
+      }
+    }
+  }
+  return seeds;
+}
 
 // Neutral colors for player names (no group distinction)
 export const name_colors = [
