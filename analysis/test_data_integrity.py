@@ -1822,6 +1822,11 @@ class TestResponseOpportunities:
         still in the game and was assigned a role. If that ever stopped being
         true, those rows would be counted as failures instead of excluded.
         """
+        if "exitReason" not in players.columns:
+            # Preprocessing omits the column when no player was ever removed,
+            # which is the outcome a clean session hopes for. Crashing on the
+            # good case is worse than not checking it.
+            pytest.skip("no exitReason column: nobody was removed in this dataset")
         removed = players[players["exitReason"].notna()]
         if removed.empty:
             pytest.skip("no removed players in this dataset")
@@ -2413,6 +2418,8 @@ class TestSessionInstrumentation:
         export taken while a session was in progress, which is every export the
         five-minute backup loop produces.
         """
+        if "ended" not in games.columns:
+            pytest.skip("no ended column: no game finished in this dataset")
         ended_games = set(
             games.loc[games["ended"].astype(str).str.lower().isin(["true", "1"]), "gameId"]
         )
