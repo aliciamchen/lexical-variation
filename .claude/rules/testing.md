@@ -88,6 +88,8 @@ npm run test:report
 
 Pipe long runs through `tee` to a stable file so results can be read without re-running: `npm run test:group4 2>&1 | tee /tmp/test-results.txt`
 
+**Concurrency:** `communication/chat-concurrent.spec.ts` is the only spec where players act simultaneously. Everywhere else a send is awaited before the next begins, so nine players never hit Enter at once, and the group chat is a single shared stage attribute written with Empirica's atomic `append` precisely to survive that. Keep the `Promise.all` in that spec: serializing it would leave the `append` behaviour untested, and a lost message there is lost research data that nothing else would reveal.
+
 **Server-side errors:** the harness writes the Empirica server's stdout and stderr to `experiment/test-results/empirica-server.log` (it used to discard them with `stdio: 'ignore'`, so no spec could see a server failure) and the global teardown fails the run if that log contains a `CALLBACK ERROR` or an unhandled rejection. This matters because `server/src/guard.js` deliberately contains callback errors so the remaining players can finish, which leaves the browser looking healthy: before this, a run could pass while every round threw. If a run fails only in teardown, read that log.
 
 **Test architecture:**
