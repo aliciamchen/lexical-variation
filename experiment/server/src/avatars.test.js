@@ -12,6 +12,7 @@ import { fileURLToPath } from "url";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
 import {
+  AVATAR_PLACEHOLDER,
   anonymousAvatarSeeds,
   avatarFileName,
   avatar_seeds,
@@ -59,5 +60,20 @@ describe("avatar assets", () => {
 
   it("keeps a seed that could escape its filename inside the directory", () => {
     expect(avatarFileName("../../etc/passwd")).toBe("______etc_passwd.svg");
+  });
+
+  it("has the placeholder every missing-avatar fallback points at", () => {
+    expect(AVATAR_PLACEHOLDER).toBe("/avatars/placeholder.svg");
+    expect(existsSync(join(avatarDir, "placeholder.svg"))).toBe(true);
+  });
+
+  it("keeps the fallback independent of the player, so it cannot de-mask", () => {
+    // The chat's fallback was a DiceBear identicon seeded on msg.sender.id.
+    // That id is persistent, so in mixed Phase 2 it would have rendered one
+    // stable image per player while the anonymous avatars around it change
+    // every trial -- a tracking cue in the condition that masks identity.
+    // A constant cannot encode the sender, which is the property worth pinning.
+    expect(AVATAR_PLACEHOLDER).not.toMatch(/seed|\$\{/);
+    expect(AVATAR_PLACEHOLDER).not.toContain("dicebear");
   });
 });

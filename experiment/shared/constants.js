@@ -142,6 +142,19 @@ export const getAvatarUrl = (seed) => avatarPath(seed);
 export const getAnonymousAvatarUrl = (seed) => avatarPath(seed);
 
 /**
+ * Stand-in for a player whose `avatar` attribute is missing.
+ *
+ * Never seed a fallback on the player id. The chat used to fall back to a
+ * DiceBear identicon seeded on `msg.sender.id`, which is persistent: had it
+ * ever rendered during mixed Phase 2 it would have shown the same image for a
+ * player on every trial, while the design re-seeds anonymous avatars each trial
+ * so they cannot be tracked. That is an identity leak in the condition where
+ * masking is the manipulation, and it was also the last third-party request in
+ * the game loop.
+ */
+export const AVATAR_PLACEHOLDER = "/avatars/placeholder.svg";
+
+/**
  * Every anonymous seed the server can generate, in the shape callbacks.js
  * builds it: `anon_block{block}_trial{trial}_player{index}`. Enumerated from
  * the production block count and roster so the download script and the test

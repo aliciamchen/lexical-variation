@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" role="img" aria-label="Participant">
+  <!--
+    Neutral stand-in for a participant whose avatar attribute is missing.
+    Deliberately carries no identity: the fallback it replaced was a DiceBear
+    identicon seeded on the persistent player id, which would have rendered a
+    stable per-player image in mixed Phase 2, where anonymous avatars are
+    re-seeded every trial precisely so that they cannot be tracked.
+  -->
+  <rect width="100" height="100" fill="#e5e7eb"/>
+  <circle cx="50" cy="38" r="16" fill="#9ca3af"/>
+  <path d="M18 92c0-17.7 14.3-32 32-32s32 14.3 32 32" fill="#9ca3af"/>
+</svg>

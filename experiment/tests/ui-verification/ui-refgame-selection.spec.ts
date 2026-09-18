@@ -134,10 +134,26 @@ test.describe.serial('UI Verification: Refgame Selection (5.2, 5.3)', () => {
     const groupText = await playerGroupDisplay.textContent();
     expect(groupText).toContain('(You)');
 
-    // Check avatar images exist
+    // Avatar images must have actually loaded, not merely be present in the
+    // DOM. Counting elements passed even when every image was broken, which
+    // matters now that the avatars are served from our own origin
+    // (client/public/avatars/): a missing file is the failure mode, the dev
+    // server answers an unknown path with the app's HTML instead of a 404, and
+    // in the mixed conditions the avatar IS the identity cue being
+    // manipulated. naturalWidth is zero for an image that failed to decode.
     const avatarImages = page.locator('.player-group .player .image img');
     const avatarCount = await avatarImages.count();
     expect(avatarCount).toBeGreaterThanOrEqual(1);
+    const loaded = await avatarImages.evaluateAll((imgs) =>
+      imgs.map((img) => ({
+        src: (img as HTMLImageElement).getAttribute('src'),
+        width: (img as HTMLImageElement).naturalWidth,
+      })),
+    );
+    for (const img of loaded) {
+      expect(img.src, 'avatars are served from our own origin').toMatch(/^\/avatars\//);
+      expect(img.width, `avatar did not load: ${img.src}`).toBeGreaterThan(0);
+    }
   });
 
   test('(5.2e) header shows phase, block, round info', async () => {

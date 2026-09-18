@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { usePlayer } from "@empirica/core/player/classic/react";
+import { AVATAR_PLACEHOLDER } from "../constants";
 
 // Typing indicator timing. Each `${group}_typing` write is a round trip to the
 // server and a re-render for every group member, so a keystroke does not
@@ -152,10 +153,12 @@ function Messages({ msgs }) {
 function MessageComp({ msg }) {
   const ts = msg.timestamp ? new Date(msg.timestamp) : new Date();
 
-  // Use sender's avatar or fallback to DiceBear identicon
-  const avatar =
-    msg.sender.avatar ||
-    `https://api.dicebear.com/9.x/identicon/svg?seed=${msg.sender.id}`;
+  // The sender's avatar, or a neutral placeholder. The fallback must not be
+  // derived from the sender (it used to be a DiceBear identicon seeded on
+  // msg.sender.id): that id is persistent, so in mixed Phase 2 it would have
+  // rendered one stable image per player while the anonymous avatars around it
+  // change every trial. See AVATAR_PLACEHOLDER in shared/constants.js.
+  const avatar = msg.sender.avatar || AVATAR_PLACEHOLDER;
 
   return (
     <div className="flex items-start my-2">

@@ -100,6 +100,14 @@ server can generate has no file. The DiceBear URLs remain in `shared/constants.j
 record of how each file was made. Re-run the script after changing the block count, the
 roster size or the style.
 
+A missing `avatar` attribute falls back to `AVATAR_PLACEHOLDER`, a neutral local SVG.
+**Never seed a fallback on the player.** The chat used to fall back to a DiceBear identicon
+seeded on `msg.sender.id`, which is persistent: had it rendered during mixed Phase 2 it would
+have shown one stable image per player while the anonymous avatars around it change every
+trial, which is a tracking cue in the condition whose whole purpose is masking identity. It
+was also the last third-party request in the game loop, and the one the pre-generated set
+could not cover, because the seed is an Empirica id rather than a known seed.
+
 ### Identity Masking (Phase 2 Mixed Conditions)
 
 In `refer_mixed` and `social_mixed`, groups are reshuffled every trial (not per-block). Anonymous avatars are seeded per trial (`anon_block${blockNum}_trial${targetNum}_player${anonIndex}`) so the same player gets different avatars each round:
