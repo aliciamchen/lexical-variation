@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Grep, Glob
 
 Facts about the suite (groups, helpers, config values) are in `.claude/rules/testing.md`. This is the procedure.
 
-1. **Pick the narrowest run.** `npm run test:unit` (vitest on `scoring.js` and `reshuffling.js`, under a second) for scoring or reshuffling changes; `npm run test:groupN` for one group; `npm run test:group4:fast` for idle and viability tests (shortened timers); `npm test` for everything in test mode; `npm run test:holistic` for a full game at production timing. All from `experiment/`. Never run a bare `npx playwright test <file>` or `--project=group-N`: the groups are chained and Playwright replays every earlier group first. One file:
+1. **Pick the narrowest run.** `npm run test:unit` (vitest on every pure server module and the tests in `shared/`, 11 files in about a second; run it from `experiment/`, never `npx vitest` from there, which finds no config and globs the Playwright specs into an alarming pile of failures) for scoring or reshuffling changes; `npm run test:groupN` for one group; `npm run test:group4:fast` for idle and viability tests (shortened timers); `npm test` for everything in test mode; `npm run test:holistic` for a full game at production timing. All from `experiment/`. Never run a bare `npx playwright test <file>` or `--project=group-N`: the groups are chained and Playwright replays every earlier group first. One file:
 
    ```bash
    npx playwright test reset-server.setup tests/<category>/<file>.spec.ts \
@@ -21,6 +21,15 @@ Facts about the suite (groups, helpers, config values) are in `.claude/rules/tes
 
 4. **Read results from the file, not memory.** `npm run test:report` opens the HTML report; screenshots, traces, and video for failures are under `experiment/test-results/`.
 
-5. **Triage a failure in this order.** (a) UI copy drifted from an assertion string (the most recent fixes were exactly this); (b) a timing or block constant changed in `shared/constants.js` without the mirror in `tests/helpers/constants.ts`; (c) the test clicked Continue before every player reached the stage; (d) a real logic regression. Confirm (d) with `npm run test:unit` or a targeted single-file run before editing server code.
+5. **Check the server log, and expect the teardown to.** The harness writes the Empirica server's output to `experiment/test-results/empirica-server.log`, and the global teardown fails the run if it contains a `CALLBACK ERROR` or an unhandled rejection. This is the only way a server-side failure is visible: `guard()` contains callback errors so the remaining players can finish, so the browser looks healthy and no assertion trips. A run that fails **only** in teardown means the game played fine and the server threw; read that log, not the specs.
 
-6. **Report** which groups ran, pass and fail counts, and the output file path. Never claim a pass from a partial log or from a run that was still in progress.
+6. **Triage a failure in this order.** Suspect the harness before the game: every one of the three failures found on 2026-09-17 was in the harness, and each looked like a broken experiment.
+
+   (a) **Wrong mode.** Check the `[server-manager] Starting empirica with TEST_MODE=...` line first. Groups 1 to 4 need `true`; only the holistic group needs `false`. A flip leaking out of the holistic specs into the runner process once made every group play 6+6 blocks against specs written for 3+2.
+   (b) **A filtered run with no server.** If tests fail in milliseconds against an unreachable admin page, no server started. Playwright's `--grep` filters every project including the setup that starts it, which is why both resets are tagged `@setup` and `test:smoke` greps `@smoke|@setup`.
+   (c) **An assumed removal.** A spec that idles players for exactly `MAX_IDLE_ROUNDS` and then asserts they are gone is fragile: a round whose speaker stayed silent resets the counter by design. Wait for the removal instead of counting rounds.
+   (d) UI copy drifted from an assertion string; (e) a constant changed in `shared/constants.js` without the mirror in `tests/helpers/constants.ts`; (f) the test clicked Continue before every player reached the stage; (g) a real logic regression. Confirm (g) with `npm run test:unit` or a targeted single-file run before editing server code.
+
+   Also note a failure in group 4 makes Playwright skip the holistic group as a failed dependency, so `npm test` reporting "35 did not run" means the production-timing check never happened.
+
+7. **Report** which groups ran, pass and fail counts, and the output file path. Never claim a pass from a partial log or from a run that was still in progress.
