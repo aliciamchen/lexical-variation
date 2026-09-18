@@ -68,7 +68,9 @@ One row per player.
 | `exitSurvey_feltHuman` | Felt they were playing with other humans (`yes`/`no`); full sample only. Games with any `no` are flagged for inspection |
 | `exitSurvey_age` | Self-reported age |
 | `exitSurvey_gender` | Self-reported gender (`male`, `female`, `non-binary`, `other`, `prefer-not-to-say`) |
-| `exitSurvey_education` | Self-reported education level (`high-school`, `bachelor`, `master`, `other`) |
+| `exitSurvey_education` | Self-reported education level. The pilot used `high-school`, `bachelor`, `master`, `other`; from 2026-09-18 the options are RefBank's five (`less-than-high-school`, `high-school`, `some-college`, `bachelors`, `advanced-degree`), so pilot and full-sample values are not directly comparable and the pilot has no `some-college` category at all |
+| `exitSurvey_nativeLanguage` | The participant's first language, free text. Optional, and absent for the pilot. Collected so the data can be contributed to RefBank, whose players table records native language |
+| `exitSurvey_race` | The participant's race or ethnicity, free text. Optional, and absent for the pilot. Collected for the same reason |
 | `exitSurvey_fair` | Free-text: was the pay fair |
 | `exitSurvey_feedback` | Free-text: additional comments |
 | `clientViewportWidth`, `clientViewportHeight` | Size of the browser viewport at the start of the session, in CSS pixels. The task is a 4x4 grid of 16 tangrams, so this bears on how much visual search a selection takes. Full sample only |

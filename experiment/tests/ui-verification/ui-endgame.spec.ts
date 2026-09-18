@@ -32,6 +32,7 @@ import { EXIT_SURVEY } from '../helpers/selectors';
  * client/src/intro-exit/ExitSurvey.jsx: page 1 required questions (understood,
  * groupIdentification, groupCloseness, groupLanguage, strategy) behind a "Next"
  * button, page 2 demographics (age, gender, feltHuman required; education,
+ * first language, race,
  * fair, feedback optional) behind a "Submit" button, then a confirmation page
  * with the Prolific code and no button (the code stays up until the tab is
  * closed). The Empirica player object is
@@ -262,7 +263,11 @@ test.describe.serial('UI Verification: Endgame — Transition & Exit Survey (5.5
     // "Did you feel like you were playing with other humans?" yes/no (required)
     await expect(page.locator('input[name="feltHuman"]')).toHaveCount(2);
     // Education radios (optional)
-    await expect(page.locator('input[name="education"]')).toHaveCount(4);
+    // RefBank's five categories (see shared/constants.js and the exit survey)
+    await expect(page.locator('input[name="education"]')).toHaveCount(5);
+    // First language and race: optional, collected for the RefBank standard
+    await expect(page.locator('#nativeLanguage')).toBeVisible();
+    await expect(page.locator('#race')).toBeVisible();
     // Optional free-text fields
     await expect(page.locator('textarea[name="fair"]')).toBeVisible();
     await expect(page.locator('textarea[name="feedback"]')).toBeVisible();
@@ -281,7 +286,7 @@ test.describe.serial('UI Verification: Endgame — Transition & Exit Survey (5.5
     await page.locator('select[name="gender"]').selectOption('prefer-not-to-say');
     await page.locator('input[name="feltHuman"][value="yes"]').click();
     // Optional fields
-    await page.locator('input[name="education"][value="bachelor"]').click();
+    await page.locator('input[name="education"][value="bachelors"]').click();
     await page.locator('textarea[name="fair"]').fill('Yes');
     await page.locator('textarea[name="feedback"]').fill('No issues');
 

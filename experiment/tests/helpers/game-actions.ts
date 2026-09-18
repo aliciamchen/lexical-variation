@@ -482,7 +482,7 @@ export async function completeExitSurvey(page: Page): Promise<void> {
   await page.locator('select[name="gender"]').selectOption('prefer-not-to-say');
   await page.locator('input[name="feltHuman"][value="yes"]').click();
   // Optional page-2 fields
-  await page.locator('input[name="education"][value="bachelor"]').click();
+  await page.locator('input[name="education"][value="bachelors"]').click();
   await page.locator('textarea[name="fair"]').fill('Yes');
   await page.locator('textarea[name="feedback"]').fill('Test feedback');
 

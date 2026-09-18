@@ -44,6 +44,11 @@ export function ExitSurvey({ next }) {
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
   const [education, setEducation] = useState("");
+  // Collected for the RefBank reference-game standard, whose players table
+  // records native language and race alongside age, gender and education
+  // (https://refbank.github.io). Optional, like the rest of this page.
+  const [nativeLanguage, setNativeLanguage] = useState("");
+  const [race, setRace] = useState("");
   const [fair, setFair] = useState("");
   const [feedback, setFeedback] = useState("");
 
@@ -115,6 +120,8 @@ export function ExitSurvey({ next }) {
       age,
       gender,
       education,
+      nativeLanguage,
+      race,
       fair,
       feedback,
     });
@@ -317,6 +324,43 @@ export function ExitSurvey({ next }) {
                   </div>
                 </div>
 
+                <div className="flex flex-row">
+                  <div>
+                    <label htmlFor="nativeLanguage" className={labelClassName}>
+                      First language
+                    </label>
+                    <div className="mt-1">
+                      <input
+                        id="nativeLanguage"
+                        name="nativeLanguage"
+                        type="text"
+                        autoComplete="off"
+                        className={inputClassName}
+                        placeholder="e.g. English"
+                        value={nativeLanguage}
+                        onChange={(e) => setNativeLanguage(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="ml-5">
+                    <label htmlFor="race" className={labelClassName}>
+                      Race or ethnicity
+                    </label>
+                    <div className="mt-1">
+                      <input
+                        id="race"
+                        name="race"
+                        type="text"
+                        autoComplete="off"
+                        className={inputClassName}
+                        placeholder="Optional"
+                        value={race}
+                        onChange={(e) => setRace(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className={labelClassName}>
                     Did you feel like you were playing with other humans? <span className="text-red-500">*</span>
@@ -346,32 +390,44 @@ export function ExitSurvey({ next }) {
                     Highest education qualification
                   </label>
                   <div className="grid gap-2">
+                    {/* RefBank's categories, so the answers need no lossy
+                        remapping when the data is contributed. "Some college"
+                        and "less than high school" had no home in the old
+                        options, so those participants had to pick something
+                        inaccurate. */}
+                    <Radio
+                      selected={education}
+                      name="education"
+                      value="less-than-high-school"
+                      label="Less than high school"
+                      onChange={(e) => setEducation(e.target.value)}
+                    />
                     <Radio
                       selected={education}
                       name="education"
                       value="high-school"
-                      label="High School"
+                      label="High school"
                       onChange={(e) => setEducation(e.target.value)}
                     />
                     <Radio
                       selected={education}
                       name="education"
-                      value="bachelor"
-                      label="US Bachelor's Degree"
+                      value="some-college"
+                      label="Some college, no degree"
                       onChange={(e) => setEducation(e.target.value)}
                     />
                     <Radio
                       selected={education}
                       name="education"
-                      value="master"
-                      label="Master's or higher"
+                      value="bachelors"
+                      label="Bachelor's degree"
                       onChange={(e) => setEducation(e.target.value)}
                     />
                     <Radio
                       selected={education}
                       name="education"
-                      value="other"
-                      label="Other"
+                      value="advanced-degree"
+                      label="Advanced degree (Master's, PhD, professional)"
                       onChange={(e) => setEducation(e.target.value)}
                     />
                   </div>
