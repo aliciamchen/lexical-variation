@@ -1065,6 +1065,63 @@ def _raw_dataset(tmp_path):
     return raw
 
 
+class TestMessageDeduplication:
+    """The per-member copies collapse; two real messages never merge.
+
+    Empirica stores the group chat on every member's round, so each message
+    arrives once per member and the copies must collapse. The transcript is the
+    study's data, so the dedup key has to tell a copy from a second message.
+    """
+
+    def _inputs(self, chat_json, players=("p1", "p2", "p3")):
+        """One round of one group, with the same chat on every member's row."""
+        player_round = pd.DataFrame(
+            {
+                "gameID": ["g"] * len(players),
+                "playerID": list(players),
+                "roundID": ["r1"] * len(players),
+                "current_group": ["A"] * len(players),
+                "block_num": [0] * len(players),
+                "phase": ["refgame"] * len(players),
+                "phase_num": [1] * len(players),
+                "target": ["t1"] * len(players),
+                "chat": [chat_json] * len(players),
+            }
+        )
+        round_df = pd.DataFrame({"id": ["r1"], "trial_num": [0]})
+        game_df = pd.DataFrame({"id": ["g"], "tangram_set": [0]})
+        return player_round, game_df, round_df
+
+    def _chat(self, *msgs):
+        return json.dumps(
+            [
+                {"id": f"m{i}", "text": t, "timestamp": ts,
+                 "sender": {"id": s, "name": s}}
+                for i, (s, t, ts) in enumerate(msgs)
+            ]
+        )
+
+    def test_the_copies_on_each_members_round_collapse_to_one(self):
+        chat = self._chat(("p1", "the seated one", 1000))
+        out = build_messages(*self._inputs(chat))
+        assert len(out) == 1
+
+    def test_two_messages_in_the_same_millisecond_both_survive(self):
+        # A burst, or a paste followed at once by another send. Keying on round,
+        # sender and timestamp alone would silently drop one of these.
+        chat = self._chat(("p1", "the seated one", 1000), ("p1", "no, the tall one", 1000))
+        out = build_messages(*self._inputs(chat))
+        assert len(out) == 2
+        assert set(out["text"]) == {"the seated one", "no, the tall one"}
+
+    def test_identical_text_from_two_senders_both_survive(self):
+        # Short replies collide constantly in real chat: two people say "ok".
+        chat = self._chat(("p1", "ok", 1000), ("p2", "ok", 1000))
+        out = build_messages(*self._inputs(chat))
+        assert len(out) == 2
+        assert sorted(out["senderId"]) == ["p1", "p2"]
+
+
 class TestEpochConversion:
     """Server timestamps must come out in true epoch milliseconds.
 

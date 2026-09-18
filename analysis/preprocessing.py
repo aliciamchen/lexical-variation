@@ -977,7 +977,18 @@ def build_messages(
     # Deduplicate: each message appears once per player in the group,
     # so we keep only unique messages by (roundId, senderId, timestamp)
     if not messages.empty:
-        messages = messages.drop_duplicates(subset=["roundId", "senderId", "timestamp"])
+        # The chat array is copied onto every group member's round, so each
+        # message arrives once per member and the copies must collapse. `text`
+        # is part of the key so that two genuinely different messages can never
+        # merge: without it, one sender posting twice inside the same
+        # millisecond would silently lose a line of the transcript, which is
+        # the study's data. Adding it cannot keep a duplicate copy, because the
+        # copies are identical by construction. (Checked against the pilot and
+        # a rapid-burst export: no key holds two distinct texts, so this does
+        # not change either output.)
+        messages = messages.drop_duplicates(
+            subset=["roundId", "senderId", "timestamp", "text"]
+        )
         messages = messages.sort_values(["gameId", "roundId", "timestamp"])
 
         # Merge trialNum from round and tangramSet from game
