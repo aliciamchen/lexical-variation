@@ -40,6 +40,19 @@ function scrubEvent(event) {
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
+  // Which deployment an event came from. The dev server and the Playwright
+  // suite read the same DSN from the root .env, and the suite deliberately
+  // provokes quiz failures, idle removals and terminated batches, so without
+  // this every test run lands in the same feed as real participants and a
+  // participant's fault is indistinguishable from our own noise. A Vite build
+  // reports "production"; anything served by `empirica` in development reports
+  // "development". Scope Sentry alert rules to production.
+  environment: import.meta.env.MODE,
+  // The commit the bundle was built from, substituted by Vite's `define` (see
+  // vite.config.js). Guarded because an undefined free variable here would
+  // throw while this module loads and leave the participant a blank page;
+  // shipping without a release is the lesser failure.
+  release: typeof __APP_RELEASE__ === "undefined" ? undefined : __APP_RELEASE__,
   // Do not attach IP addresses or other default PII to events.
   sendDefaultPii: false,
   integrations: [

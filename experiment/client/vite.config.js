@@ -4,6 +4,7 @@ import { defineConfig, searchForWorkspaceRoot } from "vite";
 import restart from "vite-plugin-restart";
 import UnoCSS from "unocss/vite";
 import dns from "dns";
+import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import { assertSentryDsn } from "../shared/sentry-env.js";
 
@@ -13,6 +14,35 @@ import { assertSentryDsn } from "../shared/sentry-env.js";
 const envDir = fileURLToPath(new URL("../..", import.meta.url));
 
 dns.setDefaultResultOrder("verbatim");
+
+// Which build an error came from. `empirica bundle` runs from inside the
+// repository, so the commit is the natural version: Sentry then reports the
+// release an issue was first seen in and flags one that reappears in a later
+// build as a regression rather than quietly reopening it. A working tree with
+// uncommitted changes is marked, because "abc1234-dirty" is a truthful answer
+// to "which code is deployed" and a bare sha would not be.
+function gitRelease() {
+  try {
+    const sha = execSync("git rev-parse --short HEAD", {
+      cwd: fileURLToPath(new URL(".", import.meta.url)),
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+    // Tracked changes only: an untracked scratch file in the working tree is
+    // not part of what gets built, so it must not make the release read dirty.
+    const dirty = execSync("git status --porcelain --untracked-files=no", {
+      cwd: fileURLToPath(new URL(".", import.meta.url)),
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+    return dirty ? `${sha}-dirty` : sha;
+  } catch {
+    // Building outside a checkout: better to ship no release than to fail.
+    return "unknown";
+  }
+}
 
 const builtinsPlugin = {
   ...builtins({ include: ["fs/promises"] }),
@@ -74,6 +104,7 @@ export default defineConfig(({ command }) => {
       NODE_ENV: process.env.NODE_ENV || "development",
       TEST_MODE: process.env.TEST_MODE || "false",
     },
+    __APP_RELEASE__: JSON.stringify(gitRelease()),
   },
   };
 });
