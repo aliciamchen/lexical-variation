@@ -297,9 +297,8 @@ export function Introduction4({ next }) {
         time is up and will not get a bonus, so please stay focused.
       </p>
       <p>
-        <strong>Remember, free riding is not permitted.</strong> If we detect
-        that you are inactive, you will be removed from the game,{" "}
-        <strong>paid only for the time you spent, and lose your bonus</strong>.
+        If we detect that you are inactive, you will be removed from the
+        game.
       </p>
       <p>
         In each block, participants will describe {NUM_TANGRAMS} of the
