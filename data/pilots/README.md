@@ -110,7 +110,7 @@ One row per player per reference game round. Grouping rows by `gameId`, `roundId
 | `selectionRt` | `tangramSelectedAt` minus `selectionRenderedAt`: the listener's response time in milliseconds. Both ends come from the same browser, so clock differences between participants cannot contaminate it -- but for the same reason none of the participant-clock columns above may be compared *across* participants. Full sample only |
 | `socialGuessSelectedAt`, `socialGuessRt` | The same pair for the social-identification answer: when it was chosen, and how long after the stage rendered. Social conditions, full sample only |
 | `selectionStartedAt`, `selectionEndedAt` | When the Selection stage started and ended, on the *server's* clock (ms since epoch), so unlike the columns above these are comparable across everyone |
-| `selectionDurationMs` | How long the Selection stage actually ran. Shorter than the timer whenever every listener answered early |
+| `selectionDurationMs` | How long the Selection stage actually ran, in milliseconds. Shorter than the configured duration whenever every player responded early, since the stage auto-submits. Blank when the stage's recorded endpoints are unusable (they come from Empirica's `*LastChangedAt` columns, which track when an attribute was last written rather than true stage boundaries, so a re-write can put the end before the start); preprocessing prints how many rows that affected. |
 | `trialNum` | Sequential trial number within the game |
 | `tangramSet` | Which tangram set was used |
 | `repNum` | How many times this speaker has described this target within the current phase (1st, 2nd, etc.). Only present for speakers. |

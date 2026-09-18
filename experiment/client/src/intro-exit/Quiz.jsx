@@ -105,13 +105,21 @@ export function Quiz({ next }) {
       (q, index) => answers[index] === q.correctAnswer
     );
 
+    // Attempts taken, recorded on both paths. Writing it only on failure made
+    // the value mean "failed attempts" and left it empty for everyone who
+    // passed first time, which is most participants: empty was then ambiguous
+    // between "passed first try" and "this export predates the field", and
+    // attrition.R's mean over the non-missing values silently excluded every
+    // first-try pass. A first-try pass is 1.
+    const attemptsTaken = attempts + 1;
+    setAttempts(attemptsTaken);
+    player.set("quiz_attempts", attemptsTaken);
+
     if (allCorrect) {
       alert("Congratulations, you answered all questions correctly!");
       next();
     } else {
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
-      player.set("quiz_attempts", newAttempts);
+      const newAttempts = attemptsTaken;
 
       if (newAttempts >= MAX_QUIZ_ATTEMPTS) {
         setFailed(true);

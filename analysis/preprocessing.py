@@ -447,7 +447,16 @@ def _epoch_ms(series: pd.Series) -> pd.Series:
     per-column unit handling.
     """
     parsed = pd.to_datetime(series, format="ISO8601", utc=True, errors="coerce")
-    return (parsed.astype("int64") // 1_000_000).where(parsed.notna()).astype("Int64")
+    # Subtracting the epoch and floor-dividing by one millisecond is
+    # resolution-independent. `parsed.astype("int64") // 1_000_000` is not:
+    # pandas 2 keeps the resolution it parsed, and these timestamps carry
+    # microseconds, so int64 yields microseconds and that formula returned
+    # SECONDS while the name, the docstring and every consumer said
+    # milliseconds. Every value was 1000x too small, which is how a 45-second
+    # stage came out as "45 ms" and made client response times look longer than
+    # the stage that contained them.
+    delta = parsed - pd.Timestamp(0, unit="ms", tz="UTC")
+    return (delta // pd.Timedelta(milliseconds=1)).astype("Int64")
 
 
 def build_trials(
@@ -608,6 +617,22 @@ def build_trials(
     trials["selectionDurationMs"] = pd.to_numeric(
         trials["selectionEndedAt"], errors="coerce"
     ) - pd.to_numeric(trials["selectionStartedAt"], errors="coerce")
+    # A stage cannot last no time at all, let alone a negative time. Both ends
+    # come from Empirica's `*LastChangedAt` columns, which record when an
+    # attribute was last modified rather than when the stage truly began and
+    # ended, so a re-write of `started` can land after `ended` and yield a
+    # negative span. That is an artifact of the source, not a measurement, and
+    # leaving it in would put nonsense into every response-time comparison, so
+    # those stages are recorded as unknown.
+    unusable = trials["selectionDurationMs"].notna() & (trials["selectionDurationMs"] <= 0)
+    if unusable.any():
+        rounds = trials.loc[unusable, "roundId"].nunique()
+        print(
+            f"  {int(unusable.sum())} trial rows in {rounds} round(s) had an "
+            "unusable Selection stage span (ended at or before it started); "
+            "recorded as unknown"
+        )
+        trials.loc[unusable, "selectionDurationMs"] = pd.NA
 
     # Compute repNum: per-phase repetition count for each speaker × tangram
     # (reset to 1 at the start of each phase)

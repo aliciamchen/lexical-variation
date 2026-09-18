@@ -1065,6 +1065,46 @@ def _raw_dataset(tmp_path):
     return raw
 
 
+class TestEpochConversion:
+    """Server timestamps must come out in true epoch milliseconds.
+
+    They are compared against client `Date.now()` stamps, so a unit error here
+    is silent and scales every response-time measure by 1000. The original
+    implementation divided an int64 cast by a million assuming nanosecond
+    resolution; pandas 2 preserves the parsed resolution, and these timestamps
+    carry microseconds, so it returned seconds instead.
+    """
+
+    def test_a_known_timestamp_becomes_the_right_epoch_milliseconds(self):
+        got = preprocessing._epoch_ms(pd.Series(["2026-09-18T14:02:55.716824+00:00"]))
+        # 13 digits: milliseconds, not seconds and not microseconds.
+        assert got.tolist() == [1789740175716]
+        assert len(str(got.iloc[0])) == 13
+
+    def test_the_result_does_not_depend_on_the_parsed_resolution(self):
+        whole = preprocessing._epoch_ms(pd.Series(["2026-09-18T14:02:55+00:00"]))
+        micros = preprocessing._epoch_ms(pd.Series(["2026-09-18T14:02:55.000000+00:00"]))
+        millis = preprocessing._epoch_ms(pd.Series(["2026-09-18T14:02:55.000+00:00"]))
+        assert whole.tolist() == micros.tolist() == millis.tolist() == [1789740175000]
+
+    def test_a_difference_is_in_milliseconds(self):
+        pair = preprocessing._epoch_ms(
+            pd.Series(["2026-09-18T14:02:55+00:00", "2026-09-18T14:03:40+00:00"])
+        )
+        # A 45-second stage is 45000 ms, which is what a client Date.now()
+        # difference would report for the same interval.
+        assert int(pair.iloc[1] - pair.iloc[0]) == 45_000
+
+    def test_offsets_are_honoured_rather_than_dropped(self):
+        utc = preprocessing._epoch_ms(pd.Series(["2026-09-18T14:02:55+00:00"]))
+        edt = preprocessing._epoch_ms(pd.Series(["2026-09-18T10:02:55-04:00"]))
+        assert utc.tolist() == edt.tolist()
+
+    def test_unparseable_values_are_missing_not_zero(self):
+        got = preprocessing._epoch_ms(pd.Series(["", "not a date", None]))
+        assert got.isna().all()
+
+
 def _run_preprocessing(raw, out, monkeypatch, *extra):
     monkeypatch.setattr(sys, "argv", ["preprocessing.py", str(raw), "--output", str(out), *extra])
     preprocessing.main()

@@ -2330,6 +2330,21 @@ class TestSessionInstrumentation:
             "participant's clock moved backwards mid-session"
         )
 
+    def test_a_recorded_stage_span_is_positive(self, trials):
+        """A Selection stage that lasted no time is not a measurement.
+
+        Both ends come from Empirica's `*LastChangedAt` columns, which track
+        when an attribute was last written rather than true stage boundaries,
+        so a re-write can produce a zero or negative span. Preprocessing
+        records those as unknown; this is the check that it still does.
+        """
+        spans = trials["selectionDurationMs"].dropna()
+        if spans.empty:
+            pytest.skip("no stage spans recorded (export predates them)")
+        assert (spans > 0).all(), (
+            f"{int((spans <= 0).sum())} trials carry a non-positive Selection stage span"
+        )
+
     def test_response_times_fit_inside_the_selection_stage(self, trials):
         """A response time longer than the stage means the clocks disagree.
 
@@ -2387,15 +2402,24 @@ class TestSessionInstrumentation:
             pytest.skip("no engagement log recorded")
         assert (hidden >= 0).all(), "negative tab-hidden time"
 
-    def test_time_on_task_is_recorded_for_everyone_who_finished(self, players):
+    def test_time_on_task_is_recorded_for_everyone_who_finished(self, players, games):
         """Finishers get an end time from onGameEnded, not just removals.
 
         The pilot has none, which is the gap this checks has not returned.
+
+        "Finished" means still active AND in a game that ended, not merely
+        active: `onGameEnded` is what writes the time, so a player still mid
+        game legitimately has none. Filtering on isActive alone failed on any
+        export taken while a session was in progress, which is every export the
+        five-minute backup loop produces.
         """
-        finished = players[players["isActive"] == True]
+        ended_games = set(
+            games.loc[games["ended"].astype(str).str.lower().isin(["true", "1"]), "gameId"]
+        )
+        finished = players[(players["isActive"] == True) & players["gameId"].isin(ended_games)]
         if finished.empty or finished["minutesSpent"].dropna().empty:
             pytest.skip("export predates end-of-game time on task")
         missing = finished["minutesSpent"].isna().sum()
         assert missing == 0, (
-            f"{missing} players who finished have no time on task"
+            f"{missing} of {len(finished)} players whose game ended have no time on task"
         )
