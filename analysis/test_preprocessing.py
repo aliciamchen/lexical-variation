@@ -1098,9 +1098,25 @@ class TestExclusionEndToEnd:
         assert bool(trials.loc[("r1", "A1"), "responseOpportunity"])
         assert bool(trials.loc[("r1", "A1"), "hasSpeakerMessage"])
 
-        # The derived step reads the utterance file, so every derived measure
-        # is computed without the excluded speaker.
+    def test_the_derived_step_sees_only_the_remaining_speakers(self, tmp_path, monkeypatch):
+        """The derived measures are computed from the post-exclusion utterances.
+
+        Separate from the test above, and skipped where the derived stack is not
+        installed, because CI deliberately runs this file without nltk and the
+        sentence-transformer dependencies (see .github/workflows/ci.yml). Keeping
+        it in the same test cost CI the preprocessing assertions too, which are
+        the ones worth having there.
+        """
+        pytest.importorskip("nltk")
         from compute_derived import compute_lexical_uniqueness
+
+        raw = _raw_dataset(tmp_path)
+        out = tmp_path / "data"
+        out.mkdir()
+        (out / "participant_exclusions.csv").write_text("playerId,reason\nA0,confirmed AI use\n")
+        _run_preprocessing(raw, out, monkeypatch)
+
+        utterances = pd.read_csv(out / "speaker_utterances.csv")
         assert set(compute_lexical_uniqueness(utterances)["playerId"]) == {"A1"}
 
     def test_without_an_exclusion_file_nothing_is_flagged(self, tmp_path, monkeypatch):
