@@ -621,6 +621,104 @@ attach_speaker <- function(listener_df, trials) {
 
 # Social guesses (Phase 2 of the social conditions) with correct, condition,
 # and centered block
+# Per-listener in-group advantage: mean referential accuracy when the speaker
+# came from the listener's own original group, minus mean accuracy when they
+# did not.
+#
+# Why aggregate rather than model this at the trial level. `inGroupSpeaker` is
+# the only tested predictor in this design that varies WITHIN every grouping
+# factor -- the reshuffle rule gives each trio exactly one in-group listener,
+# so a listener is an in-group listener on some trials and not on others. By
+# the rule used everywhere else that calls for by-game and by-listener random
+# slopes, and a trial-level model without them is anticonservative (simulated
+# on this design: a nominal .05 test runs near .26 for the in-group effect and
+# .28 for its interaction with condition). But those slopes cannot be
+# estimated: a listener contributes only about a dozen Bernoulli trials per
+# cell, and across simulated slope SDs from 0.2 to 0.8 the simplification
+# ladder dropped them every time.
+#
+# Taking the difference per listener is the paired-comparison form of the same
+# contrast, and it is estimable: the within-listener dimension is collapsed
+# into the outcome, so what remains is a between-listener model. The same
+# simulations put this at .083 and .058. Hawkins et al. (2020) use exactly
+# this device for their within- versus across-speaker comparison, analysing a
+# per-speaker difference score with speaker-level intercepts.
+#
+# Returns one row per listener with both cells observed: `advantage`, the two
+# cell means, and the two cell sizes so coverage and precision can be
+# reported. `min_trials` drops listeners with a thin cell, for the sensitivity
+# check; the default keeps everyone who has both.
+ingroup_advantage <- function(social_listener, min_trials = 1L) {
+  if (!has_rows(social_listener)) {
+    return(tibble())
+  }
+  needed <- c("gameId", "playerId", "condition", "inGroupSpeaker", "correct")
+  missing <- setdiff(needed, names(social_listener))
+  if (length(missing)) {
+    stop(
+      "ingroup_advantage needs ",
+      paste(missing, collapse = ", "),
+      "; use listener_trials(phase = 2) |> attach_speaker().",
+      call. = FALSE
+    )
+  }
+  cells <- social_listener |>
+    filter(!is.na(correct), !is.na(inGroupSpeaker)) |>
+    mutate(
+      .cell = ifelse(as.character(inGroupSpeaker) == "in_group", "in", "out")
+    ) |>
+    group_by(gameId, condition, playerId, .cell) |>
+    summarise(acc = mean(correct), n = dplyr::n(), .groups = "drop")
+  wide <- cells |>
+    tidyr::pivot_wider(
+      names_from = .cell,
+      values_from = c(acc, n),
+      names_sep = "_"
+    )
+  for (col in c("acc_in", "acc_out", "n_in", "n_out")) {
+    if (!col %in% names(wide)) {
+      wide[[col]] <- NA_real_
+    }
+  }
+  wide |>
+    filter(
+      !is.na(acc_in),
+      !is.na(acc_out),
+      n_in >= min_trials,
+      n_out >= min_trials
+    ) |>
+    mutate(advantage = acc_in - acc_out) |>
+    select(gameId, condition, playerId, acc_in, acc_out, n_in, n_out, advantage)
+}
+
+# One row per content word, for the H3c models.
+#
+# `binomial_measure()` above gives k successes out of n per description;
+# this expands that to the n individual binary observations, so the model is
+# literally "is this content word concrete?" rather than a count. The two are
+# the same likelihood -- a binomial on (k, n-k) with a per-description
+# intercept is exactly n Bernoulli draws with a by-description random effect,
+# and they return identical estimates and standard errors (verified in
+# analysis/tests/test_prepare.R). The word-level form is the one we fit
+# because it states the outcome plainly; the aggregated form remains
+# available and is much faster if the expanded frame ever becomes unwieldy.
+#
+# Which words are 1 and which are 0 is not recorded, only how many of each,
+# because nothing in the model distinguishes them. An analysis that needs the
+# tokens themselves should recompute from the utterances.
+word_level_measure <- function(props, numerator, outcome = "is_target") {
+  counts <- binomial_measure(props, numerator)
+  if (!has_rows(counts)) {
+    return(tibble())
+  }
+  hits <- counts |> filter(k > 0) |> tidyr::uncount(k)
+  hits[[outcome]] <- 1L
+  misses <- counts |> filter(n_minus_k > 0) |> tidyr::uncount(n_minus_k)
+  misses[[outcome]] <- 0L
+  bind_rows(hits, misses) |>
+    select(-any_of(c("k", "n_minus_k")))
+}
+
 social_guess_trials <- function(
   social_guesses,
   games,
@@ -731,10 +829,25 @@ final_phase_properties <- function(
   if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
     return(tibble())
   }
+  # `n_unique_words` rides along beside `uniqueness` so the binomial H3c
+  # model has its numerator; the denominator `n_content_words` is the same in
+  # both tables and comes in with desc_props. Older derived files predate
+  # both counts, so they are selected only when present.
+  uniq_cols <- intersect(
+    c("uniqueness", "n_unique_words"),
+    names(lex_uniq)
+  )
   desc_props |>
     left_join(
       lex_uniq |>
-        select(gameId, playerId, target, blockNum, phaseNum, uniqueness),
+        select(
+          gameId,
+          playerId,
+          target,
+          blockNum,
+          phaseNum,
+          all_of(uniq_cols)
+        ),
       by = c("gameId", "playerId", "target", "blockNum", "phaseNum")
     ) |>
     filter(phaseNum == .env$phase) |>
@@ -743,6 +856,38 @@ final_phase_properties <- function(
     group_by(gameId, playerId, target) |>
     filter(blockNum == max(blockNum)) |>
     ungroup()
+}
+
+# One row per description, reshaped for a binomial H3c model: `k` successes
+# out of `n_content_words`, plus a per-description identifier for the
+# observation-level random intercept. Descriptions with no content words have
+# no proportion to model and are dropped, as they are under the Gaussian
+# version. Errors rather than silently dropping everything when the counts
+# are missing, which happens if the derived files predate them.
+binomial_measure <- function(props, numerator) {
+  if (!has_rows(props)) {
+    return(tibble())
+  }
+  missing <- setdiff(c("n_content_words", numerator), names(props))
+  if (length(missing)) {
+    stop(
+      "binomial_measure needs ",
+      paste(missing, collapse = " and "),
+      "; re-run compute_derived.py to regenerate the H3c files.",
+      call. = FALSE
+    )
+  }
+  props |>
+    filter(
+      !is.na(.data[[numerator]]),
+      !is.na(n_content_words),
+      n_content_words > 0
+    ) |>
+    mutate(
+      descriptionId = paste(gameId, playerId, target, sep = ":"),
+      k = as.integer(.data[[numerator]]),
+      n_minus_k = as.integer(n_content_words) - as.integer(.data[[numerator]])
+    )
 }
 
 # The H3c comparison: final Phase 1 descriptions in the social conditions

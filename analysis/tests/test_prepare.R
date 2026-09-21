@@ -376,3 +376,215 @@ local({
   check("globalBlock is one-indexed and continuous across the phases",
         identical(out$globalBlock, c(1, 6, 7, 12)))
 })
+
+# ── binomial_measure ─────────────────────────────────────────────────────────
+# H3c fits concreteness and lexical uniqueness as binomial counts rather than
+# as Gaussian proportions, so the reshaping from a stored ratio plus its
+# counts into cbind(k, n - k) has to be exact, and a description with no
+# content words has to drop out rather than become a zero-out-of-zero row.
+local({
+  props <- tibble(
+    gameId = c("g1", "g1", "g1"),
+    playerId = c("p1", "p2", "p3"),
+    target = c("t1", "t1", "t1"),
+    n_content_words = c(4L, 2L, 0L),
+    n_concrete = c(3L, 0L, 0L),
+    concreteness = c(0.75, 0, NA_real_)
+  )
+  out <- binomial_measure(props, "n_concrete")
+  check(
+    "binomial_measure splits the counts into successes and failures",
+    identical(out$k, c(3L, 0L)) && identical(out$n_minus_k, c(1L, 2L))
+  )
+  check(
+    "a description with no content words is dropped, not counted as 0 of 0",
+    nrow(out) == 2L && !"p3" %in% out$playerId
+  )
+  check(
+    "the reshaped counts reproduce the stored proportion",
+    isTRUE(all.equal(out$k / (out$k + out$n_minus_k), out$concreteness))
+  )
+  check(
+    "each description gets its own identifier for the observation-level term",
+    length(unique(out$descriptionId)) == nrow(out)
+  )
+  check(
+    "missing counts are an error, not a silently empty model frame",
+    inherits(
+      try(binomial_measure(props |> select(-n_concrete), "n_concrete"),
+          silent = TRUE),
+      "try-error"
+    )
+  )
+  check(
+    "no rows in gives no rows out rather than an error",
+    nrow(binomial_measure(tibble(), "n_concrete")) == 0L
+  )
+})
+
+# ── add_group_id: the invariant every (1 | game) + (1 | group) model rests on ─
+#
+# Groups are nested within games. That nesting is expressed in the DATA, by
+# giving each group a game-unique identifier, rather than in the formulas,
+# which use `(1 | gameId) + (1 | group)` instead of `(1 | gameId/group)`. The
+# two are the same model only while the identifiers really are game-unique.
+# If `group` ever became a bare "A"/"B"/"C", every one of those models would
+# silently start treating game 1's group A and game 7's group A as the same
+# group -- a crossed structure, with no error and no warning. This is the
+# check that makes that failure loud.
+local({
+  df <- tibble(
+    gameId = c("gameX", "gameX", "gameY", "gameY"),
+    originalGroup = c("A", "B", "A", "B")
+  )
+  out <- add_group_id(df)
+  check(
+    "add_group_id gives every group a game-unique identifier",
+    n_distinct(out$group) == 4L
+  )
+  check(
+    "the same original-group letter in two games gets two identifiers",
+    out$group[out$gameId == "gameX" & out$originalGroup == "A"] !=
+      out$group[out$gameId == "gameY" & out$originalGroup == "A"]
+  )
+  check(
+    "each group identifier belongs to exactly one game",
+    all(
+      out |>
+        distinct(group, gameId) |>
+        count(group) |>
+        pull(n) ==
+        1L
+    )
+  )
+  check(
+    "the identifier still names the game and the original group it came from",
+    all(mapply(grepl, out$gameId, out$group)) &&
+      all(mapply(grepl, out$originalGroup, out$group))
+  )
+})
+
+# ── ingroup_advantage ────────────────────────────────────────────────────────
+# The paired form of the in-group contrast: one difference score per listener,
+# which is what makes the within-listener comparison estimable at all.
+local({
+  sl <- tibble(
+    gameId = "g1",
+    condition = factor("social_mixed", levels = SOCIAL_CONDITIONS),
+    playerId = c(rep("p1", 4), rep("p2", 4), rep("p3", 2)),
+    inGroupSpeaker = factor(
+      c("in_group", "in_group", "out_group", "out_group",
+        "in_group", "in_group", "out_group", "out_group",
+        "in_group", "in_group"),
+      levels = c("out_group", "in_group")
+    ),
+    #  p1: 2/2 in-group, 1/2 out-group  -> advantage 0.5
+    #  p2: 1/2 in-group, 1/2 out-group  -> advantage 0.0
+    #  p3: in-group only                -> no score
+    correct = c(1, 1, 1, 0, 1, 0, 1, 0, 1, 1)
+  )
+  out <- ingroup_advantage(sl)
+  check(
+    "one row per listener with both cells observed",
+    nrow(out) == 2L && setequal(out$playerId, c("p1", "p2"))
+  )
+  check(
+    "a listener with only in-group trials gets no advantage score",
+    !"p3" %in% out$playerId
+  )
+  check(
+    "advantage is in-group accuracy minus out-group accuracy",
+    isTRUE(all.equal(
+      out$advantage[out$playerId == "p1"], 0.5
+    )) &&
+      isTRUE(all.equal(out$advantage[out$playerId == "p2"], 0))
+  )
+  check(
+    "cell sizes come back so coverage and precision can be reported",
+    all(out$n_in == 2) && all(out$n_out == 2)
+  )
+  check(
+    "min_trials drops thin cells for the sensitivity check",
+    nrow(ingroup_advantage(sl, min_trials = 3L)) == 0L
+  )
+  check(
+    "a table without the speaker join is an error, not an empty result",
+    inherits(
+      try(ingroup_advantage(sl |> select(-inGroupSpeaker)), silent = TRUE),
+      "try-error"
+    )
+  )
+  check(
+    "no rows in gives no rows out",
+    nrow(ingroup_advantage(tibble())) == 0L
+  )
+})
+
+# ── word_level_measure ───────────────────────────────────────────────────────
+# The H3c models predict a per-word binary outcome. Expanding the counts is
+# exactly equivalent to a binomial on (k, n-k) with a per-description
+# intercept, so the two must give identical fits; if they ever diverge, the
+# expansion is wrong.
+local({
+  props <- tibble(
+    gameId = "g1", playerId = c("p1", "p2"), target = c("t1", "t1"),
+    n_content_words = c(4L, 3L), n_concrete = c(3L, 0L),
+    concreteness = c(0.75, 0)
+  )
+  out <- word_level_measure(props, "n_concrete", "is_concrete")
+  check(
+    "one row per content word",
+    nrow(out) == 7L
+  )
+  check(
+    "the right number of ones and zeros per description",
+    sum(out$is_concrete[out$playerId == "p1"]) == 3L &&
+      sum(out$playerId == "p1") == 4L &&
+      sum(out$is_concrete[out$playerId == "p2"]) == 0L &&
+      sum(out$playerId == "p2") == 3L
+  )
+  check(
+    "the count columns do not ride along and get mistaken for the outcome",
+    !any(c("k", "n_minus_k") %in% names(out))
+  )
+  check(
+    "no rows in gives no rows out",
+    nrow(word_level_measure(tibble(), "n_concrete")) == 0L
+  )
+})
+
+# The equivalence itself, on a frame big enough to fit both forms.
+local({
+  set.seed(4)
+  props <- tidyr::expand_grid(g = 1:8, p = 1:6, target = paste0("t", 1:4)) |>
+    mutate(
+      gameId = paste0("g", g),
+      group = paste(gameId, (p - 1) %/% 3, sep = ":"),
+      playerId = paste(gameId, p, sep = ":"),
+      condition = factor(ifelse(g <= 4, "a", "b")),
+      n_content_words = 6L,
+      n_concrete = rbinom(n(), 6, 0.4)
+    )
+  agg <- binomial_measure(props, "n_concrete")
+  wide <- word_level_measure(props, "n_concrete", "is_concrete")
+  f_agg <- cbind(k, n_minus_k) ~ condition + (1 | group) + (1 | descriptionId)
+  f_wl <- is_concrete ~ condition + (1 | group) + (1 | descriptionId)
+  m_agg <- suppressWarnings(lme4::glmer(f_agg, agg, family = binomial))
+  m_wl <- suppressWarnings(lme4::glmer(f_wl, wide, family = binomial))
+  check(
+    "word-level and aggregated binomial give the same fixed effects",
+    isTRUE(all.equal(
+      unname(lme4::fixef(m_agg)),
+      unname(lme4::fixef(m_wl)),
+      tolerance = 1e-4
+    ))
+  )
+  check(
+    "and the same standard errors",
+    isTRUE(all.equal(
+      unname(sqrt(diag(as.matrix(vcov(m_agg))))),
+      unname(sqrt(diag(as.matrix(vcov(m_wl))))),
+      tolerance = 1e-3
+    ))
+  )
+})
