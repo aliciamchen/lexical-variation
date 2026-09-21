@@ -1,4 +1,5 @@
 import { usePlayer, useGame } from "@empirica/core/player/classic/react";
+import { Loading } from "@empirica/core/player/react";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
@@ -62,7 +63,7 @@ export function ExitSurvey({ next }) {
   // held in React state, so a reload (or a reconnect that remounts the exit
   // steps) resumes at the first unanswered page instead of asking a completed
   // page again, and can never lose answers that were submitted.
-  const saved = player.get("exitSurvey") || {};
+  const saved = player?.get("exitSurvey") || {};
   const page = !page1Complete(saved)
     ? "required"
     : !page2Complete(saved)
@@ -72,20 +73,20 @@ export function ExitSurvey({ next }) {
   // Use exitReason (our custom attribute) first: Empirica overwrites `ended`
   // with "game ended" when the game finishes and "game terminated" when the
   // admin stops the batch.
-  const endedReason = player.get("exitReason") || player.get("ended");
+  const endedReason = player?.get("exitReason") || player?.get("ended");
   // Removed early through no fault of their own; paid base prorated to time
   // spent plus the bonus so far, with the partial code on the Sorry page.
   const isRemoved = PARTIAL_PAY_SURVEY_REASONS.includes(endedReason);
 
   // Get player's score and bonus
-  const score = player.get("score") || 0;
-  const bonus = player.get("bonus") || 0;
+  const score = player?.get("score") || 0;
+  const bonus = player?.get("bonus") || 0;
 
   // Partial pay info for removed players
-  const partialPay = player.get("partialPay");
-  const partialBasePay = player.get("partialBasePay");
-  const partialBonus = player.get("partialBonus");
-  const minutesSpent = player.get("minutesSpent");
+  const partialPay = player?.get("partialPay");
+  const partialBasePay = player?.get("partialBasePay");
+  const partialBonus = player?.get("partialBonus");
+  const minutesSpent = player?.get("minutesSpent");
 
   const requiredComplete =
     understood &&
@@ -139,6 +140,14 @@ export function ExitSurvey({ next }) {
       next();
     }
   }, [page, isRemoved]);
+
+  // Below every hook, so the hook order cannot change between renders. The
+  // reads above are optional-chained for the same reason: they sit higher
+  // than the hooks and an early return could not protect them. See Sorry.jsx
+  // for why a subscription-backed player has to be guarded at all.
+  if (!player) {
+    return <Loading />;
+  }
 
   // Build the header alert based on whether the game ended normally or the
   // player was removed early
@@ -292,6 +301,8 @@ export function ExitSurvey({ next }) {
                         id="age"
                         name="age"
                         type="number"
+                        min="18"
+                        max="120"
                         autoComplete="off"
                         className={inputClassName}
                         value={age}

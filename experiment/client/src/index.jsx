@@ -4,6 +4,7 @@ import "@unocss/reset/tailwind-compat.css";
 import "virtual:uno.css";
 import "../node_modules/@empirica/core/dist/player.css";
 import App from "./App";
+import { CrashFallback } from "./components/CrashFallback";
 import "./index.css";
 import * as Sentry from "@sentry/react";
 
@@ -27,13 +28,26 @@ function stripQueryFields(obj, keys) {
   }
 }
 
-// Shared by beforeSend (errors and messages) and beforeSendTransaction.
+// Shared by beforeSend, beforeSendTransaction, and -- as a global event
+// processor registered after init -- every other event type the SDK builds,
+// which is how replays are covered: the SDK calls neither beforeSend nor
+// beforeSendTransaction for a replay event, but it does run the global
+// processors, so registering this there is what keeps the study URL out of a
+// replay's `urls` list and request context.
 function scrubEvent(event) {
   stripQueryFields(event.request, ["url"]);
+  // httpContextIntegration adds the referrer to every event it touches,
+  // replay events included, and on a single-page study the referrer is this
+  // same URL with the Prolific ids still attached.
+  stripQueryFields(event.request?.headers, ["Referer", "referer"]);
   stripQueryFields(event, ["transaction"]);
   stripQueryFields(event.contexts?.trace?.data, ["url", "http.url"]);
   for (const span of event.spans || []) {
     stripQueryFields(span.data, ["url", "http.url"]);
+  }
+  // Replay events carry the pages visited during the recording.
+  if (Array.isArray(event.urls)) {
+    event.urls = event.urls.map(stripQuery);
   }
   return event;
 }
@@ -77,6 +91,19 @@ Sentry.init({
       maskAllInputs: true,
       blockAllMedia: false,
       unmask: ["[data-sentry-unmask]", ".sentry-unmask"],
+      // The recording itself carries the page address, separately from the
+      // event envelope: rrweb writes a Meta frame (type 4) with the full
+      // href at every full snapshot. Event processors never see inside the
+      // recording, so it is cut here instead.
+      beforeAddRecordingEvent: (event) => {
+        if (event?.type === 4 && typeof event.data?.href === "string") {
+          return {
+            ...event,
+            data: { ...event.data, href: stripQuery(event.data.href) },
+          };
+        }
+        return event;
+      },
     }),
   ],
   beforeSend: scrubEvent,
@@ -96,10 +123,22 @@ Sentry.init({
   enableLogs: true,
 });
 
+// Covers the event types beforeSend and beforeSendTransaction never see,
+// which is what leaves replay events unscrubbed if this is omitted.
+Sentry.addEventProcessor(scrubEvent);
+
 const container = document.getElementById("root");
 const root = createRoot(container); // createRoot(container!) if you use TypeScript
+// Any render error anywhere unmounts the entire tree, so without a boundary
+// one bad read leaves the participant on a blank page -- which is how a
+// momentarily empty player subscription blanked the exit screen in production
+// on 2026-09-19. The components that read a player now guard themselves; this
+// catches whatever we have not thought of, reports it, and tells the
+// participant to reload.
 root.render(
   <React.StrictMode>
-    <App />
+    <Sentry.ErrorBoundary fallback={<CrashFallback />}>
+      <App />
+    </Sentry.ErrorBoundary>
   </React.StrictMode>,
 );

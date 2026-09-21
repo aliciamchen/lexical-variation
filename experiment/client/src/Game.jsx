@@ -10,6 +10,7 @@ import { hasSocialGuessing, isMixedCondition } from "./constants";
 import { allGroupResponded } from "./groupResponse";
 import { useEngagementLog } from "./instrumentation";
 
+import { Loading } from "@empirica/core/player/react";
 import { useEffect, useRef } from "react";
 import { Profile } from "./Profile";
 import { Task } from "./Task";
@@ -52,6 +53,19 @@ export function Game() {
       .play()
       .catch((e) => console.warn("Error playing round sound:", e));
   }, [round?.id]);
+
+  // `usePlayer` is a subscription that is empty on the first render and again
+  // whenever the participant context tears down (a dropped websocket does
+  // exactly that). EmpiricaContext checks for a missing player, but that check
+  // is in the parent: the subscription here fires on its own and re-renders
+  // this component alone, so the parent never gets a say. Unguarded, the
+  // render throws and React unmounts the whole app. Empirica's own components
+  // guard the same way.
+  // Placed below every hook above, so the hook order cannot change between
+  // renders; `useEngagementLog` already tolerates a missing player.
+  if (!player || !game) {
+    return <Loading />;
+  }
 
   // Get current group for chat display
   const playerGroup = player.get("current_group");
