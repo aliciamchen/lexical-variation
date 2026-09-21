@@ -20,9 +20,20 @@ async function waitForAdminReady(page: Page, timeout = 15_000): Promise<'empty' 
       return 'loaded';
     }
 
-    // "Create a Batch" = empty state (no batches at all, large dashed placeholder)
+    // "Create a Batch" = empty state (no batches at all, large dashed
+    // placeholder). Confirmed with a second look, because the placeholder can
+    // render a beat before the "New Batch" button on a page that does have
+    // batches: reading that instant as "empty" made stopAllBatches return
+    // without stopping anything and without reaching its own assertion, so a
+    // spec that had asked for a batch to be stopped carried on against a
+    // running one and failed a minute later somewhere else.
     const createBatchBtn = page.getByRole('button', { name: /create a batch/i });
     if ((await createBatchBtn.count()) > 0) {
+      await page.waitForTimeout(750);
+      if ((await newBatchBtn.count()) > 0) {
+        await page.waitForTimeout(1000);
+        return 'loaded';
+      }
       return 'empty';
     }
 
@@ -88,8 +99,11 @@ export async function stopAllBatches(page: Page): Promise<void> {
       await page.waitForTimeout(5000);
     }
   }
-  const state = await waitForAdminReady(page);
-  if (state === 'empty') return;
+  // Deliberately not short-circuiting on an 'empty' reading: stopping nothing
+  // has to be proven by the absence of Stop buttons below, not assumed from a
+  // state read that can be wrong. stopRunningBatches is a no-op when there is
+  // nothing to stop.
+  await waitForAdminReady(page);
   await stopRunningBatches(page);
 
   const stillRunning = await page.getByRole('button', { name: 'Stop' }).count();
