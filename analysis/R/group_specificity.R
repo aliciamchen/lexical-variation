@@ -49,19 +49,109 @@ suppressPackageStartupMessages({
 # inverse-variance weights, which is exactly what it needs to get right.
 # The pair variance sits at the boundary in many games; the term is kept
 # anyway, so the model structure never depends on the data.
-SPEAKER_STRUCTURES <- c("multimembership_pair", "multimembership", "separate")
+# "pair" is the preregistered structure as the manuscript states it: a
+# tangram intercept and an intercept for the unordered speaker-speaker pair,
+# with no speaker term. The pair intercept is the one the design-matched
+# simulations showed to matter (without it, 95% intervals cover about 86%;
+# with it, about 94%). Dropping the individual speaker effects costs a little
+# precision and errs conservative -- on the pilot the same_group coefficients
+# are unchanged to two decimals and the standard errors are slightly larger
+# than with speaker terms added -- and it sidesteps the pair-ordering problem
+# entirely, since there is no per-position effect to split.
+#
+# The other three remain for comparison: "multimembership_pair" adds a shared
+# speaker effect (1/2 weights across both pair positions) to the pair
+# intercept, "multimembership" has the speaker effect without the pair, and
+# "separate" is the earliest form with an independent intercept per pair
+# position, which makes the estimate depend on an arbitrary ordering. Do not
+# use "separate" for anything reported.
+SPEAKER_STRUCTURES <- c(
+  "pair",
+  "multimembership_pair",
+  "multimembership",
+  "separate"
+)
 
 # `covariates` adds fixed-effect terms to every game's similarity model; the
 # preregistration uses this for the robustness check that includes description
 # length (the pair's length difference and mean length).
+# The manuscript's per-game model: similarity ~ same_group + (1 | tangram)
+# + (1 | unordered speaker pair). Plain lmer -- no multiple-membership term is
+# needed because there is no per-speaker effect to share across pair
+# positions. Same contract as fit_group_specificity_mm(): one row per game,
+# and a game whose fit errors comes back as an NA row with the reason in
+# `note` rather than disappearing.
+fit_group_specificity_pair <- function(pairwise_df, covariates = NULL) {
+  empty <- tibble(
+    gameId = character(),
+    coefficient = numeric(),
+    std_error = numeric(),
+    t_value = numeric(),
+    note = character()
+  )
+  if (!has_rows(pairwise_df)) {
+    return(empty)
+  }
+  rhs <- paste(c("sameGroup", covariates), collapse = " + ")
+  model_formula <- as.formula(paste(
+    "similarity ~",
+    rhs,
+    "+ (1 | target) + (1 | speakerPair)"
+  ))
+  bind_rows(
+    empty,
+    map_dfr(unique(pairwise_df$gameId), function(gid) {
+      d <- as.data.frame(pairwise_df[pairwise_df$gameId == gid, ])
+      # Built here rather than taken from any exported column so the id is
+      # guaranteed unordered whatever the caller passes.
+      d$speakerPair <- paste(
+        pmin(d$speaker1, d$speaker2),
+        pmax(d$speaker1, d$speaker2)
+      )
+      if (nrow(d) < 5 || n_distinct(d$sameGroup) < 2) {
+        return(NULL)
+      }
+      tryCatch(
+        {
+          model <- lmer(
+            model_formula,
+            data = d,
+            control = lmerControl(optimizer = "bobyqa")
+          )
+          coefs <- coef(summary(model))
+          tibble(
+            gameId = gid,
+            coefficient = coefs["sameGroup", "Estimate"],
+            std_error = coefs["sameGroup", "Std. Error"],
+            t_value = coefs["sameGroup", "t value"],
+            note = NA_character_
+          )
+        },
+        error = function(e) {
+          tibble(
+            gameId = gid,
+            coefficient = NA_real_,
+            std_error = NA_real_,
+            t_value = NA_real_,
+            note = conditionMessage(e)
+          )
+        }
+      )
+    })
+  )
+}
+
 fit_group_specificity <- function(
   pairwise_df,
   covariates = NULL,
-  speaker_structure = "multimembership_pair"
+  speaker_structure = "pair"
 ) {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
   # A game whose model cannot be fit comes back as an NA row with the error in
   # `note`, so game_specificity_table() can report it instead of losing it.
+  if (speaker_structure == "pair") {
+    return(fit_group_specificity_pair(pairwise_df, covariates = covariates))
+  }
   if (speaker_structure != "separate") {
     return(
       fit_group_specificity_mm(
@@ -127,7 +217,7 @@ permutation_test <- function(
   pairwise_df,
   n_perm = 1000,
   seed = 67,
-  speaker_structure = "multimembership_pair"
+  speaker_structure = "pair"
 ) {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
   # One fitter, used for both the observed model and every permutation, so
@@ -147,6 +237,14 @@ permutation_test <- function(
       pmin(d$speaker1, d$speaker2),
       pmax(d$speaker1, d$speaker2)
     )
+    if (speaker_structure == "pair") {
+      model <- lmer(
+        similarity ~ sameGroup + (1 | target) + (1 | speakerPair),
+        data = d,
+        control = lmerControl(optimizer = "bobyqa")
+      )
+      return(coef(summary(model))["sameGroup", "Estimate"])
+    }
     f <- if (speaker_structure == "multimembership_pair") {
       similarity ~ sameGroup + (1 | target) + (1 | speakerPair) + (1 | speaker)
     } else {
@@ -246,7 +344,7 @@ compute_group_specificity <- function(
   n_perm = 1000,
   force = FALSE,
   seed = 67,
-  speaker_structure = "multimembership_pair"
+  speaker_structure = "pair"
 ) {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
   # One set of cache files per speaker structure. They must not share a name:
@@ -435,7 +533,7 @@ game_specificity_table <- function(
   games,
   windows = c("phase1_final", "phase2_final"),
   covariates = NULL,
-  speaker_structure = "multimembership_pair",
+  speaker_structure = "pair",
   measure = "sbert"
 ) {
   if (!is.data.frame(pairwise_sim) || nrow(pairwise_sim) == 0) {
