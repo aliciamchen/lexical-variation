@@ -1,6 +1,6 @@
 import { EmpiricaClassic } from "@empirica/core/player/classic";
 import { EmpiricaContext } from "@empirica/core/player/classic/react";
-import { EmpiricaMenu, EmpiricaParticipant } from "@empirica/core/player/react";
+import { EmpiricaParticipant } from "@empirica/core/player/react";
 import React from "react";
 import { Game } from "./Game";
 import { ExitSurvey } from "./intro-exit/ExitSurvey";
@@ -8,6 +8,9 @@ import { Introduction } from "./intro-exit/Introduction";
 import { ConsentPage } from "./intro-exit/Consent.jsx";
 import { Sorry } from "./intro-exit/Sorry.jsx";
 import { MyPlayerForm } from "./intro-exit/PlayerCreate.jsx";
+import { NoGames } from "./intro-exit/NoGames.jsx";
+import { LobbyWait } from "./intro-exit/LobbyWait.jsx";
+import { LoadingScreen } from "./components/LoadingScreen.jsx";
 import { EXIT_REASONS, PARTIAL_PAY_SURVEY_REASONS } from "./constants";
 
 export default function App() {
@@ -28,12 +31,23 @@ export default function App() {
     // Use exitReason (our custom attribute) first: Empirica overwrites `ended`
     // with "game ended" when the game finishes and with "game terminated" when
     // the admin stops the batch (the server then also writes `exitReason`).
-    const exitReason = player.get("exitReason");
-    const ended = player.get("ended");
+    const exitReason = player?.get("exitReason");
+    const ended = player?.get("ended");
     const reason = exitReason || ended;
+    // Set in onGameStart, so its absence means this player never played.
+    const played = Boolean(player?.get("gameStartTime"));
 
     if (reason === EXIT_REASONS.quizFailed) {
       // Three failed quiz attempts: no survey, no pay (Sorry explains).
+      return [Sorry];
+    } else if (reason === EXIT_REASONS.gameTerminated && !played) {
+      // The batch was stopped while this player was still in the lobby or the
+      // instructions. Empirica writes "game terminated" to every player
+      // assigned to a game in the batch, started or not, but a game that never
+      // started never reaches `onGameEnded`, so nothing computed their pay:
+      // the survey would ask them about a group they never met and Sorry would
+      // offer them the partial code and $0.00. They waited and nothing else,
+      // which is the lobby-timeout case, and Sorry words it that way.
       return [Sorry];
     } else if (PARTIAL_PAY_SURVEY_REASONS.includes(reason)) {
       // Removed through no fault of their own (group disbanded, too few groups
@@ -54,14 +68,20 @@ export default function App() {
 
   return (
     <EmpiricaParticipant url={url} ns={playerKey} modeFunc={EmpiricaClassic}>
+      {/* No EmpiricaMenu: at "bottom-left" its logo button is not treated as
+          development-only, and it opens empirica.ly in a new tab. A curious
+          click mid-Selection costs the participant a round. */}
       <div className="h-screen relative">
-        <EmpiricaMenu position="bottom-left" />
         <div className="h-full overflow-auto">
           <EmpiricaContext
             consent={ConsentPage}
             playerCreate={MyPlayerForm}
             introSteps={introSteps}
             exitSteps={exitSteps}
+            noGames={NoGames}
+            lobby={LobbyWait}
+            loading={LoadingScreen}
+            connecting={LoadingScreen}
           >
             <Game />
           </EmpiricaContext>
