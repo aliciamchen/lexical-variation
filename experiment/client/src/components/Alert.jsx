@@ -51,7 +51,11 @@ export function Alert({ children, title, kind = "normal" }) {
         </div>
         <div className="ml-3">
           <h3 className={`text-sm font-medium ${ttl}`}>{title}</h3>
-          <div className={`mt-2 text-sm text-yellow-700 ${chld}`}>
+          {/* No hardcoded color here: `text-yellow-700` was left on this
+              element and beat the `chld` color computed above, so every
+              alert body rendered amber whatever its kind -- the error panel
+              included. */}
+          <div className={`mt-2 text-sm ${chld}`}>
             {children}
           </div>
         </div>
