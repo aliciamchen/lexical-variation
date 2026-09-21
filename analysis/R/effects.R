@@ -45,8 +45,20 @@ report_odds_ratios <- function(model, level = 0.95) {
 
 # Cohen's d between two conditions on game-level estimates (the unit of the
 # equal-weight regressions for H1, H2, and H3a), with a pooled SD and 95% CI.
-# This is the unadjusted between-condition difference that the power analysis
-# was based on; the OLS contrast remains the inferential test. Returns NA when
+#
+# This is the *unadjusted* between-condition difference. What that means
+# differs by hypothesis, and the notebooks label it accordingly:
+#
+#   H3a  `gs_phase1 ~ condition` has no covariate, so the planned contrast and
+#        a two-sample comparison of the game-level estimates are the same
+#        test. Here d is the effect size for the test.
+#   H1/H2  `gs_phase2 ~ condition + gs_phase1` adjusts for the Phase 1
+#        endpoint, and this d does not. It is reported because the sampling
+#        plan's effect sizes came from two-sample comparisons and this is the
+#        only quantity on the same scale; the primary effect size is the
+#        adjusted difference from the contrast, in group-specificity units.
+#
+# The OLS contrast remains the inferential test in both cases. Returns NA when
 # either condition has fewer than two games (e.g. the pilot).
 cohens_d_games <- function(df, value, condition, a, b) {
   x <- df[[value]][df[[condition]] == a]

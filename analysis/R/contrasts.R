@@ -73,15 +73,24 @@ H3A_CONTRASTS <- list(
 # Games missing the outcome, a predictor, or the weight are dropped, so a game
 # whose Phase 2 endpoint is not estimable never enters the H1/H2 model.
 # Returns list(data, model, contrasts, note, weights).
+#   include_condition  FALSE fits the model without a condition term, for the
+#               social-accuracy regression, which the analysis plan specifies
+#               as an association within the two social conditions rather than
+#               a comparison between them. `conditions` still restricts which
+#               games enter.
 fit_game_level <- function(
   gs,
   outcome,
   predictors = character(),
   conditions,
   weights = NULL,
-  contrasts = list()
+  contrasts = list(),
+  include_condition = TRUE
 ) {
-  rhs_terms <- c("condition", predictors)
+  rhs_terms <- c(if (include_condition) "condition", predictors)
+  if (length(rhs_terms) == 0) {
+    stop("fit_game_level needs at least one predictor.", call. = FALSE)
+  }
   needed <- unique(c(
     outcome,
     all.vars(stats::reformulate(rhs_terms)),
@@ -122,7 +131,7 @@ fit_game_level <- function(
     lm(f, data = d, weights = d[[weights]])
   }
   ct <- NULL
-  if (n_cond == length(conditions) && length(contrasts)) {
+  if (include_condition && n_cond == length(conditions) && length(contrasts)) {
     ct <- contrast(
       emmeans(model, "condition"),
       lapply(contrasts, function(pair) {
@@ -194,12 +203,36 @@ print_weighted_check <- function(
 
 # ── Robustness reruns ────────────────────────────────────────────────────────
 
+# Random intercepts only, deliberately.
+#
+# The tested predictor is `condition`, which varies between games and not
+# within any of these grouping factors. A random slope earns its place when
+# the effect being tested varies within the grouping unit; block does vary
+# within game, listener and speaker, but block is a nuisance control here,
+# not the quantity under test. Simulated on this design with real
+# game- and player-level block-slope heterogeneity present, the condition
+# contrast behaves the same either way (Type I error .073 with the slopes,
+# .067 without), so the three block slopes cost nine variance parameters and
+# buy nothing for the contrast the model exists to estimate. `(1 | gameId)`
+# is the term that matters: without a game intercept a between-game contrast
+# is tested against participant variance, which on this design runs a
+# nominal .05 test at about .37.
+#
+# The by-target term is an intercept for a separate reason. A game draws its
+# six targets from one of the two tangram sets, so the whole study has twelve
+# distinct targets; a by-target condition slope is a covariance estimated
+# from twelve levels. Prior work in this paradigm uses a by-target intercept
+# for accuracy outcomes (Boyce et al., 2024; Hawkins et al., 2020, 2023).
+#
+# Where block IS the tested effect -- the convention-formation checks, the
+# secondary condition-by-block models -- the by-participant and by-group
+# block slopes stay, for the same rule applied the other way.
 H4_FORMULA <- correct ~ condition +
   blockNum_c +
-  (blockNum_c | gameId) +
-  (blockNum_c | playerId) +
-  (blockNum_c | speakerId) +
-  (condition | target)
+  (1 | gameId) +
+  (1 | playerId) +
+  (1 | speakerId) +
+  (1 | target)
 
 # One H4 model on the games in `keep_games`, with its contrast next to the
 # primary model's. `spec` is list(name, data, model, weights).
