@@ -277,3 +277,96 @@ def test_jaccard_block_table_lines_up_with_the_sbert_block_table():
 
 def test_jaccard_block_table_is_empty_for_no_utterances():
     assert compute_block_pairwise_jaccard(pd.DataFrame()).empty
+
+
+# ── H3c counts behind the proportions ───────────────────────────────────────
+#
+# The preregistered H3c models fit concreteness and lexical uniqueness as
+# binomial counts, cbind(k, n - k), rather than as Gaussian proportions,
+# because the denominator varies from one content word to several dozen and
+# is itself expected to differ by condition. A ratio alone cannot be fit that
+# way, so both numerator and denominator have to reach the CSV, and they have
+# to agree with the ratio stored beside them.
+
+_H3C_UTTS = pd.DataFrame(
+    {
+        "gameId": ["g1", "g1", "g2", "g2"],
+        "playerId": ["p1", "p2", "p3", "p4"],
+        "originalGroup": ["A", "B", "A", "B"],
+        "target": ["t1", "t1", "t1", "t1"],
+        "blockNum": [1, 1, 1, 1],
+        "phaseNum": [1, 1, 1, 1],
+        # p1: four content words, three of them concrete (triangle/arm/left)
+        # p2: two content words, neither concrete
+        # p3: repeats a token, so tokens and types differ
+        # p4: no content words at all
+        "utterance": [
+            "a big triangle arm on the left",
+            "zebra unicorn",
+            "triangle triangle zebra",
+            "the a of",
+        ],
+    }
+)
+_H3C_GAMES = pd.DataFrame(
+    {"gameId": ["g1", "g2"], "condition": ["social_mixed", "social_first"]}
+)
+
+
+def test_description_properties_keep_the_counts_behind_concreteness():
+    out = compute_derived.compute_description_properties(_H3C_UTTS, _H3C_GAMES)
+    by_player = out.set_index("playerId")
+    assert by_player.loc["p1", "n_content_words"] == 4
+    assert by_player.loc["p1", "n_concrete"] == 3
+    assert by_player.loc["p2", "n_content_words"] == 2
+    assert by_player.loc["p2", "n_concrete"] == 0
+    # Tokens, not types: "triangle triangle zebra" is three content words.
+    assert by_player.loc["p3", "n_content_words"] == 3
+    assert by_player.loc["p3", "n_concrete"] == 2
+
+
+def test_lexical_uniqueness_keeps_the_counts_behind_the_proportion():
+    out = compute_lexical_uniqueness(_H3C_UTTS)
+    by_player = out.set_index("playerId")
+    # p3's "triangle" also appears in g1 group A, so only "zebra" would be
+    # unique were it not also in g1 group B: every p3 token is shared.
+    assert by_player.loc["p3", "n_content_words"] == 3
+    assert by_player.loc["p3", "n_unique_words"] == 0
+    assert by_player.loc["p1", "n_content_words"] == 4
+
+
+@pytest.mark.parametrize(
+    "compute,numerator,denominator,ratio",
+    [
+        (
+            lambda d: compute_derived.compute_description_properties(d, _H3C_GAMES),
+            "n_concrete",
+            "n_content_words",
+            "concreteness",
+        ),
+        (compute_lexical_uniqueness, "n_unique_words", "n_content_words", "uniqueness"),
+    ],
+)
+def test_counts_reproduce_the_stored_proportion(
+    compute, numerator, denominator, ratio
+):
+    out = compute(_H3C_UTTS)
+    scored = out[out[denominator] > 0]
+    assert len(scored) == 3
+    assert np.allclose(scored[numerator] / scored[denominator], scored[ratio])
+    # A description with no content words has no proportion and no counts to
+    # model; it must not become a silent zero-out-of-zero row.
+    empty = out[out[denominator] == 0]
+    assert len(empty) == 1
+    assert empty[ratio].isna().all()
+
+
+def test_counts_are_integers_so_cbind_gets_whole_numbers():
+    props = compute_derived.compute_description_properties(_H3C_UTTS, _H3C_GAMES)
+    uniq = compute_lexical_uniqueness(_H3C_UTTS)
+    for frame, cols in (
+        (props, ("n_content_words", "n_concrete")),
+        (uniq, ("n_content_words", "n_unique_words")),
+    ):
+        for col in cols:
+            assert pd.api.types.is_integer_dtype(frame[col]), col

@@ -475,6 +475,15 @@ def compute_description_properties(
       (derived from Boyce et al. 2024)
     - mean_zipf_freq: mean Zipf frequency of content words (via wordfreq package)
 
+    The counts behind the concreteness proportion are kept beside it:
+    `n_content_words` and `n_concrete`. The preregistered model fits the two
+    proportion measures as binomial outcomes, `cbind(k, n - k)`, rather than
+    as Gaussian proportions, because the denominator varies from one word to
+    several dozen and is itself expected to differ by condition. A ratio alone
+    cannot be fit that way, so the numerator and denominator have to survive
+    into the CSV. `mean_zipf_freq` stays a mean of a continuous quantity and
+    needs no such counts.
+
     Lexical uniqueness is computed separately via compute_lexical_uniqueness()
     because it requires cross-group comparison within each game × tangram.
     """
@@ -483,16 +492,32 @@ def compute_description_properties(
     def _compute_row(text):
         tokens = extract_content_word_tokens(text)
         if not tokens:
-            return pd.Series({"concreteness": float("nan"), "mean_zipf_freq": float("nan")})
+            return pd.Series(
+                {
+                    "n_content_words": 0,
+                    "n_concrete": 0,
+                    "concreteness": float("nan"),
+                    "mean_zipf_freq": float("nan"),
+                }
+            )
 
-        concreteness = sum(1 for w in tokens if _is_concrete(w)) / len(tokens)
+        n_concrete = sum(1 for w in tokens if _is_concrete(w))
         mean_freq = sum(zipf_frequency(w, "en") for w in tokens) / len(tokens)
 
-        return pd.Series({"concreteness": concreteness, "mean_zipf_freq": mean_freq})
+        return pd.Series(
+            {
+                "n_content_words": len(tokens),
+                "n_concrete": n_concrete,
+                "concreteness": n_concrete / len(tokens),
+                "mean_zipf_freq": mean_freq,
+            }
+        )
 
     result = utterances.copy()
     props = result["utterance"].apply(_compute_row)
     result = pd.concat([result, props], axis=1)
+    for col in ("n_content_words", "n_concrete"):
+        result[col] = result[col].astype(int)
 
     return result[
         [
@@ -503,6 +528,8 @@ def compute_description_properties(
             "blockNum",
             "phaseNum",
             "utterance",
+            "n_content_words",
+            "n_concrete",
             "concreteness",
             "mean_zipf_freq",
         ]
@@ -523,7 +550,10 @@ def compute_lexical_uniqueness(
     compared against other groups' Phase 1 descriptions, Phase 2 against
     Phase 2.
 
-    Uses the same tokenization as compute_description_properties().
+    Uses the same tokenization as compute_description_properties(), and like
+    it keeps the counts behind the proportion (`n_content_words`,
+    `n_unique_words`) so the preregistered binomial model can be fit on
+    `cbind(k, n - k)` rather than on the ratio.
     """
     # Build word sets per (gameId, originalGroup, target, phaseNum) across all games
     group_words: dict[tuple[str, str, str, int], set[str]] = {}
@@ -539,7 +569,14 @@ def compute_lexical_uniqueness(
     for _, row in utterances.iterrows():
         tokens = extract_content_word_tokens(row["utterance"])
         if not tokens:
-            rows.append({**row, "uniqueness": float("nan")})
+            rows.append(
+                {
+                    **row,
+                    "n_content_words": 0,
+                    "n_unique_words": 0,
+                    "uniqueness": float("nan"),
+                }
+            )
             continue
 
         # Words from all other groups (across all games) for the same tangram
@@ -553,10 +590,21 @@ def compute_lexical_uniqueness(
             ):
                 other_words.update(words)
 
-        uniqueness = sum(1 for w in tokens if w not in other_words) / len(tokens)
-        rows.append({**row, "uniqueness": uniqueness})
+        n_unique = sum(1 for w in tokens if w not in other_words)
+        rows.append(
+            {
+                **row,
+                "n_content_words": len(tokens),
+                "n_unique_words": n_unique,
+                "uniqueness": n_unique / len(tokens),
+            }
+        )
 
-    return pd.DataFrame(rows)
+    out = pd.DataFrame(rows)
+    for col in ("n_content_words", "n_unique_words"):
+        if col in out.columns:
+            out[col] = out[col].astype(int)
+    return out
 
 
 def compute_term_retention(
