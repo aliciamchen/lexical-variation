@@ -87,10 +87,11 @@ def test_latest_utterance_is_chosen_by_block_not_row_order():
     assert (out.iloc[0]["length1"], out.iloc[0]["length2"]) == (1, 1)
 
 
-def test_block_trajectory_starts_once_two_participants_per_group_have_spoken():
+def test_block_trajectory_flags_where_every_group_has_a_within_pair():
     # Two groups of two. Block 0: one speaker per group. Block 1: the other
-    # member of each group speaks. The trajectory must skip block 0 and start
-    # at block 1, when every group has two participants with a description.
+    # member of each group speaks. Block 0 holds between-group pairs only and
+    # is flagged ineligible for group specificity; block 1, where every group
+    # has two participants with a description, is flagged eligible.
     rows = [
         _utt("g", "a1", "A", "t", 1, 0, "bunny"),
         _utt("g", "b1", "B", "t", 1, 0, "rabbit"),
@@ -102,12 +103,41 @@ def test_block_trajectory_starts_once_two_participants_per_group_have_spoken():
 
     out = compute_block_pairwise(df, FakeModel(), games)
 
-    assert set(out["blockNum"]) == {1}
-    # 4 participants -> 6 pairs, two of them within-group
-    assert len(out) == 6
-    assert out["sameGroup"].sum() == 2
-    within = out[out["sameGroup"] == 1].set_index("group1")["similarity"]
+    # Block 0: the one pair the two first speakers make, between-group, and
+    # not part of the specificity trajectory.
+    block0 = out[out["blockNum"] == 0]
+    assert len(block0) == 1
+    assert block0["sameGroup"].tolist() == [0]
+    assert block0["allGroupsPaired"].tolist() == [0]
+
+    # Block 1: 4 participants -> 6 pairs, two of them within-group.
+    block1 = out[out["blockNum"] == 1]
+    assert len(block1) == 6
+    assert block1["sameGroup"].sum() == 2
+    assert (block1["allGroupsPaired"] == 1).all()
+    within = block1[block1["sameGroup"] == 1].set_index("group1")["similarity"]
     assert within["A"] == 1.0 and within["B"] == 0.0
+
+    # The eligible subset is what the group-specificity trajectory reads.
+    assert set(out[out["allGroupsPaired"] == 1]["blockNum"]) == {1}
+
+
+def test_block_trajectory_flags_a_group_left_with_one_describer():
+    # Group A has two describers of the tangram by block 1, group B only one
+    # (b2 never describes it). Every block stays in the table for the
+    # descriptive panel, but none is eligible for group specificity.
+    rows = [
+        _utt("g", "a1", "A", "t", 1, 0, "bunny"),
+        _utt("g", "b1", "B", "t", 1, 0, "rabbit"),
+        _utt("g", "a2", "A", "t", 1, 1, "bunny"),
+    ]
+    df = pd.DataFrame(rows)
+    games = pd.DataFrame({"gameId": ["g"], "phase1Blocks": [6], "phase2Blocks": [6]})
+
+    out = compute_block_pairwise(df, FakeModel(), games)
+
+    assert set(out["blockNum"]) == {0, 1}
+    assert (out["allGroupsPaired"] == 0).all()
 
 
 def test_block_trajectory_still_requires_two_participants_total():

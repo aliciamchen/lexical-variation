@@ -761,15 +761,34 @@ phase2_utterances <- function(speaker_utts, games, conditions = NULL) {
 
 # ── Derived-metric tables ────────────────────────────────────────────────────
 
+# The rows of block_pairwise_similarities.csv on which group specificity is
+# defined: the cells where every original group has at least two participants
+# who have described the tangram, so every group contributes a within-group
+# pair. compute_derived.py marks them `allGroupsPaired`; it keeps the rest in
+# the table because the descriptive within-vs-between panel can still plot
+# them (the first block of each phase holds between-group pairs alone). Files
+# written before the flag existed were filtered at source, so a table without
+# the column is already eligible throughout.
+specificity_eligible <- function(block_pairwise_sim) {
+  if (
+    !has_rows(block_pairwise_sim) ||
+      !"allGroupsPaired" %in% names(block_pairwise_sim)
+  ) {
+    return(block_pairwise_sim)
+  }
+  block_pairwise_sim |> filter(allGroupsPaired == 1)
+}
+
 # Within-group pairs of the block-by-block similarities for one phase, with a
 # game-qualified group id (group1 == group2 for within-group pairs).
 #
-# The exported `blockNum` is 0-indexed, so block_pairwise_similarities.csv
-# holds Phase 1 blockNum 1..5 (the first block in which two speakers per group
-# have described a target is 0-indexed block 1). The paper counts blocks from
-# 1 (H3b uses blocks 2-6 with the milestone at block 3), so this is the one
-# place the 1-indexed `block` column (blockNum + 1) is created; H3b and its
-# plots work on `block`, and `blockNum` is kept only for traceability.
+# The exported `blockNum` is 0-indexed, and the eligible rows of
+# block_pairwise_similarities.csv hold Phase 1 blockNum 1..5 (the first block
+# in which two speakers per group have described a target is 0-indexed block
+# 1). The paper counts blocks from 1 (H3b uses blocks 2-6 with the milestone
+# at block 3), so this is the one place the 1-indexed `block` column
+# (blockNum + 1) is created; H3b and its plots work on `block`, and `blockNum`
+# is kept only for traceability.
 within_group_block_pairs <- function(
   block_pairwise_sim,
   games,
@@ -780,6 +799,7 @@ within_group_block_pairs <- function(
     return(tibble())
   }
   block_pairwise_sim |>
+    specificity_eligible() |>
     filter(phaseNum == .env$phase, sameGroup == 1) |>
     add_condition(games, conditions) |>
     mutate(

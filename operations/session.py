@@ -2491,6 +2491,16 @@ def check_run_treatment(run_path, meta, saved):
 
 TANGRAM_SETS = ("0", "1")
 
+# The preregistered stopping rule (writing/preregistration/main.tex, "Sampling
+# plan"): run games until every condition has 20 intact nine-player games, or
+# until 120 games have been started in total, whichever comes first. Each
+# condition is split over two tangram sets, so a cell's share of the target is
+# half the per-condition figure. The cap is likely to be the limit that binds:
+# it is reached before the target unless about two games in three stay intact.
+INTACT_TARGET_PER_CONDITION = 20
+INTACT_TARGET_PER_CELL = INTACT_TARGET_PER_CONDITION // len(TANGRAM_SETS)
+STARTED_GAMES_CAP = 120
+
 
 def tangram_set_label(raw):
     """One spelling for a tangram set: "0.0", "0", 0 and 0.0 are all "0"."""
@@ -2636,6 +2646,62 @@ def tally_lines(counts, emptiest):
     return lines
 
 
+def stopping_rule_progress(counts):
+    """How far recruitment has run against the two preregistered limits.
+
+    The target is INTACT_TARGET_PER_CONDITION intact games in every condition
+    and the cap is STARTED_GAMES_CAP games started in total; recruitment ends
+    at whichever comes first, so both are reported. Every game in `counts`
+    counts towards the cap, including the partial and incomplete ones: the cap
+    is on games started, and a game that never started carries no condition
+    (the server writes it in onGameStart), which read_games_table drops.
+    """
+    started = sum(
+        cell["intact"] + cell["partial"] + cell["incomplete"]
+        for cell in counts.values()
+    )
+    intact = {}
+    for (condition, _), cell in counts.items():
+        intact[condition] = intact.get(condition, 0) + cell["intact"]
+    return {
+        "started": started,
+        "cap_left": max(STARTED_GAMES_CAP - started, 0),
+        "intact": intact,
+        "short": {
+            condition: INTACT_TARGET_PER_CONDITION - count
+            for condition, count in intact.items()
+            if count < INTACT_TARGET_PER_CONDITION
+        },
+    }
+
+
+def stopping_rule_lines(counts):
+    """The two preregistered limits and how much of each is left."""
+    progress = stopping_rule_progress(counts)
+    ordered = sorted(
+        progress["intact"],
+        key=lambda c: CONDITIONS.index(c) if c in CONDITIONS else len(CONDITIONS),
+    )
+    per_condition = ", ".join(
+        f"{condition} {progress['intact'][condition]}/{INTACT_TARGET_PER_CONDITION}"
+        for condition in ordered
+    )
+    lines = [
+        f"  Target: {INTACT_TARGET_PER_CONDITION} intact games per condition "
+        f"({INTACT_TARGET_PER_CELL} per cell) -- {per_condition}.",
+        f"  Cap: {progress['started']} of {STARTED_GAMES_CAP} games started, "
+        f"{progress['cap_left']} left.",
+    ]
+    if not progress["short"]:
+        lines.append("  STOP: every condition has reached the target.")
+    elif not progress["cap_left"]:
+        lines.append(
+            "  STOP: the cap is reached. Games short of the target stay short; "
+            "the analyses use every eligible game."
+        )
+    return lines
+
+
 def print_tally(dataset=None):
     """Print games per treatment cell; returns (counts, emptiest) or None with no games yet."""
     dataset = dataset or active_dataset()
@@ -2665,6 +2731,8 @@ def print_tally(dataset=None):
     print("  Intact = finished with all nine players, which is what the stopping rule counts.")
     print("  Partial games still yield data; they do not count towards a cell's target.")
     print("  Sessions are the saved session files; pending ones have not paid a run yet.")
+    for line in stopping_rule_lines(counts):
+        print(line)
     return counts, emptiest
 
 

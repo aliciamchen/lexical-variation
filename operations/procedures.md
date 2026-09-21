@@ -224,7 +224,8 @@ countdown and publishes late, and stops backing up without saying so.
 **1. [CLI] Pick the treatment with `tally`.** You need 10 intact games in each of the
 eight (condition, tangram set) cells, so the next session runs whichever cell has the fewest.
 `tally` counts the games in `data/<dataset>/games.csv` per cell, adds the saved sessions that
-have not been processed yet, and marks the emptiest:
+have not been processed yet, marks the emptiest, and reports both halves of the
+preregistered stopping rule:
 
 ```bash
 uv run python operations/session.py tally
@@ -240,6 +241,8 @@ uv run python operations/session.py tally
   social_mixed         0      1        0           0         0
   social_mixed         1      0        0           0         0   <- emptiest
   ...
+  Target: 20 intact games per condition (10 per cell) -- refer_separated 2/20, ...
+  Cap: 7 of 120 games started, 113 left.
 ```
 
 **Intact** means the game finished with all nine players still in it, which is what the
@@ -248,6 +251,15 @@ player short: their data is still used, but they do not count towards the target
 showing partials still needs sessions. **Incomplete** games never finished at all. The
 intact count needs `players.csv` beside `games.csv` to see removals; without it `tally`
 says so and its intact figure is an upper bound.
+
+The last two lines are the registered stopping rule, which has two limits and ends
+recruitment at whichever comes first: 20 intact games in every condition, or 120 games
+started in total. The cap counts every game that began Phase 1, including the partial and
+incomplete ones, because it is a limit on what the study spends rather than on what it
+keeps; a session that fails to fill a game never starts one, so it does not count. Expect
+the cap to be the limit that binds unless roughly two games in three stay intact, and when
+it is, the conditions short of 20 stay short and the analyses use every eligible game,
+partial ones included. `tally` prints a `STOP` line when either limit is reached.
 
 Run one treatment per batch -- every game in the batch is the same condition and tangram
 set -- so that everyone who arrives can fill any game in it. Before the first session there

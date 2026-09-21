@@ -525,11 +525,19 @@ assignment. Group-specificity is the difference (within − between).
 
 **Figure 3a (within vs between):** Faded points show per-tangram mean similarity
 for each block (1 game per condition facet, 6 tangrams per block per pair type).
-Lines and ribbons show the overall mean ± 95% bootstrapped CI.
+Lines and ribbons show the overall mean ± 95% bootstrapped CI. This panel plots
+every pair the table holds, so it includes the first block of each phase
+(blocks 1 and 7 on the figure's axis), where each group has described the
+tangram once and only between-group pairs exist. The between-group series
+therefore starts one block before the within-group series and is the only one
+drawn at the Phase 2 reset.
 
 **Figure 3b (specificity trajectory):** Faded points show per-tangram
 group-specificity (within − between similarity) for each block and condition.
-Lines and ribbons show the mean ± 95% bootstrapped CI across tangrams.
+Lines and ribbons show the mean ± 95% bootstrapped CI across tangrams. Unlike
+panel (a) this uses the eligible rows only (`specificity_eligible()`): the
+difference is defined where every group contributes a within-group pair, which
+is the preregistered start rule and excludes the first block of each phase.
 
 **Note on CIs:** Same caveat as above — CIs resample pairwise similarity
 values (or per-tangram specificity scores), not games. With 1 game per
@@ -549,6 +557,11 @@ if (has_block_pw) {
       pair_type = ifelse(sameGroup == 1, "Within group", "Between group"),
       condition = factor(condition, levels = CONDITION_ORDER)
     )
+  # `block_pw` is every scoreable pair, which the within-vs-between panel
+  # plots; `block_pw_spec` is the subset on which within − between is a
+  # comparison between groups rather than between whichever groups had two
+  # describers, which the specificity trajectory needs.
+  block_pw_spec <- specificity_eligible(block_pw)
 } else {
   cat("Skipping: block_pairwise_similarities.csv not found.\n")
 }
@@ -605,12 +618,12 @@ if (has_block_pw) {
 ```{r si-fig-specificity-trajectory, fig.width=9, fig.height=4}
 if (has_block_pw) {
   # Compute group-specificity = within - between per block, condition, tangram
-  within_means <- block_pw |>
+  within_means <- block_pw_spec |>
     filter(sameGroup == 1) |>
     group_by(condition, block1, target) |>
     summarise(sim_within = mean(similarity, na.rm = TRUE), .groups = "drop")
 
-  between_means <- block_pw |>
+  between_means <- block_pw_spec |>
     filter(sameGroup == 0) |>
     group_by(condition, block1, target) |>
     summarise(sim_between = mean(similarity, na.rm = TRUE), .groups = "drop")

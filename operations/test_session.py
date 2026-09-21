@@ -751,6 +751,71 @@ def test_tally_lines_mark_exactly_one_cell(tmp_path, monkeypatch):
                for line in lines)
 
 
+def test_the_cap_counts_every_started_game_not_only_the_intact_ones(tmp_path, monkeypatch):
+    # The preregistered cap is on games *started*, so a game that lost a
+    # player or never finished still spends one of the 120. Counting only the
+    # intact ones would run recruitment past the registered limit.
+    monkeypatch.setattr(session, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path / ".sessions")
+    (tmp_path / "data" / "full").mkdir(parents=True)
+    (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
+    (tmp_path / "data" / "full" / "players.csv").write_text(PLAYERS_CSV)
+    counts, _ = session.cell_counts(
+        session.read_games_table(tmp_path / "data" / "full" / "games.csv"), {}
+    )
+    progress = session.stopping_rule_progress(counts)
+    # g1 and g3 intact, g2 a player short, g4 never finished: four started.
+    assert progress["started"] == 4
+    assert progress["cap_left"] == session.STARTED_GAMES_CAP - 4
+    assert progress["intact"] == {
+        "refer_mixed": 1, "refer_separated": 1, "social_mixed": 0, "social_first": 0
+    }
+    assert progress["short"]["refer_mixed"] == session.INTACT_TARGET_PER_CONDITION - 1
+
+
+def test_the_target_is_counted_per_condition_over_both_tangram_sets(tmp_path, monkeypatch):
+    monkeypatch.setattr(session, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path / ".sessions")
+    counts, _ = session.cell_counts([], {})
+    for tangram_set in session.TANGRAM_SETS:
+        counts[("refer_mixed", tangram_set)]["intact"] = session.INTACT_TARGET_PER_CELL
+    progress = session.stopping_rule_progress(counts)
+    assert progress["intact"]["refer_mixed"] == session.INTACT_TARGET_PER_CONDITION
+    assert "refer_mixed" not in progress["short"]
+    assert set(progress["short"]) == {"refer_separated", "social_mixed", "social_first"}
+
+
+def test_tally_says_stop_when_a_limit_is_reached(tmp_path, monkeypatch):
+    monkeypatch.setattr(session, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path / ".sessions")
+    counts, _ = session.cell_counts([], {})
+    assert not any("STOP" in line for line in session.stopping_rule_lines(counts))
+    # The target reached in every condition.
+    for cell in counts.values():
+        cell["intact"] = session.INTACT_TARGET_PER_CELL
+    assert any("STOP: every condition has reached the target" in line
+               for line in session.stopping_rule_lines(counts))
+    # The cap reached first, with conditions still short.
+    counts, _ = session.cell_counts([], {})
+    counts[("refer_mixed", "0")]["partial"] = session.STARTED_GAMES_CAP
+    lines = session.stopping_rule_lines(counts)
+    assert any("STOP: the cap is reached" in line for line in lines)
+    assert any(f"{session.STARTED_GAMES_CAP} of {session.STARTED_GAMES_CAP} games started, 0 left"
+               in line for line in lines)
+
+
+def test_the_tally_prints_both_preregistered_limits(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(session, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path / ".sessions")
+    (tmp_path / "data" / "full").mkdir(parents=True)
+    (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
+    (tmp_path / "data" / "full" / "players.csv").write_text(PLAYERS_CSV)
+    session.print_tally("full")
+    out = capsys.readouterr().out
+    assert f"Target: {session.INTACT_TARGET_PER_CONDITION} intact games per condition" in out
+    assert f"Cap: 4 of {session.STARTED_GAMES_CAP} games started" in out
+
+
 def test_tally_without_games_says_so(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(session, "PROJECT_ROOT", tmp_path)
     monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path / ".sessions")

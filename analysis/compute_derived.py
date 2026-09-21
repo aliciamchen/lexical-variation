@@ -329,7 +329,19 @@ def build_block_pairwise_table(utterances: pd.DataFrame, similarity) -> pd.DataF
     """For each block and tangram (both phases), every pair of speakers' most
     recent descriptions up to that block within the phase, scored with
     `similarity`. Shared by the SBERT and Jaccard block tables so that they
-    have the same rows in the same order."""
+    have the same rows in the same order.
+
+    `allGroupsPaired` marks the cells where every original group has at least
+    two participants with a description of this tangram, which is the
+    preregistered start rule for group specificity: only there does every
+    group contribute a within-group pair, so only there is within-minus-between
+    a comparison between groups rather than between whichever groups happened
+    to be describable. It is 0 for the first block of each phase, where each
+    group has exactly one description and the cell holds between-group pairs
+    alone, and for later cells where a removed or reassigned speaker has left
+    a group with one describer of that tangram. Consumers that need the
+    contrast filter on the flag (`specificity_eligible()` in analysis/R/prepare.R);
+    the descriptive within-vs-between panel plots every pair."""
     df = utterances.copy()
     if df.empty:
         return pd.DataFrame()
@@ -354,16 +366,18 @@ def build_block_pairwise_table(utterances: pd.DataFrame, similarity) -> pd.DataF
                     up_to_block = target_data[target_data["blockNum"] <= block]
                     latest = up_to_block.sort_values("blockNum").groupby("playerId").last()
 
-                    # Preregistered start rule: begin once at least two
-                    # participants per original group have described this
-                    # tangram, so every group contributes within-group pairs.
-                    # (Block 0 has one speaker per group and is skipped.)
+                    # A pair needs two descriptions; below that there is
+                    # nothing to score.
                     if len(latest) < 2:
                         continue
+                    # The preregistered start rule for group specificity,
+                    # carried as a flag rather than applied here, so the
+                    # descriptive panel can still show the first block of each
+                    # phase (between-group pairs only). See the docstring.
+                    all_groups_paired = True
                     if "originalGroup" in latest.columns:
                         per_group = latest.groupby("originalGroup").size()
-                        if (per_group < 2).any():
-                            continue
+                        all_groups_paired = not bool((per_group < 2).any())
 
                     players = latest.index.tolist()
                     for s1, s2 in combinations(players, 2):
@@ -384,6 +398,7 @@ def build_block_pairwise_table(utterances: pd.DataFrame, similarity) -> pd.DataF
                             "similarity": similarity(s1_data, s2_data),
                             "blockNum": block,
                             "phaseNum": phase_num,
+                            "allGroupsPaired": int(all_groups_paired),
                         })
 
     return pd.DataFrame(rows)
