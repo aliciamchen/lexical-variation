@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { usePlayer } from "@empirica/core/player/classic/react";
 import { AVATAR_PLACEHOLDER } from "../constants";
+import { isSendKey } from "../../../shared/chat-input.js";
 
 // Typing indicator timing. Each `${group}_typing` write is a round trip to the
 // server and a re-render for every group member, so a keystroke does not
@@ -166,7 +167,12 @@ function MessageComp({ msg }) {
         <img
           className="inline-block h-9 w-9 rounded-md"
           src={avatar}
-          alt={msg.sender.id}
+          // Deliberately empty. The sender id is persistent, so a broken
+          // image would render one stable string per player across the whole
+          // of Phase 2, which is the tracking cue the anonymous per-trial
+          // avatars exist to prevent. The name beside the image already says
+          // who is speaking, under whatever identity the trial gives them.
+          alt=""
         />
       </div>
       <div className="ml-3 text-sm">
@@ -296,7 +302,10 @@ function Input({ onNewMessage, setTyping }) {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    // Enter sends and Shift+Enter breaks the line, except while an input
+    // method editor is composing -- see shared/chat-input.js for why that
+    // exception matters more here than in an ordinary chat box.
+    if (isSendKey(e.nativeEvent || e)) {
       handleSubmit(e);
       resize(e);
     }
