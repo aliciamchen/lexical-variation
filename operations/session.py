@@ -191,10 +191,14 @@ def cmd_sessions(args, token=None):
         sys.exit(f"No sessions saved yet in {SESSIONS_DIR}.")
     for name, data in sessions.items():
         print(name)
-        for key in ("condition", "tangram_set", "time", "budget_usd", "survey_id",
-                    "screening_study_id", "game_study_id", "group_id", "run"):
+        for key in ("condition", "tangram_set", "time", "title_time", "budget_usd",
+                    "survey_id", "screening_study_id", "game_study_id", "group_id", "run"):
             if data.get(key) is not None:
                 print(f"  {key:20s} {data[key]}")
+        for approval in data.get("approvals") or []:
+            print(f"  {'approved':20s} {approval['count']} {approval['kind']} "
+                  f"at ${approval['each_usd']:.2f} "
+                  f"(~${approval['estimated_cost_usd']:.2f} with fee)")
 
 
 def load_token():
@@ -1334,7 +1338,15 @@ def cmd_setup(args, token):
         name,
         condition=args.condition,
         tangram_set=args.set,
-        time=args.title_time or args.time,
+        # Both forms, and deliberately not one. `--title-time` is the short
+        # spelling that fits a study title ("9pm ET"); `--time` is the full
+        # announcement ("6pm PT / 9pm ET"). Storing only the short one made
+        # every later reader see one timezone: `publish --at 18:00` was
+        # refused as a three-hour drift from "9pm ET" although 18:00 PT is
+        # exactly the announced instant, and the reminder told PT
+        # participants a time they had to convert themselves.
+        time=args.time,
+        title_time=args.title_time,
         budget_usd=budget,
     )
     survey = api(
@@ -1760,6 +1772,9 @@ def approve_screening_submissions(token, study_id, reward, args):
     for s in awaiting:
         api("POST", f"/submissions/{s['id']}/transition/", token, payload={"action": "APPROVE"})
     print(f"Approved {len(awaiting)}.")
+    record_session_approval(
+        getattr(args, "session", None), "screening", len(awaiting), reward
+    )
 
 
 # ============ approve: approve the finishers ============
@@ -1853,6 +1868,13 @@ def cmd_approve(args, token):
     for s in finishers:
         api("POST", f"/submissions/{s['id']}/transition/", token, payload={"action": "APPROVE"})
     print(f"Approved {len(finishers)}.")
+    # Base pay for these finishers is the session's largest single cost, so
+    # the budget `pay` enforces has to know it went out.
+    study = api("GET", f"/studies/{study_id}/", token) or {}
+    reward = (study.get("reward") or 0) / 100 or BASE_PAY
+    record_session_approval(
+        getattr(args, "session", None), "game", len(finishers), reward
+    )
 
 
 # ============ pay: bonuses, partial pay, and the notes that explain them ============
@@ -2021,7 +2043,7 @@ def ledger_cost(entry):
 
 
 def paid_so_far(ledgers):
-    """Dollars already paid across the given ledgers."""
+    """Dollars of bulk bonus payments already made across the given ledgers."""
     return round(
         sum(
             ledger_cost(entry)
@@ -2033,17 +2055,59 @@ def paid_so_far(ledgers):
     )
 
 
+def record_session_approval(session_name, kind, count, each):
+    """Record what an `approve` or `close` run committed, so the budget can see it.
+
+    Approvals are the session's largest line -- base pay for every finisher --
+    and they leave no ledger, because Prolific pays them against the study
+    rather than through a bulk payment. Until they were recorded here the
+    budget check compared bonuses alone against a ceiling that was mostly base
+    pay, so it could not trip however wrong the figures were.
+
+    The cost is an estimate: Prolific reports no total for an approval, so the
+    standard fee is applied to the reward, where a bulk payment's entry
+    carries the exact figure Prolific charged.
+    """
+    if not session_name or count <= 0:
+        return
+    data = read_session(session_name)
+    approvals = list(data.get("approvals") or [])
+    approvals.append({
+        "kind": kind,
+        "count": count,
+        "each_usd": round(each, 2),
+        "estimated_cost_usd": round(count * each * (1 + PROLIFIC_FEE_RATE), 2),
+        "at": datetime.now().isoformat(timespec="seconds"),
+    })
+    write_session(session_name, approvals=approvals)
+
+
+def approvals_cost(saved):
+    """Estimated dollars committed by this session's recorded approvals."""
+    return round(
+        sum(float(a.get("estimated_cost_usd") or 0) for a in (saved.get("approvals") or [])),
+        2,
+    )
+
+
+def session_spend(saved, ledgers):
+    """Everything this session has committed: bulk bonus payments plus approvals."""
+    return round(paid_so_far(ledgers) + approvals_cost(saved), 2)
+
+
 def check_session_budget(budget, spent, about_to_pay, args):
     """Refuse to take a session past the budget `setup` recorded. Returns whether to go on."""
     if budget is None:
         return True
     after = round(spent + about_to_pay, 2)
     if after <= budget:
-        print(f"Session budget: ${after:,.2f} of ${budget:,.2f} after this payment.")
+        print(f"Session budget: ${after:,.2f} of ${budget:,.2f} after this payment "
+              f"(${spent:,.2f} already committed, approvals included).")
         return True
     message = (
         f"Paying ${about_to_pay:,.2f} would take this session's Prolific spend to ${after:,.2f} "
-        f"(${spent:,.2f} already paid), over its budget of ${budget:,.2f}"
+        f"(${spent:,.2f} already committed in approvals and bonuses), over its budget of "
+        f"${budget:,.2f}"
     )
     if not getattr(args, "force_budget", False):
         sys.exit(
@@ -2314,7 +2378,9 @@ def cmd_pay(args, token):
         budget = saved.get("budget_usd") if args.session else None
         if args.session and budget is None:
             print("\n(This session has no budget_usd; it was set up before budgets existed.)")
-        if not check_session_budget(budget, paid_so_far(session_ledgers(saved, run, ledger)), grand, args):
+        if not check_session_budget(
+            budget, session_spend(saved, session_ledgers(saved, run, ledger)), grand, args
+        ):
             return
         if not confirm(f"\nPay ${grand:,.2f} now? This cannot be undone.", args):
             return
@@ -2437,52 +2503,110 @@ def tangram_set_label(raw):
         return text
 
 
-def read_games_table(path):
-    """[(condition, set, complete)] for every game in a games.csv.
+def read_player_removals(path):
+    """{gameId: (players, removed)} from a players.csv; {} when it cannot say.
 
-    `complete` is whether the game ran to its end: preprocessing.py carries the
-    server's `endedReason` when the export has it, and "end of game" is what
-    a game that was not terminated records. Exports without the column count
-    every game as complete.
+    A removed player is one whose `isActive` is false, which is how
+    analysis/R/attrition.R defines it, so the two agree on what an intact game
+    is.
     """
+    if not path.exists():
+        return {}
     with open(path, newline="") as handle:
         reader = csv.DictReader(handle)
-        has_reason = "endedReason" in (reader.fieldnames or [])
+        fields = reader.fieldnames or []
+        if "gameId" not in fields or "isActive" not in fields:
+            return {}
+        per_game = {}
+        for row in reader:
+            game = (row.get("gameId") or "").strip()
+            if not game:
+                continue
+            players, removed = per_game.get(game, (0, 0))
+            active = (row.get("isActive") or "").strip().lower() in ("true", "1")
+            per_game[game] = (players + 1, removed + (0 if active else 1))
+    return per_game
+
+
+def game_status_label(row, removals):
+    """"intact", "partial" or "incomplete" for one games.csv row.
+
+    The stopping rule counts games that finished with all nine players still
+    in them, so that is what "intact" means and what a cell's target is
+    measured in. A game that finished a player short still yields usable
+    data, so it is counted separately rather than discarded or, as this used
+    to do, counted as if it were whole.
+    """
+    reason = (row.get("endedReason") or "").strip()
+    if reason and reason != "end of game":
+        return "incomplete"
+    game_id = (row.get("gameId") or "").strip()
+    if game_id in removals:
+        players, removed = removals[game_id]
+        return "intact" if players == PLAYERS_PER_GAME and removed == 0 else "partial"
+    # No players.csv to check against. Fall back to the roster size the game
+    # itself recorded, which counts everyone who was ever assigned and so
+    # cannot see a removal; print_tally warns when it comes to this.
+    try:
+        assigned = int(float(row.get("numPlayers") or 0))
+    except ValueError:
+        assigned = 0
+    return "intact" if assigned == PLAYERS_PER_GAME else "partial"
+
+
+def read_games_table(path, removals=None):
+    """[(condition, set, status)] for every game in a games.csv.
+
+    `status` is one of "intact", "partial" and "incomplete"; see
+    game_status_label. Removals are read from the players.csv beside the games
+    file unless they are passed in.
+    """
+    if removals is None:
+        removals = read_player_removals(Path(path).parent / "players.csv")
+    with open(path, newline="") as handle:
+        reader = csv.DictReader(handle)
         games = []
         for row in reader:
             condition = (row.get("condition") or "").strip()
             if not condition:
                 continue
-            complete = (row.get("endedReason") or "").strip() == "end of game" if has_reason else True
-            games.append((condition, tangram_set_label(row.get("tangramSet")), complete))
+            games.append((
+                condition,
+                tangram_set_label(row.get("tangramSet")),
+                game_status_label(row, removals),
+            ))
     return games
+
+
+def empty_cell():
+    return {"intact": 0, "partial": 0, "incomplete": 0, "sessions": 0, "pending": 0}
 
 
 def cell_counts(games, sessions):
     """Games and sessions per (condition, set) cell, every cell present.
 
-    Returns (counts, emptiest): counts maps each cell to {"games", "incomplete",
-    "sessions", "pending"}, where "games" are complete games, "sessions" the
-    saved sessions declaring the cell and "pending" those of them with no run
-    paid yet. The emptiest cell has the fewest complete games, then the fewest
-    sessions, then comes first in the conditions' order.
+    Returns (counts, emptiest): counts maps each cell to the keys of
+    empty_cell(), where "intact" are the nine-player games the stopping rule
+    counts, "partial" those that finished a player short, "incomplete" those
+    that did not finish, "sessions" the saved sessions declaring the cell and
+    "pending" those of them with no run paid yet. The emptiest cell has the
+    fewest intact games, then the fewest sessions, then comes first in the
+    conditions' order.
     """
     counts = {
-        (condition, tangram_set): {"games": 0, "incomplete": 0, "sessions": 0, "pending": 0}
+        (condition, tangram_set): empty_cell()
         for condition in CONDITIONS
         for tangram_set in TANGRAM_SETS
     }
-    for condition, tangram_set, complete in games:
-        cell = counts.setdefault(
-            (condition, tangram_set), {"games": 0, "incomplete": 0, "sessions": 0, "pending": 0}
-        )
-        cell["games" if complete else "incomplete"] += 1
+    for condition, tangram_set, status in games:
+        cell = counts.setdefault((condition, tangram_set), empty_cell())
+        cell[status] += 1
     for data in sessions.values():
         if not data.get("condition"):
             continue
         cell = counts.setdefault(
             (data["condition"], tangram_set_label(data.get("tangram_set"))),
-            {"games": 0, "incomplete": 0, "sessions": 0, "pending": 0},
+            empty_cell(),
         )
         cell["sessions"] += 1
         if not data.get("run"):
@@ -2491,20 +2615,23 @@ def cell_counts(games, sessions):
     def order(cell):
         condition, tangram_set = cell
         rank = CONDITIONS.index(condition) if condition in CONDITIONS else len(CONDITIONS)
-        return (counts[cell]["games"], counts[cell]["sessions"], rank, tangram_set)
+        return (counts[cell]["intact"], counts[cell]["sessions"], rank, tangram_set)
 
     emptiest = min(counts, key=order)
     return counts, emptiest
 
 
 def tally_lines(counts, emptiest):
-    lines = [f"  {'condition':18s} {'set':>3s} {'games':>6s} {'incomplete':>11s} {'sessions':>9s}"]
+    lines = [
+        f"  {'condition':18s} {'set':>3s} {'intact':>6s} {'partial':>8s} "
+        f"{'incomplete':>11s} {'sessions':>9s}"
+    ]
     for (condition, tangram_set), cell in counts.items():
         pending = f" ({cell['pending']} pending)" if cell["pending"] else ""
         marker = "   <- emptiest" if (condition, tangram_set) == emptiest else ""
         lines.append(
-            f"  {condition:18s} {tangram_set:>3s} {cell['games']:6d} {cell['incomplete']:11d} "
-            f"{cell['sessions']:9d}{pending}{marker}"
+            f"  {condition:18s} {tangram_set:>3s} {cell['intact']:6d} {cell['partial']:8d} "
+            f"{cell['incomplete']:11d} {cell['sessions']:9d}{pending}{marker}"
         )
     return lines
 
@@ -2520,14 +2647,23 @@ def print_tally(dataset=None):
             return None
         games = []
     else:
-        games = read_games_table(games_path)
-        complete = sum(1 for g in games if g[2])
-        print(f"{complete} complete game(s) in data/{dataset}/games.csv"
-              + (f", {len(games) - complete} incomplete" if len(games) > complete else "")
+        players_path = games_path.parent / "players.csv"
+        removals = read_player_removals(players_path)
+        games = read_games_table(games_path, removals)
+        intact = sum(1 for g in games if g[2] == "intact")
+        others = len(games) - intact
+        print(f"{intact} intact nine-player game(s) in data/{dataset}/games.csv"
+              + (f", {others} that lost a player or did not finish" if others else "")
               + f"; {len(sessions)} saved session(s):")
+        if not removals:
+            print(f"  WARNING: no usable {players_path.name} beside games.csv, so a game that "
+                  "lost a player cannot be told from an intact one. The intact count below is "
+                  "an upper bound.")
     counts, emptiest = cell_counts(games, sessions)
     for line in tally_lines(counts, emptiest):
         print(line)
+    print("  Intact = finished with all nine players, which is what the stopping rule counts.")
+    print("  Partial games still yield data; they do not count towards a cell's target.")
     print("  Sessions are the saved session files; pending ones have not paid a run yet.")
     return counts, emptiest
 

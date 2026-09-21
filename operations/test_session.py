@@ -591,6 +591,48 @@ def test_force_budget_lets_a_confirmed_overrun_through(tmp_path, monkeypatch):
     assert ledger["early"]["paid_at"]
 
 
+def test_approve_records_what_the_base_pay_will_cost_the_session(tmp_path, monkeypatch):
+    # Approvals leave no ledger, so until they were recorded the budget check
+    # compared bonuses alone against a ceiling that is mostly base pay.
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path / ".sessions")
+    monkeypatch.setattr(session, "newest_run", lambda: None)
+    monkeypatch.setattr(session, "paged", lambda *a, **k: iter([
+        {"id": "s1", "participant_id": "alice", "status": "AWAITING REVIEW",
+         "study_code": session.FINISHED_CODE},
+    ]))
+    monkeypatch.setattr(session, "api", lambda *a, **k: {"reward": 1200})
+    session.write_session("s1", condition="refer_mixed", tangram_set="0")
+    session.cmd_approve(
+        SimpleNamespace(study_id="st1", session="s1", run=None, yes=True), "token"
+    )
+    saved = session.read_session("s1")
+    assert saved["approvals"][0]["kind"] == "game"
+    assert saved["approvals"][0]["count"] == 1
+    assert saved["approvals"][0]["each_usd"] == 12.0
+    assert session.approvals_cost(saved) == pytest.approx(12 * 1.33, abs=0.01)
+
+
+def test_the_budget_counts_approvals_not_only_bonuses(tmp_path, monkeypatch):
+    prolific = FakeProlific(THREE_REMOVED)
+    install(monkeypatch, tmp_path, prolific)
+    # The three removed players come to well under $30 of bonus, so without
+    # the approvals this payment passes; with $100 of base pay already
+    # committed it must not.
+    session.write_session(
+        "s1", condition="refer_mixed", tangram_set="0", budget_usd=30.0,
+        approvals=[{"kind": "game", "count": 10, "each_usd": 10.0,
+                    "estimated_cost_usd": 100.0}],
+    )
+    with pytest.raises(SystemExit, match="over its budget"):
+        session.cmd_pay(pay_args(session="s1"), "token")
+    assert not [c for c in prolific.calls if c[1].endswith("/pay/")]
+
+
+def test_a_session_with_no_approvals_spends_only_its_ledgers():
+    assert session.approvals_cost({}) == 0
+    assert session.session_spend({}, []) == 0
+
+
 # --------------------------------------------------------------------- tally
 
 
@@ -603,16 +645,29 @@ GAMES_CSV = (
 )
 
 
-def test_tally_counts_complete_games_per_cell_and_marks_the_emptiest(tmp_path, monkeypatch):
+# Nine players in every game, one removed in g2, so g2 finished a player
+# short. isActive is written by pandas, hence "True"/"False".
+PLAYERS_CSV = (
+    "gameId,playerId,isActive\n"
+    + "".join(f"g1,g1p{i},True\n" for i in range(9))
+    + "".join(f"g2,g2p{i},{'False' if i == 0 else 'True'}\n" for i in range(9))
+    + "".join(f"g3,g3p{i},True\n" for i in range(9))
+    + "".join(f"g4,g4p{i},False\n" for i in range(9))
+)
+
+
+def test_tally_counts_intact_games_per_cell_and_marks_the_emptiest(tmp_path, monkeypatch):
     monkeypatch.setattr(session, "PROJECT_ROOT", tmp_path)
     monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path / ".sessions")
     (tmp_path / "data" / "full").mkdir(parents=True)
     (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
     session.write_session("s1", condition="social_mixed", tangram_set="1")
     counts, emptiest = session.print_tally("full")
-    assert counts[("refer_separated", "0")]["games"] == 1
-    assert counts[("refer_separated", "1")]["games"] == 1
-    assert counts[("social_first", "1")] == {"games": 0, "incomplete": 1, "sessions": 0, "pending": 0}
+    assert counts[("refer_separated", "0")]["intact"] == 1
+    assert counts[("refer_separated", "1")]["intact"] == 1
+    assert counts[("social_first", "1")] == {
+        "intact": 0, "partial": 0, "incomplete": 1, "sessions": 0, "pending": 0
+    }
     assert counts[("social_mixed", "1")]["sessions"] == 1
     assert counts[("social_mixed", "1")]["pending"] == 1
     assert len(counts) == 8
@@ -620,6 +675,65 @@ def test_tally_counts_complete_games_per_cell_and_marks_the_emptiest(tmp_path, m
     # set 0/1; the pending session breaks the tie against social_mixed set 1,
     # and conditions order breaks the rest.
     assert emptiest == ("refer_mixed", "1")
+
+
+def test_a_game_that_lost_a_player_is_partial_not_intact(tmp_path, monkeypatch, capsys):
+    # The preregistered target counts nine-person games intact at completion,
+    # so a game that ran to its end having removed someone must not fill a
+    # cell: counting it did, and recruitment for that cell would have stopped
+    # early.
+    monkeypatch.setattr(session, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path / ".sessions")
+    (tmp_path / "data" / "full").mkdir(parents=True)
+    (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
+    (tmp_path / "data" / "full" / "players.csv").write_text(PLAYERS_CSV)
+    counts, _ = session.print_tally("full")
+    assert counts[("refer_mixed", "0")] == {
+        "intact": 1, "partial": 0, "incomplete": 0, "sessions": 0, "pending": 0
+    }
+    assert counts[("refer_separated", "0")] == {
+        "intact": 0, "partial": 1, "incomplete": 0, "sessions": 0, "pending": 0
+    }
+    # g1 and g3 are intact, g2 lost a player, g4 never finished.
+    assert counts[("refer_separated", "1")]["intact"] == 1
+    assert "2 intact nine-player game(s)" in capsys.readouterr().out
+
+
+def test_tally_warns_when_it_cannot_see_removals(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(session, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path / ".sessions")
+    (tmp_path / "data" / "full").mkdir(parents=True)
+    (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
+    session.print_tally("full")
+    assert "cannot be told from an intact one" in capsys.readouterr().out
+
+
+def test_the_emptiest_cell_is_chosen_on_intact_games(tmp_path, monkeypatch):
+    # refer_mixed set 0 has an intact game and refer_separated set 0 only a
+    # partial one, so the partial cell still needs a session.
+    monkeypatch.setattr(session, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path / ".sessions")
+    (tmp_path / "data" / "full").mkdir(parents=True)
+    games = (
+        "gameId,condition,tangramSet,numPlayers,ended,endedReason\n"
+        "g1,refer_mixed,0.0,9,True,end of game\n"
+        "g2,refer_separated,0.0,9,True,end of game\n"
+    )
+    (tmp_path / "data" / "full" / "games.csv").write_text(games)
+    (tmp_path / "data" / "full" / "players.csv").write_text(PLAYERS_CSV)
+    counts, emptiest = session.cell_counts(
+        session.read_games_table(tmp_path / "data" / "full" / "games.csv"), {}
+    )
+    assert counts[("refer_mixed", "0")]["intact"] == 1
+    assert counts[("refer_separated", "0")]["partial"] == 1
+    assert emptiest != ("refer_mixed", "0")
+
+
+def test_read_player_removals_ignores_a_file_it_cannot_use(tmp_path):
+    path = tmp_path / "players.csv"
+    assert session.read_player_removals(path) == {}
+    path.write_text("playerId,score\np1,3\n")
+    assert session.read_player_removals(path) == {}
 
 
 def test_tally_lines_mark_exactly_one_cell(tmp_path, monkeypatch):
@@ -1336,6 +1450,20 @@ def test_setup_records_the_ids_and_the_budget(tmp_path, monkeypatch, capsys):
     joined = {c["code"] for c in game_payload["completion_codes"]
               if any(a["action"] == "ADD_TO_PARTICIPANT_GROUP" for a in c["actions"])}
     assert joined == session.PLAYED_CODES
+
+
+def test_setup_keeps_the_full_announcement_not_just_the_title_time(tmp_path, monkeypatch):
+    # The session used to store only --title-time, so `publish --at 18:00`
+    # was refused as a three-hour drift from "9pm ET" even though 18:00 PT is
+    # the announced instant, and the reminder named one timezone.
+    install_setup(monkeypatch, tmp_path, FakeSetupApi())
+    session.cmd_setup(setup_args(), "token")
+    saved = session.read_session("s1")
+    assert saved["time"] == "6pm PT / 9pm ET"
+    assert saved["title_time"] == "9pm ET"
+    for at in ("18:00", "21:00"):
+        target, _ = session.resolve_publish_time(at, saved["time"])
+        assert target is not None, f"--at {at} should resolve against the announcement"
 
 
 def test_an_explicit_budget_is_recorded_instead_of_the_ceiling(tmp_path, monkeypatch):
