@@ -771,7 +771,7 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
     // Overflow players may land on different screens depending on when they tried
     // to join:
     // - Empirica lobby timeout screen ("Participant Recruitment Issue" + CMZUY3MK code)
-    // - Empirica "No experiments available" screen (if batch was already full)
+    // - Our "This session is full" screen (if the batch was already full)
     // - Custom sorry screen with data-testid
     // All that matters is they're NOT in the active game.
     expect(lobbyPages.length).toBe(LOBBY_OVERFLOW_COUNT);
@@ -783,7 +783,12 @@ test.describe.serial('Holistic: social_mixed with 15 players, dropouts, reshuffl
       const content = await page.textContent('body');
       const hasLobbyTimeout = content?.includes(PROLIFIC_CODES.lobbyTimeout) ||
         content?.includes('Participant Recruitment Issue');
-      const hasNoExperiments = content?.includes('No experiments available');
+      // Our noGames screen replaced Empirica's "No experiments available";
+      // accept either, so the assertion still holds against an older bundle.
+      const hasNoExperiments =
+        (await page.locator('[data-testid="no-games-screen"]').count()) > 0 ||
+        content?.includes('This session is full') ||
+        content?.includes('No experiments available');
       const hasSorryScreen = (await page.locator(SORRY_SCREEN).count()) > 0;
       // At least one of these states should be true
       expect(

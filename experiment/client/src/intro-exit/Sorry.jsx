@@ -1,5 +1,6 @@
 import React from "react";
 import { usePlayer } from "@empirica/core/player/classic/react";
+import { Loading } from "@empirica/core/player/react";
 import { Alert } from "../components/Alert";
 import {
   EXIT_REASONS,
@@ -12,6 +13,18 @@ const money = (amount) => (amount != null ? amount.toFixed(2) : "0.00");
 
 export function Sorry() {
   const player = usePlayer();
+
+  // `usePlayer` is a subscription: empty on the first render, and empty again
+  // whenever the participant context tears down, which a dropped websocket
+  // does. EmpiricaContext's own check does not protect this component -- the
+  // subscription here fires independently and re-renders this component
+  // alone, without consulting the parent. Unguarded, that render throws, and
+  // React unmounts the whole app, so a participant holding their completion
+  // code gets a blank page. This happened in production on 2026-09-19.
+  if (!player) {
+    return <Loading />;
+  }
+
   // Use exitReason (our custom attribute) first: Empirica overwrites `ended`
   // with "game ended" / "game terminated" / "game failed" itself.
   const exitReason = player.get("exitReason");
@@ -21,12 +34,21 @@ export function Sorry() {
   const partialBonus = player.get("partialBonus");
   const gameStartTime = player.get("gameStartTime");
 
-  // Lobby timeout: the player never started a game (no gameStartTime) and the
-  // server did not remove them for one of its own reasons. Empirica writes
-  // "game failed" to `ended` in that case, which is not a reason of ours, so
-  // the absence of gameStartTime is what detects it.
+  // The player waited and never played. `gameStartTime` is written in
+  // onGameStart, so its absence covers two ways of getting here: the lobby
+  // timed out (Empirica writes "game failed"), or the researcher stopped the
+  // batch while this player was still waiting. The second writes "game
+  // terminated" like any other stopped game, but a game that never started
+  // never reaches onGameEnded, so no pay was ever computed for them; treating
+  // them as a lobby timeout is both true to what happened and the only branch
+  // that shows a code the payment tooling can find.
+  //
+  // A quiz failure is the one other way to have no gameStartTime, and it is
+  // not a lobby timeout: they are owed nothing. The branch below handles them
+  // first, but this flag is also what `data-exit-reason` reports, so it has
+  // to exclude them here rather than rely on the ordering.
   const isLobbyTimeout =
-    !gameStartTime && !Object.values(EXIT_REASONS).includes(endedReason);
+    !gameStartTime && endedReason !== EXIT_REASONS.quizFailed;
 
   // Different messages based on why the player was removed
   let title = "Game Ended";
