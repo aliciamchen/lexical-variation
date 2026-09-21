@@ -65,17 +65,41 @@ cat("Pooled trend-model conditions:", paste(H12_CONDITIONS, collapse = ", "), "\
 **Expected pattern:** A negative block effect in the shared Phase 1 procedure.
 Report the estimate and uncertainty; significance is not required to proceed.
 
+Word counts in this task are heavy-tailed, so length is log-transformed, as
+in Hawkins et al. (2023); the block coefficient is a proportional change per
+block. Untransformed means are plotted below.
+
+No game term. In Phase 1 the three groups of a game never interact -- every
+trial has `currentGroup == originalGroup` -- so the group is the conversing
+unit and the game is only a shared recruitment session. These models test
+block, which varies within every unit, so there is no between-game contrast
+for a game term to serve as the reference for; simulated on this design it
+leaves the block estimate and its standard error unchanged either way. The
+one consequence is that any game-level variance is absorbed into the group
+term, so the reported group SD is an upper bound. Boyce et al. (2024) do fit
+`(block | gameId)` for the same outcome, but in their design the game *is*
+the conversing unit, so our analogue of their term is the group. The Phase 2
+length model keeps its by-game slope for the mirror-image reason: once mixing
+starts the game becomes the interacting population.
+
 ```{r model-utt-length}
-# Maximal structure from the preregistration; fit_progressively() simplifies
-# it only if it fails to converge and prints the steps it took. The game
-# intercept is retained throughout (only slopes and correlations can go).
+# Structure from the preregistration; fit_progressively() simplifies it only
+# if it does not fit cleanly and prints the steps it took. The game intercept
+# is retained throughout (only slopes and correlations can go).
+p1_utts <- p1_utts |> mutate(logUttLength = log(uttLength))
+
 m_length <- fit_progressively(
-  uttLength ~ blockNum_c + (1 | gameId) + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram),
-  data = p1_utts
+  logUttLength ~ blockNum_c + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram) + (1 | group:tangram),
+  data = p1_utts |> filter(is.finite(logUttLength))
 )
 
 summary(m_length)
 report_effect_sizes(m_length)
+cat(sprintf(
+  "\nBlock effect on the word scale: x%.3f per block (%.1f%% change).\n",
+  exp(fixef(m_length)[["blockNum_c"]]),
+  100 * (exp(fixef(m_length)[["blockNum_c"]]) - 1)
+))
 ```
 
 ```{r plot-utt-length, fig.width=11, fig.height=7}
@@ -113,14 +137,32 @@ Referential accuracy is a binary listener-trial outcome under the
 response-opportunity rule (`code_accuracy()`: a correct answer received by the
 scoring cutoff is 1; an incorrect answer, timeout, or late arrival is 0;
 trials without an opportunity leave the denominator), so the trend is fit as
-a logistic mixed model on listener trials with the preregistered
-random-effects structure plus the game intercept:
-`correct ~ blockNum_c + (blockNum_c | group) + (blockNum_c | tangram) + (1 | gameId)`.
+a logistic mixed model on listener trials:
+`correct ~ blockNum_c + (blockNum_c | group) + (1 | tangram) + (1 | group:tangram)`.
 The effect size is the odds ratio per block.
+
+This is Boyce et al.'s (2024) *preregistered* accuracy structure, mapped onto
+this design: theirs was
+`listener_accurate ~ block*... + (block*...|tangram) + (1|tangram*group) + (block|group)`,
+and their code notes they fitted `(1 | gameId)` alone instead, "breaking this
+pre-reg in the name of a model that doesn't take forever to fit". Their
+`group` is the conversing unit, which here is the three-person group, not the
+nine-person game. On the pilot, collapsing to their fitted structure moves the
+block effect from OR 2.41 to 1.85, so the difference is not cosmetic.
+
+It carries no participant term, which is also true of both their fitted and
+their preregistered model. For accuracy the repeated-measures unit is the
+group the listener is conversing in, not the listener: Hawkins et al. (2020,
+2023) likewise put it on the pair or network.
+
+`(1 | group:tangram)` is whether this group has a good label for this figure,
+which is neither a group effect nor a tangram effect. It is the second-largest
+component on the pilot (SD 0.71 on the log-odds scale, against 0.40 for
+tangram), and 62 of 72 cells have the full 12 observations.
 
 ```{r model-accuracy}
 m_accuracy <- fit_progressively(
-  correct ~ blockNum_c + (blockNum_c | group) + (blockNum_c | tangram) + (1 | gameId),
+  correct ~ blockNum_c + (blockNum_c | group) + (1 | tangram) + (1 | group:tangram),
   data = p1_listener,
   family = binomial
 )
@@ -169,12 +211,23 @@ ggplot(acc_by_block, aes(x = blockNum + 1, y = mean_acc)) +
 **Expected pattern:** A positive block effect in the shared Phase 1 procedure.
 Interpret the trajectory alongside its level, not as a necessary significance test.
 
+No participant term here, unlike the length model. `simAdjacent` compares a
+description with the one that preceded it for the same group and tangram, and
+because speaker roles rotate those two come from different people on 97% of
+occasions in the pilot -- so the `playerId` on the row is just whoever
+happened to speak second. Attributing the similarity to that person is the
+same arbitrary choice the pairwise model avoids with its multiple-membership
+speaker term. The quantity belongs to the group's trajectory, which
+`(blockNum_c | group)` and `(1 | group:tangram)` carry. Hawkins et al. (2020)
+do include a speaker effect in their version because theirs compares
+successive utterances by the *same* speaker.
+
 ```{r model-adjacent-sim}
 if (has_rows(p1_adjacent)) {
   p1_adjacent_valid <- p1_adjacent |> filter(!is.na(simAdjacent))
 
   m_adjacent <- fit_progressively(
-    simAdjacent ~ blockNum_c + (1 | gameId) + (blockNum_c | participant) + (blockNum_c | group) + (blockNum_c | tangram),
+    simAdjacent ~ blockNum_c + (blockNum_c | group) + (1 | tangram) + (1 | group:tangram),
     data = p1_adjacent_valid
   )
 
@@ -332,7 +385,7 @@ checks <- tibble(
     "4. Endpoint group-specificity"
   ),
   Model = c(
-    "uttLength ~ blockNum + (1 | game) + slopes (lmer)",
+    "log(uttLength) ~ blockNum + (1 | game) + slopes (lmer)",
     "correct ~ blockNum + (1 | game) + slopes (glmer, listener trials)",
     "simAdjacent ~ blockNum + (1 | game) + slopes (lmer)",
     "Permutation test"

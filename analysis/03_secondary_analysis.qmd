@@ -46,10 +46,10 @@ phase_change <- phase_change |>
 
 if (n_conditions >= 2) {
   # Paper formula: sim_phase1_phase2 ~ condition + (1 | game) + (1 | group)
-  #   + (1 | participant) + (condition | tangram); the game and group
+  #   + (1 | participant) + (1 | tangram); the game and group
   #   intercepts are retained through any simplification
   m_semantic <- fit_progressively(
-    simPhase1Phase2 ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (condition | target),
+    simPhase1Phase2 ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (1 | target),
     data = phase_change
   )
   print(summary(m_semantic))
@@ -112,6 +112,18 @@ ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) 
 
 **Predictions:** Above chance (1/16), main effect of `blockNum`, ordered: separated > mixed > social_mixed.
 
+The item cell here is `gameId:target`, not `group:target` as in Phase 1 and in
+the Phase 2 length model. Referential accuracy is a property of the *match*
+between speaker and listener, and in the mixed conditions the listener is
+usually not from the speaker's original group (in the pilot: 70/140 of
+`refer_mixed` trials, 144/214 of `social_mixed`, 131/180 of `social_first`),
+so what matters is whether the game as a whole has converged on that figure.
+Fitting both on the pilot bears this out: `gameId:target` takes SD 0.61 and
+`group:target` goes to 0.00 beside it. The length model goes the other way --
+there `group:target` is 0.39 and `gameId:target` collapses -- because a
+description's length reflects the speaker's own carried-over convention
+rather than a match with anyone.
+
 ```{r prep-accuracy}
 # Phase 2 listener trials with correct, condition, and centered block
 p2_listener <- listener_trials(trials, games, phase = 2)
@@ -123,14 +135,14 @@ n_games <- n_distinct(p2_listener$gameId)
 if (n_conditions >= 2 && n_games >= 2) {
   # Paper formula: condition * blockNum slopes on tangram, blockNum on game/player
   m_ref_accuracy <- fit_progressively(
-    correct ~ condition * blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (condition * blockNum_c | target),
+    correct ~ condition * blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (1 | target) + (1 | gameId:target),
     data = p2_listener,
     family = binomial
   )
 } else if (n_games >= 2) {
   cat("Only 1 condition; fitting without condition predictor.\n")
   m_ref_accuracy <- fit_progressively(
-    correct ~ blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | target),
+    correct ~ blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (1 | target) + (1 | gameId:target),
     data = p2_listener,
     family = binomial
   )
@@ -212,15 +224,43 @@ random-effects structure:
 
 ```
 ref_correct ~ in_group_speaker * condition + block_num
-  + (block_num | game) + (block_num | listener) + (block_num | speaker)
-  + (condition | tangram)
+  + (1 | game) + (1 | listener) + (1 | speaker) + (1 | tangram)
 ```
 
-The social-first minus social-mixed contrast is reported separately for
-in-group and for out-group listeners (as odds ratios on the response scale,
-with confidence intervals), regardless of the primary H4b result, together
-with the interaction (the ratio of those two odds ratios). Significance in
-one subgroup but not the other is not itself evidence for an interaction.
+The two questions this section answers are estimated by two different models,
+because they live at different levels.
+
+**The in-group advantage itself, and whether condition amplifies it**, are
+within-listener comparisons: the reshuffle rule gives each trio exactly one
+in-group listener, so a listener is an in-group listener on some trials and an
+out-group listener on others. By the rule used elsewhere in these notebooks
+that calls for by-game and by-listener random slopes on `in_group_speaker`,
+and a trial-level model without them is anticonservative -- simulated on this
+design, a nominal .05 test runs near .26 for the in-group effect and .28 for
+its interaction with condition. But those slopes cannot be estimated from
+about a dozen Bernoulli trials per listener per cell; across simulated slope
+SDs from 0.2 to 0.8 `fit_progressively()` dropped them every time. So these
+two questions are answered by the paired form of the contrast instead: one
+in-group advantage score per listener, modelled at the listener level
+(`ingroup_advantage()` in `analysis/R/prepare.R`). The same simulations put
+this at .083 and .058. Hawkins et al. (2020) use the same device for their
+within- versus across-speaker comparison.
+
+```
+advantage ~ condition + (1 | game)
+```
+
+The intercept is the in-group advantage pooled over conditions; the condition
+coefficient is the interaction, i.e. whether anticipating the social goal
+amplifies it.
+
+There is no trial-level model here. One would need by-listener and by-game
+slopes on `inGroupSpeaker` to test those two quantities honestly, and they
+cannot be estimated from about a dozen Bernoulli trials per listener per
+cell -- across simulated slope SDs from 0.2 to 0.8 the ladder dropped them
+every time, leaving an intercepts-only model that runs a nominal .05 test
+near .26. In-group and out-group accuracy rates are reported descriptively
+below instead.
 
 ```{r model-ingroup}
 # Phase 2 listener trials in the social conditions, each with its speaker and
@@ -232,43 +272,57 @@ social_listener <- listener_trials(trials, games, phase = 2, conditions = SOCIAL
   filter(!is.na(inGroupSpeaker))
 
 if (nrow(social_listener) > 0 && n_distinct(social_listener$condition) >= 2) {
-  m_ingroup <- fit_progressively(
-    correct ~ inGroupSpeaker * condition + blockNum_c +
-      (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) +
-      (condition | target),
-    data = social_listener,
-    family = binomial
-  )
-  print(summary(m_ingroup))
-  report_odds_ratios(m_ingroup)
-
-  if (inherits(m_ingroup, "glmerMod")) {
-    # social_first minus social_mixed within each listener type, as odds
-    # ratios (emmeans back-transforms the log-odds contrast to the response
-    # scale), and the interaction as the ratio of the two odds ratios.
-    em_cond_by_group <- emmeans(m_ingroup, ~ condition | inGroupSpeaker, type = "response")
-    ct_within <- contrast(em_cond_by_group, list(
-      socialfirst_vs_socialmixed = pairwise_weights(SOCIAL_CONDITIONS, "social_first", "social_mixed")
+  # The in-group advantage and its interaction with condition, in paired
+  # form: one score per listener, which collapses the within-listener
+  # dimension into the outcome and leaves an estimable between-listener
+  # model. See ingroup_advantage() in analysis/R/prepare.R.
+  adv <- ingroup_advantage(social_listener)
+  cat(sprintf(
+    "In-group advantage scores: %d listeners in %d games (median %d in-group and %d out-group trials each)\n",
+    nrow(adv), n_distinct(adv$gameId), median(adv$n_in), median(adv$n_out)
+  ))
+  if (nrow(adv) >= 4 && n_distinct(adv$condition) >= 2) {
+    m_adv <- fit_progressively(advantage ~ condition + (1 | gameId), data = adv)
+    print(summary(m_adv))
+    ca <- coef(summary(m_adv))
+    cat(sprintf(
+      "\nIn-group advantage pooled over conditions: %+.3f (SE %.3f, p = %s)\n",
+      ca["(Intercept)", "Estimate"], ca["(Intercept)", "Std. Error"],
+      fmt_pval(ca["(Intercept)", "Pr(>|t|)"])
     ))
-    cat("\nSocial-first vs social-mixed within out-group and within in-group listeners (odds ratio):\n")
-    print(summary(ct_within, infer = c(TRUE, TRUE)))
-    ingroup_contrasts <- contrast_table(ct_within, "in-group status")
-
-    cat("\nInteraction: ratio of the in-group to the out-group odds ratio (does social-first amplify the in-group advantage?):\n")
-    em_full <- emmeans(m_ingroup, ~ condition * inGroupSpeaker, type = "response")
-    ct_interaction <- contrast(em_full, interaction = c("revpairwise", "revpairwise"))
-    print(summary(ct_interaction, infer = c(TRUE, TRUE)))
-
-    # The in-group advantage itself, within each condition and overall
-    em_group_by_cond <- emmeans(m_ingroup, ~ inGroupSpeaker | condition, type = "response")
-    cat("\nIn-group vs out-group listeners within each condition (odds ratio):\n")
-    print(summary(contrast(em_group_by_cond, "revpairwise"), infer = c(TRUE, TRUE)))
-    cat("\nAveraged over conditions:\n")
-    print(summary(contrast(emmeans(m_ingroup, ~ inGroupSpeaker, type = "response"), "revpairwise"),
-                  infer = c(TRUE, TRUE)))
-    cat("\nEstimated accuracy by condition and listener type (response scale, at the mean block):\n")
-    print(summary(em_full))
+    cat("Does the anticipated social goal amplify it? (condition coefficient)\n")
+    print(emmeans(m_adv, "condition"))
+    print(summary(contrast(emmeans(m_adv, "condition"), list(
+      socialfirst_minus_socialmixed = pairwise_weights(
+        SOCIAL_CONDITIONS, "social_first", "social_mixed"
+      )
+    )), infer = c(TRUE, TRUE)))
+    # Thin cells are noisier; rerun on listeners with at least five each.
+    adv5 <- ingroup_advantage(social_listener, min_trials = 5L)
+    if (nrow(adv5) >= 4 && n_distinct(adv5$condition) >= 2) {
+      m_adv5 <- fit_progressively(advantage ~ condition + (1 | gameId), data = adv5,
+                                  verbose = FALSE)
+      cat(sprintf("\nSensitivity, cells of >= 5 trials (%d listeners): intercept %+.3f, p = %s\n",
+                  nrow(adv5), coef(summary(m_adv5))["(Intercept)", "Estimate"],
+                  fmt_pval(coef(summary(m_adv5))["(Intercept)", "Pr(>|t|)"])))
+    }
+  } else {
+    cat("Too few listeners with both in-group and out-group trials for the advantage model.\n")
   }
+
+  # Descriptive in-group and out-group accuracy rates, which the paired model
+  # above does not print. Raw per-listener means aggregated by condition, so
+  # they carry no distributional assumption; the test is the advantage model.
+  cat("\nDescriptive accuracy by condition and listener type (per-listener means):\n")
+  print(knitr::kable(
+    adv |>
+      tidyr::pivot_longer(c(acc_in, acc_out), names_to = "listener_type",
+                          values_to = "accuracy") |>
+      mutate(listener_type = ifelse(listener_type == "acc_in", "in-group", "out-group")) |>
+      group_by(condition, listener_type) |>
+      summarise(listeners = dplyr::n(), accuracy = mean(accuracy), .groups = "drop"),
+    digits = 3
+  ))
 } else {
   cat("Need Phase 2 listener trials from both social conditions.\n")
 }
@@ -336,7 +390,10 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
       outcome = "gs_phase2",
       predictors = c("social_accuracy", "gs_phase1"),
       conditions = SOCIAL_CONDITIONS,
-      weights = weights
+      weights = weights,
+      # No condition term: the analysis plan specifies this as an association
+      # across the two social conditions, not a comparison between them.
+      include_condition = FALSE
     )
   }
   gs_social_fit <- fit_gs_social()
@@ -483,21 +540,26 @@ if (nrow(social_guesses) > 0) {
 How does description length evolve across Phase 2 blocks by condition?
 
 Paper formula:
-`utt_length ~ condition * block_num + (1 | game) + (1 | group) + (1 | participant) + (1 | tangram)`,
-with `group` the game-unique original group.
+`log(utt_length) ~ condition * block_num + (1 | game) + (1 | group) + (1 | participant) + (1 | tangram)`,
+with `group` the game-unique original group. Length is log-transformed for the
+same reason as in the convention-formation check: word counts here are
+heavy-tailed (Hawkins et al. 2023). Slopes and marginal means are
+back-transformed to the word scale for reporting.
 
 ```{r model-utt-length-phase2}
-p2_utts <- phase2_utterances(speaker_utts, games)
+p2_utts <- phase2_utterances(speaker_utts, games) |>
+  mutate(logUttLength = log(uttLength)) |>
+  filter(is.finite(logUttLength))
 
 n_cond <- n_distinct(p2_utts$condition)
 if (n_cond >= 2) {
   m_p2_length <- fit_progressively(
-    uttLength ~ condition * blockNum_c + (1 | gameId) + (1 | group) + (1 | playerId) + (1 | target),
+    logUttLength ~ condition * blockNum_c + (blockNum_c | gameId) + (1 | group) + (1 | playerId) + (blockNum_c | target) + (1 | group:target),
     data = p2_utts
   )
 } else {
   m_p2_length <- fit_progressively(
-    uttLength ~ blockNum_c + (1 | gameId) + (1 | group) + (1 | playerId) + (1 | target),
+    logUttLength ~ blockNum_c + (blockNum_c | gameId) + (1 | group) + (1 | playerId) + (blockNum_c | target) + (1 | group:target),
     data = p2_utts
   )
   cat("Only 1 condition; fitting without condition predictor.\n")
@@ -510,11 +572,12 @@ if (n_cond >= 2 && inherits(m_p2_length, "merMod")) {
   # The paper's predictions are per condition: continued shortening or a
   # plateau in refer_separated, a possible initial lengthening in refer_mixed,
   # short descriptions in the social conditions.
-  cat("\nBlock slope (words per block) by condition:\n")
+  cat("\nBlock slope by condition (log scale, and as a multiplier per block):\n")
   p2_length_slopes <- as.data.frame(test(emtrends(m_p2_length, ~ condition, var = "blockNum_c")))
+  p2_length_slopes$per_block_multiplier <- exp(p2_length_slopes$blockNum_c.trend)
   print(p2_length_slopes)
-  cat("\nMean Phase 2 description length by condition (at the mean block):\n")
-  print(summary(emmeans(m_p2_length, "condition")))
+  cat("\nMean Phase 2 description length by condition, in words (at the mean block):\n")
+  print(summary(emmeans(m_p2_length, "condition"), type = "response"))
 }
 ```
 
@@ -548,15 +611,20 @@ lexical uniqueness, word frequency; see `compute_derived.py`) applied to all
 four conditions, to explore whether group-specific language maintained
 passively (refer_separated) differs from language maintained under a
 social-signaling goal (social_mixed). Each measure is modeled on each speaker's
-final description of each tangram within a phase, with the H3c formula
-`measure ~ condition + (1 | game) + (1 | group) + (1 | participant) + (condition | tangram)`
-(`group` is the game-unique original group). The named contrast is
-refer_separated minus social_mixed; all pairwise comparisons follow
-(Tukey-adjusted). Exploratory.
+final description of each tangram within a phase, using the same structures
+as H3c: the two proportion measures as binomial counts `cbind(k, n - k)` with
+a per-description intercept, and word frequency as a linear model, each with
+`(1 | game) + (1 | group) + (1 | participant) + (1 | tangram)` (`group` is
+the game-unique original group). The named contrast is refer_separated minus
+social_mixed; all pairwise comparisons follow (Tukey-adjusted). Exploratory.
 
 ```{r utterance-properties-all-conditions}
 PROPERTY_LABELS <- c(concreteness = "Concreteness", uniqueness = "Lexical uniqueness",
                      mean_zipf_freq = "Word frequency (Zipf)")
+# The count column behind each proportion; NULL means the measure is linear.
+PROPERTY_NUMERATORS <- list(concreteness = "n_concrete",
+                            uniqueness = "n_unique_words",
+                            mean_zipf_freq = NULL)
 
 if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
   cat("Skipping: description_properties.csv or lexical_uniqueness.csv not found.\n")
@@ -569,15 +637,35 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
       next
     }
     for (measure in names(PROPERTY_LABELS)) {
-      d <- props |> filter(!is.na(.data[[measure]]))
+      # The two proportions are binomial in their content-word counts; word
+      # frequency is a mean of a continuous quantity and stays linear.
+      numerator <- PROPERTY_NUMERATORS[[measure]]
+      if (is.null(numerator)) {
+        d <- props |> filter(!is.na(.data[[measure]]))
+        f <- as.formula(sprintf(
+          "%s ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (1 | target)", measure
+        ))
+        fam <- NULL
+      } else {
+        d <- word_level_measure(props, numerator, "is_target")
+        f <- is_target ~ condition + (1 | gameId) + (1 | group) +
+          (1 | playerId) + (1 | target) + (1 | descriptionId)
+        fam <- binomial
+      }
       if (nrow(d) == 0) next
       cat(sprintf("\n=== Phase %d: %s ===\n", ph, PROPERTY_LABELS[[measure]]))
-      f <- as.formula(sprintf(
-        "%s ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (condition | target)", measure
-      ))
-      m <- fit_progressively(f, data = d)
-      em <- emmeans(m, "condition")
-      property_summaries[[length(property_summaries) + 1]] <- as.data.frame(summary(em)) |>
+      m <- fit_progressively(f, data = d, family = fam)
+      em <- if (is.null(fam)) {
+        emmeans(m, "condition")
+      } else {
+        emmeans(m, "condition", type = "response")
+      }
+      # A response-scale binomial grid calls the estimate `prob`; a linear one
+      # calls it `emmean`. Normalize so the two stack into one plot.
+      em_df <- as.data.frame(summary(em))
+      est_col <- intersect(c("emmean", "prob", "response"), names(em_df))[1]
+      property_summaries[[length(property_summaries) + 1]] <- em_df |>
+        rename(estimate = all_of(est_col)) |>
         mutate(phase = paste("Phase", ph), measure = PROPERTY_LABELS[[measure]])
       lv <- levels(droplevels(d$condition))
       if (all(c("refer_separated", "social_mixed") %in% lv)) {
@@ -592,7 +680,7 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
   if (length(property_summaries)) {
     property_plot <- bind_rows(property_summaries)
     print(
-      ggplot(property_plot, aes(x = condition, y = emmean, color = condition)) +
+      ggplot(property_plot, aes(x = condition, y = estimate, color = condition)) +
         geom_pointrange(aes(ymin = lower.CL, ymax = upper.CL)) +
         facet_grid(measure ~ phase, scales = "free_y") +
         scale_color_condition() +

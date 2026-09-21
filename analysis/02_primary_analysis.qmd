@@ -186,16 +186,30 @@ if (exists("contrasts") && !is.null(contrasts)) {
 }
 ```
 
-Game-level Cohen's *d* for each contrast (unadjusted difference in Phase 2
-group-specificity between the two conditions, pooled SD; the quantity the
-power analysis was based on). Not estimable with one game per condition.
+Two effect sizes, for two different jobs.
+
+The **primary** one is the adjusted difference printed with the contrasts
+above: a difference in the group-specificity coefficient, which is itself a
+difference in cosine similarity between within-group and between-group pairs.
+That is the quantity the test is about, and it is already in interpretable
+units.
+
+Beside it, the **unadjusted** game-level Cohen's *d*. It is not the tested
+quantity -- the test adjusts for Phase 1 group-specificity and this does not
+-- but it is the only number directly comparable to the effect sizes in the
+sampling plan, which came from two-sample comparisons. It is reported for
+that comparison alone and is not a second test. Not estimable with one game
+per condition.
 
 ```{r effect-sizes-h1-h2}
 if (!is.null(contrasts)) {
+  cat("Primary effect size: adjusted difference in group-specificity (see contrasts above).\n")
+  cat("Comparable to the sampling plan: unadjusted game-level Cohen's d.\n\n")
   rbind(
     cohens_d_games(gs_h12, "gs_phase2", "condition", "refer_separated", "refer_mixed"),
     cohens_d_games(gs_h12, "gs_phase2", "condition", "social_mixed", "refer_mixed")
-  )
+  ) |>
+    dplyr::mutate(quantity = "unadjusted two-sample d (power-analysis scale)")
 }
 ```
 
@@ -393,6 +407,10 @@ if (!exists("gs_combined")) {
     report_effect_sizes(ols_h3a)
     print(summary(contrast_h3a, infer = c(TRUE, TRUE)))
 
+    # H3a's model has no covariate, so the planned contrast and a two-sample
+    # comparison of the game-level estimates are the same test: here the
+    # unadjusted d is the effect size for the test, not just a comparison
+    # point for the sampling plan.
     print(cohens_d_games(gs_social, "gs_phase1", "condition", "social_first", "social_mixed"))
 
     p_h3a <- as.data.frame(summary(contrast_h3a, infer = c(TRUE, TRUE)))$p.value
@@ -430,29 +448,42 @@ if (exists("gs_social") && nrow(gs_social) > 0) {
 }
 ```
 
-## H3b: Early within-group alignment
+## H3b: Rate of within-group convergence and alignment at block 3
 
-The primary contrast is `social_first > social_mixed` at Phase 1 block 3,
-when all three original group members have had one scheduled speaker turn.
-Blocks are counted from 1 here, as in the paper; the exported `blockNum` is
-0-indexed, so `within_group_block_pairs()` converts it once to a 1-indexed
-`block` column and the model uses blocks 2-6 on that scale (0-indexed
-blockNum 1-5), with the milestone at block 3 (0-indexed blockNum 2).
+H3b makes two predictions, both `social_first` minus `social_mixed`, both
+read off one fitted model and reported separately -- there is no omnibus
+support decision for H3b:
+
+1. **Rate.** Within-group conventions converge *faster* in `social_first`,
+   tested as the condition-by-block interaction (a slope contrast).
+2. **Alignment.** They are more closely aligned by the end of the first
+   speaker cycle, tested as the condition difference at Phase 1 block 3
+   (`H3B_BLOCK`), obtained from `emmeans` after the model is fit.
+
 Within-group pairwise similarities are averaged within group, tangram, and
-block. Available pairs contribute equally; means with no valid pairs are
-omitted, without substituting another block for a missing block-3 observation.
+block over Phase 1 blocks 2-6 (1-indexed; block 1 has no within-group pair
+yet). The model is `H3B_FORMULA` in `analysis/R/convergence.R`:
 
-The model uses categorical block and its interaction with condition, with
-random effects for game, group nested within game, tangram, and repeated
-group--tangram observations. The starting formula is `H3B_FORMULA` in
-`analysis/R/convergence.R`; random effects follow the shared simplification
-procedure. Game-level replication is required for the condition comparison.
+```
+within_group_similarity ~ condition * block
+  + (block | group) + (block | tangram)
+```
 
-H3b is supported by a positive block-3 contrast with a two-tailed p-value below
-.05, with its raw similarity difference and 95% confidence interval reported.
-This tests greater alignment by a fixed early milestone, not the exact time
-a convention is established. Neither an omnibus interaction nor a linear
-slope difference is a prerequisite or an alternative support criterion.
+Block is continuous, because a rate is a slope, and it is **not** centered:
+the block-3 quantity comes from `emmeans` at `block = 3`, so centering would
+buy nothing. Centering is a pure reparameterization here -- it moves the
+`condition` coefficient but leaves both contrasts identical (asserted in
+`analysis/tests/test_convergence.R`) -- so block is fitted raw and the
+`condition` row of the coefficient table is simply not interpreted, since at
+raw block 0 it extrapolates outside the data. Because block enters linearly,
+the block-3 level is a point on the fitted line and so is not independent of
+the slope; a categorical block would estimate the two separately.
+
+Both grouping factors carry a block slope: block is the effect under test and
+varies within each. There is no game term -- in Phase 1 the three groups of a
+game never interact, so the group is the conversing unit (same reasoning as
+the convention checks in `01_outcome_neutral.qmd`). Game-level replication in
+both conditions is required before the model is fit.
 
 ```{r h3b-convergence}
 if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
@@ -465,42 +496,30 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
   m_h3b <- h3b$model
   if (!is.null(m_h3b)) {
     print(summary(m_h3b))
+    cat("\nConvergence rate by condition (similarity per block):\n")
+    print(emtrends(m_h3b, "condition", var = "block",
+                   lmer.df = "satterthwaite", lmerTest.limit = Inf))
+    cat("\nDifference in rates (social_first minus social_mixed):\n")
     print(h3b$summary)
-    cat("Primary block-3 support criterion met:", h3b$supported, "\n")
-    # Bayes factors are preregistered for H1, H2, H3a, H4a, and H4b only; H3b
-    # reports the frequentist contrast, and a non-significant contrast is not
-    # evidence for the null.
+    cat("H3b rate supported:", h3b$supported, "\n")
+    cat("\nFitted within-group similarity at block", H3B_BLOCK, "by condition:\n")
+    print(emmeans(m_h3b, "condition", at = list(block = H3B_BLOCK),
+                  lmer.df = "satterthwaite", lmerTest.limit = Inf))
+    cat("\nDifference at block", H3B_BLOCK,
+        "(social_first minus social_mixed):\n")
+    print(h3b$block_summary)
+    cat("H3b alignment supported:", h3b$block_supported, "\n")
+    # Bayes factors are preregistered for H1, H2, H3a, H4a, and H4b only.
   } else {
     cat("H3b inference skipped:", h3b$note, "\n")
   }
 }
 ```
 
-### Secondary description of the linear trend
-
-This model describes differences in the average linear increase in similarity.
-It does not determine primary H3b support, including when its interaction is
-significant but the block-3 contrast is not.
-
-```{r h3b-secondary-trend}
-if (exists("h3b") && !is.null(h3b$model)) {
-  # block_c is the 1-indexed block centered at the block-3 milestone
-  m_h3b_trend <- fit_progressively(H3B_TREND_FORMULA, data = h3b$data)
-  print(summary(m_h3b_trend))
-  slopes_h3b <- emtrends(m_h3b_trend, "condition", var = "block_c",
-                         lmer.df = "satterthwaite", lmerTest.limit = Inf)
-  print(summary(contrast(slopes_h3b, list(
-    secondary_slope_socialfirst_minus_socialmixed = c(-1, 1)
-  )), infer = c(TRUE, TRUE)))
-}
-```
-
 ```{r plot-h3b, fig.width=8, fig.height=5}
 if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
   # Bootstrap game means, not the overlapping pairs or groups within a game.
-  # `block` is 1-indexed (paper numbering); the milestone is block 3.
   conv_games <- p1_within_social |>
-    mutate(block = as.integer(as.character(block))) |>
     group_by(condition, gameId, group, block) |>
     summarise(similarity = mean(similarity), .groups = "drop") |>
     group_by(condition, gameId, block) |>
@@ -517,7 +536,6 @@ if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
     })
 
   ggplot(conv_by_block, aes(x = block, y = empirical_stat, color = condition)) +
-    geom_vline(xintercept = H3B_BLOCK, linetype = "dotted", color = "gray50") +
     geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
                 alpha = 0.15, color = NA) +
     geom_line(linewidth = 1) +
@@ -529,8 +547,8 @@ if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
       x = "Phase 1 block (1-indexed)",
       y = "Within-group cosine similarity",
       color = "Condition",
-      title = "H3b: Within-group alignment by social condition",
-      subtitle = "The primary comparison is at block 3 (dotted line).",
+      title = "H3b: rate of within-group convergence",
+      subtitle = "H3b predicts a steeper slope in social-first.",
       caption = "Intervals resample games; a single pilot game per condition cannot estimate between-game uncertainty."
     )
 }
@@ -548,10 +566,39 @@ predicted direction. All three results are reported; a lower-frequency effect
 alone does not support the concreteness or lexical-uniqueness predictions.
 
 Each measure is modeled on each speaker's final Phase 1 description of each
-tangram with the preregistered structure
-`measure ~ condition + (1 | game) + (1 | group) + (1 | participant) + (condition | tangram)`,
-where `group` is the game-unique original group. The game and group
-intercepts are retained through any simplification.
+tangram, with `group` the game-unique original group. The game and group
+intercepts are retained through any simplification, and the by-tangram term
+is an intercept: a game draws six targets from one of the two sets, so the
+study has twelve distinct targets, too few to estimate a condition-slope
+covariance from.
+
+Concreteness and lexical uniqueness are proportions of a description's
+content words, with denominators running from one word to several dozen.
+Fitting them as Gaussian outcomes would weight a one-of-one description as
+heavily as a fifteen-of-thirty one, and would leave a condition difference in
+the proportion indistinguishable from a condition difference in description
+length, which the secondary analyses separately predict. They are therefore
+modelled at the level of the content word, one binary observation each:
+
+```
+is_concrete ~ condition + (1 | game) + (1 | group) + (1 | participant)
+            + (1 | tangram) + (1 | description),   family = binomial
+is_unique   ~ condition + ... (same structure)
+```
+
+Hawkins et al. (2023) likewise model a lexical-overlap outcome as a
+per-observation binary variable rather than as an aggregated proportion. The
+effect size is the odds ratio for condition.
+
+The `(1 | game)` intercept stays even though Phase 1 groups never interact.
+That reasoning (used to drop the game term from the convention checks) is
+about the *conversing* unit; here the tested predictor is condition, which
+was assigned at the *game* level, so the game is what the contrast is tested
+against. Groups within a game are not independent draws on condition, and
+`(1 | group)` cannot stand in: simulated on this design, dropping the game
+intercept moves a nominal .05 test to .14. Word frequency is the mean of a continuous quantity and stays
+a linear model, `mean_zipf_freq ~ condition + (1 | game) + (1 | group) +
+(1 | participant) + (1 | tangram)`.
 
 All three measures are precomputed in Python (`compute_derived.py`) with
 consistent tokenization: each utterance is lowercased, split into alphabetic
@@ -581,36 +628,42 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
   p1_final_social <- final_phase1_properties(desc_props, lex_uniq, games, SOCIAL_CONDITIONS)
 
   if (nrow(p1_final_social) > 0 && n_distinct(p1_final_social$condition) >= 2) {
-    # Concreteness
-    p1_concrete <- p1_final_social |> filter(!is.na(concreteness))
+    # Concreteness: is this content word a concrete term?
+    p1_concrete <- word_level_measure(p1_final_social, "n_concrete", "is_concrete")
     if (nrow(p1_concrete) > 0) {
-      cat("=== Concreteness ===\n")
+      cat(sprintf("=== Concreteness === (%d content words in %d descriptions)\n",
+                  nrow(p1_concrete), n_distinct(p1_concrete$descriptionId)))
       m_concrete <- fit_progressively(
-        concreteness ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (condition | target),
-        data = p1_concrete
+        is_concrete ~ condition + (1 | gameId) + (1 | group) +
+          (1 | playerId) + (1 | target) + (1 | descriptionId),
+        data = p1_concrete,
+        family = binomial
       )
       print(summary(m_concrete))
-      report_effect_sizes(m_concrete)
+      report_odds_ratios(m_concrete)
     }
 
-    # Lexical uniqueness
-    p1_unique <- p1_final_social |> filter(!is.na(uniqueness))
+    # Lexical uniqueness: is this content word absent from other groups' descriptions?
+    p1_unique <- word_level_measure(p1_final_social, "n_unique_words", "is_unique")
     if (nrow(p1_unique) > 0) {
-      cat("\n=== Lexical Uniqueness ===\n")
+      cat(sprintf("\n=== Lexical Uniqueness === (%d content words in %d descriptions)\n",
+                  nrow(p1_unique), n_distinct(p1_unique$descriptionId)))
       m_uniqueness <- fit_progressively(
-        uniqueness ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (condition | target),
-        data = p1_unique
+        is_unique ~ condition + (1 | gameId) + (1 | group) +
+          (1 | playerId) + (1 | target) + (1 | descriptionId),
+        data = p1_unique,
+        family = binomial
       )
       print(summary(m_uniqueness))
-      report_effect_sizes(m_uniqueness)
+      report_odds_ratios(m_uniqueness)
     }
 
-    # Word frequency
+    # Word frequency stays linear: a mean of a continuous quantity
     p1_freq <- p1_final_social |> filter(!is.na(mean_zipf_freq))
     if (nrow(p1_freq) > 0) {
       cat("\n=== Word Frequency ===\n")
       m_freq <- fit_progressively(
-        mean_zipf_freq ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (condition | target),
+        mean_zipf_freq ~ condition + (1 | gameId) + (1 | group) + (1 | playerId) + (1 | target),
         data = p1_freq
       )
       print(summary(m_freq))
@@ -753,7 +806,7 @@ if (!has_rows(social_p2)) {
 
 ## H4a: Social-identification accuracy
 
-`glmer(social_correct ~ condition + block_num + (block_num | game) + (block_num | listener) + (block_num | speaker) + (condition | tangram), family = binomial)`
+`glmer(social_correct ~ condition + block_num + (1 | game) + (1 | listener) + (1 | speaker) + (1 | tangram), family = binomial)`
 
 Crossed listener and speaker random effects: social-identification accuracy depends on
 both the listener's ability to detect cues and the speaker's tendency to produce
@@ -771,7 +824,7 @@ if (nrow(social_guesses) > 0) {
 
   if (n_distinct(social_h4$condition) >= 2 && nrow(social_h4) > 0) {
     m_h4a <- fit_progressively(
-      correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (condition | target),
+      correct ~ condition + blockNum_c + (1 | gameId) + (1 | playerId) + (1 | speakerId) + (1 | target),
       data = social_h4,
       family = binomial
     )
@@ -823,7 +876,7 @@ if (exists("social_h4") && nrow(social_h4) > 0) {
 
 ## H4b: Referential accuracy
 
-`glmer(ref_correct ~ condition + block_num + (block_num | game) + (block_num | listener) + (block_num | speaker) + (condition | tangram), family = binomial)`
+`glmer(ref_correct ~ condition + block_num + (1 | game) + (1 | listener) + (1 | speaker) + (1 | tangram), family = binomial)`
 
 Crossed listener and speaker random effects: referential accuracy depends on both the
 listener's interpretation and the quality of the speaker's description.
@@ -838,7 +891,7 @@ p2_listener_social <- listener_trials(trials, games, phase = 2, conditions = SOC
 
 if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 0) {
   m_h4b <- fit_progressively(
-    correct ~ condition + blockNum_c + (blockNum_c | gameId) + (blockNum_c | playerId) + (blockNum_c | speakerId) + (condition | target),
+    correct ~ condition + blockNum_c + (1 | gameId) + (1 | playerId) + (1 | speakerId) + (1 | target),
     data = p2_listener_social,
     family = binomial
   )
@@ -1248,13 +1301,13 @@ if (!has_rows(block_pairwise_sim_jaccard)) {
   if (is.null(h3b_jaccard$model)) {
     cat("H3b on Jaccard similarity skipped:", h3b_jaccard$note, "\n")
   } else {
-    cat(sprintf("H3b block-%d contrast on Jaccard similarity (%s):\n",
-                H3B_BLOCK, random_effects_structure(h3b_jaccard$model)))
+    cat(sprintf("H3b slope contrast on Jaccard similarity (%s):\n",
+                random_effects_structure(h3b_jaccard$model)))
     print(knitr::kable(bind_rows(
       contrast_table(if (exists("h3b")) h3b$contrast else NULL, "primary (SBERT)"),
       contrast_table(h3b_jaccard$contrast, "Jaccard")
     ), digits = 3))
-    cat("Block-3 support criterion met on Jaccard similarity:", h3b_jaccard$supported, "\n")
+    cat("H3b supported on Jaccard similarity:", h3b_jaccard$supported, "\n")
   }
 }
 ```
@@ -1307,18 +1360,23 @@ if (exists("contrast_h3a") && !is.null(contrast_h3a)) {
   if (exists("bf_h3a")) macros <- c(macros, bf_macros("primaryHThreeA", bf_h3a))
 }
 
-# H3b: the block-3 contrast
-if (exists("h3b") && !is.null(h3b$summary) && nrow(h3b$summary) == 1) {
-  sm <- h3b$summary
+# H3b: the difference in convergence rates, and the difference at block 3.
+# Two macro families because the two predictions are reported separately.
+h3b_macros <- function(prefix, sm) {
+  if (is.null(sm) || nrow(sm) != 1) return(list())
   lo <- if ("lower.CL" %in% names(sm)) sm$lower.CL else sm$asymp.LCL
   hi <- if ("upper.CL" %in% names(sm)) sm$upper.CL else sm$asymp.UCL
-  macros <- c(macros, list(
-    primaryHThreeBBlock = H3B_BLOCK,
-    primaryHThreeBEst = fmt_stat(sm$estimate),
-    primaryHThreeBLo = fmt_stat(lo),
-    primaryHThreeBHi = fmt_stat(hi),
-    primaryHThreeBP = fmt_pval(sm$p.value)
-  ))
+  stats::setNames(
+    list(fmt_stat(sm$estimate), fmt_stat(lo), fmt_stat(hi), fmt_pval(sm$p.value)),
+    paste0(prefix, c("Est", "Lo", "Hi", "P"))
+  )
+}
+if (exists("h3b")) {
+  macros <- c(
+    macros,
+    h3b_macros("primaryHThreeB", h3b$summary),
+    h3b_macros("primaryHThreeBBlockThree", h3b$block_summary)
+  )
 }
 
 # H3c: the three description properties (reference level is social_mixed, so
