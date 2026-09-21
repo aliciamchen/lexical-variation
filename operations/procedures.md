@@ -213,9 +213,15 @@ uv run python operations/session.py approve --session $S
 uv run python operations/session.py pay --session $S
 ```
 
+Two of those commands hold their terminal until you stop them, so give each its own:
+`copy_tajriba.sh` runs its backup loop until you interrupt it, and `publish --at` sleeps
+until the announced minute. Run both under `caffeinate -i` on a laptop --
+`caffeinate -i bash operations/copy_tajriba.sh` -- because a machine that sleeps pauses the
+countdown and publishes late, and stops backing up without saying so.
+
 ### T-45: create everything
 
-**1. [CLI] Pick the treatment with `tally`.** You need 10 complete games in each of the
+**1. [CLI] Pick the treatment with `tally`.** You need 10 intact games in each of the
 eight (condition, tangram set) cells, so the next session runs whichever cell has the fewest.
 `tally` counts the games in `data/<dataset>/games.csv` per cell, adds the saved sessions that
 have not been processed yet, and marks the emptiest:
@@ -225,16 +231,23 @@ uv run python operations/session.py tally
 ```
 
 ```text
-7 complete game(s) in data/full/games.csv; 1 saved session(s):
-  condition          set  games  incomplete  sessions
-  refer_separated      0      1           0         0
-  refer_separated      1      1           0         0
-  refer_mixed          0      1           0         0
-  refer_mixed          1      0           0         1 (1 pending)
-  social_mixed         0      1           0         0
-  social_mixed         1      0           0         0   <- emptiest
+5 intact nine-player game(s) in data/full/games.csv, 2 that lost a player or did not finish; 1 saved session(s):
+  condition          set intact  partial  incomplete  sessions
+  refer_separated      0      1        0           0         0
+  refer_separated      1      1        0           0         0
+  refer_mixed          0      1        1           0         0
+  refer_mixed          1      0        0           0         1 (1 pending)
+  social_mixed         0      1        0           0         0
+  social_mixed         1      0        0           0         0   <- emptiest
   ...
 ```
+
+**Intact** means the game finished with all nine players still in it, which is what the
+preregistered stopping rule counts and what fills a cell. **Partial** games finished a
+player short: their data is still used, but they do not count towards the target, so a cell
+showing partials still needs sessions. **Incomplete** games never finished at all. The
+intact count needs `players.csv` beside `games.csv` to see removals; without it `tally`
+says so and its intact figure is an upper bound.
 
 Run one treatment per batch -- every game in the batch is the same condition and tangram
 set -- so that everyone who arrives can fill any game in it. Before the first session there
@@ -483,7 +496,7 @@ Prolific's totals (fees and VAT included):
   finishers       $ 205.17  unpaid
   removed early   $  24.79  unpaid
   lobby timeouts  $  13.33  unpaid
-Session budget: $604.29 of $821.94 after this payment.
+Session budget: $604.29 of $821.94 after this payment ($361.00 already committed, approvals included).
 Pay $243.29 now? This cannot be undone. [y/N] y
 Notes for the 8 people who did not finish:
   RETURNED         $  9.22  group disbanded  -> note only [others-left]
@@ -534,8 +547,14 @@ Six refusals are worth knowing about, because each stops the whole command:
 - **A bulk payment for the wrong amount.** Prolific's reply to the set-up call carries the
   amount it understood, in cents; if that is not the total requested, nothing is paid.
 - **Over budget.** `setup` records the session's cost ceiling (or `--budget`) in the session
-  file, and `pay` adds this payment to what the session has already paid; going past the
-  budget stops the command unless `--force-budget` is passed, and then it asks again.
+  file, and `pay` adds this payment to everything the session has already committed: the
+  bulk bonus payments from its ledgers, and the base and screening rewards that `approve`
+  and `close` committed by approving submissions. Approvals matter most and are the easiest
+  to miss, because Prolific pays them against the study rather than through a bulk payment,
+  so they leave no ledger; each command records what it approved on the session instead.
+  Their cost is estimated by applying the standard fee to the reward, where a bulk payment
+  carries the exact figure Prolific charged. Going past the budget stops the command unless
+  `--force-budget` is passed, and then it asks again.
 - **A pay call that was started and never confirmed.** The attempt is written to the ledger
   *before* the call, so a request that timed out after Prolific processed it cannot look
   unpaid. Resolving it means checking the bulk payment in the Prolific UI and editing the
@@ -594,8 +613,10 @@ earlier version of the CSV or of the submissions. Cancel it in the Prolific UI, 
 population's entry from `data/runs/<run>/prolific_payments.json`, and re-run `pay`.
 
 **`pay` refuses because the session is over budget.** The budget is the cost ceiling
-`setup` printed (or `--budget`). Check the amounts first; if the overrun is real and right,
-`--force-budget` lets you confirm it.
+`setup` printed (or `--budget`), and what counts against it is the bonuses already paid
+plus the base and screening rewards `approve` and `close` approved. `sessions` lists those
+approvals. Check the amounts first; if the overrun is real and right, `--force-budget` lets
+you confirm it.
 
 **`pay` warns that the run's treatment is not the session's.** Either the Empirica batch was
 created with a different treatment from the one `setup` was told, or this is another
@@ -604,6 +625,34 @@ session's run. Look at `run_meta.json` and the admin panel before paying.
 **`prepare` sets responses aside as malformed.** A response that does not carry three
 questions is not counted eligible. If most responses have a different number, the survey
 itself has changed; re-run with `--expect-questions N` once you have checked why.
+
+**The Empirica server died mid-session.** Participants see the "Just a moment" screen while
+their browsers retry, so you have a few minutes before they give up.
+
+1. *Look.* `ssh root@$EMPIRICA_SERVER systemctl status empirica` and
+   `journalctl -u empirica -n 200 --no-pager`. The service is installed with
+   `Restart=always`, so it usually comes back by itself within seconds. Confirm the unit
+   name on the host the first time you need it and correct it here.
+2. *Decide.* A restart does not resume the games that were running: the rounds are gone
+   even though the players reconnect. Do not leave nine people in a game that cannot
+   continue. Stop the batch in the admin panel, which sends everyone to the exit survey and
+   the partial completion code, and say so in a Prolific message.
+3. *Save the data.* The newest zip under `experiment/data/<run>/` is the state as of the
+   last backup, at most five minutes old. Copy one more by hand if the server is up:
+   `ssh root@$EMPIRICA_SERVER "cd ~/empirica && empirica export --out /tmp/crash.zip"`.
+4. *Fix the payment files.* This is the part that goes wrong silently. A game that never
+   reached `onGameEnded` leaves its players with `is_active` true and no `exitReason` or
+   `partialPay`, so `extract_run.py` writes them into `bonuses.csv` as if they had
+   finished, and nothing pays their base. After extracting, move those rows by hand from
+   `data/runs/<run>/bonuses.csv` into `early_ended.csv`
+   (`prolific_id,partial_pay,exit_reason`) with `exit_reason` set to `game terminated`, so
+   `pay` treats them as a stopped batch and sends the right note. Their partial pay is base
+   prorated to the minutes they played plus the bonus they had earned, which is the rule in
+   `experiment/server/src/compensation.js`; the export's `gameStartTime`, `minutesSpent`
+   and `bonus` columns are what you need. `approve` will then list them as finishers who
+   never submitted the code, which is expected.
+5. *Do not reuse the batch.* Create a fresh one for any replacement session, and exclude
+   the crashed game from the dataset with `data/<dataset>/exclude_games.txt`.
 
 ## Reference: what the studies look like
 
