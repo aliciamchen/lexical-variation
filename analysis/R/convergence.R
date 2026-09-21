@@ -1,31 +1,24 @@
 # H3b: within-group convergence during Phase 1, as a rate and as a level.
 #
 # Two preregistered contrasts, both `social_first` minus `social_mixed`, both
-# read off one fitted model and reported separately -- there is no omnibus
+# estimated in separate models and reported separately -- there is no omnibus
 # support decision for H3b:
 #
 #   1. Rate      the condition-by-block interaction, as a slope contrast.
 #   2. Alignment the condition difference at Phase 1 block 3, when every
 #                original group member has had one scheduled turn as speaker,
-#                as an emmeans contrast evaluated after the fit.
+#                using only observations from that block.
 #
 #   within_group_similarity ~ condition * block
 #                             + (block | group) + (block | tangram)
 #
-# Block is continuous, because a rate is a slope, and it is NOT centered: the
-# block-3 quantity comes from emmeans at `block = H3B_BLOCK` rather than from
-# the intercept, so there is nothing for centering to buy. Centering is a pure
-# reparameterization here -- it moves the `condition` coefficient but leaves
-# both contrasts identical -- so the model says what it means with raw blocks
-# and the `condition` row is simply not interpreted (at raw block 0 it is an
-# extrapolation outside the data).
+# Block is continuous in the rate model: its slope estimates average linear
+# change over blocks 2-6. The block-3 model has only condition as a fixed
+# effect and random intercepts for group and tangram. Its estimate does not
+# depend on the trajectory in other blocks.
 #
-# Because block enters linearly, the block-3 level is a point on the fitted
-# line and so is not independent of the slope. That is the accepted cost of
-# the linear form; a categorical block would estimate the two separately.
-#
-# Both grouping factors carry a block slope: block is the effect under test
-# and it varies within each of them. There is no game term -- in Phase 1 the
+# In the rate model, both grouping factors carry a block slope: block is the
+# effect under test and varies within each. There is no game term -- in Phase 1 the
 # three groups of a game never interact, so the group is the conversing unit
 # (see the convention checks in 01_outcome_neutral.qmd for the same reasoning
 # and the simulation behind it).
@@ -47,11 +40,13 @@ H3B_BLOCKS <- 2:6
 # speaker cycle. On the exported 0-indexed scale this is blockNum 2.
 H3B_BLOCK <- 3L
 
-# Raw, uncentered block. See the header on why there is no `block_c`.
+# Raw, uncentered block; the slope contrast is invariant to centering.
 H3B_FORMULA <- similarity ~ condition *
   block +
   (block | group) +
   (block | target)
+
+H3B_BLOCK_FORMULA <- similarity ~ condition + (1 | group) + (1 | target)
 
 # Both contrasts are built apart from the fit so they can be checked on known
 # trajectories without running the random-effects simplification each time.
@@ -66,7 +61,7 @@ h3b_levels <- function(grid) {
 }
 
 # Contrast 1, the rate: the social_first slope on block minus the social_mixed
-# slope. Positive means faster convergence in social_first.
+# slope. Positive means a larger average linear increase in social_first.
 h3b_slope_contrast <- function(model) {
   sl <- emmeans::emtrends(
     model,
@@ -90,14 +85,12 @@ h3b_slope_contrast <- function(model) {
 }
 
 # Contrast 2, the level: the condition difference in within-group similarity
-# at block H3B_BLOCK, evaluated on the fitted model. Positive means
-# social_first is more closely aligned at that milestone. `at` names a value
-# of the continuous predictor, which is why the model needs no centering.
-h3b_block_contrast <- function(model, block = H3B_BLOCK) {
+# at block H3B_BLOCK, from the separate model fit to that block alone.
+# Positive means social_first is more closely aligned at that milestone.
+h3b_block_contrast <- function(model) {
   em <- emmeans::emmeans(
     model,
     "condition",
-    at = list(block = block),
     lmer.df = "satterthwaite",
     lmerTest.limit = Inf
   )
@@ -127,7 +120,7 @@ h3b_supported <- function(contrast_summary) {
 
 # `block_means` comes from within_group_block_means() and carries the
 # 1-indexed `block`. Require game-level replication in both conditions before
-# fitting; retain the data for descriptive plots either way.
+# each model; retain the data for descriptive plots either way.
 #
 # `contrast`/`summary`/`supported` are the rate; `block_contrast`/
 # `block_summary`/`block_supported` are the level at H3B_BLOCK. Neither is
@@ -141,10 +134,13 @@ fit_h3b <- function(block_means, verbose = TRUE) {
       contrast = NULL,
       summary = NULL,
       supported = NA,
+      block_data = d,
+      block_model = NULL,
       block_contrast = NULL,
       block_summary = NULL,
       block_supported = NA,
-      note = note
+      note = note,
+      block_note = note
     )
   }
   if (!has_rows(block_means)) {
@@ -168,14 +164,26 @@ fit_h3b <- function(block_means, verbose = TRUE) {
   if (!has_rows(d)) {
     return(empty(d, "no Phase 1 within-group means in the social conditions"))
   }
-  if (n_distinct(d$block) < 2L) {
-    return(empty(d, "fewer than two observed Phase 1 blocks"))
+  replication_note <- function(data) {
+    counts <- data |> distinct(condition, gameId) |> count(condition)
+    if (nrow(counts) < 2L || any(counts$n < 2L)) {
+      return("fewer than two games per condition")
+    }
+    NULL
   }
-  games_per_condition <- d |> distinct(condition, gameId) |> count(condition)
-  if (nrow(games_per_condition) < 2L || any(games_per_condition$n < 2L)) {
-    return(empty(d, "fewer than two games per condition"))
+  result <- empty(d, NULL)
+  result$block_data <- d |> filter(block == H3B_BLOCK)
+  result$note <- replication_note(d)
+  if (is.null(result$note) && any(
+    (d |> group_by(condition) |> summarise(n = n_distinct(block)))$n < 2L
+  )) {
+    result$note <- "fewer than two observed Phase 1 blocks per condition"
   }
-  model <- fit_progressively(H3B_FORMULA, data = d, verbose = verbose)
+  result$block_note <- if (has_rows(result$block_data)) {
+    replication_note(result$block_data)
+  } else {
+    "no observations at Phase 1 block 3"
+  }
   tidy_contrast <- function(ct) {
     as.data.frame(summary(
       ct,
@@ -184,19 +192,19 @@ fit_h3b <- function(block_means, verbose = TRUE) {
       adjust = "none"
     ))
   }
-  ct <- h3b_slope_contrast(model)
-  sm <- tidy_contrast(ct)
-  block_ct <- h3b_block_contrast(model)
-  block_sm <- tidy_contrast(block_ct)
-  list(
-    data = d,
-    model = model,
-    contrast = ct,
-    summary = sm,
-    supported = h3b_supported(sm),
-    block_contrast = block_ct,
-    block_summary = block_sm,
-    block_supported = h3b_supported(block_sm),
-    note = NULL
-  )
+  if (is.null(result$note)) {
+    result$model <- fit_progressively(H3B_FORMULA, data = d, verbose = verbose)
+    result$contrast <- h3b_slope_contrast(result$model)
+    result$summary <- tidy_contrast(result$contrast)
+    result$supported <- h3b_supported(result$summary)
+  }
+  if (is.null(result$block_note)) {
+    result$block_model <- fit_progressively(
+      H3B_BLOCK_FORMULA, data = result$block_data, verbose = verbose
+    )
+    result$block_contrast <- h3b_block_contrast(result$block_model)
+    result$block_summary <- tidy_contrast(result$block_contrast)
+    result$block_supported <- h3b_supported(result$block_summary)
+  }
+  result
 }

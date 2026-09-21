@@ -80,7 +80,7 @@ git config core.hooksPath .githooks
 
 See [`experiment/README.md`](experiment/README.md) for full documentation on local development, production deployment, running sessions, copying data, error monitoring, and testing. The Prolific side of a session (screening survey, allowlist, reminder, publishing at the announced time, approvals, and payments) is driven by `operations/session.py`, and the step-by-step runbook is [`operations/procedures.md`](operations/procedures.md). Every command that changes anything prints its plan and asks before acting.
 
-A few of its commands are worth knowing about before the first session. `uv run python operations/session.py tally` counts the complete games in `data/<dataset>/games.csv` (`DATASET`, default `full`) in each of the eight condition-by-tangram-set cells, adds the saved sessions that have not yet paid a run, and marks the emptiest cell, which is the treatment the next session should run; `setup` prints the same table before creating anything. `setup` also records a budget for the session (the cost ceiling it prints, or `--budget`), and `pay` refuses to go past it. `pay` never pays a removed or lobby-timeout participant whose submission Prolific has already approved, since approval pays the full study reward. Backups taken with `operations/copy_tajriba.sh` each land in their own `experiment/data/<timestamp>/empirica-export-<timestamp>.zip`, named by the export's timestamp, so every backup during a session is an export the pipeline can find; the loop carries on through a failed connection and stops only after three consecutive failures.
+A few of its commands are worth knowing about before the first session. `uv run python operations/session.py tally` counts the complete games in `data/<dataset>/games.csv` (`DATASET`, default `full`) in each of the eight condition-by-tangram-set cells, adds the saved sessions that have not yet paid a run, and marks the emptiest cell, which is the treatment the next session should run; `setup` prints the same table before creating anything. It also reports progress against both halves of the preregistered stopping rule, which ends recruitment at whichever limit comes first: 20 intact nine-player games in every condition, or 120 games started in total. The cap counts every game that began, including those that lost a player or did not finish, and `tally` says so when either limit is reached. `setup` also records a budget for the session (the cost ceiling it prints, or `--budget`), and `pay` refuses to go past it. `pay` never pays a removed or lobby-timeout participant whose submission Prolific has already approved, since approval pays the full study reward. Backups taken with `operations/copy_tajriba.sh` each land in their own `experiment/data/<timestamp>/empirica-export-<timestamp>.zip`, named by the export's timestamp, so every backup during a session is an export the pipeline can find; the loop carries on through a failed connection and stops only after three consecutive failures.
 
 Participants reach the game from Prolific with their ID in the study link, and the identifier field is filled from it and locked so that ids cannot be mistyped. The last page of the exit survey keeps the completion code on screen (there is no Finish button to click past it), and reloading during the survey resumes at the first unanswered page. If a batch has to be stopped mid-game, the participants see an explanation, answer the exit survey, and receive the partial completion code with base pay prorated to their time plus the bonus earned so far. Sentry, which monitors client errors, receives no query strings (so no Prolific ids) and records session replays only for sessions that hit an error.
 
@@ -184,6 +184,8 @@ There are three scripts that should be run in order. Each reads the previous scr
 | ↳ `preprocessing.py` | `data/<name>/raw_anonymized/` | `data/<name>/*.csv` |
 | ↳ `filter_nonreferential.py` | `data/<name>/messages.csv` | `data/<name>/speaker_utterances_filtered.csv` (requires Vertex AI; `--skip-filter`) |
 | ↳ `compute_derived.py` | `data/<name>/*.csv` | `analysis/derived/<name>/` (`--skip-derived`) |
+
+The block-by-block similarity tables carry one row per pair of speakers who have both described a tangram by that block, and an `allGroupsPaired` flag marking the rows where every original group has two such speakers. Group specificity, the difference between within-group and between-group similarity, is only defined on the flagged rows, which is why the analyses that compute it keep those alone; the descriptive figure that plots the two similarities separately uses every row, so it can show the first block of each phase, where each group has described the tangram once and only between-group pairs exist.
 
 Among the derived outputs, `pairwise_similarities_jaccard.csv` and `block_pairwise_similarities_jaccard.csv` repeat the sentence-embedding similarity tables pair for pair with the Jaccard overlap of the two descriptions' content words, which is the preregistered robustness check on the similarity measure; pairs where either description has no content words carry an empty similarity.
 
@@ -292,16 +294,22 @@ the standard errors are the right size, both per game and after they become
 inverse-variance weights in the game-level regression. They cover incomplete
 endpoint coverage and pair-level dependence the model omits.
 
-H3b uses a planned comparison of within-group similarity at Phase 1 block 3,
+H3b tests two separately reported contrasts: the difference in average linear
+change over Phase 1 blocks 2–6 and the difference in alignment at block 3,
 the end of the first scheduled speaker cycle. The analysis averages overlapping
-description pairs within each group, tangram, and block, models block
-categorically, and accounts for groups nested within games. The linear slope
-comparison is secondary and does not determine H3b support. The implementation
-is in `analysis/R/convergence.R`; its tests include an early-alignment advantage
-followed by a plateau. Inferential models require at least two games per
-condition with block-3 observations, so the current pilot provides descriptive
-trajectories only for this comparison. The block-specific Bayes factor is not
-yet implemented and is reported as such by the notebook.
+description pairs within each group, tangram, and block. The longitudinal
+model includes block slopes for group and tangram; a separate block-3-only
+model includes their random intercepts. Neither includes a game term. The
+implementation is in `analysis/R/convergence.R`; its tests verify that later
+blocks cannot affect the early-alignment estimate. Each model requires at
+least two games per condition in its analysis subset, so the current pilot
+provides descriptive trajectories only. H3b does not use Bayes factors.
+
+For H1, H2, and H3a, `analysis/R/bayes_factors.R` parameterizes each tested
+condition difference directly, placing the preregistered Cauchy prior on
+that difference in outcome SD units. The full and null models retain the
+same nuisance parameters and priors, including when the tested conditions
+have unequal sample sizes.
 
 ## LLM simulation
 

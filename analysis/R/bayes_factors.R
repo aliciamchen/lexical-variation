@@ -16,17 +16,17 @@
 #   equal-weight OLS model refit in brms with every condition of that model
 #   (three for H1/H2, two for H3a) and the same covariates, unweighted; the
 #   null equates the two contrasted conditions. The outcome and continuous
-#   covariates are z-scored so the condition coefficients are in SD units and
-#   the Cauchy(0, sqrt(2)/2) prior on them is a prior on a standardized
-#   effect (two-sided). It is placed on the condition coefficients by name;
-#   the covariates are nuisance terms with a weakly informative prior.
+#   covariates are z-scored. Each tested difference is a single coefficient
+#   with a Cauchy(0, sqrt(2)/2) prior (two-sided), in outcome SD units. The
+#   intercept, other conditions, and covariates have identical nuisance
+#   parameterizations and priors in the full and null models.
 # - Bayes factors are computed for the primary hypotheses H1, H2, H3a, H4a,
 #   and H4b only; H3b, H3c, and the secondary analyses report frequentist
 #   results without Bayes factors.
 # - Trial-level logistic mixed models: the Cauchy prior is placed on the
 #   condition coefficients only, rescaled to the log-odds scale by pi/sqrt(3)
-#   so that it is the same prior on Cohen's d that the game-level models get
-#   by z-scoring (see EFFECT_SIZE_PRIOR_LOGODDS). Other population-level
+#   to express the effect in latent logistic SD units (see
+#   EFFECT_SIZE_PRIOR_LOGODDS). Other population-level
 #   coefficients are nuisance terms with a weakly informative prior. The
 #   random-effects structure is the one that converged in the frequentist
 #   fit, and is kept identical in the full and null models so the BF concerns
@@ -102,9 +102,8 @@ EFFECT_SIZE_PRIOR_LOGODDS <- sprintf(
 # number, and the other conditions in a three-condition model). They are not
 # standardized on the logistic scale and the plan says nothing about them, so
 # they get a weakly informative prior rather than the effect-size prior. They
-# are identical in the full and null models, so they do not drive the Bayes
-# factor; the point is not to impose an effect-size prior where no effect size
-# is defined.
+# are identical in the full and null models. Their choice can still affect
+# the Bayes factor, but only the tested contrast is removed under the null.
 NUISANCE_PRIOR_LOGODDS <- "normal(0, 2.5)"
 
 interpret_bf <- function(bf10) {
@@ -191,27 +190,57 @@ fit_bf_pair <- function(
   )
 }
 
-# Bayes factor for one planned contrast of a game-level regression, e.g. H1 in
-# gs_phase2 ~ condition + gs_phase1 on the three shared-Phase-1 conditions.
+# Build an explicit contrast parameterization without sampling. For A minus
+# B, +/- 1/2 coding makes the coefficient exactly the adjusted A-B difference.
+# Other conditions are offsets from the A/B midpoint. An explicit constant
+# prevents brms from centering the intercept differently under the null,
+# including when the two conditions have unequal sample sizes.
+bf_game_level_specification <- function(
+  data, outcome, condition, levels, contrast, covariates = character()
+) {
+  stopifnot(length(contrast) == 2L, !anyDuplicated(contrast),
+            all(contrast %in% levels))
+  d <- data
+  d[[outcome]] <- as.numeric(scale(d[[outcome]]))
+  for (cv in covariates) {
+    d[[cv]] <- as.numeric(scale(d[[cv]]))
+  }
+  d$bf_intercept <- 1
+  d$bf_contrast <- ifelse(d[[condition]] == contrast[1], 0.5,
+                         ifelse(d[[condition]] == contrast[2], -0.5, 0))
+  other_levels <- sort(setdiff(levels, contrast))
+  other_terms <- character()
+  for (i in seq_along(other_levels)) {
+    term <- paste0("bf_other_", i)
+    d[[term]] <- as.numeric(d[[condition]] == other_levels[i])
+    other_terms <- c(other_terms, term)
+  }
+  nuisance_terms <- c("bf_intercept", other_terms, covariates)
+  make_formula <- function(terms) {
+    stats::reformulate(terms, response = outcome, intercept = FALSE)
+  }
+  nuisance_priors <- c(
+    brms::set_prior("normal(0, 1)", class = "b"),
+    brms::set_prior("exponential(1)", class = "sigma")
+  )
+  list(
+    data = d,
+    formula_full = make_formula(c(nuisance_terms, "bf_contrast")),
+    formula_null = make_formula(nuisance_terms),
+    priors_full = c(nuisance_priors,
+                   brms::set_prior(EFFECT_SIZE_PRIOR, class = "b",
+                                   coef = "bf_contrast")),
+    priors_null = nuisance_priors
+  )
+}
+
+# Bayes factor for one planned contrast of a game-level regression. Retain
+# all conditions of the primary model and the same covariates, with equal
+# weight per game. Only the tested contrast is removed under the null.
 #
-# The full model is the primary OLS model refit in brms: all `levels` of the
-# condition factor, the same covariates, every game with equal weight
-# (unweighted, like the primary analysis). The null model for the contrast
-# "a minus b" equates conditions a and b (their two levels are merged into
-# one), keeping every other condition and covariate, so BF10 concerns exactly
-# the planned contrast and nothing else in the model. With two conditions the
-# merged factor has one level and the null drops condition altogether.
-#
-# The outcome and continuous covariates are z-scored so the condition
-# coefficients are standardized, and the Cauchy(0, sqrt(2)/2) prior is placed
-# on every population-level coefficient (two-sided).
-#   data        game-level data frame (gs_wide() output restricted as in the
-#               primary fit; rows with a missing outcome/covariate are dropped)
-#   outcome     outcome column
-#   condition   condition column (character or factor)
-#   levels      every condition in the primary model, in factor order
-#   contrast    c(a, b): the two conditions the planned contrast compares
-#   covariates  continuous covariates (z-scored)
+# `contrast = c(a, b)` tests a minus b. The outcome and continuous covariates
+# are z-scored; the Cauchy prior is on this single difference in outcome SD
+# units, regardless of the condition factor's reference level.
 bf_game_level_contrast <- function(
   data,
   outcome,
@@ -238,73 +267,16 @@ bf_game_level_contrast <- function(
       interpretation = "not computed (fewer than two games per condition)"
     ))
   }
-  d[[condition]] <- factor(d[[condition]], levels = levels)
-  d[[outcome]] <- as.numeric(scale(d[[outcome]]))
-  for (cv in covariates) {
-    d[[cv]] <- as.numeric(scale(d[[cv]]))
-  }
-  # The null equates the two contrasted conditions
-  merged <- paste(contrast, collapse = "_eq_")
-  null_levels <- as.character(d[[condition]])
-  null_levels[null_levels %in% contrast] <- merged
-  # Same level order as the full model, with the merged level taking the
-  # place of the first contrasted condition (so the reference level is the
-  # same whenever the contrast includes it)
-  d[["condition_null"]] <- factor(
-    null_levels,
-    levels = unique(ifelse(levels %in% contrast, merged, levels))
+  spec <- bf_game_level_specification(
+    d, outcome, condition, levels, contrast, covariates
   )
-  cov_txt <- if (length(covariates)) {
-    paste(covariates, collapse = " + ")
-  } else {
-    NULL
-  }
-  f_full <- as.formula(paste(
-    outcome,
-    "~",
-    paste(c(condition, cov_txt), collapse = " + ")
-  ))
-  null_terms <- c(
-    if (nlevels(d[["condition_null"]]) > 1) "condition_null",
-    cov_txt
-  )
-  f_null <- as.formula(paste(
-    outcome,
-    "~",
-    if (length(null_terms)) paste(null_terms, collapse = " + ") else "1"
-  ))
-  base_priors <- c(
-    set_prior("normal(0, 1)", class = "Intercept"),
-    set_prior("exponential(1)", class = "sigma")
-  )
-  # As in the logistic case, the effect-size prior belongs to the condition
-  # coefficients, which are the contrast being tested. The covariates are
-  # z-scored too, so a Cauchy on them would not be on the wrong scale, but it
-  # would still be an effect-size prior on a nuisance term; they get the
-  # weakly informative prior instead. Both appear identically in the full and
-  # null models.
-  cond_prior <- function(f) {
-    gp <- get_prior(f, data = d, family = gaussian())
-    b <- gp[gp$class == "b" & nzchar(gp$coef), , drop = FALSE]
-    cond_coefs <- b$coef[
-      startsWith(b$coef, condition) |
-        startsWith(b$coef, "condition_null")
-    ]
-    pr <- c(set_prior("normal(0, 1)", class = "b"), base_priors)
-    for (cf in cond_coefs) {
-      pr <- c(pr, set_prior(EFFECT_SIZE_PRIOR, class = "b", coef = cf))
-    }
-    pr
-  }
-  priors_full <- cond_prior(f_full)
-  priors_null <- if (length(null_terms)) cond_prior(f_null) else base_priors
   fit_bf_pair(
-    f_full,
-    f_null,
-    d,
+    spec$formula_full,
+    spec$formula_null,
+    spec$data,
     gaussian(),
-    priors_full,
-    priors_null,
+    spec$priors_full,
+    spec$priors_null,
     name,
     cache_dir,
     iter,

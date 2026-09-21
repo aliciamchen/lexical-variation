@@ -53,6 +53,24 @@ check(
   )
 )
 
+# compute_derived.py keeps the rows the specificity start rule excludes -- the
+# first block of a phase, and later cells where one group has a single
+# describer -- so the descriptive within-vs-between panel can plot them, and
+# flags them `allGroupsPaired = 0`. The H3b aggregation must not pick them up.
+flagged_h3b <- pairs_h3b |>
+  mutate(allGroupsPaired = if_else(blockNum == 2, 0, 1))
+check(
+  "within-group block means drop the rows the start rule excludes",
+  {
+    m <- within_group_block_means(flagged_h3b, games_h3b)
+    nrow(m) > 0L && !any(m$blockNum == 2)
+  }
+)
+check(
+  "a table written before the flag existed is eligible throughout",
+  nrow(within_group_block_means(pairs_h3b, games_h3b)) == nrow(means_h3b)
+)
+
 exported_scale <- expand_grid(
   gameId = c("g1", "g2"),
   blockNum = 1:5,
@@ -132,8 +150,9 @@ check(
     sm_h3b$lower.CL > 0 &&
     sm_h3b$p.value < 0.05
 )
+m_h3b_block_lm <- lm(similarity ~ condition, data = filter(d_h3b, block == H3B_BLOCK))
 sm_h3b_block <- as.data.frame(summary(
-  h3b_block_contrast(m_h3b_lm),
+  h3b_block_contrast(m_h3b_block_lm),
   infer = c(TRUE, TRUE)
 ))
 check(
@@ -143,26 +162,19 @@ check(
     sm_h3b_block$lower.CL > 0 &&
     sm_h3b_block$p.value < 0.05
 )
-check("the block contrast reads the milestone, so block 6 gives a bigger gap", {
-  at6 <- as.data.frame(summary(h3b_block_contrast(m_h3b_lm, block = 6)))
-  abs(at6$estimate - 0.36) < 0.03 && at6$estimate > sm_h3b_block$estimate
-})
-check("centering block leaves both contrasts unchanged", {
+check("centering block leaves the slope contrast unchanged", {
   d_c <- d_h3b |> mutate(block = block - mean(2:6))
   m_c <- lm(similarity ~ condition * block, data = d_c)
   sl_c <- as.data.frame(summary(h3b_slope_contrast(m_c)))
-  lv_c <- as.data.frame(summary(
-    h3b_block_contrast(m_c, block = 3 - mean(2:6))
-  ))
-  abs(sl_c$estimate - sm_h3b$estimate) < 1e-8 &&
-    abs(lv_c$estimate - sm_h3b_block$estimate) < 1e-8
+  abs(sl_c$estimate - sm_h3b$estimate) < 1e-8
 })
 check("reversing factor levels does not reverse the hypothesis", {
   rev_h3b <- d_h3b |>
     mutate(condition = factor(condition, levels = rev(SOCIAL_CONDITIONS)))
   m_rev <- lm(similarity ~ condition * block, data = rev_h3b)
   sm_rev <- as.data.frame(summary(h3b_slope_contrast(m_rev)))
-  block_rev <- as.data.frame(summary(h3b_block_contrast(m_rev)))
+  m_block_rev <- lm(similarity ~ condition, data = filter(rev_h3b, block == H3B_BLOCK))
+  block_rev <- as.data.frame(summary(h3b_block_contrast(m_block_rev)))
   abs(sm_rev$estimate - sm_h3b$estimate) < 1e-8 &&
     abs(block_rev$estimate - sm_h3b_block$estimate) < 1e-8
 })
@@ -178,8 +190,9 @@ check("a steeper social-mixed slope does not support H3b", {
     h3b_slope_contrast(m_f),
     infer = c(TRUE, TRUE)
   ))
+  m_block_f <- lm(similarity ~ condition, data = filter(flipped, block == H3B_BLOCK))
   block_f <- as.data.frame(summary(
-    h3b_block_contrast(m_f),
+    h3b_block_contrast(m_block_f),
     infer = c(TRUE, TRUE)
   ))
   sm_f$estimate < 0 &&
@@ -246,3 +259,35 @@ check(
   "the whole blocks 2-6 window is kept for the trajectory plot",
   setequal(unique(h3b_fit$data$block), 2:6)
 )
+
+check("the block-3 model uses only group and tangram intercepts", {
+  bars <- .re_findbars(formula(h3b_fit$block_model))
+  setequal(vapply(bars, function(x) deparse(x[[3]]), character(1)),
+           c("group", "target")) &&
+    all(vapply(bars, function(x) identical(x[[2]], 1), logical(1))) &&
+    identical(unique(h3b_fit$block_data$block), H3B_BLOCK)
+})
+check("changing later blocks leaves block-3 estimates and uncertainty unchanged", {
+  changed <- window_means |>
+    mutate(similarity = ifelse(block > H3B_BLOCK,
+                              0.9 - 0.07 * block, similarity))
+  refit <- fit_h3b(changed, verbose = FALSE)
+  isTRUE(all.equal(h3b_fit$block_summary, refit$block_summary)) &&
+    abs(refit$summary$estimate - h3b_fit$summary$estimate) > 0.02
+})
+check("block-3 inference remains available without a longitudinal window", {
+  fit <- fit_h3b(filter(window_means, block == H3B_BLOCK), verbose = FALSE)
+  is.null(fit$model) && !is.null(fit$note) &&
+    isTRUE(all.equal(fit$block_summary, h3b_fit$block_summary))
+})
+check("missing block 3 skips alignment while retaining the rate model", {
+  fit <- fit_h3b(filter(window_means, block != H3B_BLOCK), verbose = FALSE)
+  !is.null(fit$model) && is.null(fit$block_model) &&
+    identical(fit$block_note, "no observations at Phase 1 block 3")
+})
+check("block-3 replication is checked in its own analysis subset", {
+  fit <- fit_h3b(filter(window_means, !(block == H3B_BLOCK & gameId == "w4")),
+                 verbose = FALSE)
+  !is.null(fit$model) && is.null(fit$block_model) &&
+    identical(fit$block_note, "fewer than two games per condition")
+})

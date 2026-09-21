@@ -450,40 +450,33 @@ if (exists("gs_social") && nrow(gs_social) > 0) {
 
 ## H3b: Rate of within-group convergence and alignment at block 3
 
-H3b makes two predictions, both `social_first` minus `social_mixed`, both
-read off one fitted model and reported separately -- there is no omnibus
-support decision for H3b:
+H3b makes two predictions, both `social_first` minus `social_mixed`, estimated
+in separate prespecified models and reported separately:
 
-1. **Rate.** Within-group conventions converge *faster* in `social_first`,
-   tested as the condition-by-block interaction (a slope contrast).
-2. **Alignment.** They are more closely aligned by the end of the first
-   speaker cycle, tested as the condition difference at Phase 1 block 3
-   (`H3B_BLOCK`), obtained from `emmeans` after the model is fit.
+1. **Rate.** The condition difference in average linear change in within-group
+   similarity over Phase 1 blocks 2-6, tested as a slope contrast.
+2. **Alignment.** The condition difference at the end of the first speaker
+   cycle, tested in a model using only Phase 1 block 3 (`H3B_BLOCK`).
 
 Within-group pairwise similarities are averaged within group, tangram, and
-block over Phase 1 blocks 2-6 (1-indexed; block 1 has no within-group pair
-yet). The model is `H3B_FORMULA` in `analysis/R/convergence.R`:
+block (block 1 has no within-group pair yet). The rate model is
+`H3B_FORMULA` in `analysis/R/convergence.R`:
 
 ```
 within_group_similarity ~ condition * block
   + (block | group) + (block | tangram)
 ```
 
-Block is continuous, because a rate is a slope, and it is **not** centered:
-the block-3 quantity comes from `emmeans` at `block = 3`, so centering would
-buy nothing. Centering is a pure reparameterization here -- it moves the
-`condition` coefficient but leaves both contrasts identical (asserted in
-`analysis/tests/test_convergence.R`) -- so block is fitted raw and the
-`condition` row of the coefficient table is simply not interpreted, since at
-raw block 0 it extrapolates outside the data. Because block enters linearly,
-the block-3 level is a point on the fitted line and so is not independent of
-the slope; a categorical block would estimate the two separately.
+Block enters continuously. The alignment model is `H3B_BLOCK_FORMULA`, fit
+to one mean per group and tangram from block 3 alone:
 
-Both grouping factors carry a block slope: block is the effect under test and
-varies within each. There is no game term -- in Phase 1 the three groups of a
-game never interact, so the group is the conversing unit (same reasoning as
-the convention checks in `01_outcome_neutral.qmd`). Game-level replication in
-both conditions is required before the model is fit.
+```
+within_group_similarity ~ condition + (1 | group) + (1 | tangram)
+```
+
+Both models use group and tangram random effects, with no game term. Each
+requires at least two games per condition in its analysis subset. The
+block-3 estimate does not depend on the trajectory in other blocks.
 
 ```{r h3b-convergence}
 if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
@@ -502,8 +495,13 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
     cat("\nDifference in rates (social_first minus social_mixed):\n")
     print(h3b$summary)
     cat("H3b rate supported:", h3b$supported, "\n")
-    cat("\nFitted within-group similarity at block", H3B_BLOCK, "by condition:\n")
-    print(emmeans(m_h3b, "condition", at = list(block = H3B_BLOCK),
+  } else {
+    cat("H3b rate inference skipped:", h3b$note, "\n")
+  }
+  if (!is.null(h3b$block_model)) {
+    print(summary(h3b$block_model))
+    cat("\nWithin-group similarity from the block-3-only model by condition:\n")
+    print(emmeans(h3b$block_model, "condition",
                   lmer.df = "satterthwaite", lmerTest.limit = Inf))
     cat("\nDifference at block", H3B_BLOCK,
         "(social_first minus social_mixed):\n")
@@ -511,7 +509,7 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
     cat("H3b alignment supported:", h3b$block_supported, "\n")
     # Bayes factors are preregistered for H1, H2, H3a, H4a, and H4b only.
   } else {
-    cat("H3b inference skipped:", h3b$note, "\n")
+    cat("H3b alignment inference skipped:", h3b$block_note, "\n")
   }
 }
 ```
@@ -547,8 +545,8 @@ if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
       x = "Phase 1 block (1-indexed)",
       y = "Within-group cosine similarity",
       color = "Condition",
-      title = "H3b: rate of within-group convergence",
-      subtitle = "H3b predicts a steeper slope in social-first.",
+      title = "H3b: within-group convergence and early alignment",
+      subtitle = "H3b predicts a steeper slope and greater block-3 alignment in social-first.",
       caption = "Intervals resample games; a single pilot game per condition cannot estimate between-game uncertainty."
     )
 }
@@ -1236,8 +1234,13 @@ if (!has_rows(pairwise_sim_jaccard)) {
 }
 if (has_rows(block_pairwise_sim_jaccard)) {
   cat("\nWithin-group block pairs with and without a Jaccard similarity:\n")
+  # The eligible rows only, so this counts what the H3b Jaccard model sees.
   print(knitr::kable(
-    similarity_coverage(block_pairwise_sim_jaccard, games, by = c("phaseNum", "condition")),
+    similarity_coverage(
+      specificity_eligible(block_pairwise_sim_jaccard),
+      games,
+      by = c("phaseNum", "condition")
+    ),
     digits = 3
   ))
 }
@@ -1307,7 +1310,18 @@ if (!has_rows(block_pairwise_sim_jaccard)) {
       contrast_table(if (exists("h3b")) h3b$contrast else NULL, "primary (SBERT)"),
       contrast_table(h3b_jaccard$contrast, "Jaccard")
     ), digits = 3))
-    cat("H3b supported on Jaccard similarity:", h3b_jaccard$supported, "\n")
+    cat("H3b rate supported on Jaccard similarity:", h3b_jaccard$supported, "\n")
+  }
+  if (is.null(h3b_jaccard$block_model)) {
+    cat("H3b alignment on Jaccard similarity skipped:", h3b_jaccard$block_note, "\n")
+  } else {
+    cat(sprintf("H3b block-3 contrast on Jaccard similarity (%s):\n",
+                random_effects_structure(h3b_jaccard$block_model)))
+    print(knitr::kable(bind_rows(
+      contrast_table(if (exists("h3b")) h3b$block_contrast else NULL, "primary (SBERT)"),
+      contrast_table(h3b_jaccard$block_contrast, "Jaccard")
+    ), digits = 3))
+    cat("H3b alignment supported on Jaccard similarity:", h3b_jaccard$block_supported, "\n")
   }
 }
 ```
@@ -1422,8 +1436,12 @@ if (exists("h12_jaccard_reported") && isTRUE(h12_jaccard_reported)) {
 if (exists("h3a_jaccard_reported") && isTRUE(h3a_jaccard_reported)) {
   macros <- c(macros, contrast_macros("primaryHThreeAJaccard", h3a_jaccard$contrasts, row = 1))
 }
-if (exists("h3b_jaccard") && !is.null(h3b_jaccard$contrast)) {
-  macros <- c(macros, contrast_macros("primaryHThreeBJaccard", h3b_jaccard$contrast, row = 1))
+if (exists("h3b_jaccard")) {
+  macros <- c(
+    macros,
+    h3b_macros("primaryHThreeBJaccard", h3b_jaccard$summary),
+    h3b_macros("primaryHThreeBBlockThreeJaccard", h3b_jaccard$block_summary)
+  )
 }
 
 write_stats_tex(macros, stats_file("primary"), source = "analysis/02_primary_analysis.qmd")
