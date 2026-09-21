@@ -41,6 +41,15 @@ MAX_FAILURES=3
 LOG_WINDOW="20 min ago"
 LOG_LINES=2000
 
+# Options on every ssh and scp. Without them a connection that hangs rather
+# than refuses -- a laptop whose wifi dropped, a server under load -- blocks
+# the loop indefinitely, and because it never returns it never counts as a
+# failure either, so the three-strikes rule cannot fire and the backups simply
+# stop with no message. BatchMode stops ssh waiting on a passphrase prompt
+# nobody is watching, ServerAlive gives up on a connection that goes quiet
+# mid-transfer, and the export itself is allowed longer than the connect.
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+
 # --- help ---
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     sed -n '2,/^$/{ s/^# \{0,1\}//; p; }' "$0"
@@ -81,7 +90,7 @@ do_backup() {
     dest="$DATA_DIR/$stamp"
 
     echo "[$(now)] Running empirica export on server..."
-    if ! ssh "$REMOTE" "cd $REMOTE_DIR && empirica export --out $remote_zip" 2>&1; then
+    if ! ssh "${SSH_OPTS[@]}" "$REMOTE" "cd $REMOTE_DIR && empirica export --out $remote_zip" 2>&1; then
         fail "empirica export" || return 1
     fi
 
@@ -90,8 +99,8 @@ do_backup() {
     # Copied under a name extract_run.py never matches, then renamed, so a
     # half-copied zip is never mistaken for an export.
     local partial="$dest/.partial-$stamp.zip"
-    if ! scp "$REMOTE:$remote_zip" "$partial"; then
-        ssh "$REMOTE" "rm -f $remote_zip" 2>/dev/null || true
+    if ! scp "${SSH_OPTS[@]}" "$REMOTE:$remote_zip" "$partial"; then
+        ssh "${SSH_OPTS[@]}" "$REMOTE" "rm -f $remote_zip" 2>/dev/null || true
         rm -f "$partial"
         rmdir "$dest" 2>/dev/null || true
         fail "scp" || return 1
@@ -99,7 +108,7 @@ do_backup() {
     mv "$partial" "$dest/$(basename "$remote_zip")"
 
     # Clean up remote zip
-    ssh "$REMOTE" "rm -f $remote_zip" 2>/dev/null || true
+    ssh "${SSH_OPTS[@]}" "$REMOTE" "rm -f $remote_zip" 2>/dev/null || true
 
     # The server's own log, next to the export it belongs to.
     #
@@ -112,7 +121,7 @@ do_backup() {
     # touch the failure counter.
     local log_file errs
     log_file="$dest/server-log-$stamp.txt"
-    if ! ssh "$REMOTE" "journalctl -u empirica --since '$LOG_WINDOW' --no-pager 2>/dev/null || tail -n $LOG_LINES $REMOTE_DIR/empirica.log 2>/dev/null" \
+    if ! ssh "${SSH_OPTS[@]}" "$REMOTE" "journalctl -u empirica --since '$LOG_WINDOW' --no-pager 2>/dev/null || tail -n $LOG_LINES $REMOTE_DIR/empirica.log 2>/dev/null" \
         > "$log_file" 2>/dev/null; then
         echo "[$(now)] NOTE: could not fetch the server log; the export itself is fine." >&2
         rm -f "$log_file"
