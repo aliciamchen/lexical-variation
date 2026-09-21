@@ -7,6 +7,7 @@ import { Quiz } from "./Quiz";
 import _ from "lodash";
 import {
   ESTIMATED_TIME,
+  EXIT_REASONS,
   BASE_PAY,
   MAX_BONUS,
   NUM_TANGRAMS,
@@ -43,6 +44,18 @@ export function Introduction({ next }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
+    // A player who used up their quiz attempts must not be given the
+    // instructions again. Empirica clears `ended` when it reassigns a player
+    // to another game in the same batch, which puts a triple quiz failure
+    // back at page one of the intro with nothing stopping them from passing
+    // on a fourth attempt. `exitReason` survives the reassignment, so
+    // re-applying `ended` here sends them straight back to the exit screens,
+    // before they read six pages again.
+    if (player?.get("exitReason") === EXIT_REASONS.quizFailed) {
+      player.set("ended", EXIT_REASONS.quizFailed);
+      return;
+    }
+
     if (player?.id) {
       // The Empirica player id only: it is what the export and Sentry share,
       // and it is not a Prolific id. (The player's name is assigned at game
@@ -297,8 +310,8 @@ export function Introduction4({ next }) {
         time is up and will not get a bonus, so please stay focused.
       </p>
       <p>
-        If we detect that you are inactive, you will be removed from the
-        game.
+        If we detect that you are inactive, you will be removed from the game
+        and lose your bonus.
       </p>
       <p>
         In each block, participants will describe {NUM_TANGRAMS} of the

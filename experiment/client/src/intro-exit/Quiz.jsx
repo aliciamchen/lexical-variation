@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { usePlayer, useGame } from "@empirica/core/player/classic/react";
+import { Loading } from "@empirica/core/player/react";
 import { Button } from "../components/Button";
 import { EXIT_REASONS, MAX_QUIZ_ATTEMPTS } from "../constants";
 
@@ -10,11 +11,27 @@ export function Quiz({ next }) {
   const [answers, setAnswers] = useState({});
   // Attempts are stored on the player record (not just React state) so a page
   // reload cannot reset the three-attempt limit.
-  const [attempts, setAttempts] = useState(player.get("quiz_attempts") || 0);
+  //
+  // Read through a lazy initializer: the argument to useState is evaluated on
+  // every render even though React keeps only the first, so a plain
+  // `player.get(...)` here throws on any re-render in which the player
+  // subscription is momentarily empty, and it throws inside the hook, where no
+  // guard below it can help. The function form runs once, at mount, which
+  // EmpiricaContext only reaches with a player present, so the persisted
+  // attempt count is still read correctly.
+  const [attempts, setAttempts] = useState(
+    () => player?.get("quiz_attempts") || 0,
+  );
   // Shown for the instant between the third failure and Empirica switching to
   // the exit steps (App.jsx routes a quiz failure to the Sorry page). A player
   // whose failure is already recorded never renders the quiz at all.
   const [failed, setFailed] = useState(false);
+
+  // Below every hook, so the hook order cannot change between renders. See
+  // Sorry.jsx for why a subscription-backed player has to be guarded at all.
+  if (!player) {
+    return <Loading />;
+  }
 
   const baseQuestions = [
     {
@@ -100,6 +117,18 @@ export function Quiz({ next }) {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+
+    // Already out of attempts. Empirica clears `ended` when it reassigns a
+    // player to another game in the same batch, so a player who failed three
+    // times in a game that then filled without them can arrive back at the
+    // quiz with their attempts spent and `ended` gone. `exitReason` survives
+    // that, and is written only on a third failure, never on a pass, so it is
+    // the safe test. Re-apply the exit rather than mark a fourth attempt.
+    if (player.get("exitReason") === EXIT_REASONS.quizFailed) {
+      setFailed(true);
+      player.set("ended", EXIT_REASONS.quizFailed);
+      return;
+    }
 
     const allCorrect = questions.every(
       (q, index) => answers[index] === q.correctAnswer
