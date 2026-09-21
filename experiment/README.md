@@ -18,7 +18,7 @@ and publishing the study at the announced time. It needs `PROLIFIC_TOKEN` and
 prints its plan and asks before acting.
 
 ```bash
-uv run python operations/session.py --help              # the seven session steps, in order
+uv run python operations/session.py --help              # the session steps, in order
 uv run python operations/session.py surveys --counts    # survey ids, with response counts
 uv run python operations/session.py studies             # study ids, newest first
 ```
@@ -105,13 +105,13 @@ Client errors are reported to Sentry via `@sentry/react` (configured in `client/
 - **Dashboard**: `https://$SENTRY_ORG.sentry.io/`
 - **Features**: error tracking, session replays for sessions that hit an error (text and inputs masked), browser tracing, structured logs
 
-Every URL that Sentry reports is cut at the `?` before it leaves the browser (`beforeSend`, `beforeSendTransaction`, and `beforeBreadcrumb` in `index.jsx`), so the Prolific ids in the study link's query string never reach Sentry; the Sentry user is the Empirica player id only.
+Every URL that Sentry reports is cut at the `?` before it leaves the browser, so the Prolific ids in the study link's query string never reach Sentry; the Sentry user is the Empirica player id only. Errors, performance events and breadcrumbs are covered by `beforeSend`, `beforeSendTransaction` and `beforeBreadcrumb` in `index.jsx`. Session replays need their own handling, because the SDK runs none of those hooks for them: the same scrubbing function is also registered as a global event processor, and `beforeAddRecordingEvent` cuts the page address out of the recording itself.
 
 During pilot sessions, keep the Sentry dashboard open to watch for client errors, slow page loads, and websocket disconnections.
 
 ## Playwright tests
 
-The test suite contains 45 spec files across 13 categories, covering all 4 conditions, idle detection, group viability, compensation (including the researcher stopping a batch mid-game), UI, timing, and more. The Empirica server is managed automatically by the test framework.
+The test suite contains 47 spec files across 13 categories, covering all 4 conditions, idle detection, group viability, compensation (including the researcher stopping a batch both mid-game and while players are still waiting in the lobby), UI, timing, and more. The Empirica server is managed automatically by the test framework.
 
 ### Setup
 
