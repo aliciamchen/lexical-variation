@@ -137,14 +137,37 @@ test.describe.serial('Happy Path: refer_mixed', () => {
 
     const snapshot = async () => {
       const groups: Record<number, string> = {};
+      let trial = -1;
       for (let i = 0; i < active.length; i++) {
         const info = await getPlayerInfo(active[i]);
         if (info?.currentGroup) groups[i] = info.currentGroup;
+        if (i === 0 && info) trial = info.round;
       }
-      return groups;
+      return { trial, groups };
     };
-    const changedBetween = (a: Record<number, string>, b: Record<number, string>) =>
-      Object.keys(a).filter((k) => b[+k] !== undefined && a[+k] !== b[+k]).length;
+    const changedBetween = (
+      a: { groups: Record<number, string> },
+      b: { groups: Record<number, string> },
+    ) =>
+      Object.keys(a.groups).filter(
+        (k) => b.groups[+k] !== undefined && a.groups[+k] !== b.groups[+k],
+      ).length;
+
+    // `waitForStage` returns the moment it sees Selection, and Selection is
+    // still what the client shows for the trial just played until the stage
+    // transition reaches it. Waiting on the name alone therefore snapshotted
+    // the same trial twice and compared it with itself, which is how this
+    // test failed on 2026-09-21 with three byte-identical assignments. Wait
+    // for the trial number to move instead.
+    const waitForNextTrial = async (previous: number) => {
+      const start = Date.now();
+      while (Date.now() - start < 60_000) {
+        const info = await getPlayerInfo(active[0]);
+        if (info && info.stageName === 'Selection' && info.round !== previous) return;
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      throw new Error(`trial did not advance past ${previous} within 60s`);
+    };
 
     // Groups are reshuffled at the start of every Phase 2 trial. Compare two
     // consecutive transitions; an identical assignment twice in a row has
@@ -152,13 +175,20 @@ test.describe.serial('Happy Path: refer_mixed', () => {
     await waitForStage(active[0], 'Selection', 60_000);
     const t0 = await snapshot();
     await playRound(active);
-    await waitForStage(active[0], 'Selection', 60_000);
+    await waitForNextTrial(t0.trial);
     const t1 = await snapshot();
     await playRound(active);
-    await waitForStage(active[0], 'Selection', 60_000);
+    await waitForNextTrial(t1.trial);
     const t2 = await snapshot();
 
-    expect(Object.keys(t0).length).toBe(active.length);
+    expect(Object.keys(t0.groups).length).toBe(active.length);
+    // Proven separately from the comparison below, so that a future failure
+    // says which of the two it is: three distinct trials whose assignments
+    // never changed would be a finding about the reshuffling itself.
+    expect(
+      new Set([t0.trial, t1.trial, t2.trial]).size,
+      `expected three different trials; got ${JSON.stringify([t0.trial, t1.trial, t2.trial])}`,
+    ).toBe(3);
     expect(
       changedBetween(t0, t1) + changedBetween(t1, t2),
       `expected current groups to change between consecutive trials; got ${JSON.stringify([t0, t1, t2])}`,
