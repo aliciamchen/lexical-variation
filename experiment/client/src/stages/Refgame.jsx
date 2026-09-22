@@ -247,6 +247,7 @@ export function Refgame(props) {
       Math.round((pictureRoundScore + socialRoundScore) * 100) / 100;
 
     if (player.round.get("role") == "listener") {
+      const clicked = player.round.get("clicked");
       // Check if speaker was missing (kicked) or idle (didn't send any message)
       if (!speaker) {
         feedback =
@@ -254,22 +255,52 @@ export function Refgame(props) {
       } else if (!speakerSentMessage) {
         feedback =
           "The speaker did not send a message this round. No points were awarded.";
-      } else if (!player.round.get("clicked")) {
-        // Listener didn't respond in time
-        feedback =
-          "You did not respond in time. You earned no points this round.";
       } else if (isSocialMixed) {
-        // Social mixed: show picture feedback + social feedback card + combined score
-        const pictureFeedback = correct
-          ? "Correct! You identified the target picture."
-          : "That wasn't the target picture.";
-
+        // Social phase: the picture and the group guess are reported
+        // separately, because a round can hold one without the other (the
+        // deadline auto-commit saves whichever choices were made). This used
+        // to fall into the plain "did not respond, no points" branch whenever
+        // the picture was missing, which told a participant whose group guess
+        // had just been scored that the game had ignored their answer
+        // (2026-09-22 session).
         const socialGuess = player.round.get("social_guess");
         const socialCorrect = player.round.get("social_guess_correct");
         const speakerWasSameGroup = player.round.get("speaker_was_same_group");
 
-        let socialCard = null;
-        if (socialGuess) {
+        let pictureFeedback;
+        if (!clicked) {
+          pictureFeedback = "You did not select a picture in time.";
+        } else if (correct) {
+          pictureFeedback = "Correct! You identified the target picture.";
+        } else {
+          pictureFeedback = "That wasn't the target picture.";
+        }
+
+        const cardBase = {
+          fontWeight: "600",
+          padding: "10px 14px",
+          borderRadius: 6,
+          margin: "10px auto",
+          maxWidth: "70%",
+          textAlign: "left",
+        };
+        const neutralCard = { backgroundColor: "#f3f4f6", color: "#4b5563" };
+        let socialCard;
+        if (!socialGuess) {
+          socialCard = (
+            <div style={{ ...cardBase, ...neutralCard }}>
+              You did not answer the group question in time.
+            </div>
+          );
+        } else if (socialCorrect === undefined || socialCorrect === null) {
+          // Scoring is final at the deadline, so a guess committed after it
+          // is recorded but never scored (isLateSocialGuess, server/src/idle.js).
+          socialCard = (
+            <div style={{ ...cardBase, ...neutralCard }}>
+              Your group guess arrived after the deadline and was not scored.
+            </div>
+          );
+        } else {
           const cardStyle = socialCorrect
             ? { backgroundColor: "#f0fdf4", color: "#16a34a" }
             : { backgroundColor: "#fef2f2", color: "#dc2626" };
@@ -278,24 +309,17 @@ export function Refgame(props) {
             ? `Speaker identity guess correct: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`
             : `Speaker identity guess incorrect: the speaker ${speakerWasSameGroup ? "was" : "was not"} a member of your original group.`;
           socialCard = (
-            <div
-              style={{
-                ...cardStyle,
-                fontWeight: "600",
-                padding: "10px 14px",
-                borderRadius: 6,
-                margin: "10px auto",
-                maxWidth: "70%",
-                textAlign: "left",
-              }}
-            >
+            <div style={{ ...cardBase, ...cardStyle }}>
               {prefix}
               {text}
             </div>
           );
         }
 
-        const pointsLine = `You earned ${combinedScore} ${combinedScore == 1 ? "point" : "points"} this round.`;
+        const pointsLine =
+          combinedScore > 0
+            ? `You earned ${combinedScore} ${combinedScore == 1 ? "point" : "points"} this round.`
+            : "You earned no points this round.";
         feedback = (
           <>
             {pictureFeedback}
@@ -303,6 +327,10 @@ export function Refgame(props) {
             {pointsLine}
           </>
         );
+      } else if (!clicked) {
+        // Listener didn't respond in time
+        feedback =
+          "You did not respond in time. You earned no points this round.";
       } else if (correct) {
         feedback = `Correct! You earned ${pictureRoundScore} ${pictureRoundScore == 1 ? "point" : "points"}.`;
       } else {
