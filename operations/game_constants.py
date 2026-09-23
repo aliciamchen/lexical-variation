@@ -2,7 +2,7 @@
 Game constants read from the Empirica source, so the operations tooling cannot
 drift from the running experiment.
 
-`operations/session.py` needs a handful of values that the experiment already
+`operations/payments.py` and `operations/tally.py` need a handful of values that the experiment already
 defines: the three Prolific completion codes, the pay figures, the condition
 names, and the exit reasons the server records when it removes a player. Those
 used to be copied into Python by hand, which meant a reworded exit reason or a
@@ -115,7 +115,7 @@ def load():
         if not codes.get(key):
             raise ConstantsError(
                 f"PROLIFIC_CODES in {CONSTANTS_JS.name} has no {key!r} code; "
-                "session.py needs all three to tell submissions apart."
+                "payments.py needs all three to tell submissions apart."
             )
     group_size = int(_number(source, "GROUP_SIZE"))
     groups = _string_list(source, "GROUP_NAMES")
@@ -134,7 +134,7 @@ def exit_reasons() -> set[str]:
 
     callbacks.js writes `player.set("exitReason", EXIT_REASONS.<key>)` rather
     than a literal, so the object in shared/constants.js is the one list of
-    reasons. `session.py` words each removed participant's message from this
+    reasons, the vocabulary the exit screens and the payment notes are written in, from this
     value, so a reason the tooling has never heard of is worth refusing rather
     than quietly sending the blame-neutral wording to someone whose group left.
     """
@@ -143,6 +143,6 @@ def exit_reasons() -> set[str]:
         reasons = _string_object(source, "EXIT_REASONS")
     except ConstantsError as error:
         raise ConstantsError(
-            f"{error} session.py cannot word removal messages without EXIT_REASONS."
+            f"{error} EXIT_REASONS is required."
         ) from error
     return set(reasons.values())

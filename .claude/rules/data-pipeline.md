@@ -4,6 +4,7 @@ paths:
   - "data/**"
   - "experiment/data/**"
   - "operations/copy_tajriba.sh"
+  - "operations/payments.py"
 ---
 
 # Data and analysis pipeline
@@ -15,7 +16,8 @@ The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pil
 | Directory | Contents | Committed? |
 |-----------|----------|------------|
 | `experiment/data/<timestamp>/` | Raw Empirica export zips from `operations/copy_tajriba.sh` | No |
-| `data/runs/<timestamp>/` | Per-run extracts (raw/, bonuses.csv), shared across datasets | No (gitignored) |
+| `data/runs/<timestamp>/` | Per-run extracts (the anonymized `raw/` CSVs), shared across datasets | No (gitignored) |
+| `data/payments/<name>/` | What each Prolific study still owes (`make payments`): one folder per study with paste-ready `bonus.csv`, `partial.csv`, `lobby.csv` and `status.csv`, rewritten on every run. Holds Prolific ids | No (gitignored) |
 | `data/<name>/runs.txt` | The export timestamps combined into the dataset, one per line | Yes |
 | `data/<name>/exclude_games.txt` | Optional input: Empirica game ids of test and rehearsal games to drop at the combine step (one per line, `#` comments) | Yes |
 | `data/<name>/raw_anonymized/` | Anonymized raw Empirica CSVs stacked across those runs | Yes |
@@ -58,7 +60,7 @@ uv run python analysis/combine_runs.py --dataset <name>        → data/<name>/r
 uv run python analysis/process_data.py --dataset <name>        → data/<name>/, analysis/derived/<name>/
 ```
 
-`combine_runs.py` writes `data/<name>/dropouts.csv` from the player records that never played a real game (quiz failures, lobby timeouts, arrivals after the games were full), and removes from `raw_anonymized/player.csv` any record of a real game that never started; `preprocessing.py` honors `data/<name>/participant_exclusions.csv` (`playerId,reason`, reason required, unknown ids refused): excluded players' messages leave `messages.csv` and `speaker_utterances.csv`, so every derived measure is computed without them, and `excluded`/`exclusionReason` are set on their own rows and on the rows of listeners they spoke to, while `responseOpportunity` is left as computed. `combine_runs.py` also honors `data/<name>/exclude_games.txt` (game ids of rehearsal or deploy-check games that ran on the production server; `#` comments allowed): the listed games and every dependent row are dropped, the count is printed, and the ids go into `manifest.json` under `excluded_games`. `extract_run.py --no-register` extracts a zip without adding it to `runs.txt`; its options (`--dataset`, `--batch`, `--all-batches`, `--no-register`) may come in any order around the zip path, and `list`, `bonuses`, and `early-ended` are subcommands. Positional runs given to `combine_runs.py` for the frozen `pilots` dataset must be exactly the runs in `data/pilots/runs.txt` unless `--allow-pilot` is passed (`dataset_paths.FROZEN_DATASET` names the frozen dataset for both scripts). `preprocessing.py` reports, once per column, how many JSON values of the export it could not parse and treated as missing; silence means every value parsed.
+`combine_runs.py` writes `data/<name>/dropouts.csv` from the player records that never played a real game (quiz failures, lobby timeouts, arrivals after the games were full), and removes from `raw_anonymized/player.csv` any record of a real game that never started; `preprocessing.py` honors `data/<name>/participant_exclusions.csv` (`playerId,reason`, reason required, unknown ids refused): excluded players' messages leave `messages.csv` and `speaker_utterances.csv`, so every derived measure is computed without them, and `excluded`/`exclusionReason` are set on their own rows and on the rows of listeners they spoke to, while `responseOpportunity` is left as computed. `combine_runs.py` also honors `data/<name>/exclude_games.txt` (game ids of rehearsal or deploy-check games that ran on the production server; `#` comments allowed): the listed games and every dependent row are dropped, the count is printed, and the ids go into `manifest.json` under `excluded_games`. `extract_run.py --no-register` extracts a zip without adding it to `runs.txt`; its options (`--dataset`, `--no-register`) may come in any order around the zip path, and `list` is the only subcommand. It writes no payment files: who is owed what comes from `make payments` (below). Positional runs given to `combine_runs.py` for the frozen `pilots` dataset must be exactly the runs in `data/pilots/runs.txt` unless `--allow-pilot` is passed (`dataset_paths.FROZEN_DATASET` names the frozen dataset for both scripts). `preprocessing.py` reports, once per column, how many JSON values of the export it could not parse and treated as missing; silence means every value parsed.
 
 Step 3 runs these sub-steps in order:
 
@@ -128,9 +130,11 @@ Starting the full sample: `mkdir data/full`, write its `runs.txt`, then the same
 
 ```bash
 uv run python analysis/extract_run.py list                               # list extracted runs
-uv run python analysis/extract_run.py bonuses                            # print latest bonuses
-uv run python analysis/extract_run.py bonuses --run 20260225_210047      # specific run
+make payments DATASET=full                                               # what each Prolific study still owes
+make tally DATASET=full                                                  # games per condition and tangram set
 ```
+
+`make payments` (`operations/payments.py`) reads every zip in `runs.txt` directly, groups the players by the Prolific study recorded on them, and checks each study's submissions on Prolific with read-only calls; see the README's Payments section.
 
 ## Running individual scripts standalone
 

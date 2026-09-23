@@ -32,13 +32,15 @@ writing/
 # Analysis pipeline outputs
 analysis/*_files/
 data/runs/
+# What each Prolific study still owes (make payments): holds Prolific ids
+data/payments/
 data/old_pilots/
 full-sample-todos.md
 
 # brms fit caches for the Bayes factors (76 MB per dataset, reproducible from the notebooks)
 analysis/derived/*/bayes_factors/
 
-# Local session state written by operations/session.py
+# Local session state written by the retired operations/session.py
 operations/.sessions/
 
 # Admin password and tajriba service token; see experiment/.empirica/empirica.toml.example

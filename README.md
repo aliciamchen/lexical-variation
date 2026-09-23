@@ -78,9 +78,9 @@ git config core.hooksPath .githooks
 
 ## Running the experiment
 
-See [`experiment/README.md`](experiment/README.md) for full documentation on local development, production deployment, running sessions, copying data, error monitoring, and testing. The Prolific side of a session (screening survey, allowlist, reminder, publishing at the announced time, approvals, and payments) is driven by `operations/session.py`, and the step-by-step runbook is [`operations/procedures.md`](operations/procedures.md). Every command that changes anything prints its plan and asks before acting.
+See [`experiment/README.md`](experiment/README.md) for full documentation on local development, production deployment, running sessions, copying data, error monitoring, and testing. The Prolific side of a session (the screening survey, the allowlist, reminders, publishing, approvals and payments) is done by hand on the Prolific website, and the step-by-step runbook is [`operations/procedures.md`](operations/procedures.md).
 
-A few of its commands are worth knowing about before the first session. `uv run python operations/session.py tally` counts the complete games in `data/<dataset>/games.csv` (`DATASET`, default `full`) in each of the eight condition-by-tangram-set cells, adds the saved sessions that have not yet paid a run, and marks the emptiest cell, which is the treatment the next session should run; `setup` prints the same table before creating anything. It also reports progress against both halves of the preregistered stopping rule, which ends recruitment at whichever limit comes first: 20 intact nine-player games in every condition, or 120 games started in total. The cap counts every game that began, including those that lost a player or did not finish, and `tally` says so when either limit is reached. `setup` also records a budget for the session (the cost ceiling it prints, or `--budget`), and `pay` refuses to go past it. `pay` never pays a removed or lobby-timeout participant whose submission Prolific has already approved, since approval pays the full study reward. Backups taken with `operations/copy_tajriba.sh` each land in their own `experiment/data/<timestamp>/empirica-export-<timestamp>.zip`, named by the export's timestamp, so every backup during a session is an export the pipeline can find; the loop carries on through a failed connection and stops only after three consecutive failures.
+Two commands support that work. `make tally DATASET=full` counts the intact games in `data/<dataset>/games.csv` in each of the eight condition-by-tangram-set cells and marks the emptiest cell, which is the treatment the next session should run. It also reports progress against both halves of the preregistered stopping rule, which ends recruitment at whichever limit comes first: 20 intact nine-player games in every condition, or 120 games started in total. The cap counts every game that began, including those that lost a player or did not finish, and `tally` says so when either limit is reached. `make payments DATASET=full` lists what each Prolific study still owes (see [Payments](#payments)). Backups taken with `operations/copy_tajriba.sh` each land in their own `experiment/data/<timestamp>/empirica-export-<timestamp>.zip`, named by the export's timestamp, so every backup during a session is an export the pipeline can find; the loop carries on through a failed connection and stops only after three consecutive failures.
 
 Participants reach the game from Prolific with their ID in the study link, and the identifier field is filled from it and locked so that ids cannot be mistyped. The last page of the exit survey keeps the completion code on screen (there is no Finish button to click past it), and reloading during the survey resumes at the first unanswered page. If a batch has to be stopped mid-game, the participants see an explanation, answer the exit survey, and receive the partial completion code with base pay prorated to their time plus the bonus earned so far. Sentry, which monitors client errors, receives no query strings (so no Prolific ids) and records session replays only for sessions that hit an error.
 
@@ -178,7 +178,7 @@ There are three scripts that should be run in order. Each reads the previous scr
 
 | Script | Reads from | Writes to |
 |--------|-----------|-----------|
-| `extract_run.py <zip> [--batch ID]` | Empirica export zip in `experiment/data/` | `data/runs/{timestamp}/raw/` + `bonuses.csv`, `early_ended.csv` and `run_meta.json`. Strips Prolific IDs and other PII from player.csv. Because an Empirica export covers the whole server rather than one session, the payment files are scoped to a single batch, by default the most recent one that ran a game. |
+| `extract_run.py <zip>` | Empirica export zip in `experiment/data/` | `data/runs/{timestamp}/raw/`. Strips Prolific IDs and other PII from player.csv, and registers the run in the dataset's `runs.txt`. |
 | `combine_runs.py [--dataset NAME] [runs]` | `data/runs/*/raw/` for the runs in `data/<name>/runs.txt` | `data/<name>/raw_anonymized/` + `manifest.json` |
 | `process_data.py [--dataset NAME]` | `data/<name>/raw_anonymized/` | `data/<name>/*.csv` + `analysis/derived/<name>/` |
 | ↳ `preprocessing.py` | `data/<name>/raw_anonymized/` | `data/<name>/*.csv` |
@@ -188,6 +188,12 @@ There are three scripts that should be run in order. Each reads the previous scr
 The block-by-block similarity tables carry one row per pair of speakers who have both described a tangram by that block, and an `allGroupsPaired` flag marking the rows where every original group has two such speakers. Group specificity, the difference between within-group and between-group similarity, is only defined on the flagged rows, which is why the analyses that compute it keep those alone; the descriptive figure that plots the two similarities separately uses every row, so it can show the first block of each phase, where each group has described the tangram once and only between-group pairs exist.
 
 Among the derived outputs, `pairwise_similarities_jaccard.csv` and `block_pairwise_similarities_jaccard.csv` repeat the sentence-embedding similarity tables pair for pair with the Jaccard overlap of the two descriptions' content words, which is the preregistered robustness check on the similarity measure; pairs where either description has no content words carry an empty similarity.
+
+### Payments
+
+`operations/payments.py` (run as `make payments DATASET=full`) works out what each Prolific study still owes. A session can span several Prolific studies and several Empirica batches, and each export is a cumulative snapshot of the server, so neither one export nor one batch lines up with the people a given study has to pay. The step therefore reads every export listed in the dataset's `runs.txt`, groups the players who were placed in a game by the Prolific study recorded from their study link, and then asks Prolific, with read-only requests only, for each study's name and submissions. The submissions carry each one's status and the bonuses already paid on it, and they also identify the lobby-timeout participants, who never reach a game and therefore appear in no export.
+
+The output is written to `data/payments/<dataset>/`, which is gitignored because it contains Prolific IDs. There is one folder per study, named by the study's creation date and internal name, holding paste-ready `bonus.csv`, `partial.csv` and `lobby.csv` files (`participant_id,amount`, no header) for Prolific's bulk bonus form, and a `status.csv` that lists everyone with the amount owed, the amount already paid, and the reason a row is not ready to pay. The directory is rewritten on every run, so running it again after paying on the website shows those people as settled. Finishers are owed their bonus, removed players their partial pay, and lobby timeouts the lobby payment; partial and lobby pay are paid as a bonus on a returned or awaiting-review submission, and an approved submission, which has already received the full base reward, is owed only whatever part of its amount exceeds that base. The step never pays anyone itself. It needs `PROLIFIC_TOKEN` in `.env`, and `--offline` lists the payees by study without contacting Prolific.
 
 ### Processing new data
 
@@ -209,7 +215,7 @@ make all DATASET=full    # the same for a dataset named full (data/full/runs.txt
 Or step by step:
 
 ```bash
-# 1. Extract each zip (unzip, anonymize, extract bonuses)
+# 1. Extract each zip (unzip, anonymize, register the run)
 uv run python analysis/extract_run.py experiment/data/20260301_132907/empirica-export-20260301_132907.zip
 uv run python analysis/extract_run.py experiment/data/20260301_214147/empirica-export-20260301_214147.zip
 
@@ -219,6 +225,8 @@ uv run python analysis/combine_runs.py --dataset pilots
 # 3. Run the pipeline (preprocess → filter → derived metrics)
 uv run python analysis/process_data.py --dataset pilots
 ```
+
+For the full sample, `make payments DATASET=full` then shows what each Prolific study still owes (see [Payments](#payments)).
 
 ### Notebooks for the pilot data
 

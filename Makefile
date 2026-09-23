@@ -19,6 +19,8 @@
 #   make combine        # stack runs → data/<name>/raw_anonymized/
 #   make process        # preprocess → filter → derived metrics
 #   make test           # validate processed data (pytest integrity suite)
+#   make payments       # what each Prolific study still owes → data/payments/<name>/
+#   make tally          # games per condition and tangram set; stopping-rule progress
 #   make notebooks      # render the dataset's notebooks
 #   make llm-process    # process LLM simulation JSONs → CSVs
 #
@@ -59,7 +61,7 @@ else
 NOTEBOOKS = $(wildcard analysis/0[0-9]_*.qmd)
 endif
 
-.PHONY: all pilot extract combine process process-no-filter notebooks llm-process test test-ops smoke runs help
+.PHONY: all pilot extract combine process process-no-filter payments tally notebooks llm-process test test-ops smoke runs help
 
 # ── Main targets ────────────────────────────────────────────
 
@@ -90,12 +92,19 @@ process: ## Run full pipeline (preprocess → filter → derived)
 process-no-filter: ## Run pipeline skipping filter (no Vertex AI needed)
 	uv run python analysis/process_data.py --dataset $(DATASET) --skip-filter
 
+payments: ## What each Prolific study still owes, from every zip in runs.txt → data/payments/<name>/ (read-only Prolific calls)
+	@if [ -z "$(RUNS)" ]; then echo "Error: no runs listed in $(RUNS_FILE)"; exit 1; fi
+	uv run python operations/payments.py --dataset $(DATASET) $(ZIPS)
+
+tally: ## Games per (condition, tangram set) cell and progress against the stopping rule (reads data/<name>/)
+	uv run python operations/tally.py --dataset $(DATASET)
+
 test: ## Validate processed data against the integrity suite and run the Python and R helper tests
-	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py operations/test_session.py -q
+	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py -q
 	Rscript analysis/tests/run_all.R
 
-test-ops: ## Run only the Prolific session tooling tests (no API calls, no data needed)
-	uv run pytest operations/test_session.py -q
+test-ops: ## Run only the operations tests: payments, tally, Prolific client (no API calls, no data needed)
+	uv run pytest operations/test_payments.py operations/test_tally.py operations/test_prolific.py -q
 
 # The zip is extracted into data/runs/<run>/ like any other and registered in
 # data/smoke/runs.txt, so the combine step reads the same file it always does.

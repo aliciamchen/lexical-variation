@@ -1395,15 +1395,12 @@ class TestExtractRunCommandLine:
     def test_a_bare_call_and_flags_alone_are_extracts(self):
         args = extract_run.parse_args([])
         assert args.command == "extract" and args.zip is None and args.dataset is None
-        assert not args.no_register and not args.all_batches and args.batch is None
-        args = extract_run.parse_args(["--batch", "b1", "--all-batches"])
-        assert args.batch == "b1" and args.all_batches and args.zip is None
+        assert not args.no_register
 
-    def test_subcommands_keep_their_run_option(self):
+    def test_list_is_the_only_subcommand(self):
         assert extract_run.parse_args(["list"]).command == "list"
-        args = extract_run.parse_args(["bonuses", "--run", "20260301_132907"])
-        assert args.command == "bonuses" and args.run == "20260301_132907"
-        assert extract_run.parse_args(["early-ended"]).run is None
+        # The payment subcommands are gone: a stray word is read as a zip path.
+        assert extract_run.parse_args(["bonuses"]).command == "extract"
 
 
 class TestClassifierCache:

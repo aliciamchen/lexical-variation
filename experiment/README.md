@@ -11,17 +11,12 @@ The full procedure, the messages sent to participants on Prolific, the per-sessi
 numbers from the pilots, and the operational gotchas are in
 [`operations/procedures.md`](../operations/procedures.md).
 
-`session.py` drives the Prolific side of a session through the API -- reading the screening
-survey, building the allowlist group from the eligible respondents, sending the reminder,
-and publishing the study at the announced time. It needs `PROLIFIC_TOKEN` and
-`PROLIFIC_WORKSPACE` in the repository-root `.env`, and every command that changes anything
-prints its plan and asks before acting.
-
-```bash
-uv run python operations/session.py --help              # the session steps, in order
-uv run python operations/session.py surveys --counts    # survey ids, with response counts
-uv run python operations/session.py studies             # study ids, newest first
-```
+Recruitment, approvals and payment are done on the Prolific website. Two commands help
+around a session: `make tally DATASET=full` counts the games in each condition and tangram
+set, so the next session can run the emptiest cell, and `make payments DATASET=full` lists,
+for each Prolific study, who is still owed a bonus, partial pay or lobby payment, with
+paste-ready files for Prolific's bulk bonus form. The second needs `PROLIFIC_TOKEN` in the
+repository-root `.env` and only reads from Prolific.
 
 
 

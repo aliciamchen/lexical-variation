@@ -32,7 +32,7 @@ One row per game session.
 | `phase2Blocks` | Number of blocks in Phase 2 |
 | `ended` | Whether Empirica marked the game as ended |
 | `endedReason` | Why the game ended: `end of game` when it ran to completion, `all players removed` when it terminated early |
-| `batchId` | The Empirica batch the game ran in. A data-collection session is one batch, so this groups the games of a session and ties each game to the payment ledger of `operations/session.py` |
+| `batchId` | The Empirica batch the game ran in. It groups the games that were started together from one batch in the admin panel |
 | `sourceRun` | The export timestamp (`YYYYMMDD_HHMMSS`, an entry of `runs.txt`) the game's records were read from, which is the newest export that contained it |
 
 ## players.csv

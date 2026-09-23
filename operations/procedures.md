@@ -2,165 +2,55 @@
 
 This is the runbook for one session of the reference game: recruiting nine (or eighteen, or
 twenty-seven) people on Prolific to be online at the same moment, running the game, and
-paying everyone afterwards. `operations/session.py` does the Prolific side; you do the
-Empirica side in the admin panel. The procedure and the numbers in it come from the pilot
-sessions of February and March 2026.
+paying everyone afterwards. Recruitment, approvals and payments are done by hand on the
+Prolific website, and the game is run from the Empirica admin panel. Two commands help:
+`make tally` says which treatment the next session should run, and `make payments` works out
+what each Prolific study still owes and writes the lines to paste into Prolific's bulk bonus
+form. The procedure and the numbers in it come from the pilot sessions of February and March
+2026 and the first full-sample sessions of September 2026.
 
 The game needs everyone online at once, so recruitment happens in two stages a few minutes
 apart: participants first answer a three-question screening survey saying they can make the
 session, then the game study is delivered to exactly those people at the announced time. The
 manuscript describes this in the Recruitment paragraph of `writing/preregistration/main.tex`.
 
-## How the commands work
-
-Eight commands, used in this order every session:
-
-| Step | Command | What it does |
-|------|---------|--------------|
-| 1 | `setup` | creates the screening survey and both study drafts |
-| 2 | `open` | publishes the screening survey so responses start |
-| 3 | `prepare` | turns the "yes" responses into an allowlist group and attaches it to the game draft |
-| 4 | `close` | stops the screening survey, once the allowlist is built |
-| 5 | `message` | sends the reminder to that group |
-| 6 | `publish` | publishes the game study, at the announced time if you like |
-| 7 | `approve` | approves the finishers' submissions |
-| 8 | `pay` | pays bonuses, partial pay and lobby-timeout pay, and sends the explanatory notes |
-
-Four read-only lookups sit beside them: `tally` counts the games so far in each of the eight
-(condition, tangram set) cells and marks the emptiest, which is the treatment the next session
-should run; `sessions` lists the saved sessions; `surveys` and `studies` find Prolific ids.
-`tally` and `sessions` read local files only and need no API token.
-
-Three things are true of all of them:
-
-**Every command that changes anything shows its plan and asks first.** Read what it is
-about to do, then answer `y`. Answering `n` (or Ctrl-C) leaves everything untouched. `--yes`
-skips the question for scripting.
-
-**Every step takes the same session name, and they share ids through it.** Pick any name --
-a date and time is easiest -- and pass it as `--session`. `setup` saves the ids it creates
-under that name in `operations/.sessions/`, `prepare` adds the group it makes, `pay` adds the
-run it processed, and each command prints what it read back, like
-`[2026-09-15-2100] game_study_id = 6aa4…`.
-
-**Nothing is published until you say so.** `setup` creates drafts only. `open` and `publish`
-are the two commands that make something visible to participants, and each asks
-separately.
-
-**Money is guarded at every step that spends it.** `setup` prints a cost ceiling for the
-session before it creates anything, records it as the session's budget (or the figure you
-give `--budget`), and refuses a template study whose reward, completion codes or code actions
-have drifted from `experiment/shared/constants.js`. `pay` pays a removed player or lobby
-timeout only if their submission is returned or awaiting review, never one already approved
-or rejected; refuses a total larger than the number of people being paid could plausibly be
-owed; refuses anyone another run already paid; refuses to pay a bulk payment whose rows or
-amount no longer match what was set up; refuses to take the session past its budget; and
-refuses to retry a payment it cannot prove failed.
-
 ## Before your first session
 
-**1. [CLI] Environment.** Run `uv sync`, and make sure the repository-root `.env` has
-`PROLIFIC_TOKEN` (your API token from Prolific's settings) and `PROLIFIC_WORKSPACE` (the id
-of the Lexical Variation workspace); `.env.example` documents both.
+**1. Environment.** Run `uv sync`, and make sure the repository-root `.env` has
+`PROLIFIC_TOKEN` (your API token from Prolific's settings), which `make payments` uses to read
+submissions; it never writes to Prolific. Put `export DATASET=full` in your shell profile so
+the data commands need no flag.
 
-Two optional variables are worth setting once you have a session you are happy with:
-`PROLIFIC_TEMPLATE_SURVEY` and `PROLIFIC_TEMPLATE_STUDY`. Without them, `setup` copies the
-*most recent* screening survey and game study, which means each session is copied from the
-one before it and any one-off change to a study propagates forever. Pinning the two ids
-breaks that chain, and `setup` still checks the reward and completion codes against the
-experiment either way.
+**2. Create the blocklist group** on Prolific, a participant group named `Played the game`,
+and seed it with everyone who has already played, pilot participants included, so none of
+them can join the full sample. After that it maintains itself through the completion codes'
+actions (see "Reference: eligibility").
 
-**2. [CLI] Seed the blocklist group** with everyone who has already played, pilot
-participants included, so none of them can join the full sample:
+**3. Deploy the current bundle** to the server (`experiment/README.md`, "Deploying a new
+build"), and wipe the server's database first (see "Before every session").
 
-```bash
-uv run python operations/session.py blocklist --from-prolific
-```
+## Before every session
 
-It reports who it will add -- 129 players from the pilot, with the 42 lobby timeouts and 38
-no-code dropouts left eligible -- and asks. Answer `y`. This is a one-time step: every game
-study created by `setup` adds its own players to the group as they submit (see "Reference:
-eligibility").
+The evening session of 22 September 2026 showed what an unprepared server costs: with five
+games running at once, games ran 64 to 74 minutes instead of 42 to 48, participants saw
+freezes of several minutes, and the server finally ran out of memory and crashed while the
+last game's players were filling in the exit survey. Empirica v1.12.1 (tajriba v1.7.2) leaks
+memory as players disconnect, and the leak kept growing after the session with nobody
+playing. Until an upgraded Empirica has run a clean session, do all of this every time:
 
-**3. [CLI] Point the pipeline at the full sample** so none of the data commands need a
-flag. Put this in your shell profile:
-
-```bash
-export DATASET=full
-```
-
-**4. [Empirica] Deploy the current bundle** to the server (`README.md`, "Deploying a new
-build"), and **wipe the server's `tajriba.json` first**. The server still holds the final
-pilot session, and because `empirica export` is cumulative, the first full-sample export
-would otherwise carry that pilot game into `data/full/`. The pilot is already exported and
-committed, so nothing is lost.
-
-**5. [CLI + Prolific] Rehearse once with a test participant.** Four of the commands publish
-or spend -- `open`, `publish`, `approve`, `pay` -- and the only safe way to exercise them is
-against a participant who is you. Prolific provides one: `POST /api/v1/researchers/participants/`
-with an email address that is not yet registered creates a participant tied to your
-researcher account that skips onboarding and fraud checks and cannot cash out. The feature
-has to be enabled on the workspace; ask Prolific support if the call is refused.
-
-```bash
-# once: make the test participant (any unregistered email you control)
-curl -s -X POST -H "Authorization: Token $PROLIFIC_TOKEN" -H "Content-Type: application/json" \
-     -d '{"email": "you+prolifictest@example.edu"}' https://api.prolific.com/api/v1/researchers/participants/
-# → {"participant_id": "…"}   keep this id
-```
-
-Then run a whole session against it. `--rehearsal` makes both studies visible to that one
-participant only, with one place each, so no real participant can ever see them:
-
-```bash
-S=rehearsal
-uv run python operations/session.py setup --session $S --rehearsal <test_participant_id> \
-    --time "6pm PT / 9pm ET" --title-time "9pm ET" --condition refer_mixed --set 0 --places 1
-uv run python operations/session.py open --session $S
-# [Prolific, logged in as the test participant] take the screening survey, answer Yes ×3
-uv run python operations/session.py prepare --session $S          # 1 eligible → group of 1
-uv run python operations/session.py close --session $S            # stops the screening survey
-uv run python operations/session.py message --session $S          # arrives in the test inbox
-uv run python operations/session.py publish --session $S          # visible to the test participant only
-# [Prolific, as the test participant] accept the study and click through to the game
-```
-
-With one player the game never forms, so after ten minutes the lobby times out and the
-participant reaches the lobby-timeout code. That is the path worth rehearsing first, because
-it is the one the data pipeline cannot see: `pay` finds that submission on Prolific, pays
-the lobby-timeout amount, and sends the note.
-
-```bash
-mkdir -p data/runs/rehearsal                                            # pay reads a run directory, even an empty one
-uv run python operations/session.py pay --session $S --run rehearsal   # lobby pay only
-```
-
-To rehearse the finisher path instead, have the test participant submit the finished code by
-hand at `https://app.prolific.com/submissions/complete?cc=C2I8XDMC`, then:
-
-```bash
-uv run python operations/session.py approve --session $S          # approves the one submission
-printf 'prolific_id,bonus\n<test_participant_id>,0.05\n' > data/runs/rehearsal/bonuses.csv
-uv run python operations/session.py pay --session $S --run rehearsal   # set up → cost preview → pay
-```
-
-Add an `early_ended.csv` (`prolific_id,partial_pay,exit_reason`) the same way to rehearse
-the partial-payment notes; the test participant's submission has to be returned or awaiting
-review for `pay` to pay it, which is what the partial and lobby codes leave it as. Because
-`pay` reads the run directory rather than an export, a hand-written `bonuses.csv` needs no
-`run_meta.json`; it will say the batch is unknown, which is correct for a rehearsal.
-Afterwards delete `data/runs/rehearsal/` and leave the rehearsal studies as they are; they
-hold no real data.
-
-What this costs is not documented: Prolific says the test participant cannot cash out, but
-not whether your wallet is charged for its rewards, so assume the $12 base reward plus the
-$0.30 survey and cents of bonus are spent. That is the price of knowing every write path
-works before thirty real people are waiting on it.
-
-The read-only half of the tooling is covered by tests instead, which need no API and no
-data: `make test-ops` runs them. They cover who is counted eligible, what each population is
-owed, what each person is told, when a study goes live, and the batch scoping of the payment
-files.
+1. **Back up, wipe and restart.** Copy `~/empirica/.empirica/local/tajriba.json` off the
+   server, delete it, and restart the service. Empirica exports are cumulative, so the
+   previous session's games otherwise stay loaded (the crashed session started at a quarter
+   of the server's memory before anyone arrived) and a restart after a crash has to replay
+   them all, which took nine minutes. Everything in the old file is already in the backups.
+2. **Run two or three games at a time.** The sessions with two or three games had no
+   complaints; the five-game session had freezes throughout. Empirica has an open issue
+   about games slowing down as more run concurrently (empiricaly/empirica#593), so this may
+   matter even after the memory leak is fixed.
+3. **Set a memory alert** in the DigitalOcean monitoring, at 75%. If it fires during a
+   session, start no new games until the running ones finish.
+4. **Freeze the bundle.** The server restarts whenever `~/empirica/empirica.tar.zst` changes,
+   so an upload during a session ends every game in progress. Deploy before anyone is invited.
 
 ## The session, step by step
 
@@ -169,633 +59,293 @@ files.
 In the pilot, screening responses arrived within 4 to 15 minutes of the survey going live --
 one survey collected 43 responses in under 4 minutes -- and the surveys went up only 12 to
 20 minutes before the session they recruited for. A whole session fits inside about an hour,
-so this is written as time before the session start, `T`. A short window is arguably better
-than a long one: the people answering are at their computers right now.
+so the steps below are written as time before the session start, `T`. A short window is
+arguably better than a long one: the people answering are at their computers right now.
 
-### Every command, in order
+### T-60: pick the treatment
 
-Set the session name, then work down the list. Each command asks before acting.
-
-```bash
-S=2026-09-15-2100                       # any name; a date and time is easiest
-
-# T-60   which treatment? one per batch, the emptiest of the eight cells
-uv run python operations/session.py tally
-
-# T-45
-uv run python operations/session.py setup --session $S \
-    --time "6pm PT / 9pm ET" --title-time "9pm ET" \
-    --condition social_first --set 1 --places 30 --survey-places 60
-
-# T-30   [Empirica] create and start the batch, then:
-bash operations/copy_tajriba.sh
-
-# T-25
-uv run python operations/session.py open --session $S
-uv run python operations/session.py surveys --session $S    # watch it fill
-
-# T-15
-uv run python operations/session.py prepare --session $S
-uv run python operations/session.py close --session $S      # stop paying for responses
-
-# T-10
-uv run python operations/session.py message --session $S
-
-# T
-uv run python operations/session.py publish --session $S --at 21:00
-
-# afterwards
-uv run python analysis/extract_run.py       # scoped to this session's batch
-uv run python analysis/combine_runs.py
-uv run python analysis/process_data.py
-make test
-uv run python operations/session.py approve --session $S
-uv run python operations/session.py pay --session $S
-```
-
-Two of those commands hold their terminal until you stop them, so give each its own:
-`copy_tajriba.sh` runs its backup loop until you interrupt it, and `publish --at` sleeps
-until the announced minute. Run both under `caffeinate -i` on a laptop --
-`caffeinate -i bash operations/copy_tajriba.sh` -- because a machine that sleeps pauses the
-countdown and publishes late, and stops backing up without saying so.
-
-### T-45: create everything
-
-**1. [CLI] Pick the treatment with `tally`.** You need 10 intact games in each of the
-eight (condition, tangram set) cells, so the next session runs whichever cell has the fewest.
-`tally` counts the games in `data/<dataset>/games.csv` per cell, adds the saved sessions that
-have not been processed yet, marks the emptiest, and reports both halves of the
-preregistered stopping rule:
-
-```bash
-uv run python operations/session.py tally
-```
+Run `make tally`. You need 10 intact games in each of the eight (condition, tangram set)
+cells, so the next session runs whichever cell has the fewest:
 
 ```text
-5 intact nine-player game(s) in data/full/games.csv, 2 that lost a player or did not finish; 1 saved session(s):
-  condition          set intact  partial  incomplete  sessions
-  refer_separated      0      1        0           0         0
-  refer_separated      1      1        0           0         0
-  refer_mixed          0      1        1           0         0
-  refer_mixed          1      0        0           0         1 (1 pending)
-  social_mixed         0      1        0           0         0
-  social_mixed         1      0        0           0         0   <- emptiest
+7 intact nine-player game(s) in data/full/games.csv, 3 that lost a player or did not finish:
+  condition          set intact  partial  incomplete
+  refer_separated      0      0        0           0   <- emptiest
+  refer_separated      1      0        0           0
+  refer_mixed          0      1        0           0
   ...
-  Target: 20 intact games per condition (10 per cell) -- refer_separated 2/20, ...
-  Cap: 7 of 120 games started, 113 left.
+  Target: 20 intact games per condition (10 per cell) -- refer_separated 0/20, refer_mixed 3/20, ...
+  Cap: 10 of 120 games started, 110 left.
 ```
 
 **Intact** means the game finished with all nine players still in it, which is what the
 preregistered stopping rule counts and what fills a cell. **Partial** games finished a
-player short: their data is still used, but they do not count towards the target, so a cell
-showing partials still needs sessions. **Incomplete** games never finished at all. The
-intact count needs `players.csv` beside `games.csv` to see removals; without it `tally`
-says so and its intact figure is an upper bound.
+player short: their data is still used, but they do not count towards the target.
+**Incomplete** games never finished. The last two lines are the stopping rule, which ends
+recruitment at whichever limit comes first: 20 intact games in every condition, or 120 games
+started in total. The cap counts every game that began Phase 1, including partial and
+incomplete ones; a lobby that never formed a game does not count. `tally` prints a `STOP`
+line when either limit is reached.
 
-The last two lines are the registered stopping rule, which has two limits and ends
-recruitment at whichever comes first: 20 intact games in every condition, or 120 games
-started in total. The cap counts every game that began Phase 1, including the partial and
-incomplete ones, because it is a limit on what the study spends rather than on what it
-keeps; a session that fails to fill a game never starts one, so it does not count. Expect
-the cap to be the limit that binds unless roughly two games in three stay intact, and when
-it is, the conditions short of 20 stay short and the analyses use every eligible game,
-partial ones included. `tally` prints a `STOP` line when either limit is reached.
+Run one treatment per batch, so that everyone who arrives can fill any game in it. Empirica
+cannot move players between games of different treatments.
 
-Run one treatment per batch -- every game in the batch is the same condition and tangram
-set -- so that everyone who arrives can fill any game in it. Before the first session there
-are no games yet, and `tally` says so.
+### T-45: create the screening survey and the game study
 
-**2. [CLI] `setup`.** It prints the same table and says whether the treatment you gave it is
-the emptiest cell. Then it copies the questions from your most recent screening survey and
-the game settings from your most recent game study, substitutes the session time, finds the
-blocklist group by name, and shows you the plan:
+Duplicate the previous session's screening survey and game study on Prolific, then change
+the session time in the survey's availability question and in both titles, the number of
+places, and the study's internal name (for example `full sample batch 6`). The public names
+are all the same, so the internal name is how you and `make payments` tell studies apart.
+Check every value in "Reference: what the studies look like", especially the reward, the
+three completion codes and their actions: a wrong code or action is copied silently into
+every later session.
 
-```text
-Template survey:  Screening survey: Group communication game [starts 8:30pm ET]
-Template study:   final pilot  (69a475f5…)
-Blocklist group:  'Played the game' (129 members, 6aa4…)
-New survey title: Screening survey: Group communication game [starts 9pm ET]
-Retimed question: Are you available at 6pm PT / 9pm ET to participate in a 45-60 minute …
-Game study draft: social_first set 1 2026-09-15
-  reward 1200 | est 50 min | desktop | url_parameters | places 30
-  code C2I8XDMC   MANUALLY_REVIEW, ADD_TO_PARTICIPANT_GROUP
-  code CMZUY3MK   REQUEST_RETURN
-  code CFTYDMIY   REQUEST_RETURN, ADD_TO_PARTICIPANT_GROUP
-Create the survey and both study drafts? Nothing is published. [y/N]
-```
-
-It then prints a cost ceiling, records it as the session's budget, and asks:
-
-```text
-Cost ceiling for this session (Prolific's fee is approximate):
-  screening  60 responses x $0.30      $   18.00
-  base pay   30 places x $12.00        $  360.00
-  bonuses    30 players x $8.00        $  240.00   at the cap
-  fee        ~33% of the above         $  203.94
-  ---------------------------------------------
-  total                                $  821.94
-  Session budget: $821.94 (the ceiling; --budget to change); `pay` refuses to take the session past it.
-```
-
-`--time` is the wording that goes into the availability question; `--title-time` is the
-shorter form for the titles. `--places` is how many players you expect on the game study.
-`--survey-places` is the ceiling on screening responses, and you pay for each one, so set it
-to roughly what you need rather than leaving it at the default -- 60 is about right when you
-want 40 eligible. `--budget` sets the session's budget in dollars when the ceiling is not the
-figure you want; `pay` adds up what the session has paid through Prolific and refuses to go
-past it. If the blocklist line says `none`, stop and seed the blocklist group (step 2 of
-"Before your first session") -- otherwise past players could sign up.
-
-`setup` stops rather than asks if the template game study's reward is not the `BASE_PAY` the
-experiment promises participants, if its completion codes are not the three in
-`shared/constants.js`, or if the codes' actions are wrong: the finished code must not
-approve itself (`approve` does that, after the cross-check against the game data), the
-partial and lobby-timeout codes must request a return, and the finished and partial codes
-must add the player to the blocklist group. All of it would otherwise be copied silently
-into every later session, and the reward is what every removed player's partial pay is
-prorated from.
-
-Both studies come back `UNPUBLISHED`. Open them in the Prolific UI if you want to look; the
-values to expect are in "Reference: what the studies look like". A mistake at this point is
-just a deleted draft. The session file is written as each object is created, so a failure
-part-way leaves the ids made so far in `operations/.sessions/`.
+Size the survey's places to need, because you pay for every response: 60 places is about
+right when you want 40 eligible respondents. For three games you want about 40 eligible
+responses, since roughly 75% of the people who say they can make it turn up.
 
 ### T-30: bring up Empirica
 
-**Freeze the bundle from here on.** The server restarts itself whenever
-`~/empirica/empirica.tar.zst` changes, so an `scp` during a session restarts Empirica under
-live participants and ends their game. Deploy before you invite anyone, never after. If a fix
-is genuinely urgent mid-session, stop the batch first and pay the players out: participants
-removed that way now get the exit survey, the partial code, and base pay prorated to their
-time plus the bonus earned so far.
+**Have three windows open**: the admin panel, Sentry filtered to the `production`
+environment, and the server's log (`journalctl -u empirica -f`). Server-side callback errors
+never reach Sentry, which is browser-only, so the log is the only place they appear. Keep
+the DigitalOcean memory graph open as well.
 
-**Wipe the server's database before the first session, and after any rehearsal or deploy
-check.** Empirica exports are cumulative, so players created while clicking through the
-deployed site land in the first real export and then in `data/full/`. On the server, stop the
-process, delete `~/empirica/.empirica/local/tajriba.json`, and start it again. If you would
-rather keep the file, the alternative is listing those game ids in
-`data/full/exclude_games.txt`, which `combine_runs.py` honors, but wiping is cleaner.
+**Create and start the batch before any participant can arrive**, sized for all the games
+you intend to run, all of one treatment. A batch created after assignment has begun kicks
+players out of a game already in progress, and responses arrive within seconds of the survey
+opening.
 
-**Have three windows open, not one**: the admin panel, Sentry filtered to the `production`
-environment, and the server's own log (`journalctl -u empirica -f`, or whatever the unit is
-called on this host). The third one matters because server-side callback errors never reach
-Sentry, which is browser-only: `guard()` catches them so the other players can finish, which
-means the game looks healthy while that log is the only place the failure appears. The backup
-loop also saves a copy of it beside each export, and shouts if it finds an error. While you
-are there, check there is disk space for the session's exports.
-
-**3. [Empirica] Confirm the server is alive**, open the admin panel and Sentry, and **create
-and start the batch before any participant can arrive**, sized for all the games you intend
-to run, all of one treatment, with `preferUnderassignedGames: true`. Empirica cannot move
-players between games of different treatments, so a batch created after assignment has begun
-kicks players out of a game already in progress. This has to be done before step 5 (`open`),
-because responses arrive within seconds of the survey opening.
-
-**4. [CLI] Start the backup loop.** Every five minutes it takes an export and copies it into
-its own `experiment/data/<timestamp>/` directory, named by the export's timestamp, in case
-the session dies partway. A failed copy is simply retried at the next interval; the loop
-gives up only after three failures in a row.
+**Start the backup loop**, under `caffeinate -i` on a laptop so that the machine does not
+sleep and stop backing up without saying so:
 
 ```bash
-bash operations/copy_tajriba.sh
+caffeinate -i bash operations/copy_tajriba.sh
 ```
 
-### T-25: open the survey and watch it fill
+Every five minutes it takes an export into its own `experiment/data/<timestamp>/` directory,
+with the server log beside it, and it flags any callback error it finds in the log. A failed
+copy is retried at the next interval; the loop gives up only after three failures in a row.
 
-**5. [CLI] `open`.** Shows the survey study's reward, places and filters -- check the
-blocklist is listed -- and asks. Answer `y`, and responses begin within seconds.
+### T-25: open the survey
 
-**6. [CLI] Watch the count** until you have what you need. For three games you want about
-40 eligible responses, since roughly 75% of the people who say they can make it turn up:
+Publish the screening survey and watch the responses arrive. Check that the blocklist group
+is listed in its filters first.
 
-```bash
-uv run python operations/session.py surveys --session $S
-```
+### T-15: build the allowlist and close the survey
 
-With `--session` this is a single request for the one survey you care about. Without it,
-`--counts` costs a request per survey listed and the list grows by one every session, which
-is worth avoiding when you are polling in the minutes before a session and Prolific is
-rate-limiting.
+Put everyone who answered "Yes" to all three questions into a new participant group, and set
+that group as the game study's `participant_group_allowlist`. Because the study points at a
+group rather than a list, anyone added to the group later becomes eligible without touching
+the study.
 
-### T-15: build the allowlist
-
-**7. [CLI] `prepare`.** Reads the responses, keeps the people who answered "Yes" to all
-three questions, and shows the count, the reasons the others were excluded, and the expected
-turnout at 75%:
-
-```text
-43 responses
-Eligible (answered 'Yes' to every question): 40
-Excluded: 3
-    3 did not answer 'Yes' to: This study is a real-time multiplayer game lasting …
-Expected to show up at 75%: about 30
-Create group '2026-09-15-2100' with these 40 people and allowlist it on study 6aa4…? [y/N]
-```
-
-Answer `y`. It creates the group, attaches it to the game draft as
-`participant_group_allowlist`, and saves the group id to the session. Because the study
-points at a group rather than a fixed list, a late sign-up added to the group becomes
-eligible without touching the study.
-
-Re-running `prepare` because more responses arrived tops up the same group rather than
-building a second one, so it is safe to do, even after `publish`: a study that already
-allowlists the group is left alone (`already allowlisted`) rather than patched.
-
-Two things it will tell you about rather than paper over. A response that does not carry
-exactly three questions is set aside as malformed and named, instead of being counted
-eligible -- a response with no answers at all has no failing answers, which used to make it
-look like a "yes" to everything. And if the expected turnout is below the nine players one
-game needs, it says so before you build the group.
-
-### T-15: close the survey
-
-**8. [CLI] `close`.** The allowlist is now fixed, so every further response costs its
-reward and tells someone they are expected at a session they will not be sent. Nothing used
-to stop the survey, so it ran on through the session and overnight.
-
-```bash
-uv run python operations/session.py close --session $S
-```
-
-Once the survey is stopped, `close` lists the screening submissions by status and asks to
-approve the ones awaiting review, so the respondents are paid their $0.30 the same day
-rather than when Prolific's automatic approval gets to them. Approved and returned
-submissions are left alone, so re-running `close` on an already-stopped survey only approves
-whatever has arrived since.
+Then stop the screening survey: every further response costs its reward and tells someone
+they are expected at a session they will not be sent. Approve the screening submissions so
+the respondents are paid the same day.
 
 ### T-10: send the reminder
 
-**9. [CLI] `message`.** Renders the reminder with the session time filled in, shows it and
-the recipient count, and asks. The wording is in `operations/messages/reminder.txt`.
+Message the allowlist group with the reminder in "Message templates", with the session time
+filled in.
 
 ### T: publish
 
-**10. [CLI] `publish --at 21:00`.** Shows the study's status and allowlist, asks once, then
-holds the timer itself and publishes at the minute you named -- so leave it running in the
-foreground. It refuses a study that is not `UNPUBLISHED`, and refuses one with no allowlist,
-which would otherwise open at full reward to all of Prolific.
-
-`--at` is read in the timezone the session's announced time names, not this machine's. With
-`--time "6pm PT / 9pm ET"`, both `--at 18:00` and `--at 21:00` mean the same instant and
-both are accepted; a time that resolves to any other instant is refused and names the gap,
-because it would publish hours away from what the reminder promised. Pass an explicit zone
-(`--at "21:00 ET"`) to be unambiguous, or `--force-time` if the gap is deliberate.
-
-The publish call itself retries a few times on a timeout or a Prolific 5xx. It is the one
-call in the session worth retrying: it fires after a countdown that cannot be repeated, with
-the participants already waiting. If a retry is refused because an earlier attempt already
-went through, `publish` (like `open` and `close`) checks the study's status and counts the
-transition as done rather than reporting a failure.
-
-**11. Monitor** the Empirica admin panel for arrivals and game progress, and Sentry for
-client errors. A few participants will message asking where the study is; the reminder told
-them it appears exactly at the announced time.
+Publish the game study at exactly the announced minute, and check that it has the allowlist
+before you do: without one, a $12 study opens to everyone on Prolific. Then watch the admin
+panel for arrivals and game progress, Sentry for client errors, and the memory graph. A few
+participants will message asking where the study is; the reminder told them it appears
+exactly at the announced time.
 
 ### After the session
 
-**12. [Empirica] Stop the batch**, take one more export with `copy_tajriba.sh --once`, then
-stop the backup loop with Ctrl-C. That last export is the one that matters; it has its own
-`experiment/data/<timestamp>/` directory like every other.
+**1. Stop the batch** once the last game has ended and its players have had a few minutes
+for the exit survey, take one more export with `bash operations/copy_tajriba.sh --once`, and
+stop the backup loop.
 
-**13. [CLI] Run the export through the pipeline.** Four commands, no flags needed once
-`DATASET=full` is set. `extract_run.py` registers the run for you and prints the next
-command each time:
+**2. Run the export through the pipeline** (the `process-new-run` procedure in
+`.claude/skills/`, or by hand):
 
 ```bash
-uv run python analysis/extract_run.py       # anonymize; write bonuses.csv, early_ended.csv
-uv run python analysis/combine_runs.py      # union the registered exports
-uv run python analysis/process_data.py      # preprocess, filter, derived metrics
-make test                                   # integrity suite
+make smoke ZIP=experiment/data/<ts>/empirica-export-<ts>.zip   # check the export first
+uv run python analysis/extract_run.py experiment/data/<ts>/empirica-export-<ts>.zip --dataset full
+make combine process-no-filter test DATASET=full   # `process` instead runs the LLM message filter, which costs Vertex AI credit
 ```
 
-(`process_data.py --skip-filter` skips the one step that spends Vertex AI credit.)
+If the server was not wiped since the export already in `runs.txt`, the new export is a later
+snapshot of the same server and replaces it: remove the older timestamp from `runs.txt`
+before combining, which refuses duplicated records anyway.
 
-`extract_run.py` prints the batch it scoped the payment files to, and how many earlier
-sessions' games it left out. Check that line: it should name this session's batch. Pass
-`--batch <id>` to pay a different one. The batch is recorded in `run_meta.json` and shown
-again by `pay`.
-
-**14. [CLI] `approve`.** Lists the submissions by status and asks to approve every one that
-is awaiting review with the finished code. Anything awaiting review *without* that code is
-listed separately, with participant and submission ids, for you to look at by hand.
-
-It also cross-checks the finishers against the run's `bonuses.csv`, since approving pays the
-base reward on the strength of a completion code alone. A submission carrying the finished
-code that the game data has no completed game for is named and worth checking before you
-approve; so is a player in `bonuses.csv` who never submitted a code at all. If no run has
-been registered yet it says `no run to cross-check against`, which is your cue to run step
-13 first.
-
-Finally it names any partial or lobby-timeout submission still sitting in *awaiting review*
-rather than *returned*. Those are paid by bonus and asked to return; if they are left,
-Prolific eventually approves them anyway and pays the full base reward on top of the partial
-payment already sent.
-
-**15. [CLI] `pay`.** One command, three questions, each for an irreversible step:
+**3. Work out what each study owes** with `make payments`. It reads every export in
+`runs.txt`, groups the players by the Prolific study recorded from their study link, and asks
+Prolific (read-only) for each study's submissions, their status and the bonuses already
+paid, which also finds the lobby-timeout participants. It prints a table per study and writes
+`data/payments/full/<date>_<internal name>_<id>/`:
 
 ```text
-Run:   20260915_213012   (pass --run to choose another)
-Study: 6aa4…
-Batch: 01KJP22PWG1Y2G4YMBC8YXBSPW   (24 finishers, 4 removed)
-
-removed early: 1 of 4 not paid:
-  5f3a…  $  9.22  low accuracy  -- APPROVED: already paid the full base reward, so a partial payment on top would pay twice
-finishers       24 people  $ 153.88  -- not set up
-removed early    3 people  $  18.59  -- not set up
-lobby timeouts   5 people  $  10.00  -- not set up
-Set these up with Prolific? This charges nothing yet. [y/N] y
-Prolific's totals (fees and VAT included):
-  finishers       $ 205.17  unpaid
-  removed early   $  24.79  unpaid
-  lobby timeouts  $  13.33  unpaid
-Session budget: $604.29 of $821.94 after this payment ($361.00 already committed, approvals included).
-Pay $243.29 now? This cannot be undone. [y/N] y
-Notes for the 8 people who did not finish:
-  RETURNED         $  9.22  group disbanded  -> note only [others-left]
-  AWAITING REVIEW  $  6.10  player timeout   -> request return + note [inactive]
-  RETURNED         $  2.00  lobby timeout    -> note only [lobby]
-  …
-Send these notes to 8 people? [y/N] y
+full sample batch 4  [6ab3388192c1750e391244c4]  games: 03RTP6 2XQ788 F92CE8
+    ready to pay: bonus 26 ($175.59), partial 1 ($10.13), lobby 9 ($18.00)
+    folder: 2026-09-23_full-sample-batch-4_1244c4/
 ```
 
-(The fee-inclusive totals above are illustrative -- Prolific's fee on bonuses is about 33% --
-the real ones come back from Prolific at the set-up step.)
+`bonus.csv`, `partial.csv` and `lobby.csv` hold `participant_id,amount` lines to paste into
+that study's bulk bonus form, and `status.csv` lists everyone with the reason anything owed
+is not ready (a game still running, or no submission in the study). An approved partial
+or lobby submission already received the $12 base, so it is listed only for any amount above
+that. The folder is rewritten on every run and contains
+Prolific ids, which is why `data/payments/` is gitignored.
 
-It picks the most recent extracted run (say `--run <timestamp>` to choose), keeps a ledger
-under the run directory so nothing is ever paid twice, and words each person's note from
-their recorded exit reason. Stopping at any question leaves everything before it done and
-everything after it not; re-running picks up where you stopped. Notes are recorded per
-person as they are sent, so a re-run after a failure part-way messages only the people who
-have not heard from you.
+**4. On each study's submissions page:**
 
-It also reads the run's game table and warns if the games' condition or tangram set is not
-what the session was set up for, which means either the batch was created with the wrong
-treatment or you are paying the wrong run.
+- **Approve the finishers**, the submissions with the finished code `C2I8XDMC`. Approval pays
+  the $12 base reward. Before approving, check that everyone approved appears in that study's
+  `bonus.csv` or `status.csv`: a finished code without a completed game in the data is worth a
+  look.
+- **Make sure removed players and lobby timeouts are returned, not approved.** Their codes
+  request a return automatically, but a submission left in *awaiting review* is eventually
+  approved by Prolific, which pays the full base reward on top of the partial payment.
+- **Paste the bonus files** into the study's bulk bonus form: `bonus.csv`, `partial.csv` and
+  `lobby.csv` can go in together or separately. Prolific shows the fee-inclusive total
+  before you confirm.
+- **Message the removed players and lobby timeouts** with the matching note in "Message
+  templates"; `status.csv` has each person's exit reason.
 
-There are three populations, not two. Alongside the finishers and the removed players,
-`pay` reads the lobby timeouts straight from Prolific: they never reach a game, so they
-appear in no export, and until this existed nothing ever paid them the amount the Sorry page
-promises. `--skip-lobby` leaves them out.
-
-**Removed players and lobby timeouts are paid only if their submission is returned or
-awaiting review.** Every one of those rows is joined to its Prolific submission first. One
-that is already `APPROVED` was paid the full base reward when it was approved, so the partial
-payment is skipped and named, as is a `REJECTED` one or a row with no submission at all. The
-skipped rows are printed with the reason before anything is set up.
-
-Six refusals are worth knowing about, because each stops the whole command:
-
-- **A total that is too large.** Each population has a ceiling derived from how many people
-  are in it, so a scoring bug that inflates everyone is caught even though no single amount
-  looks wrong. `--max-total` overrides it; `--max-each` (default `BASE_PAY + MAX_BONUS`, so
-  $20) refuses any single amount above a whole game's pay.
-- **Someone another run already paid.** Exports are cumulative, so this usually means the
-  payment files were not scoped to one batch, or that this is a second export of a session
-  already paid. It names the people and the run that paid them.
-- **Rows that changed after set-up.** A bulk payment pays what it was set up with. If the
-  CSV was re-extracted, or someone was approved in the meantime and dropped out of the
-  payable rows, `pay` names the difference and stops; cancel the bulk payment in the Prolific
-  UI, remove that population's entry from the ledger, and re-run to set it up afresh.
-- **A bulk payment for the wrong amount.** Prolific's reply to the set-up call carries the
-  amount it understood, in cents; if that is not the total requested, nothing is paid.
-- **Over budget.** `setup` records the session's cost ceiling (or `--budget`) in the session
-  file, and `pay` adds this payment to everything the session has already committed: the
-  bulk bonus payments from its ledgers, and the base and screening rewards that `approve`
-  and `close` committed by approving submissions. Approvals matter most and are the easiest
-  to miss, because Prolific pays them against the study rather than through a bulk payment,
-  so they leave no ledger; each command records what it approved on the session instead.
-  Their cost is estimated by applying the standard fee to the reward, where a bulk payment
-  carries the exact figure Prolific charged. Going past the budget stops the command unless
-  `--force-budget` is passed, and then it asks again.
-- **A pay call that was started and never confirmed.** The attempt is written to the ledger
-  *before* the call, so a request that timed out after Prolific processed it cannot look
-  unpaid. Resolving it means checking the bulk payment in the Prolific UI and editing the
-  ledger, not re-running.
-
-**16. Nothing else.** This session's players were added to the blocklist group as they
-submitted, so the next session's survey already excludes them.
+**5. Run `make payments` again.** Everyone just paid now shows as settled; anything still
+listed was missed.
 
 ## If something goes off script
 
-**You lost the session name.** `session.py sessions` lists every saved session and what it
-holds.
+**Someone asks to be added after the allowlist was built.** Add them to the session's group
+on Prolific. The study allowlists the group, so they become eligible immediately.
 
-**The survey `setup` made is wrong, or you want to reuse another.** Pass a survey id to
-`prepare` explicitly -- `prepare <survey_id> --session $S` -- and it uses that survey while
-still taking the game study from the session. Explicit ids always win over the session.
-`surveys --counts` lists them; duplicates keep a "Copy" suffix and are usually the empty
-ones.
+**`make payments` lists someone as owed but not ready.** `status.csv` gives the reason. "No
+submission from this participant in this study" usually means they reached the game through
+another session's link; check which study their submission is in. "Game still running"
+means the export was taken before the game ended; take a new export once it has.
 
-**`publish` refuses because there is no allowlist.** `prepare` has not run, or you ran it
-against a different session. Run it; the refusal is what stops a $12 study opening to
-everyone on Prolific.
+**A participant was paid by mistake.** Prolific cannot reverse a bonus. `make payments`
+subtracts what Prolific has already paid, so re-running it never tells you to pay the same
+person twice, but check `status.csv` before pasting a file you edited by hand.
 
-**`setup` failed partway.** It creates the survey first, then the two studies, so a failure
-can leave a stray. `surveys` and `studies` show anything unpublished you did not mean to
-keep; drafts and surveys can be deleted in the UI.
+**The Empirica server died mid-session.** Participants see "Just a moment" or a 502 while
+their browsers retry.
 
-**Someone asks to be added after `prepare` ran.** Add them to the group in the Prolific UI.
-The study allowlists the group, so they become eligible immediately, no republish.
-
-**A participant should not have been paid.** `pay` will not pay a population twice, but it
-also cannot un-pay. Fix the CSV before running it, not after.
-
-**`pay` says someone was already paid by another run.** Look at `run_meta.json` in both run
-directories. If the older run's export covered this session too, you are about to pay it
-twice and the refusal is correct. If the payment files were written before they were scoped
-to a batch, re-extract with `analysis/extract_run.py --batch <id>`.
-
-**`publish` refuses the time you gave it.** `--at` is read in the timezone your announced
-`--time` names. The message says what `--at` resolved to and what participants were told;
-one of the two is wrong. `--force-time` overrides it if the gap is deliberate.
-
-**`setup` refuses because the template has drifted.** The reward, the completion codes or
-the codes' actions on the study it copied no longer match what `experiment/shared/constants.js`
-and this runbook expect. Fix that study in Prolific, or pin a good one with
-`PROLIFIC_TEMPLATE_STUDY`. If the message says a code lacks `ADD_TO_PARTICIPANT_GROUP`, the
-usual cause is that no blocklist group was found: seed it first.
-
-**`pay` skipped someone as APPROVED.** Their submission was approved -- by `approve`, by
-hand, or by Prolific's automatic approval -- so they were already paid the full base reward.
-The partial payment is not sent, because it would pay them twice. If they were owed a bonus
-on top, pay it by hand in the Prolific UI.
-
-**`pay` says the rows have changed since set-up.** The bulk payment was created from an
-earlier version of the CSV or of the submissions. Cancel it in the Prolific UI, remove that
-population's entry from `data/runs/<run>/prolific_payments.json`, and re-run `pay`.
-
-**`pay` refuses because the session is over budget.** The budget is the cost ceiling
-`setup` printed (or `--budget`), and what counts against it is the bonuses already paid
-plus the base and screening rewards `approve` and `close` approved. `sessions` lists those
-approvals. Check the amounts first; if the overrun is real and right, `--force-budget` lets
-you confirm it.
-
-**`pay` warns that the run's treatment is not the session's.** Either the Empirica batch was
-created with a different treatment from the one `setup` was told, or this is another
-session's run. Look at `run_meta.json` and the admin panel before paying.
-
-**`prepare` sets responses aside as malformed.** A response that does not carry three
-questions is not counted eligible. If most responses have a different number, the survey
-itself has changed; re-run with `--expect-questions N` once you have checked why.
-
-**The Empirica server died mid-session.** Participants see the "Just a moment" screen while
-their browsers retry, so you have a few minutes before they give up.
-
-1. *Look.* `ssh root@$EMPIRICA_SERVER systemctl status empirica` and
-   `journalctl -u empirica -n 200 --no-pager`. The service is installed with
-   `Restart=always`, so it usually comes back by itself within seconds. Confirm the unit
-   name on the host the first time you need it and correct it here.
-2. *Decide.* A restart does not resume the games that were running: the rounds are gone
-   even though the players reconnect. Do not leave nine people in a game that cannot
-   continue. Stop the batch in the admin panel, which sends everyone to the exit survey and
-   the partial completion code, and say so in a Prolific message.
-3. *Save the data.* The newest zip under `experiment/data/<run>/` is the state as of the
-   last backup, at most five minutes old. Copy one more by hand if the server is up:
-   `ssh root@$EMPIRICA_SERVER "cd ~/empirica && empirica export --out /tmp/crash.zip"`.
-4. *Fix the payment files.* This is the part that goes wrong silently. A game that never
-   reached `onGameEnded` leaves its players with `is_active` true and no `exitReason` or
-   `partialPay`, so `extract_run.py` writes them into `bonuses.csv` as if they had
-   finished, and nothing pays their base. After extracting, move those rows by hand from
-   `data/runs/<run>/bonuses.csv` into `early_ended.csv`
-   (`prolific_id,partial_pay,exit_reason`) with `exit_reason` set to `game terminated`, so
-   `pay` treats them as a stopped batch and sends the right note. Their partial pay is base
-   prorated to the minutes they played plus the bonus they had earned, which is the rule in
-   `experiment/server/src/compensation.js`; the export's `gameStartTime`, `minutesSpent`
-   and `bonus` columns are what you need. `approve` will then list them as finishers who
-   never submitted the code, which is expected.
-5. *Do not reuse the batch.* Create a fresh one for any replacement session, and exclude
-   the crashed game from the dataset with `data/<dataset>/exclude_games.txt`.
+1. *Look.* `ssh root@$EMPIRICA_SERVER "systemctl status empirica; journalctl -u empirica -n 200 --no-pager"`
+   and the DigitalOcean memory graph. The service restarts itself, but after a crash it has
+   to replay the whole database before it answers, which took nine minutes on 23 September.
+   **Do not restart it again while it loads**: a manual restart throws away the loading
+   done so far. Watch `journalctl -u empirica -f` for `server: started`.
+2. *Decide.* A restart does not resume the games that were running. Do not leave nine
+   people in a game that cannot continue: stop the batch in the admin panel, which sends
+   everyone to the exit survey and the partial code, and tell them in a Prolific message.
+   Participants who had finished but were on the exit survey when the server died need the
+   finished code sent to them by message.
+3. *Save the data.* The newest zip under `experiment/data/` is at most five minutes old, and
+   `empirica export` reads the database file directly, so it works even while the server is
+   down: `ssh root@$EMPIRICA_SERVER "cd ~/empirica && empirica export --out /tmp/crash.zip"`.
+4. *Pay the players of an interrupted game by hand.* A game that never reached
+   `onGameEnded` leaves its players looking active, with no exit reason and no partial pay,
+   so `make payments` lists them as finishers in a game still running and marks them not
+   ready. Their pay is base prorated to the minutes they played plus the bonus they had
+   earned (`experiment/server/src/compensation.js`); the export's `gameStartTime`,
+   `minutesSpent` and `bonus` columns are what you need. Pay it as a bonus, make sure their
+   submissions are returned rather than approved, and send the "session stopped" note.
+5. *Do not reuse the batch.* Create a fresh one for any replacement session, and list the
+   crashed game in `data/full/exclude_games.txt` if it should not be analyzed.
 
 ## Reference: what the studies look like
 
-Values from the final pilot, which is the session that produced the committed pilot data.
-`setup` copies them from the most recent game study; pin a specific one with
-`--template-study`, or permanently with `PROLIFIC_TEMPLATE_STUDY` in `.env`. The reward and
-the three completion codes are checked against `experiment/shared/constants.js` and a
-mismatch stops `setup`, so the chain of copies cannot quietly change what participants are
-paid.
+Values from the final pilot, which the full-sample studies are duplicated from.
 
 | | Screening survey study | Game study |
 |--|--|--|
-| reward | $0.30 (`30`) per response | $12.00 (`1200`) |
-| places | `--survey-places`, a ceiling; you pay per response, so size it to need (60 for 40 eligible) and run `close` once `prepare` has run | the players you expect |
+| reward | $0.30 per response | $12.00 |
+| places | a ceiling; you pay per response, so size it to need (60 for 40 eligible) and stop the survey once the allowlist is built | the players you expect |
 | time | 1 min | 50 min estimated, 123 max |
 | device | desktop | desktop |
 | URL | `https://prolific.com/surveys/<survey_id>` | the server, with `?PROLIFIC_PID={{%PROLIFIC_PID%}}&STUDY_ID={{%STUDY_ID%}}&SESSION_ID={{%SESSION_ID%}}` |
-| filters | US, fluent English, `participant_group_blocklist` | `participant_group_allowlist` (added by `prepare`) |
-| completion codes | one, `COMPLETED` | `C2I8XDMC` finished (`MANUALLY_REVIEW` + add to blocklist) · `CMZUY3MK` lobby timeout (`REQUEST_RETURN`) · `CFTYDMIY` removed early (`REQUEST_RETURN` + add to blocklist) |
+| filters | US, fluent English, `participant_group_blocklist` (`Played the game`) | `participant_group_allowlist` (this session's group) |
+| completion codes | one, `COMPLETED` | `C2I8XDMC` finished (manual review, add to `Played the game`) · `CMZUY3MK` lobby timeout (request return) · `CFTYDMIY` removed early (request return, add to `Played the game`) |
 
-The three codes are defined in `experiment/shared/constants.js`, and the ones quoted in this
-document are copied from it; `setup` checks the template study's codes against that file,
-not against this page, so if the two ever disagree the file is right and this page is stale.
-`setup` also checks the actions on each code: the finished code must not carry
-`AUTOMATICALLY_APPROVE`, the partial and lobby-timeout codes must carry `REQUEST_RETURN`,
-and the finished and partial codes must carry `ADD_TO_PARTICIPANT_GROUP`. Prolific requires
-a `privacy_notice` on any survey-backed study; `setup` copies it from the template and
-refuses to proceed without one.
+The completion paths are `https://app.prolific.com/submissions/complete?cc=<code>`; the exit
+screens link participants straight to them. The three codes are defined in
+`experiment/shared/constants.js`, and `make payments` reads them from there, so if this page
+and that file ever disagree, the file is right and this page is stale. The finished code
+must not approve automatically, because approval should follow a check against the game
+data; the partial and lobby-timeout codes must request a return; and the finished and partial
+codes must add the participant to `Played the game`. Prolific requires a privacy notice on
+any survey-backed study.
 
 ## Reference: eligibility, and why lobby timeouts stay eligible
 
 The design is between subjects, so nobody may play twice. Two filters, both pointing at
 participant groups rather than lists of people:
 
-- **`participant_group_allowlist`** on the game study -- the group `prepare` builds for this
-  session. Only they can see the study.
-- **`participant_group_blocklist`** on the screening survey -- one standing group,
+- **`participant_group_allowlist`** on the game study, the group built for this session.
+  Only its members can see the study.
+- **`participant_group_blocklist`** on the screening survey, one standing group,
   `Played the game`, of everyone who has ever been placed in a game.
 
-**The blocklist maintains itself.** `setup` attaches an `ADD_TO_PARTICIPANT_GROUP` action to
-the two completion codes that mean "saw the task", `C2I8XDMC` and `CFTYDMIY`, so Prolific
-adds each player to the group the instant they submit. The `CMZUY3MK` lobby-timeout code
-carries no such action, and that is what keeps those participants eligible: they never saw
-a tangram, they are already screened, and they have proved they turn up on time, so they
-are the best people to invite to a later session.
-
-`blocklist` exists to seed the group before the first session and to repair it if you ever
-suspect drift. It can read who played from the extracted runs (precise, but only covers runs
-you have extracted) or from Prolific submissions (`--from-prolific`, covers every session).
-The 38 pilot submissions with no completion code at all -- people who consented and never
-reached an exit screen -- stay eligible by default on the same reasoning as the lobby
-timeouts; `--include-unknown` blocks them instead.
+**The blocklist maintains itself.** The two completion codes that mean "saw the task",
+`C2I8XDMC` and `CFTYDMIY`, carry an "add to participant group" action, so Prolific adds each
+player to the group the moment they submit. The lobby-timeout code `CMZUY3MK` carries no
+such action, and that is what keeps those participants eligible: they never saw a tangram,
+they are already screened, and they have shown they turn up on time, so they are the best
+people to invite to a later session.
 
 ## Reference: how people are paid
 
-**Finishers** are approved (`approve`), which pays the $12 base reward, and then receive
-their earned bonus (`pay`).
+**Finishers** are approved, which pays the $12 base reward, and then receive their earned
+bonus.
 
 **Removed players** -- disbanded group, failed accuracy check, too few groups, a batch the
 researcher stopped, or idling out -- are paid by **returning the submission and receiving
-their partial pay as a bonus**, never by approval. `computePartialPay` in `experiment/server/src/compensation.js` already bundles
-prorated base pay together with the earned bonus into one number, so approving would pay the
-full base reward on top of that. This is also exactly what Prolific recommends for
-participants who cannot be matched in live studies: partial payment by bonus, a return
-request, and a message explaining it. The return request is automatic through the
-completion-code action; `pay` sends the message.
+their partial pay as a bonus**, never by approval. The server's `computePartialPay`
+(`experiment/server/src/compensation.js`) already bundles prorated base pay with the earned
+bonus into one number, so approving would pay the full base reward on top of it. Players
+removed for inactivity get the prorated base pay only, without the bonus. This is what
+Prolific recommends for participants who cannot be matched in live studies: partial payment
+by bonus, a return request, and a message explaining it.
 
 **Lobby timeouts** -- people who arrived on time but for whom no game could be formed -- are
-paid the `LOBBY_TIMEOUT_PAY` their Sorry page promises, the same way: a bonus plus a return
-request plus a note. They are the one group the data pipeline cannot see, because Empirica
-creates a player record only once someone is placed in a game, so they appear in neither
-`bonuses.csv` nor `early_ended.csv`. `pay` finds them by looking for their completion code
-among the study's submissions instead. They stay eligible for later sessions, and their
-note says so.
+paid the `LOBBY_TIMEOUT_PAY` ($2) their Sorry page promises, the same way: a bonus, a return
+request and a note. They are the one group the data pipeline cannot see, because Empirica
+creates a player record only once someone is placed in a game, so `make payments` finds them
+by their completion code among the study's submissions.
 
-Two facts about the bonus API that shape `pay`:
-
-- **Paying is a two-step call, and the first step is free.** Setting up a bulk payment
-  charges nothing and returns Prolific's total including its fee (about 33% on bonuses).
-  That is why `pay` shows you that total before asking to pay.
-- **The pay call is not idempotent.** Sending it twice pays everyone twice. `pay` records
-  each bulk payment id and its paid time in `data/runs/<run>/prolific_payments.json` and
-  refuses to pay a population that already has a paid time. Do not delete that file to
-  "retry".
-
-Amounts are sent as decimals (`1.50` means $1.50) and come back in cents; `pay` checks that
-the cents Prolific echoes back are the total it asked for. `--max-each` (default
-`BASE_PAY + MAX_BONUS`, so $20, read from `shared/constants.js`) and `--max-total` refuse
-anything that looks wrong before it is sent. A partial or lobby-timeout bonus goes only to a
-submission that is returned or awaiting review; an approved one already received the base
-reward.
+`make payments` applies all of this: a partial or lobby amount is listed in full for a
+submission that is returned or awaiting review; for one that was approved anyway, which
+already received the $12 base, only the part above $12 is listed (a player removed late in
+the game with bonuses earned can be owed more than the base); and whatever Prolific has
+already paid on a submission is subtracted. Prolific's fee
+on bonuses is about 33%, shown before you confirm a bulk bonus.
 
 ## Reference: the data
 
 `copy_tajriba.sh` leaves each export as
-`experiment/data/<timestamp>/empirica-export-<timestamp>.zip`, one directory per export
-named by the zip's own timestamp, which is the layout `extract_run.py` and the `Makefile`
-look for, so every backup taken during a session is a usable export. `extract_run.py`
-unzips one, strips the Prolific ids from the raw CSVs, writes `bonuses.csv` and
-`early_ended.csv` (which keep the ids, for `pay`) into the gitignored
-`data/runs/<timestamp>/`, and registers the timestamp in `data/<dataset>/runs.txt`. `combine_runs.py` stacks the registered runs into
-the committed `data/<dataset>/raw_anonymized/`; `process_data.py` produces the analysis
-tables and derived metrics.
+`experiment/data/<timestamp>/empirica-export-<timestamp>.zip`. `extract_run.py` unzips one,
+strips the Prolific ids from the raw CSVs into the gitignored `data/runs/<timestamp>/`, and
+registers the timestamp in `data/<dataset>/runs.txt`; `combine_runs.py` stacks the registered
+runs into the committed `data/<dataset>/raw_anonymized/`; `process_data.py` produces the
+analysis tables and derived metrics. Only `make payments` reads the Prolific ids, straight
+from the export zips.
 
-**Exports are cumulative and that is handled.** `empirica export` dumps the whole server,
-not just the last session, so if you leave the server running the newest export contains
-every earlier one. `combine_runs.py` unions the registered exports on record id and keeps the
-newest version of each record, so listing one export, or all of them, gives the same correct
-result. It also repairs the case where a five-minute backup caught rounds in progress that
-the final export has completed. Overlaps are reported and recorded in `manifest.json`, so an
-unexpected one -- the wrong server, say -- is visible.
-
-The full sample is its own dataset, `data/full/`, never an edit of `data/pilots/`. Nothing
-needs creating in advance: `extract_run.py` makes `runs.txt` on first use.
+**Exports are cumulative.** `empirica export` dumps the whole server, not just the last
+session, so if the server was not wiped between sessions the newest export contains every
+earlier one. `combine_runs.py` refuses duplicated records across runs, so keep one export per
+server state in `runs.txt`: the newest export of a server replaces its earlier exports.
 
 ## Message templates
 
-The five messages `session.py` sends are in `operations/messages/`; edit the wording
-there. `{time}` and `{amount}` are filled in per session and per person. Which note a
-removed player gets is decided by the exit reason the server recorded, from the
-`EXIT_REASONS` list in `experiment/shared/constants.js`; `session.py` refuses to start if
-that list holds a reason it has no wording for.
+Which note a removed player gets depends on the exit reason the server recorded, which
+`status.csv` shows. `{time}` and `{amount}` are filled in by hand.
 
-### `reminder.txt` -- sent by `message`, about ten minutes before the session
+### Reminder, about ten minutes before the session
 
 > Hello! Thank you for signing up for our study. Just a reminder that the study will show up on your Prolific dashboard in a few minutes, at exactly {time}. This experiment depends on synchronous and real-time participation, so please join as soon as you see it. If it doesn't appear after refreshing, please let us know.
 
-### `partial_payment.txt` -- sent by `pay` to removed players
+### Removed, reason `low accuracy` or none recorded
 
-Used when the removal was recorded as `low accuracy`, or with no reason at all: the wording
-is neutral about whose doing it was.
+The wording is neutral about whose doing it was.
 
 > Hello, and thank you for taking part in our study today.
 >
@@ -805,11 +355,43 @@ is neutral about whose doing it was.
 >
 > Thank you again for your time, and sorry for the inconvenience.
 
-### `lobby_payment.txt` -- sent by `pay` to lobby timeouts
+### Removed, reason `group disbanded`, `insufficient groups` or `insufficient groups after accuracy check`
 
-Used for participants who arrived but for whom no game could be formed. They were not able
-to take part at all, so the note says plainly that nothing went wrong on their end and that
-they remain eligible for a later session.
+> Hello, and thank you for taking part in our study today.
+>
+> Unfortunately the other players in your group left the game, so your session could not continue. Nothing went wrong on your end -- this kind of study needs everyone in a group to stay online together for the whole game.
+>
+> We have sent you a partial payment of ${amount} through Prolific for the time you spent. You will also see a request to return the submission, since the study was not completed. Returning it does not affect the partial payment.
+>
+> Thank you again for your time, and sorry for the inconvenience.
+
+### Removed, reason `player timeout` (inactivity)
+
+The pay is base prorated to the time spent, with no bonus; the note says so plainly and
+without blame.
+
+> Hello, and thank you for taking part in our study today.
+>
+> The game removes a player after several rounds without a response, so that the other players in the group are not left waiting, and that is why your session ended early.
+>
+> We have sent you ${amount} through Prolific: the study's base pay, prorated to the time you spent in the game. The bonus for correct answers is not included. You will also see a request to return the submission, since the study was not completed. Returning it does not affect the payment.
+>
+> Thank you again for your time.
+
+### Removed, reason `game terminated` (the researcher stopped the batch)
+
+> Hello, and thank you for taking part in our study today.
+>
+> We had to stop this session early on our side, so your game could not continue. Nothing went wrong on your end.
+>
+> We have sent you a partial payment of ${amount} through Prolific: the study's base pay, prorated to the time you spent in the game, plus the bonus you had earned so far. You will also see a request to return the submission, since the study was not completed. Returning it does not affect the payment.
+>
+> You are still eligible for this study, and we would be glad to have you in a future session. Thank you again for your time, and sorry for the inconvenience.
+
+### Lobby timeout
+
+They were not able to take part at all, so the note says plainly that nothing went wrong on
+their end and that they remain eligible for a later session.
 
 > Hello, and thank you for signing up for our study today.
 >
@@ -821,56 +403,10 @@ they remain eligible for a later session.
 >
 > Thank you again for your time, and sorry for the inconvenience.
 
-### `partial_payment_inactive.txt` -- sent by `pay` to players removed for idling
-
-Used when the removal was recorded as `player timeout`. The game removes a player after
-`MAX_IDLE_ROUNDS` rounds without a response, and pays base pay prorated to the time spent
-with no bonus (`compensation.js`). The note says so plainly, without blame, and asks for the
-submission to be returned.
-
-> Hello, and thank you for taking part in our study today.
->
-> The game removes a player after several rounds without a response, so that the other players in the group are not left waiting, and that is why your session ended early.
->
-> We have sent you ${amount} through Prolific: the study's base pay, prorated to the time you spent in the game. The bonus for correct answers is not included. You will also see a request to return the submission, since the study was not completed. Returning it does not affect the payment.
->
-> Thank you again for your time.
-
-### `partial_payment_stopped.txt` -- sent by `pay` when the researcher stopped the batch
-
-Used when the removal was recorded as `game terminated`, which Empirica writes when a batch
-is stopped from the admin panel mid-game. The pay is the same as for a disbanded group (base
-prorated to time spent plus the bonus earned so far), but the note says that the session was
-stopped on our side rather than that other players left, and that the participant remains
-eligible.
-
-> Hello, and thank you for taking part in our study today.
->
-> We had to stop this session early on our side, so your game could not continue. Nothing went wrong on your end.
->
-> We have sent you a partial payment of ${amount} through Prolific: the study's base pay, prorated to the time you spent in the game, plus the bonus you had earned so far. You will also see a request to return the submission, since the study was not completed. Returning it does not affect the payment.
->
-> You are still eligible for this study, and we would be glad to have you in a future session. Thank you again for your time, and sorry for the inconvenience.
-
-### `partial_payment_others_left.txt` -- sent by `pay` to removed players
-
-Used when the removal was recorded as `group disbanded`, `insufficient groups` or
-`insufficient groups after accuracy check`, where the participant can be told plainly that
-nothing went wrong on their end.
-
-> Hello, and thank you for taking part in our study today.
->
-> Unfortunately the other players in your group left the game, so your session could not continue. Nothing went wrong on your end -- this kind of study needs everyone in a group to stay online together for the whole game.
->
-> We have sent you a partial payment of ${amount} through Prolific for the time you spent. You will also see a request to return the submission, since the study was not completed. Returning it does not affect the partial payment.
->
-> Thank you again for your time, and sorry for the inconvenience.
-
 ## What the pilots showed
 
-The show-up rate held steady at roughly 75% across sessions, which is the figure quoted in
-`README.md`. "Invited" below means the people who said on the form that they could make
-the session.
+The show-up rate held steady at roughly 75% across sessions. "Invited" below means the people
+who said on the form that they could make the session.
 
 | Session | Invited | Logged on | Rate | Notes |
 |---------|---------|-----------|------|-------|
@@ -884,8 +420,8 @@ the session.
 | Mar 1 | 40 | 31 | 75% | |
 | Mar 1 (PM, experiment 2 pilot) | 28 | -- | -- | Not everyone found a game; 28 was too few for two games |
 
-For a single nine-player game, inviting about 15 people has been enough. For two
-concurrent games, 35--40 invitations worked and 28 did not.
+For a single nine-player game, inviting about 15 people has been enough. For two concurrent
+games, 35 to 40 invitations worked and 28 did not.
 
 ## Operational lessons
 
@@ -895,16 +431,13 @@ concurrent games, 35--40 invitations worked and 28 did not.
   anyway, and unconfirmed participants show up regardless, so the confirmation step adds
   monitoring work without improving attendance.
 - **Weeknight evening sessions were harder to fill** than the weekend late-morning session.
-  The Wednesday 6pm session was the weakest of the pilots.
+  The Wednesday 6pm pilot session was the weakest.
 - **Longer instructions cost you players.** The experiment 2 pilot, which has longer
   instructions, lost more participants between logging on and being placed in a game.
 - **Tell participants to keep their sound on** and to watch for the sound that plays when
   the game starts.
-- **Overflow participants need the right screen.** Someone assigned to a batch whose game
-  starts without them should see a recruitment message rather than the waiting-room timeout
-  screen, and should be told they are paid for their time rather than for their waiting
-  time.
-- **Consider re-contacting the near misses.** Participants who logged on but did not get
-  into a game are good candidates to add to a group and invite to a later session. `pay`
-  now sends them the lobby-timeout payment and a note saying they are still eligible, so
-  the invitation is not the first they hear from you.
+- **Keep sessions small until the server is proven.** Five concurrent games on 22 September
+  2026 made every game slower and ended in a crash (see "Before every session").
+- **Consider re-contacting the near misses.** Participants who logged on but did not get into
+  a game have been screened and turned up on time; they stay eligible, and their lobby note
+  says so, so an invitation to a later session is not the first they hear from you.
