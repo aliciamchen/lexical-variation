@@ -18,6 +18,24 @@ import { Task } from "./Task";
 const roundSound = new Audio("round-sound.mp3");
 const gameSound = new Audio("bell.mp3");
 
+// Play a cue without letting it break the page. `play()` returns a promise in
+// every current browser, but some extensions (autoplay and ad blockers,
+// antivirus add-ons) replace it with a version that returns nothing, and
+// calling `.catch` on that threw inside the render: the participant got the
+// crash screen, and every reload crashed again because the sound had not yet
+// "played" for this game (Sentry JAVASCRIPT-REACT-G, 2026-09-23). A sound is
+// never worth that, so any failure here is only logged.
+function playCue(audio, label) {
+  try {
+    const result = audio.play();
+    if (result && typeof result.catch === "function") {
+      result.catch((e) => console.warn(`Error playing ${label} sound:`, e));
+    }
+  } catch (e) {
+    console.warn(`Error playing ${label} sound:`, e);
+  }
+}
+
 export function Game() {
   const game = useGame();
   const stage = useStage();
@@ -43,15 +61,13 @@ export function Game() {
   useEffect(() => {
     if (!game?.id || playedGameRef.current === game.id) return;
     playedGameRef.current = game.id;
-    gameSound.play().catch((e) => console.warn("Error playing game sound:", e));
+    playCue(gameSound, "game");
   }, [game?.id]);
 
   useEffect(() => {
     if (!round?.id || playedRoundRef.current === round.id) return;
     playedRoundRef.current = round.id;
-    roundSound
-      .play()
-      .catch((e) => console.warn("Error playing round sound:", e));
+    playCue(roundSound, "round");
   }, [round?.id]);
 
   // `usePlayer` is a subscription that is empty on the first render and again
