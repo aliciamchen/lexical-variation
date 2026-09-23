@@ -2,6 +2,7 @@ import React from "react";
 import { usePlayer } from "@empirica/core/player/classic/react";
 import { Loading } from "@empirica/core/player/react";
 import { Alert } from "../components/Alert";
+import { ProlificCompletion } from "../components/ProlificCompletion";
 import {
   EXIT_REASONS,
   LOBBY_TIMEOUT_PAY,
@@ -115,8 +116,8 @@ export function Sorry() {
     title = "Completion Code";
     message = (
       <p>
-        Thank you for completing the exit survey. Please use the code below to
-        receive your payment.
+        Thank you for completing the exit survey. Please use the button below
+        to receive your payment.
       </p>
     );
     compensationCode = PROLIFIC_CODES.partial;
@@ -128,7 +129,7 @@ export function Sorry() {
     message = (
       <p>
         The session ended early. We apologize for the inconvenience; please use
-        the code below to receive your payment.
+        the button below to receive your payment.
       </p>
     );
     compensationCode = PROLIFIC_CODES.partial;
@@ -170,14 +171,15 @@ export function Sorry() {
       {showCompensation && compensationCode ? (
         <Alert title="Payment">
           <p>
-            Please submit the following code on Prolific to receive{" "}
-            {compensationMessage}: <strong>{compensationCode}</strong>
+            To receive {compensationMessage}, return to Prolific with the
+            button below.
           </p>
+          <ProlificCompletion code={compensationCode} />
           {/* Every code shown here carries Prolific's REQUEST_RETURN action,
               and participants who were not warned wrote in asking whether
               returning would cost them their pay and why they had a code at
               all. */}
-          <p className="pt-1">
+          <p className="pt-3">
             <strong>
               After you submit the code, Prolific will ask you to return the
               study. Please return it; you will still be paid.
@@ -188,7 +190,7 @@ export function Sorry() {
             code tells us why your session ended, so we can pay you the right
             amount. Returning a study does not count against you on Prolific.
           </p>
-          <p className="pt-1">
+          <p className="pt-3">
             Thank you for your time and willingness to participate in our study.
           </p>
         </Alert>

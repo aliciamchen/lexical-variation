@@ -16,6 +16,7 @@ import {
   PHASE_2_BLOCKS,
   NUM_TANGRAMS,
   PROLIFIC_CODES,
+  prolificCompletionUrl,
 } from '../helpers/constants';
 import { EXIT_SURVEY } from '../helpers/selectors';
 
@@ -307,10 +308,13 @@ test.describe.serial('UI Verification: Endgame — Transition & Exit Survey (5.5
       timeout: 10_000,
     });
 
-    // The Prolific completion code is now shown, with the closing instruction
+    // The Prolific completion code is shown, with a link that submits it
     const bodyText = await page.textContent('body');
     expect(bodyText).toContain(PROLIFIC_CODES.completion);
-    expect(bodyText).toContain('You can close this tab');
+    await expect(page.getByTestId('prolific-completion-link')).toHaveAttribute(
+      'href',
+      prolificCompletionUrl(PROLIFIC_CODES.completion),
+    );
 
     // Nothing to click: a Finish button would let the code be dismissed
     await expect(page.getByRole('button', { name: /finish/i })).toHaveCount(0);

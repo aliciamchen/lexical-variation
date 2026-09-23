@@ -453,8 +453,8 @@ export async function completeExitSurvey(page: Page): Promise<void> {
   // The ExitSurvey component (client/src/intro-exit/ExitSurvey.jsx) is a
   // three-page flow: page 1 required questions ("Next"), page 2 demographics
   // ("Submit"), page 3 confirmation with the Prolific code. Page 3 has no
-  // button: the code stays on screen (data-prolific-code) until the tab is
-  // closed. Removed players (disbanded, too few groups, low accuracy, batch
+  // Finish button, only a link to Prolific's completion URL, and the code
+  // stays on screen (data-prolific-code) until the participant leaves. Removed players (disbanded, too few groups, low accuracy, batch
   // stopped) answer both pages too, but page 2's submit sends them to the
   // Sorry screen instead of page 3.
 
@@ -488,7 +488,7 @@ export async function completeExitSurvey(page: Page): Promise<void> {
 
   await page.getByRole('button', { name: /^submit$/i }).click();
 
-  // ── Page 3: confirmation with the Prolific code (nothing to click) ──
+  // ── Page 3: confirmation with the Prolific code and completion link ──
   // Removed players are routed to the Sorry screen here instead; wait for
   // whichever appears. The confirmation is the exit-survey container once it
   // carries the completion code.

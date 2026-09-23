@@ -1,6 +1,6 @@
 import { Page, expect } from '@playwright/test';
 import { GAME_CONTAINER, SORRY_SCREEN, QUIZ_FAILED_SCREEN, EXIT_SURVEY, SOCIAL_GUESS_CONTAINER, PLAYER_GROUP_DISPLAY } from './selectors';
-import { PLAYER_NAMES } from './constants';
+import { PLAYER_NAMES, prolificCompletionUrl } from './constants';
 import { getPlayerInfo, getExitInfo } from './game-actions';
 
 /**
@@ -37,6 +37,13 @@ export async function expectPlayerOnExitScreen(
     // Prolific code is only on Sorry/QuizFailed screens (not ExitSurvey)
     const el = sorry.or(quizFailed);
     await expect(el).toHaveAttribute('data-prolific-code', code);
+    // A paid exit also links to Prolific's completion URL for that code
+    if (code !== 'none') {
+      await expect(el.getByTestId('prolific-completion-link')).toHaveAttribute(
+        'href',
+        prolificCompletionUrl(code),
+      );
+    }
   }
 }
 

@@ -3,6 +3,7 @@ import { Loading } from "@empirica/core/player/react";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
+import { ProlificCompletion } from "../components/ProlificCompletion";
 import {
   BASE_PAY,
   EXIT_REASONS,
@@ -231,10 +232,11 @@ export function ExitSurvey({ next }) {
   }
 
   // Page 3: confirmation with the Prolific code. This is the last thing a
-  // finisher sees, so it has no button: calling `next()` here would end the
-  // exit steps and replace the code with Empirica's generic "Finished" page,
-  // and a participant who had not yet copied the code would have no way back.
-  // The code is also on `data-prolific-code` for the end-to-end tests.
+  // finisher sees, so it never calls `next()`: that would end the exit steps
+  // and replace the code with Empirica's generic "Finished" page. Its one
+  // control is a link to Prolific's completion URL, which submits the code and
+  // closes this tab's websocket; the code stays printed as a fallback. The
+  // code is also on `data-prolific-code` for the end-to-end tests.
   if (page === "done") {
     // Removed players are on their way to the Sorry page (see the effect above).
     if (isRemoved) return null;
@@ -260,12 +262,9 @@ export function ExitSurvey({ next }) {
             <strong>${(BASE_PAY + bonus).toFixed(2)}</strong>.
           </p>
           <p className="mt-2">
-            Please submit the following code on Prolific to receive your
-            payment: <strong>{PROLIFIC_CODES.completion}</strong>.
+            To receive your payment, return to Prolific with the button below.
           </p>
-          <p className="mt-2">
-            You can close this tab once you have submitted the code.
-          </p>
+          <ProlificCompletion code={PROLIFIC_CODES.completion} />
         </Alert>
       </div>
     );

@@ -18,7 +18,13 @@ import {
   waitForStage,
 } from '../helpers/game-actions';
 import { expectPlayerInGame } from '../helpers/assertions';
-import { PHASE_1_BLOCKS, PHASE_2_BLOCKS, ROUNDS_PER_BLOCK, PROLIFIC_CODES } from '../helpers/constants';
+import {
+  PHASE_1_BLOCKS,
+  PHASE_2_BLOCKS,
+  ROUNDS_PER_BLOCK,
+  PROLIFIC_CODES,
+  prolificCompletionUrl,
+} from '../helpers/constants';
 import { EXIT_SURVEY } from '../helpers/selectors';
 
 test.describe.serial('Compensation: Full Completion (TEST_PLAN 10.1)', () => {
@@ -130,14 +136,18 @@ test.describe.serial('Compensation: Full Completion (TEST_PLAN 10.1)', () => {
     await first.locator('input[name="feltHuman"][value="yes"]').click();
     await first.getByRole('button', { name: /^submit$/i }).click();
     // The confirmation page exposes the code on the container and in the text,
-    // and offers nothing to click: the code stays visible until the tab closes.
+    // offers no Finish button that would dismiss it, and links to Prolific's
+    // completion URL so the participant can leave with one click.
     await expect(first.locator(EXIT_SURVEY)).toHaveAttribute(
       'data-prolific-code',
       PROLIFIC_CODES.completion,
       { timeout: 10_000 },
     );
     await expect(first.locator('body')).toContainText(PROLIFIC_CODES.completion);
-    await expect(first.locator('body')).toContainText('You can close this tab');
+    await expect(first.getByTestId('prolific-completion-link')).toHaveAttribute(
+      'href',
+      prolificCompletionUrl(PROLIFIC_CODES.completion),
+    );
     await expect(first.getByRole('button', { name: /finish/i })).toHaveCount(0);
 
     // Complete exit survey for the remaining players

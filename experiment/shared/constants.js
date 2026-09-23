@@ -210,6 +210,17 @@ export const PROLIFIC_CODES = {
   partial: "CFTYDMIY", // removed early (disbanded, low accuracy, insufficient groups, inactivity)
 };
 
+// Prolific's completion endpoint. The exit screens link here with the
+// participant's code, so a click completes the Prolific submission without the
+// code being retyped, and leaving the page closes the experiment's websocket
+// instead of holding a server subscription open until the tab is closed. The
+// code itself stays on screen as a fallback.
+export const PROLIFIC_COMPLETION_URL = "https://app.prolific.com/submissions/complete";
+
+export function prolificCompletionUrl(code) {
+  return `${PROLIFIC_COMPLETION_URL}?cc=${encodeURIComponent(code)}`;
+}
+
 // Expected game duration in minutes (used for proportional compensation)
 export const EXPECTED_GAME_DURATION_MIN = 45; // full base pay after 45 minutes (task estimate is 45-60 min)
 
