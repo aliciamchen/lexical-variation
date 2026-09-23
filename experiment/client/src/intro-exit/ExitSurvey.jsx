@@ -204,9 +204,10 @@ export function ExitSurvey({ next }) {
         </p>
         <p className="mt-2">
           Please complete this survey to receive your Prolific completion code.
-          When you submit the code, Prolific will ask you to return your study.
-          This is so that you don't get penalized; we will still send you your
-          pay.
+          When you submit the code, Prolific will ask you to return the study.
+          Please return it; you will still be paid. We send your payment
+          separately as a bonus through Prolific, because an incomplete study
+          cannot be paid through its regular reward.
         </p>
       </Alert>
     );

@@ -173,6 +173,21 @@ export function Sorry() {
             Please submit the following code on Prolific to receive{" "}
             {compensationMessage}: <strong>{compensationCode}</strong>
           </p>
+          {/* Every code shown here carries Prolific's REQUEST_RETURN action,
+              and participants who were not warned wrote in asking whether
+              returning would cost them their pay and why they had a code at
+              all. */}
+          <p className="pt-1">
+            <strong>
+              After you submit the code, Prolific will ask you to return the
+              study. Please return it; you will still be paid.
+            </strong>{" "}
+            Because the study could not be completed, we cannot pay you through
+            the study's regular reward. Instead, we send your payment separately
+            as a bonus through Prolific, along with a message confirming it. The
+            code tells us why your session ended, so we can pay you the right
+            amount. Returning a study does not count against you on Prolific.
+          </p>
           <p className="pt-1">
             Thank you for your time and willingness to participate in our study.
           </p>
