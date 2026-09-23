@@ -1,3 +1,8 @@
+---
+paths:
+  - "experiment/**"
+---
+
 # Architecture
 
 ## Server (`experiment/server/src/`)
@@ -124,12 +129,6 @@ flags any it finds; and `games.csv` carries the count into the analysis.
 
 `beforeSend`, `beforeSendTransaction`, and `beforeBreadcrumb` cut every URL field at the `?` (`request.url`, `transaction`, `contexts.trace.data.url`, span `data.url`, breadcrumb `data.url` / `data.from` / `data.to`), so the Prolific ids in the study link's query string never reach Sentry. `window.location` is not rewritten, because Empirica's `ns` parameter must survive a reload. Replays are recorded only for sessions that hit an error (`replaysSessionSampleRate: 0`, `replaysOnErrorSampleRate: 1.0`, all text and inputs masked). `Introduction.jsx` sets the Sentry user to the Empirica player id only.
 
-## Configuration (`experiment/.empirica/`)
-
-- **treatments.yaml**: Experimental factors and 4 treatment combinations
-- **lobbies.yaml**: Participant grouping strategies
-- **empirica.toml**: Auth and project metadata
-
 ## Key Patterns
 
 ### Quiz Answers (for Playwright automation)
@@ -168,8 +167,3 @@ In `refer_mixed` and `social_mixed`, groups are reshuffled every trial (not per-
 - `player.round.set("display_avatar/name")` for UI display
 - `player.set("avatar/name")` overwritten for chat masking
 - `player.get("original_avatar/name")` preserved for restoration
-
-### Group Tracking
-
-- `original_group`: Persists throughout game (A, B, C)
-- `current_group`: Changes every trial in Phase 2 of the mixed conditions
