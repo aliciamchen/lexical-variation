@@ -10,9 +10,12 @@ dataset, takes each player placed in a game, and groups them by the Prolific
 study recorded from their study link (`studyId`). It then asks Prolific, with
 read-only requests, for each study's name and submissions, which carry each
 submission's status and the bonuses already paid on it, and adds the
-lobby-timeout participants, who never reach a game and so appear in no export.
-A study where nobody reached a game has no players to be found by, so pass it
-with --study.
+lobby-timeout participants. They do have player records in the exports, but no
+game that started, so they are identified the way they were paid for: by the
+lobby-timeout completion code on their Prolific submission. That also covers
+overflow players Empirica turned away with "no more games", whose exit screen
+shows the same code. A study whose players never reached a started game is not
+found through the exports, so pass it with --study.
 
 The output is one folder per study under data/payments/<dataset>/, named by the
 study's creation date and internal name, with paste-ready files for Prolific's
@@ -257,7 +260,7 @@ def parse_args(argv=None):
     parser.add_argument("--dataset", required=True, help="Dataset name; output goes to data/payments/<dataset>/")
     parser.add_argument("--study", action="append", default=[], metavar="STUDY_ID",
                         help="Also check this Prolific study, for one where nobody reached a game "
-                             "(its lobby timeouts appear in no export); repeatable")
+                             "(no started game to find it through); repeatable")
     parser.add_argument("--offline", action="store_true",
                         help="Do not contact Prolific: list payees by study only, write no paste files")
     return parser.parse_args(argv)

@@ -49,6 +49,15 @@ scp lexical-variation.tar.zst root@$EMPIRICA_SERVER:~/empirica/empirica.tar.zst
 
 The Sentry DSN is compiled into the client bundle when you build, so it has to be available on the machine that runs `empirica bundle`, not on the server. The client build reads it from the `.env` file at the repository root (Vite is pointed there with `envDir`), and a production build fails with a clear message if the DSN is missing; set `ALLOW_NO_SENTRY=1` to build without Sentry on purpose. The server itself reads none of the `.env` values.
 
+**After upgrading Empirica itself** (`empirica upgrade --version ...`, which changes `.empirica/release`), the bundle alone does not move the server to the new version. The server's `empirica` command chooses which release to run from `~/empirica/.empirica/release` in its working directory before it opens the bundle, and that file is not updated by a deploy, so the server keeps running the old release even when the new one is installed. After uploading the bundle, set that file to the new version and restart, then confirm what is running:
+
+```bash
+ssh root@$EMPIRICA_SERVER
+printf 'version: v1.12.5\n' > ~/empirica/.empirica/release   # the version in experiment/.empirica/release
+systemctl restart empirica
+ss -tlnp | grep ':3000 '                                      # the process is named after the release, e.g. "v1.12.5"
+```
+
 The server is configured to automatically restart empirica when the bundle file is updated. That is convenient between sessions and destructive during one: copying a new bundle up while participants are playing restarts the server under them and ends their games. Deploy before inviting anyone, and treat the bundle as frozen once invitations have gone out (see `operations/procedures.md`).
 
 Avatars are served from `client/public/avatars/` rather than fetched from DiceBear at play time. Every seed is deterministic, so the set is downloaded once with `node scripts/fetch-avatars.mjs` and committed; run it again if the block count, the roster size or the avatar style changes, and `server/src/avatars.test.js` will tell you if a seed has no file. They used to be requested from the third-party API on every trial in the mixed conditions, which put hundreds of external requests per game on the critical path in the condition where identity is the manipulation.

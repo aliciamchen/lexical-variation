@@ -87,8 +87,8 @@ started in total. The cap counts every game that began Phase 1, including partia
 incomplete ones; a lobby that never formed a game does not count. `tally` prints a `STOP`
 line when either limit is reached.
 
-Run one treatment per batch, so that everyone who arrives can fill any game in it. Empirica
-cannot move players between games of different treatments.
+Run one treatment per batch. A session can run several batches of different treatments
+(see "T-30: bring up Empirica").
 
 ### T-45: create the screening survey and the game study
 
@@ -111,10 +111,19 @@ environment, and the server's log (`journalctl -u empirica -f`). Server-side cal
 never reach Sentry, which is browser-only, so the log is the only place they appear. Keep
 the DigitalOcean memory graph open as well.
 
-**Create and start the batch before any participant can arrive**, sized for all the games
-you intend to run, all of one treatment. A batch created after assignment has begun kicks
-players out of a game already in progress, and responses arrive within seconds of the survey
-opening.
+**Create and start the batch before any participant can arrive**, because responses arrive
+within seconds of the survey opening. Starting another batch later in the session is safe for
+games already running: Empirica (v1.12.5, `admin/classic/classic.ts`) never reassigns a player
+who already has a game, and never offers a started game to anyone.
+
+**Treatments can run side by side as separate batches.** When a game starts, everyone assigned
+to it beyond the nine who play is reassigned at once, but only to an open game with the same
+treatment (`assignplayer` filters candidate games on the player's `treatment`), so nobody
+reads one condition's instructions and plays another. If no game of their treatment has room,
+Empirica marks them "no more games", and the exit screen treats them as a lobby timeout: they
+see the lobby-timeout code and the $2 payment, and `make payments` lists them with the other
+lobby timeouts. (Someone who arrives after every game has started, and was never assigned,
+sees the "session is full" screen instead, which asks them to return the submission.)
 
 **Start the backup loop**, under `caffeinate -i` on a laptop so that the machine does not
 sleep and stop backing up without saying so:
@@ -308,9 +317,10 @@ by bonus, a return request, and a message explaining it.
 
 **Lobby timeouts** -- people who arrived on time but for whom no game could be formed -- are
 paid the `LOBBY_TIMEOUT_PAY` ($2) their Sorry page promises, the same way: a bonus, a return
-request and a note. They are the one group the data pipeline cannot see, because Empirica
-creates a player record only once someone is placed in a game, so `make payments` finds them
-by their completion code among the study's submissions.
+request and a note. They have player records in the exports, but their game never started,
+so `make payments` identifies them the way they were told to claim their pay: by the
+lobby-timeout code among the study's submissions. Overflow players Empirica turns away with
+"no more games" see the same lobby-timeout screen and are paid the same way.
 
 `make payments` applies all of this: a partial or lobby amount is listed in full for a
 submission that is returned or awaiting review; for one that was approved anyway, which
