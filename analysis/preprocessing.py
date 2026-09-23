@@ -524,9 +524,10 @@ def build_trials(
     ]
 
     # Late clicks: a selection that reached the server after the Selection
-    # deadline. The server does not score it (clickedCorrect stays null and the
-    # round earns no points) but no longer counts the round as idle. Exports
-    # from before September 2026 do not have these attributes.
+    # deadline. Scoring runs at the deadline using whatever click was present
+    # at that instant, so the round earns no points; clickedCorrect is coded
+    # False (no click yet), not null -- it is still coded, just coded as no
+    # answer. Exports from before September 2026 do not have these attributes.
     if "late_click" in pr.columns:
         trials["lateClick"] = pr["late_click"].fillna(False).astype(bool).values
     else:

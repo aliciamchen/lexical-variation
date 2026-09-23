@@ -502,12 +502,21 @@ class TestRoleAssignment:
                     speakers_by_block = {}
                     for bn in sorted(group_trials["blockNum"].unique()):
                         block = group_trials[group_trials["blockNum"] == bn]
-                        speaker_ids = block[block["role"] == "speaker"]["playerId"].unique()
-                        assert len(speaker_ids) == 1, (
+                        speaker_rows = block[block["role"] == "speaker"]
+                        # A speaker who goes idle mid-block is replaced for the
+                        # block's remaining trials (the post-kick fallback in
+                        # roles.js), and the server flags those rows
+                        # speakerReassigned. That legitimately puts two
+                        # speaker ids in one block; only a second,
+                        # *unflagged* id would mean the rotation broke.
+                        reassigned = speaker_rows["speakerReassigned"].fillna(False)
+                        primary_ids = speaker_rows.loc[~reassigned, "playerId"].unique()
+                        assert len(primary_ids) <= 1, (
                             f"Game {gid}, phase {pn}, group {grp}, block {bn}: "
-                            f"expected 1 unique speaker, got {len(speaker_ids)}"
+                            f"expected at most 1 non-reassigned speaker, got {len(primary_ids)}"
                         )
-                        speakers_by_block[bn] = speaker_ids[0]
+                        if len(primary_ids) == 1:
+                            speakers_by_block[bn] = primary_ids[0]
 
                     # Only verify the modular rotation for full-size groups.
                     # When a player is removed, the fallback uses
@@ -1462,15 +1471,35 @@ class TestSocialGuessing:
                     )
 
     def test_no_social_guesses_for_idle_player(
-        self, social_guesses, idle_players
+        self, social_guesses, trials, idle_players
     ):
-        """Idle players should not have social guesses (they were removed)."""
-        idle_ids = set(idle_players["playerId"])
-        guess_player_ids = set(social_guesses["playerId"].unique())
-        overlap = idle_ids & guess_player_ids
-        assert not overlap, (
-            f"Idle players have social guesses: {overlap}"
-        )
+        """A removed player has no social guess in a round later than their last trial.
+
+        Idle removal fires only after MAX_IDLE_ROUNDS consecutive idle
+        rounds, so a removed player legitimately played (and could have
+        guessed in) every round up to and including the one that finally
+        triggered their removal -- banning any guess anywhere in their
+        history is too strong. Empirica writes no playerRound record for an
+        inactive player, so a guess can only exist for a round they actually
+        played; this mirrors test_removed_players_produce_no_later_trials.
+        """
+        if idle_players.empty:
+            pytest.skip("no removed players in this dataset")
+        for _, player in idle_players.iterrows():
+            own_guesses = social_guesses[social_guesses["playerId"] == player["playerId"]]
+            if own_guesses.empty:
+                continue
+            own_trials = trials[trials["playerId"] == player["playerId"]]
+            if own_trials.empty:
+                continue
+            last_trial_order = tuple(
+                own_trials[["phaseNum", "blockNum"]].max()
+            )
+            guess_order = own_guesses[["phaseNum", "blockNum"]].apply(tuple, axis=1)
+            assert (guess_order <= last_trial_order).all(), (
+                f"Player {player['playerId']} has a social guess in a later "
+                f"phase/block than their last trial"
+            )
 
     def test_social_guess_correctness_logic(self, social_guesses, trials):
         """socialGuessCorrect should be True when:
@@ -1856,16 +1885,21 @@ class TestResponseOpportunities:
     def test_late_clicks_are_unscored(self, trials):
         """A selection that arrived after the deadline earns no score.
 
-        The rule counts a late arrival as unsuccessful, which is only right
-        if the server really did leave it unscored.
+        Scoring runs at the Selection deadline using whatever click was
+        present at that instant, so a late arrival's clickedCorrect is coded
+        False (no click yet), not null -- the row is still coded, just coded
+        as no answer. What must hold is that it never earns credit.
         """
         late = trials[trials["lateClick"] == True]  # noqa: E712
         if late.empty:
             pytest.skip("no late clicks in this dataset")
-        scored = late[late["clickedCorrect"].notna()]
-        assert scored.empty, (
-            f"{len(scored)} late clicks were scored by the server; the "
-            f"analysis assumes scoring is final at the deadline"
+        marked_correct = late[late["clickedCorrect"] == True]  # noqa: E712
+        assert marked_correct.empty, (
+            f"{len(marked_correct)} late clicks were marked correct by the "
+            f"server; the analysis assumes scoring is final at the deadline"
+        )
+        assert (late["roundScore"] == 0).all(), (
+            "a late click earned round score; scoring must be final at the deadline"
         )
 
 
