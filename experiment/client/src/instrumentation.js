@@ -178,11 +178,15 @@ export function ConnectionLog() {
   const pending = useRef([]);
   const recorder = useRef(null);
   const pageLoadRecorded = useRef(false);
+  const everConnected = useRef(false);
 
-  // `connected` is undefined until the first connection attempt settles;
-  // only an explicit false counts as a drop.
+  // Only a loss of a connection this page already had counts as a drop.
+  // While a page first connects, `connected` reads false for a moment, and
+  // counting that logged a 1-2 ms "disconnect" on every page load (seen in a
+  // local test on 2026-09-25).
   useEffect(() => {
-    if (connected === false && downSince.current === null) {
+    if (connected === true) everConnected.current = true;
+    if (connected === false && everConnected.current && downSince.current === null) {
       downSince.current = Date.now();
     } else if (connected === true && downSince.current !== null) {
       pending.current.push({ since: downSince.current, until: Date.now() });
