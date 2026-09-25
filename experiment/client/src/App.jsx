@@ -11,6 +11,7 @@ import { MyPlayerForm } from "./intro-exit/PlayerCreate.jsx";
 import { NoGames } from "./intro-exit/NoGames.jsx";
 import { LobbyWait } from "./intro-exit/LobbyWait.jsx";
 import { LoadingScreen } from "./components/LoadingScreen.jsx";
+import { ConnectionLog } from "./instrumentation";
 import { EXIT_REASONS, PARTIAL_PAY_SURVEY_REASONS } from "./constants";
 
 export default function App() {
@@ -68,6 +69,9 @@ export default function App() {
 
   return (
     <EmpiricaParticipant url={url} ns={playerKey} modeFunc={EmpiricaClassic}>
+      {/* Outside EmpiricaContext on purpose: it must stay mounted while the
+          connection is down to see the drop (see instrumentation.js). */}
+      <ConnectionLog />
       {/* No EmpiricaMenu: at "bottom-left" its logo button is not treated as
           development-only, and it opens empirica.ly in a new tab. A curious
           click mid-Selection costs the participant a round. */}

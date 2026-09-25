@@ -123,11 +123,38 @@ export function createEngagementRecorder({
     return record("online") || wrote;
   }
 
+  /**
+   * Record a lost connection to the game server, once it is back.
+   *
+   * This is the websocket to Empirica, not the operating system's network,
+   * which the `offline`/`online` pair above covers. The browser raises no
+   * event when only the websocket drops, which is the common case (a busy or
+   * restarting server, a flaky router), so those pairs stayed empty for all
+   * 198 players up to 2026-09-24 even though participants reported drops. The
+   * caller watches Empirica's own connection state and passes the moment it
+   * went down; the record is written on reconnection for the same reason as
+   * recordOnline, with its start time and length.
+   */
+  function recordDisconnect(since, until = now()) {
+    return record("disconnect", { durationMs: Math.max(0, until - since) }, since);
+  }
+
+  /**
+   * Record that the game page was loaded, and how. A `navigation` of
+   * "reload" is a participant reloading mid-session, which is what the old
+   * loading screen told people to do and what cost several of them rounds.
+   */
+  function recordPageLoad(navigation) {
+    return record("page_load", { navigation: navigation || "unknown" });
+  }
+
   return {
     record,
     recordResize,
     recordOffline,
     recordOnline,
+    recordDisconnect,
+    recordPageLoad,
     get count() {
       return count;
     },

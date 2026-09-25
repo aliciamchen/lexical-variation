@@ -198,4 +198,33 @@ describe("createEngagementRecorder", () => {
       expect(written).toHaveLength(2);
     });
   });
+
+  describe("game-server connection", () => {
+    it("records a disconnection at the moment it began, with its length", () => {
+      const { recorder, written } = makeRecorder({ now: () => 9000 });
+      expect(recorder.recordDisconnect(4000)).toBe(true);
+      expect(written).toEqual([{ t: 4000, type: "disconnect", durationMs: 5000 }]);
+    });
+
+    it("never records a negative length", () => {
+      const { recorder, written } = makeRecorder();
+      recorder.recordDisconnect(5000, 4000);
+      expect(written[0].durationMs).toBe(0);
+    });
+
+    it("records how the page was loaded, so reloads are visible", () => {
+      const { recorder, written } = makeRecorder();
+      recorder.recordPageLoad("reload");
+      recorder.recordPageLoad(undefined);
+      expect(written.map((e) => e.navigation)).toEqual(["reload", "unknown"]);
+      expect(written.every((e) => e.type === "page_load")).toBe(true);
+    });
+
+    it("counts against the cap like every other event", () => {
+      const { recorder, written } = makeRecorder({ max: 1 });
+      recorder.recordPageLoad("navigate");
+      expect(recorder.recordDisconnect(0, 10)).toBe(false);
+      expect(written).toHaveLength(1);
+    });
+  });
 });

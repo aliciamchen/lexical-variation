@@ -13,8 +13,13 @@
  *   one who was present and chose not to act, and the three have different
  *   implications for exclusion.
  *
- * Both write to the player scope, so the records survive whatever round the
- * participant happens to be in. Neither changes anything the participant sees.
+ * - `ConnectionLog` records when the websocket to the game server drops and
+ *   comes back, and each page load (so a reload is visible). The browser's
+ *   `offline` event only fires when the whole network goes, so the engagement
+ *   log never saw the drops participants actually reported.
+ *
+ * All of them write to the player scope, so the records survive whatever round
+ * the participant happens to be in. None changes anything the participant sees.
  *
  * Every write is wrapped so that a failure here can never interrupt the game:
  * this is measurement, and losing a record costs one covariate, whereas an
@@ -24,7 +29,9 @@
  * by the server's vitest; this module is only the wiring to the browser and
  * the player scope.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTajribaConnected } from "@empirica/core/player/react";
+import { usePlayer } from "@empirica/core/player/classic/react";
 import {
   createEngagementRecorder,
   RESIZE_DEBOUNCE_MS,
@@ -137,4 +144,79 @@ export function useEngagementLog(player) {
   }, [player?.id]);
 
   return count;
+}
+
+function navigationType() {
+  try {
+    const entry = performance.getEntriesByType?.("navigation")?.[0];
+    if (entry?.type) return entry.type;
+    return performance.navigation?.type === 1 ? "reload" : "navigate";
+  } catch {
+    return "unknown";
+  }
+}
+
+/**
+ * Record drops of the connection to the game server, and page loads, in the
+ * player's `connection_events` (separate from `engagement_events`, with its own
+ * cap, so neither log can use up the other's).
+ *
+ * Mounted in App, beside EmpiricaContext rather than inside it: while the
+ * connection is down, EmpiricaContext unmounts the game and shows the
+ * connecting screen, so a component inside it could never see the drop. The
+ * moment the connection went down is held here and written once it is back,
+ * since nothing written while it is down can reach the server. A drop that
+ * outlasts the page (a reload while disconnected) is not recorded, but the
+ * reload itself is, as a page load with navigation "reload".
+ *
+ * Renders nothing and never throws into the tree.
+ */
+export function ConnectionLog() {
+  const connected = useTajribaConnected();
+  const player = usePlayer();
+  const downSince = useRef(null);
+  const pending = useRef([]);
+  const recorder = useRef(null);
+  const pageLoadRecorded = useRef(false);
+
+  // `connected` is undefined until the first connection attempt settles;
+  // only an explicit false counts as a drop.
+  useEffect(() => {
+    if (connected === false && downSince.current === null) {
+      downSince.current = Date.now();
+    } else if (connected === true && downSince.current !== null) {
+      pending.current.push({ since: downSince.current, until: Date.now() });
+      downSince.current = null;
+    }
+  }, [connected]);
+
+  useEffect(() => {
+    if (connected !== true || !player) return;
+    try {
+      if (recorder.current?.playerId !== player.id) {
+        recorder.current = {
+          playerId: player.id,
+          rec: createEngagementRecorder({
+            write: (event) => player.append("connection_events", event),
+            onTruncated: () => player.set("connection_log_truncated", true),
+            initialCount: (player.get("connection_events") || []).length,
+            truncated: Boolean(player.get("connection_log_truncated")),
+          }),
+        };
+      }
+      const { rec } = recorder.current;
+      if (!pageLoadRecorded.current) {
+        pageLoadRecorded.current = true;
+        rec.recordPageLoad(navigationType());
+      }
+      while (pending.current.length > 0) {
+        const drop = pending.current.shift();
+        rec.recordDisconnect(drop.since, drop.until);
+      }
+    } catch (e) {
+      console.warn("Could not record connection event:", e);
+    }
+  }, [connected, player?.id]);
+
+  return null;
 }
