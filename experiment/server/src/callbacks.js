@@ -420,7 +420,7 @@ Empirica.onStageEnded(guard("onStageEnded", ({ stage }) => {
       ) {
         // Arrived after the Selection deadline: unscored, but not idle.
         player.round.set("late_click", true);
-        console.log(`Player ${player.id} late click (after deadline) in round ${player.round.get("target_num")}`);
+        console.log(`Player ${player.id} late click (after deadline) in trial ${stage.round?.get("trial_num")}`);
       }
 
       if (
@@ -433,7 +433,7 @@ Empirica.onStageEnded(guard("onStageEnded", ({ stage }) => {
         // Unscored like a late click. Flagged only; it does not affect
         // idleness, which is decided by the tangram selection.
         player.round.set("late_social_guess", true);
-        console.log(`Player ${player.id} late social guess (after deadline) in round ${player.round.get("target_num")}`);
+        console.log(`Player ${player.id} late social guess (after deadline) in trial ${stage.round?.get("trial_num")}`);
       }
 
       // Check if the speaker in this group sent any message
@@ -473,7 +473,7 @@ Empirica.onStageEnded(guard("onStageEnded", ({ stage }) => {
           player.set("gameEndTime", Date.now());
           // Inactivity removals are paid base pay prorated to time spent but
           // forfeit the bonus (see compensation.js).
-          applyPartialPay(player, { includeBonus: false });
+          applyPartialPay(player, { includeBonus: false, bonusPerPoint: game.get("bonusPerPoint") });
           console.log(
             `  -> Prorated base pay (no bonus): $${player.get("partialPay")} for ${player.get("minutesSpent")} minutes`,
           );
@@ -557,7 +557,7 @@ function checkGroupViability(game) {
     player.set("gameEndTime", Date.now());
 
     // Proportional pay: base prorated to time spent, plus earned bonus
-    applyPartialPay(player);
+    applyPartialPay(player, { bonusPerPoint: game.get("bonusPerPoint") });
     console.log(
       `  -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${player.get("minutesSpent")} minutes`,
     );
@@ -586,7 +586,7 @@ function checkGroupViability(game) {
       player.set("gameEndTime", Date.now());
 
       // Proportional pay: base prorated to time spent, plus earned bonus
-      applyPartialPay(player);
+      applyPartialPay(player, { bonusPerPoint: game.get("bonusPerPoint") });
       console.log(
         `  -> Proportional pay: $${player.get("partialPay")} for ${player.get("minutesSpent")} minutes`,
       );
@@ -659,7 +659,7 @@ function checkPhase1AccuracyThreshold(game) {
         player.set("exitReason", EXIT_REASONS.lowAccuracy);
         player.set("gameEndTime", Date.now());
 
-        applyPartialPay(player);
+        applyPartialPay(player, { bonusPerPoint: game.get("bonusPerPoint") });
         console.log(
           `    -> Proportional pay: $${player.get("partialPay")} (base: $${player.get("partialBasePay")} + bonus: $${player.get("partialBonus")}) for ${player.get("minutesSpent")} minutes`,
         );
@@ -693,7 +693,7 @@ function checkPhase1AccuracyThreshold(game) {
       player.set("exitReason", EXIT_REASONS.insufficientGroupsAccuracy);
       player.set("gameEndTime", Date.now());
 
-      applyPartialPay(player);
+      applyPartialPay(player, { bonusPerPoint: game.get("bonusPerPoint") });
       console.log(
         `  -> Proportional pay: $${player.get("partialPay")} for ${player.get("minutesSpent")} minutes`,
       );
@@ -755,7 +755,7 @@ Empirica.onGameEnded(guard("onGameEnded", ({ game }) => {
       player.set("is_active", false);
       player.set("exitReason", EXIT_REASONS.gameTerminated);
       player.set("gameEndTime", endedAt);
-      applyPartialPay(player, { now: endedAt });
+      applyPartialPay(player, { now: endedAt, bonusPerPoint: multiplier });
       console.log(
         `Player ${player.id} ended by batch termination: $${player.get("partialPay")} for ${player.get("minutesSpent")} minutes`,
       );

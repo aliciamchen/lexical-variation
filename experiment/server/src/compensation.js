@@ -52,14 +52,29 @@ export function computePartialPay({ startMs, endMs, bonus = 0, includeBonus = tr
 
 /**
  * Compute and store partial pay on a player being removed.
- * Reads `gameStartTime` and `bonus` from the player; writes `partialPay`,
- * `partialBasePay`, `partialBonus`, and `minutesSpent`.
+ * Reads `gameStartTime` and the earned bonus from the player; writes
+ * `partialPay`, `partialBasePay`, `partialBonus`, and `minutesSpent`.
+ *
+ * Pass `bonusPerPoint` (the game's `bonusPerPoint`) whenever it is known. The
+ * player's `bonus` attribute is only refreshed in onRoundEnded, and most
+ * removals happen at the end of a Feedback stage, before that refresh, so
+ * reading it would leave out the points of the round just played. With
+ * `bonusPerPoint` the bonus is taken from the current score instead, and
+ * `bonus` is brought up to date so the two fields agree.
  */
-export function applyPartialPay(player, { includeBonus = true, now = Date.now() } = {}) {
+export function applyPartialPay(
+  player,
+  { includeBonus = true, now = Date.now(), bonusPerPoint } = {},
+) {
+  let bonus = player.get("bonus") || 0;
+  if (typeof bonusPerPoint === "number") {
+    bonus = (player.get("score") || 0) * bonusPerPoint;
+    player.set("bonus", bonus);
+  }
   const pay = computePartialPay({
     startMs: player.get("gameStartTime"),
     endMs: now,
-    bonus: player.get("bonus") || 0,
+    bonus,
     includeBonus,
   });
   player.set("partialPay", pay.partialPay);

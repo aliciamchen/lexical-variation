@@ -70,6 +70,23 @@ describe("applyPartialPay", () => {
     expect(player.get("partialBonus")).toBe(0);
     expect(player.get("partialPay")).toBe(6);
   });
+
+  // A removal at the end of Feedback runs before onRoundEnded refreshes
+  // `bonus`, so the stored bonus still lacks the round just played (game
+  // HGPSFW, 2026-09-22: score 59 but a bonus from score 58).
+  it("takes the bonus from the current score when given the rate", () => {
+    const player = makePlayer({ gameStartTime: 0, score: 59, bonus: 58 * 0.023 });
+    applyPartialPay(player, { now: 22.5 * MIN, bonusPerPoint: 0.023 });
+    expect(player.get("partialBonus")).toBe(1.36);
+    expect(player.get("bonus")).toBeCloseTo(59 * 0.023, 10);
+  });
+
+  it("still forfeits the bonus for inactivity when given the rate", () => {
+    const player = makePlayer({ gameStartTime: 0, score: 40, bonus: 1 });
+    applyPartialPay(player, { includeBonus: false, now: 22.5 * MIN, bonusPerPoint: 0.0556 });
+    expect(player.get("partialBonus")).toBe(0);
+    expect(player.get("partialPay")).toBe(6);
+  });
 });
 
 describe("minutesBetween", () => {
