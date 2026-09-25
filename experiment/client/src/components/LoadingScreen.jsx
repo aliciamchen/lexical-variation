@@ -12,19 +12,28 @@ import React, { useEffect, useState } from "react";
 // this component do nothing; one whose connection has actually dropped gets a
 // spinner and then something to act on. Showing the full message every time
 // would train people to ignore it and make a healthy game look broken.
+//
+// The explanation used to appear after 3 s and told people to reload. On a
+// busy server a stage change can take several seconds (up to 12 s in the
+// six-game session of 2026-09-25), so that advice fired on ordinary slow
+// transitions. Reloading is the worst response to one: it discards the update
+// already on its way, reloads the app, and re-fetches the whole game from the
+// same busy server while the stage timer keeps running, which is how
+// participants missed rounds and were removed for inactivity on 2026-09-23.
+// So the first message asks them to wait, and a reload is suggested only once
+// a wait is long enough to mean a real disconnection.
 const SPINNER_AFTER_MS = 400;
-const GUIDANCE_AFTER_MS = 3000;
+const WAIT_MESSAGE_AFTER_MS = 15000;
+const RELOAD_ADVICE_AFTER_MS = 30000;
 
 export function LoadingScreen() {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
-    const spinner = setTimeout(() => setElapsed(SPINNER_AFTER_MS), SPINNER_AFTER_MS);
-    const guidance = setTimeout(() => setElapsed(GUIDANCE_AFTER_MS), GUIDANCE_AFTER_MS);
-    return () => {
-      clearTimeout(spinner);
-      clearTimeout(guidance);
-    };
+    const timers = [SPINNER_AFTER_MS, WAIT_MESSAGE_AFTER_MS, RELOAD_ADVICE_AFTER_MS].map(
+      (ms) => setTimeout(() => setElapsed(ms), ms),
+    );
+    return () => timers.forEach(clearTimeout);
   }, []);
 
   return (
@@ -39,20 +48,22 @@ export function LoadingScreen() {
           <div className="mx-auto h-8 w-8 rounded-full border-2 border-empirica-500 border-t-transparent animate-spin" />
         ) : null}
 
-        {elapsed >= GUIDANCE_AFTER_MS ? (
+        {elapsed >= WAIT_MESSAGE_AFTER_MS ? (
           <>
             <h3 className="mt-4 text-lg font-medium text-gray-900">
-              Still waiting
+              The game is catching up
             </h3>
             <p className="mt-2 text-sm text-gray-500">
-              The study has not responded for a few seconds. This is usually a
-              brief problem with the connection.
-            </p>
-            <p className="mt-2 text-sm text-gray-500">
-              If it does not clear, reload the page. Your progress is saved, so
-              you will return to where you were.
+              Please wait here. The next screen will show up shortly.
             </p>
           </>
+        ) : null}
+
+        {elapsed >= RELOAD_ADVICE_AFTER_MS ? (
+          <p className="mt-2 text-sm text-gray-500" data-testid="loading-reload-advice">
+            If nothing has changed after another minute, please reload the
+            page. Your progress will be saved.
+          </p>
         ) : null}
       </div>
     </div>
