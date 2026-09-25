@@ -203,6 +203,13 @@ or lobby submission already received the $12 base, so it is listed only for any 
 that. The folder is rewritten on every run and contains
 Prolific ids, which is why `data/payments/` is gitignored.
 
+`overtime.csv` lists finishers whose submission took longer than 60 minutes, the top of the
+"45 to 60 minutes" the instructions promise, which happens mostly when the server slowed the
+games down. Each is owed the minutes beyond 60 at the study's own advertised rate ($12 for
+50 minutes, $0.24 a minute), using the time Prolific records on the submission. `status.csv`
+shows each person's game length and minutes taken. The threshold can be changed with
+`--overtime-after`.
+
 **4. On each study's submissions page:**
 
 - **Approve the finishers**, the submissions with the finished code `C2I8XDMC`. Approval pays
@@ -213,7 +220,9 @@ Prolific ids, which is why `data/payments/` is gitignored.
   request a return automatically, but a submission left in *awaiting review* is eventually
   approved by Prolific, which pays the full base reward on top of the partial payment.
 - **Paste the bonus files** into the study's bulk bonus form: `bonus.csv`, `partial.csv` and
-  `lobby.csv` can go in together or separately. Prolific shows the fee-inclusive total
+  `lobby.csv` can go in together or separately. Pay `bonus.csv` before `overtime.csv`,
+  because `make payments` counts what Prolific records as paid against the performance
+  bonus first. Prolific shows the fee-inclusive total
   before you confirm.
 - **Message the removed players and lobby timeouts** with the matching note in "Message
   templates"; `status.csv` has each person's exit reason.

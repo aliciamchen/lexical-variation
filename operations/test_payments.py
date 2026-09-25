@@ -32,7 +32,7 @@ def make_export(path: Path, games: list[dict], players: list[dict]) -> Path:
         return buf.getvalue()
 
     with zipfile.ZipFile(path, "w") as z:
-        z.writestr("game.csv", table(games, ["id", "status", "batchID"]))
+        z.writestr("game.csv", table(games, ["id", "status", "batchID", "startLastChangedAt", "endedLastChangedAt"]))
         z.writestr("player.csv", table(players, [
             "id", "gameID", "participantIdentifier", "studyId", "is_active",
             "bonus", "partialPay", "exitReason",
@@ -46,9 +46,11 @@ def player(pid, game, study, active=True, bonus="", partial="", reason=""):
             "partialPay": partial, "exitReason": reason}
 
 
-def submission(pid, status="AWAITING REVIEW", paid_cents=(), code=None):
+def submission(pid, status="AWAITING REVIEW", paid_cents=(), code=None, minutes=None):
     sub = {"id": f"s-{pid}", "participant_id": pid, "status": status,
            "bonus_payments": list(paid_cents)}
+    if minutes is not None:
+        sub["time_taken"] = int(minutes * 60)
     if code:
         sub["study_code"] = code
     return sub
@@ -108,6 +110,92 @@ class TestPayeesFromExports:
         payees = payments.payees_from_exports([later, export])
         assert payees["playing"].amount == 6.5
         assert not payees["playing"].game_running
+
+    def test_game_length_comes_from_the_game_timestamps(self, tmp_path):
+        path = make_export(
+            tmp_path / "empirica-export-20260923_194233.zip",
+            [{"id": "G5", "status": "ended", "batchID": "B5",
+              "startLastChangedAt": "2026-09-23T22:11:19.704553412Z",
+              "endedLastChangedAt": "2026-09-23T23:15:23.727121504Z"}],
+            [player("slow", "G5", "S5", bonus="6.00")],
+        )
+        assert payments.payees_from_exports([path])["slow"].game_minutes == 64.1
+
+
+class TestOvertime:
+    """A finisher whose submission ran past 60 minutes is owed the minutes beyond it."""
+
+    def study(self, *payees_):
+        study = payments.Study("S1", estimated_minutes=50, reward=12.0)
+        study.payees.extend(payees_)
+        return study
+
+    def finisher(self, pid="a", game_minutes=64.0, **kw):
+        return payments.Payee(participant=pid, study_id="S1", kind="bonus", amount=7.18,
+                              game="G1", game_minutes=game_minutes, **kw)
+
+    def overtime(self, study):
+        return [p for p in study.payees if p.kind == "overtime"]
+
+    def test_the_minutes_past_the_threshold_are_paid_at_the_advertised_rate(self):
+        study = self.study(self.finisher())
+        payments.settle(study, [submission("a", minutes=71)], {"a"})
+        [ot] = self.overtime(study)
+        assert ot.amount == round(11 * 12.0 / 50, 2) and ot.ready
+        assert ot.minutes_taken == 71.0
+
+    def test_game_length_does_not_matter(self):
+        study = self.study(self.finisher(game_minutes=47.0))
+        payments.settle(study, [submission("a", minutes=71)], {"a"})
+        assert len(self.overtime(study)) == 1
+
+    def test_part_minutes_are_not_paid(self):
+        study = self.study(self.finisher())
+        payments.settle(study, [submission("a", minutes=60.5)], {"a"})
+        assert self.overtime(study) == []
+
+    def test_a_submission_within_the_threshold_owes_none(self):
+        study = self.study(self.finisher())
+        payments.settle(study, [submission("a", minutes=59)], {"a"})
+        assert self.overtime(study) == []
+
+    def test_removed_players_are_not_owed_overtime(self):
+        removed = payments.Payee(participant="r", study_id="S1", kind="partial", amount=4.58,
+                                 game="G1", game_minutes=64.0)
+        study = self.study(removed)
+        payments.settle(study, [submission("r", status="RETURNED", minutes=40)], {"r"})
+        assert self.overtime(study) == []
+
+    def test_a_running_game_owes_none_yet(self):
+        study = self.study(self.finisher(game_running=True))
+        payments.settle(study, [submission("a", minutes=71)], {"a"})
+        assert self.overtime(study) == []
+
+    def test_the_threshold_can_be_changed(self):
+        study = self.study(self.finisher())
+        payments.settle(study, [submission("a", minutes=71)], {"a"}, overtime_after=50)
+        [ot] = self.overtime(study)
+        assert ot.amount == round(21 * 12.0 / 50, 2)
+
+    def test_a_paid_performance_bonus_does_not_count_as_overtime(self):
+        study = self.study(self.finisher())
+        payments.settle(study, [submission("a", minutes=71, paid_cents=[718])], {"a"})
+        bonus = next(p for p in study.payees if p.kind == "bonus")
+        [ot] = self.overtime(study)
+        assert not bonus.ready and bonus.already_paid == 7.18
+        assert ot.ready and ot.already_paid == 0 and ot.still_owed == 2.64
+
+    def test_payments_beyond_the_bonus_settle_the_overtime(self):
+        study = self.study(self.finisher())
+        payments.settle(study, [submission("a", minutes=71, paid_cents=[718, 264])], {"a"})
+        [ot] = self.overtime(study)
+        assert not ot.ready and ot.note == "paid"
+
+    def test_no_estimate_on_the_study_means_no_overtime(self):
+        study = payments.Study("S1")
+        study.payees.append(self.finisher())
+        payments.settle(study, [submission("a", minutes=71)], {"a"})
+        assert self.overtime(study) == []
 
 
 class TestSettle:
@@ -196,6 +284,7 @@ class TestWriteOutputs:
             payments.Payee("ready1", study.study_id, "bonus", 7.18, still_owed=7.18, ready=True, game="G1"),
             payments.Payee("paid1", study.study_id, "bonus", 6.0, already_paid=6.0, note="paid", game="G1"),
             payments.Payee("part1", study.study_id, "partial", 9.8, still_owed=9.8, ready=True, game="G1"),
+            payments.Payee("ready1", study.study_id, "overtime", 5.04, still_owed=5.04, ready=True, game="G1"),
         ]
         return {study.study_id: study}
 
@@ -204,6 +293,7 @@ class TestWriteOutputs:
         folder = tmp_path / "out" / "2026-09-23_full-sample-batch-5_7d0805"
         assert (folder / "bonus.csv").read_text() == "ready1,7.18\n"
         assert (folder / "partial.csv").read_text() == "part1,9.80\n"
+        assert (folder / "overtime.csv").read_text() == "ready1,5.04\n"
         assert not (folder / "lobby.csv").exists()
 
     def test_status_lists_everyone(self, tmp_path):

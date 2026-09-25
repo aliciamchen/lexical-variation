@@ -35,12 +35,24 @@ records as paid in `bonus_payments` is subtracted, so a partly paid person is
 owed only the rest. Players in games listed in data/<dataset>/exclude_games.txt
 are left out. The files contain Prolific ids, which is why data/payments/ is
 gitignored.
+
+Overtime: when many games run at once the server slows down, and a game that
+should take about 45 minutes can run 60 to 75, so the study takes well over the
+"45 to 60 minutes" the instructions promise. A finisher whose submission took
+longer than OVERTIME_AFTER_MINUTES is owed the minutes beyond it, paid at the
+study's own advertised rate (reward / estimated minutes, $12 / 50 = $0.24 a
+minute), counted in whole minutes. Counting from the threshold rather than from the study's estimate
+avoids a cliff between just under and just over it. Prolific's `time_taken`
+covers the whole submission, instructions and lobby included. Overtime goes out as a separate bonus file, overtime.csv; pay
+bonus.csv first, because what Prolific records as paid is counted against the
+performance bonus before the overtime.
 """
 from __future__ import annotations
 
 import argparse
 import csv
 import io
+import math
 import re
 import shutil
 import sys
@@ -57,7 +69,10 @@ from combine_runs import read_excluded_games  # noqa: E402
 
 PROJECT_ROOT = prolific.PROJECT_ROOT
 PAYMENTS_DIR = PROJECT_ROOT / "data" / "payments"
-KINDS = ("bonus", "partial", "lobby")
+KINDS = ("bonus", "partial", "lobby", "overtime")
+# Finishers are paid for the minutes their submission took beyond this, the top of
+# the "45 to 60 minutes" the instructions promise.
+OVERTIME_AFTER_MINUTES = 60
 NO_STUDY = ""
 
 
@@ -71,6 +86,8 @@ class Payee:
     batch: str = ""
     exit_reason: str = ""
     game_running: bool = False
+    game_minutes: float = 0.0
+    minutes_taken: float = 0.0
     status: str = ""
     already_paid: float = 0.0
     still_owed: float = 0.0
@@ -84,6 +101,8 @@ class Study:
     name: str = ""
     internal_name: str = ""
     created: str = ""
+    estimated_minutes: int = 0
+    reward: float = 0.0
     payees: list[Payee] = field(default_factory=list)
 
     @property
@@ -103,6 +122,16 @@ def _float(value) -> float:
         return round(float(value), 2)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _minutes_between(start: str | None, end: str | None) -> float:
+    """Minutes between two Empirica timestamps (ISO 8601, nanoseconds, trailing Z)."""
+    try:
+        t0 = datetime.fromisoformat((start or "")[:19])
+        t1 = datetime.fromisoformat((end or "")[:19])
+    except ValueError:
+        return 0.0
+    return round(max(0.0, (t1 - t0).total_seconds() / 60.0), 1)
 
 
 def _export_stamp(path: Path) -> str:
@@ -143,6 +172,8 @@ def payees_from_exports(zips: list[Path], excluded_games: set[str] = frozenset()
                     batch=game.get("batchID") or "",
                     exit_reason=p.get("exitReason") or "",
                     game_running=status == "running",
+                    game_minutes=_minutes_between(game.get("startLastChangedAt"), game.get("endedLastChangedAt"))
+                    if status == "ended" else 0.0,
                 )
     return payees
 
@@ -154,7 +185,26 @@ def group_by_study(payees: dict[str, Payee]) -> dict[str, Study]:
     return studies
 
 
-def settle(study: Study, submissions: list[dict], game_payees: set[str]) -> None:
+def overtime_payee(study: Study, payee: Payee, submission: dict | None,
+                   overtime_after: float = OVERTIME_AFTER_MINUTES) -> Payee | None:
+    """The overtime owed to a finisher, or None (see the module docstring)."""
+    if payee.kind != "bonus" or payee.game_running:
+        return None
+    if not submission or not submission.get("time_taken") or not study.estimated_minutes or not study.reward:
+        return None
+    minutes = submission["time_taken"] / 60.0
+    # Whole minutes, so someone a few seconds over is not sent a one-cent bonus.
+    over = math.floor(minutes - overtime_after)
+    if over <= 0:
+        return None
+    rate = study.reward / study.estimated_minutes
+    return Payee(participant=payee.participant, study_id=study.study_id, kind="overtime",
+                 amount=round(over * rate, 2), game=payee.game, batch=payee.batch,
+                 game_minutes=payee.game_minutes, minutes_taken=round(minutes, 1))
+
+
+def settle(study: Study, submissions: list[dict], game_payees: set[str],
+           overtime_after: float = OVERTIME_AFTER_MINUTES) -> None:
     """Add the study's lobby timeouts and decide what each payee is still owed.
 
     `submissions` is the study's submission list from Prolific, which carries
@@ -170,6 +220,11 @@ def settle(study: Study, submissions: list[dict], game_payees: set[str]) -> None
             participant=pid, study_id=study.study_id, kind="lobby",
             amount=round(prolific.LOBBY_TIMEOUT_PAY, 2), exit_reason="lobby timeout",
         ))
+    for payee in list(study.payees):
+        overtime = overtime_payee(study, payee, by_participant.get(payee.participant), overtime_after)
+        if overtime:
+            study.payees.append(overtime)
+    earned = {p.participant: p.amount for p in study.payees if p.kind == "bonus"}
     for payee in study.payees:
         sub = by_participant.get(payee.participant)
         if sub is None:
@@ -177,7 +232,15 @@ def settle(study: Study, submissions: list[dict], game_payees: set[str]) -> None
             payee.still_owed = payee.amount
             continue
         payee.status = prolific.norm_status(sub.get("status"))
-        payee.already_paid = round(sum(sub.get("bonus_payments") or []) / 100.0, 2)
+        paid = round(sum(sub.get("bonus_payments") or []) / 100.0, 2)
+        if payee.kind == "bonus":
+            # Bonuses already paid count against the performance bonus first,
+            # and anything beyond it against the overtime.
+            payee.already_paid = min(paid, payee.amount)
+        elif payee.kind == "overtime":
+            payee.already_paid = round(max(0.0, paid - earned.get(payee.participant, 0.0)), 2)
+        else:
+            payee.already_paid = paid
         payee.still_owed = round(max(0.0, payee.amount - payee.already_paid), 2)
         if payee.kind in ("partial", "lobby") and payee.status == "APPROVED":
             # Approval paid the full base reward, which covers a partial or lobby
@@ -214,8 +277,8 @@ def write_outputs(studies: dict[str, Study], out_dir: Path, offline: bool) -> li
         folder = out_dir / study.folder
         folder.mkdir()
         with open(folder / "status.csv", "w", newline="") as f:
-            columns = ["participant", "kind", "game", "batch", "exit_reason", "status",
-                       "amount", "already_paid", "still_owed", "ready", "note"]
+            columns = ["participant", "kind", "game", "batch", "exit_reason", "game_minutes",
+                       "minutes_taken", "status", "amount", "already_paid", "still_owed", "ready", "note"]
             writer = csv.DictWriter(f, fieldnames=columns)
             writer.writeheader()
             for p in sorted(study.payees, key=lambda p: (KINDS.index(p.kind), p.game, p.participant)):
@@ -261,6 +324,9 @@ def parse_args(argv=None):
     parser.add_argument("--study", action="append", default=[], metavar="STUDY_ID",
                         help="Also check this Prolific study, for one where nobody reached a game "
                              "(no started game to find it through); repeatable")
+    parser.add_argument("--overtime-after", type=float, default=OVERTIME_AFTER_MINUTES, metavar="MINUTES",
+                        help=f"Finishers are paid for the minutes their submission took beyond this "
+                             f"(default {OVERTIME_AFTER_MINUTES:g})")
     parser.add_argument("--offline", action="store_true",
                         help="Do not contact Prolific: list payees by study only, write no paste files")
     return parser.parse_args(argv)
@@ -288,7 +354,10 @@ def main(argv=None) -> None:
             study.name = info.get("name") or ""
             study.internal_name = info.get("internal_name") or ""
             study.created = (info.get("date_created") or "")[:19]
-            settle(study, list(prolific.paged(f"/studies/{study.study_id}/submissions/", token)), game_payees)
+            study.estimated_minutes = int(info.get("estimated_completion_time") or 0)
+            study.reward = round((info.get("reward") or 0) / 100.0, 2)
+            settle(study, list(prolific.paged(f"/studies/{study.study_id}/submissions/", token)), game_payees,
+                   args.overtime_after)
     else:
         for study in studies.values():
             mark_unverified(study)
