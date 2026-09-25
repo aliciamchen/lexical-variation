@@ -248,6 +248,15 @@ export function Refgame(props) {
 
     if (player.round.get("role") == "listener") {
       const clicked = player.round.get("clicked");
+      // A click that reached the server after the Selection deadline is
+      // recorded but not scored, so `clicked_correct` is false even when the
+      // picture was the target. The server snapshots `clicked_at_deadline` when
+      // Selection ends, before this screen; `late_click` itself is only set at
+      // the end of Feedback, too late to use here. Telling a late but correct
+      // click "that wasn't the target" contradicted the grid, which shows the
+      // player's avatar on the highlighted target (20 cases by 2026-09-24).
+      const lateClick =
+        Boolean(clicked) && player.round.get("clicked_at_deadline") === false;
       // Check if speaker was missing (kicked) or idle (didn't send any message)
       if (!speaker) {
         feedback =
@@ -270,6 +279,9 @@ export function Refgame(props) {
         let pictureFeedback;
         if (!clicked) {
           pictureFeedback = "You did not select a picture in time.";
+        } else if (lateClick) {
+          pictureFeedback =
+            "Your picture choice arrived after the deadline and was not scored.";
         } else if (correct) {
           pictureFeedback = "Correct! You identified the target picture.";
         } else {
@@ -331,6 +343,9 @@ export function Refgame(props) {
         // Listener didn't respond in time
         feedback =
           "You did not respond in time. You earned no points this round.";
+      } else if (lateClick) {
+        feedback =
+          "Your choice arrived after the deadline, so it was not scored. You earned no points this round.";
       } else if (correct) {
         feedback = `Correct! You earned ${pictureRoundScore} ${pictureRoundScore == 1 ? "point" : "points"}.`;
       } else {
@@ -346,7 +361,16 @@ export function Refgame(props) {
         );
 
         let socialText = "";
-        if (originalGroupListeners === 0) {
+        // The server skips social scoring for a speaker who sent no
+        // description, so neither count is set; without this branch the card
+        // read "undefined out of undefined members" (6 speaker-rounds).
+        const socialScored =
+          typeof recognizedCount === "number" &&
+          typeof originalGroupListeners === "number";
+        if (!socialScored) {
+          socialText =
+            "You did not send a description this round, so no one guessed your group.";
+        } else if (originalGroupListeners === 0) {
           socialText =
             "No members from your original group were listeners this round.";
         } else {
@@ -354,7 +378,7 @@ export function Refgame(props) {
         }
 
         let cardStyle;
-        if (originalGroupListeners === 0) {
+        if (!socialScored || originalGroupListeners === 0) {
           // No original group listeners — neutral purple
           cardStyle = { backgroundColor: "#f5f3ff", color: "#7c3aed" };
         } else if (recognizedCount === 0) {
