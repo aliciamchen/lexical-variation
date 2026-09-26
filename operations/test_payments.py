@@ -46,6 +46,11 @@ def player(pid, game, study, active=True, bonus="", partial="", reason=""):
             "partialPay": partial, "exitReason": reason}
 
 
+def by_pid(payees):
+    """payees_from_exports keys by (participant, game); most tests have one game per person."""
+    return {pid: payee for (pid, _), payee in payees.items()}
+
+
 def submission(pid, status="AWAITING REVIEW", paid_cents=(), code=None, minutes=None):
     sub = {"id": f"s-{pid}", "participant_id": pid, "status": status,
            "bonus_payments": list(paid_cents)}
@@ -77,7 +82,7 @@ def export(tmp_path):
 
 class TestPayeesFromExports:
     def test_finishers_get_bonus_and_removed_players_partial_pay(self, export):
-        payees = payments.payees_from_exports([export])
+        payees = by_pid(payments.payees_from_exports([export]))
         assert payees["finisher"].kind == "bonus"
         assert payees["finisher"].amount == 7.18
         assert payees["removed"].kind == "partial"
@@ -85,20 +90,20 @@ class TestPayeesFromExports:
         assert payees["removed"].exit_reason == "group disbanded"
 
     def test_study_and_batch_come_from_the_export(self, export):
-        payees = payments.payees_from_exports([export])
+        payees = by_pid(payments.payees_from_exports([export]))
         assert payees["finisher"].study_id == "S1"
         assert payees["finisher"].batch == "B1"
 
     def test_players_in_failed_games_or_without_an_id_are_skipped(self, export):
-        payees = payments.payees_from_exports([export])
+        payees = by_pid(payments.payees_from_exports([export]))
         assert "lobbyfail" not in payees
         assert "" not in payees
 
     def test_a_running_game_is_flagged(self, export):
-        assert payments.payees_from_exports([export])["playing"].game_running
+        assert by_pid(payments.payees_from_exports([export]))["playing"].game_running
 
     def test_excluded_games_are_left_out(self, export):
-        assert "rehearsal" not in payments.payees_from_exports([export], {"G4"})
+        assert "rehearsal" not in by_pid(payments.payees_from_exports([export], {"G4"}))
 
     def test_a_later_export_replaces_an_earlier_one(self, tmp_path, export):
         later = make_export(
@@ -107,7 +112,7 @@ class TestPayeesFromExports:
             [player("playing", "G2", "S2", bonus="6.50")],
         )
         # Passed newest first on purpose: order comes from the timestamps.
-        payees = payments.payees_from_exports([later, export])
+        payees = by_pid(payments.payees_from_exports([later, export]))
         assert payees["playing"].amount == 6.5
         assert not payees["playing"].game_running
 
@@ -119,7 +124,112 @@ class TestPayeesFromExports:
               "endedLastChangedAt": "2026-09-23T23:15:23.727121504Z"}],
             [player("slow", "G5", "S5", bonus="6.00")],
         )
-        assert payments.payees_from_exports([path])["slow"].game_minutes == 64.1
+        assert by_pid(payments.payees_from_exports([path]))["slow"].game_minutes == 64.1
+
+
+class TestAssignStudies:
+    """A payee's study comes from their Prolific id when the link did not record it."""
+
+    def payee(self, pid="p", study="", joined="2026-09-25T22:22:00.000Z", game="G1"):
+        return payments.Payee(participant=pid, study_id=study, kind="bonus", amount=5.67,
+                              game=game, joined_at=joined)
+
+    def sub(self, pid="p", start="2026-09-25T22:10:00Z", end="2026-09-25T23:20:00Z", code=None):
+        s = submission(pid, code=code)
+        s["started_at"], s["completed_at"] = start, end
+        return s
+
+    def test_the_links_study_is_kept_when_it_has_the_submission(self):
+        payees = {("p", "G1"): self.payee(study="S14")}
+        payments.assign_studies(payees, {"S14": [self.sub()], "S13": [self.sub()]})
+        assert payees[("p", "G1")].study_id == "S14"
+        assert payees[("p", "G1")].study_source == "link"
+
+    def test_a_missing_study_id_is_found_by_the_prolific_id(self):
+        payees = {("p", "G1"): self.payee()}
+        payments.assign_studies(payees, {"S14": [self.sub()], "S13": [self.sub(pid="other")]})
+        assert payees[("p", "G1")].study_id == "S14"
+        assert payees[("p", "G1")].study_source == "identifier"
+
+    def test_several_submissions_go_to_the_one_whose_window_holds_the_game(self):
+        # A lobby wait in the earlier session, then a whole game in the later one
+        # (2026-09-25: returned with the lobby code in batch 13, played in batch 14).
+        payees = {("p", "G1"): self.payee(joined="2026-09-25T22:22:00Z")}
+        lobby = self.sub(start="2026-09-25T21:05:00Z", end="2026-09-25T21:09:00Z", code=LOBBY)
+        game = self.sub(start="2026-09-25T22:12:00Z", end="2026-09-25T23:15:00Z")
+        payments.assign_studies(payees, {"S13": [lobby], "S14": [game]})
+        assert payees[("p", "G1")].study_id == "S14"
+
+    def test_the_finished_code_decides_before_the_time_window(self):
+        # The real case: the batch 13 submission was returned (no end time) and
+        # the batch 14 one was only opened after the game to enter the code.
+        payees = {("p", "G1"): self.payee(joined="2026-09-25T22:22:00Z")}
+        lobby = self.sub(start="2026-09-25T21:05:00Z", end=None, code=LOBBY)
+        finished = self.sub(start="2026-09-25T23:10:00Z", end="2026-09-25T23:10:30Z",
+                            code=prolific.FINISHED_CODE)
+        payments.assign_studies(payees, {"S13": [lobby], "S14": [finished]})
+        assert payees[("p", "G1")].study_id == "S14"
+
+    def test_a_returned_submission_is_not_treated_as_open_ended(self):
+        payees = {("p", "G1"): self.payee(joined="2026-09-26T03:00:00Z")}
+        returned = self.sub(start="2026-09-25T21:05:00Z", end=None)
+        later = self.sub(start="2026-09-26T02:50:00Z", end="2026-09-26T04:00:00Z")
+        payments.assign_studies(payees, {"S13": [returned], "S15": [later]})
+        assert payees[("p", "G1")].study_id == "S15"
+
+    def test_no_matching_submission_leaves_the_payee_unassigned(self):
+        payees = {("typo", "G1"): self.payee(pid="typo")}
+        payments.assign_studies(payees, {"S14": [self.sub()]})
+        assert payees[("typo", "G1")].study_id == ""
+
+    def test_a_lobby_wait_in_one_study_is_paid_though_they_played_in_another(self):
+        study = payments.Study("S13")
+        payments.settle(study, [submission("p", code=LOBBY, status="RETURNED")], set())
+        assert [(p.kind, p.participant) for p in study.payees] == [("lobby", "p")]
+        assert study.payees[0].ready
+
+    def test_two_sessions_by_the_same_person_are_both_kept(self, tmp_path):
+        path = make_export(
+            tmp_path / "empirica-export-20260926_121514.zip",
+            [{"id": "G1", "status": "ended", "batchID": "B1"}, {"id": "G2", "status": "ended", "batchID": "B2"}],
+            [player("p", "G1", "S1", bonus="3.00"), {**player("p", "G2", "S2", bonus="4.00"), "id": "e-p2"}],
+        )
+        payees = payments.payees_from_exports([path])
+        assert {k for k in payees} == {("p", "G1"), ("p", "G2")}
+
+
+class TestUnsubmitted:
+    """Players who never submitted the game study are paid through another study."""
+
+    def test_a_finisher_is_owed_base_and_bonus_on_their_scheduling_survey(self):
+        payees = {("p", "G1"): payments.Payee(participant="p", study_id="", kind="bonus", amount=6.45,
+                                             game="G1", joined_at="2026-09-25T20:49:00Z")}
+        survey = submission("p"); survey["started_at"] = "2026-09-25T20:10:00Z"
+        payments.place_unsubmitted(payees, {"SURVEY13": [survey]})
+        payee = payees[("p", "G1")]
+        assert (payee.study_id, payee.kind, payee.study_source) == ("SURVEY13", "unsubmitted", "unsubmitted")
+        assert payee.amount == round(prolific.BASE_PAY + 6.45, 2)
+
+    def test_a_removed_players_partial_pay_already_includes_the_base(self):
+        payees = {("r", "G1"): payments.Payee(participant="r", study_id="", kind="partial", amount=7.71,
+                                             game="G1", joined_at="2026-09-25T20:49:00Z")}
+        payments.place_unsubmitted(payees, {"SURVEY13": [submission("r")]})
+        assert payees[("r", "G1")].amount == 7.71
+
+    def test_it_is_ready_on_an_approved_survey_submission(self):
+        study = payments.Study("SURVEY13", estimated_minutes=1, reward=0.30)
+        study.payees.append(payments.Payee(participant="p", study_id="SURVEY13", kind="unsubmitted",
+                                           amount=18.45, game="G1"))
+        payments.settle(study, [submission("p", status="APPROVED")], {"p"})
+        assert study.payees[0].ready and study.payees[0].still_owed == 18.45
+
+    def test_overtime_uses_the_game_rate_not_the_surveys(self):
+        study = payments.Study("SURVEY13", estimated_minutes=1, reward=0.30)
+        study.payees.append(payments.Payee(participant="p", study_id="SURVEY13", kind="unsubmitted",
+                                           amount=18.45, game="G1", game_minutes=71.0, site_minutes=75.0))
+        payments.settle(study, [submission("p", minutes=1)], {"p"}, game_rate=12.0 / 50)
+        [ot] = [x for x in study.payees if x.kind == "overtime"]
+        assert ot.amount == round(15 * 12.0 / 50, 2)
 
 
 class TestOvertime:
@@ -190,6 +300,13 @@ class TestOvertime:
         payments.settle(study, [submission("a", minutes=71, paid_cents=[718, 264])], {"a"})
         [ot] = self.overtime(study)
         assert not ot.ready and ot.note == "paid"
+
+    def test_the_games_own_record_counts_when_prolific_saw_a_minute(self):
+        # Played through a link sent by message, then opened the study only to enter the code.
+        study = self.study(self.finisher(site_minutes=72.0))
+        payments.settle(study, [submission("a", minutes=1)], {"a"})
+        [ot] = self.overtime(study)
+        assert ot.amount == round(12 * 12.0 / 50, 2)
 
     def test_no_estimate_on_the_study_means_no_overtime(self):
         study = payments.Study("S1")

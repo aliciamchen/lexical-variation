@@ -203,7 +203,7 @@ or lobby submission already received the $12 base, so it is listed only for any 
 that. The folder is rewritten on every run and contains
 Prolific ids, which is why `data/payments/` is gitignored.
 
-`overtime.csv` lists finishers whose submission took longer than 60 minutes, the top of the
+`unsubmitted.csv`, in a scheduling survey's folder, lists players who played a game but never submitted the game study (for example after being sent the link by message when Prolific showed the study late): they are owed the $12 base plus their bonus, paid as a bonus on their survey submission. `overtime.csv` lists finishers whose time took longer than 60 minutes, the top of the
 "45 to 60 minutes" the instructions promise, which happens mostly when the server slowed the
 games down. Each is owed the minutes beyond 60 at the study's own advertised rate ($12 for
 50 minutes, $0.24 a minute), using the time Prolific records on the submission. `status.csv`

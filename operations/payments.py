@@ -6,16 +6,20 @@
 A session can span several Prolific studies and several Empirica batches, and
 an export is a cumulative snapshot of the server, so no single export or batch
 lines up with "the people one study owes". This step reads every export of the
-dataset, takes each player placed in a game, and groups them by the Prolific
-study recorded from their study link (`studyId`). It then asks Prolific, with
-read-only requests, for each study's name and submissions, which carry each
-submission's status and the bonuses already paid on it, and adds the
-lobby-timeout participants. They do have player records in the exports, but no
-game that started, so they are identified the way they were paid for: by the
-lobby-timeout completion code on their Prolific submission. That also covers
-overflow players Empirica turned away with "no more games", whose exit screen
-shows the same code. A study whose players never reached a started game is not
-found through the exports, so pass it with --study.
+dataset and takes each player placed in a game, identified by the Prolific id
+they entered on the identifier screen (filled in from the study link's
+PROLIFIC_PID when it has one). It asks Prolific, with read-only requests, for
+the submissions of every study recorded on any player, and places each player
+in the study where their Prolific id has a submission (assign_studies), which
+also covers someone who reached the game without the study link's parameters
+and so has no study id recorded. The submissions carry each one's status and
+the bonuses already paid on it, and they add the lobby-timeout participants.
+Those do have player records in the exports, but no game that started, so they
+are identified the way they were paid for: by the lobby-timeout completion
+code on their Prolific submission. That also covers overflow players Empirica
+turned away with "no more games", whose exit screen shows the same code. A
+study whose players never reached a started game is not found through the
+exports, so pass it with --study.
 
 The output is one folder per study under data/payments/<dataset>/, named by the
 study's creation date and internal name, with paste-ready files for Prolific's
@@ -58,7 +62,7 @@ import shutil
 import sys
 import zipfile
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -69,7 +73,7 @@ from combine_runs import read_excluded_games  # noqa: E402
 
 PROJECT_ROOT = prolific.PROJECT_ROOT
 PAYMENTS_DIR = PROJECT_ROOT / "data" / "payments"
-KINDS = ("bonus", "partial", "lobby", "overtime")
+KINDS = ("bonus", "partial", "lobby", "overtime", "unsubmitted")
 # Finishers are paid for the minutes their submission took beyond this, the top of
 # the "45 to 60 minutes" the instructions promise.
 OVERTIME_AFTER_MINUTES = 60
@@ -88,6 +92,9 @@ class Payee:
     game_running: bool = False
     game_minutes: float = 0.0
     minutes_taken: float = 0.0
+    joined_at: str = ""  # the game's start time, for matching a submission's time window
+    site_minutes: float = 0.0  # identifier entered to exit survey submitted, from the game's own records
+    study_source: str = ""  # "link" (studyId on the player) or "identifier" (found by Prolific id)
     status: str = ""
     already_paid: float = 0.0
     still_owed: float = 0.0
@@ -139,15 +146,18 @@ def _export_stamp(path: Path) -> str:
     return match.group(1) if match else path.name
 
 
-def payees_from_exports(zips: list[Path], excluded_games: set[str] = frozenset()) -> dict[str, Payee]:
-    """Everyone placed in a game, keyed by Prolific id.
+def payees_from_exports(zips: list[Path], excluded_games: set[str] = frozenset()) -> dict[tuple[str, str], Payee]:
+    """Everyone placed in a game, keyed by (Prolific id, game id).
 
-    Exports are read oldest first and a later export replaces a person's row,
-    because each export is a cumulative snapshot and the newest has their final
-    state. Games that never started (lobby failures, stopped before start) have
-    no players and contribute nothing.
+    The Prolific id is the identifier the participant entered, which the study
+    link fills in when it carries PROLIFIC_PID. Keying by game as well keeps a
+    person who took part in two sessions from overwriting one with the other.
+    Exports are read oldest first and a later export replaces a row, because
+    each export is a cumulative snapshot and the newest has the final state.
+    Games that never started (lobby failures, stopped before start) have no
+    players and contribute nothing.
     """
-    payees: dict[str, Payee] = {}
+    payees: dict[tuple[str, str], Payee] = {}
     for path in sorted(zips, key=_export_stamp):
         with zipfile.ZipFile(path) as z:
             games = {g["id"]: g for g in _csv(z, "game.csv")}
@@ -163,7 +173,7 @@ def payees_from_exports(zips: list[Path], excluded_games: set[str] = frozenset()
                 if not pid:
                     continue
                 active = str(p.get("is_active")).strip().lower() == "true"
-                payees[pid] = Payee(
+                payees[(pid, game_id)] = Payee(
                     participant=pid,
                     study_id=(p.get("studyId") or "").strip(),
                     kind="bonus" if active else "partial",
@@ -174,11 +184,81 @@ def payees_from_exports(zips: list[Path], excluded_games: set[str] = frozenset()
                     game_running=status == "running",
                     game_minutes=_minutes_between(game.get("startLastChangedAt"), game.get("endedLastChangedAt"))
                     if status == "ended" else 0.0,
+                    joined_at=game.get("startLastChangedAt") or "",
+                    site_minutes=_minutes_between(p.get("participantIdentifierLastChangedAt"),
+                                                  p.get("exitSurveyLastChangedAt"))
+                    if p.get("exitSurvey") else 0.0,
                 )
     return payees
 
 
-def group_by_study(payees: dict[str, Payee]) -> dict[str, Study]:
+def _when(value: str | None) -> datetime | None:
+    """An ISO 8601 timestamp (Empirica's or Prolific's) as a naive UTC datetime."""
+    try:
+        return datetime.fromisoformat((value or "")[:19])
+    except ValueError:
+        return None
+
+
+def assign_studies(payees: dict[tuple[str, str], Payee], submissions: dict[str, list[dict]]) -> None:
+    """Decide which Prolific study pays each payee, using their Prolific id.
+
+    The study id comes from the study link, and a participant who reaches the
+    game without it (a bookmark, the browser history, a typed address) has
+    none, although the identifier they entered is still their Prolific id. So
+    each payee is matched to the studies where that id has a submission:
+
+    1. the link's study, when it has a submission for them;
+    2. otherwise the submission whose completion code fits the payee (the
+       finished code for someone who finished, the partial code for someone
+       removed), since that is where they claimed this game;
+    3. otherwise the submission whose time window holds the game's start, a
+       returned submission with no end being given three hours rather than
+       treated as still open;
+    4. otherwise a single match.
+
+    Order matters: on 2026-09-25 a participant returned a batch 13 submission
+    with the lobby code, then reached a batch 14 game through a bare link and
+    only opened their batch 14 submission to enter the finished code, so the
+    time window alone pointed at the wrong study. A payee with no match keeps
+    whatever the link said and is reported as having no submission, so a
+    mistyped id is shown rather than guessed.
+    """
+    by_participant: dict[str, list[tuple[str, dict]]] = {}
+    for study_id, subs in submissions.items():
+        for sub in subs:
+            if sub.get("participant_id"):
+                by_participant.setdefault(sub["participant_id"], []).append((study_id, sub))
+    wanted = {"bonus": prolific.FINISHED_CODE, "partial": prolific.PARTIAL_CODE}
+    for payee in payees.values():
+        matches = by_participant.get(payee.participant, [])
+        if payee.study_id and any(sid == payee.study_id for sid, _ in matches):
+            payee.study_source = "link"
+            continue
+        chosen = None
+        by_code = [sid for sid, sub in matches if prolific.submission_code(sub) == wanted.get(payee.kind)]
+        if len(by_code) == 1:
+            chosen = by_code[0]
+        elif matches:
+            joined = _when(payee.joined_at)
+            covering = []
+            for sid, sub in matches:
+                start, end = _when(sub.get("started_at")), _when(sub.get("completed_at"))
+                if start and end is None:
+                    end = start + timedelta(hours=3)
+                if joined and start and start <= joined <= end:
+                    covering.append((start, sid))
+            if covering:
+                chosen = max(covering)[1]
+            elif len(matches) == 1:
+                chosen = matches[0][0]
+        if chosen:
+            payee.study_id, payee.study_source = chosen, "identifier"
+        elif payee.study_id:
+            payee.study_source = "link"
+
+
+def group_by_study(payees: dict[tuple[str, str], Payee]) -> dict[str, Study]:
     studies: dict[str, Study] = {}
     for payee in payees.values():
         studies.setdefault(payee.study_id, Study(payee.study_id)).payees.append(payee)
@@ -186,31 +266,75 @@ def group_by_study(payees: dict[str, Payee]) -> dict[str, Study]:
 
 
 def overtime_payee(study: Study, payee: Payee, submission: dict | None,
-                   overtime_after: float = OVERTIME_AFTER_MINUTES) -> Payee | None:
-    """The overtime owed to a finisher, or None (see the module docstring)."""
-    if payee.kind != "bonus" or payee.game_running:
+                   overtime_after: float = OVERTIME_AFTER_MINUTES, rate: float | None = None) -> Payee | None:
+    """The overtime owed to a finisher, or None (see the module docstring).
+
+    Time on the study is the longer of Prolific's `time_taken` and the game's
+    own record (identifier entered to exit survey submitted). The second is
+    what counts for someone who played through a link sent by message and
+    opened the study only to enter the code, whose `time_taken` is a minute.
+    `rate` overrides the study's own reward per minute, for a payee paid
+    through another study (a scheduling survey pays $0.30 for one minute).
+    """
+    if payee.kind not in ("bonus", "unsubmitted") or payee.game_running:
         return None
-    if not submission or not submission.get("time_taken") or not study.estimated_minutes or not study.reward:
+    if rate is None:
+        if not study.estimated_minutes or not study.reward:
+            return None
+        rate = study.reward / study.estimated_minutes
+    taken = (submission or {}).get("time_taken") or 0
+    minutes = max(taken / 60.0, payee.site_minutes)
+    if minutes <= 0:
         return None
-    minutes = submission["time_taken"] / 60.0
     # Whole minutes, so someone a few seconds over is not sent a one-cent bonus.
     over = math.floor(minutes - overtime_after)
     if over <= 0:
         return None
-    rate = study.reward / study.estimated_minutes
     return Payee(participant=payee.participant, study_id=study.study_id, kind="overtime",
                  amount=round(over * rate, 2), game=payee.game, batch=payee.batch,
                  game_minutes=payee.game_minutes, minutes_taken=round(minutes, 1))
 
 
+def place_unsubmitted(payees: dict[tuple[str, str], Payee], submissions: dict[str, list[dict]]) -> None:
+    """Pay a player who never submitted the game study through another study.
+
+    Some participants play through a link sent by message (Prolific shows a
+    study to some people late) and never open the study to enter the code, so
+    they have no game-study submission to approve. Their only submission is
+    in another study, usually the session's scheduling survey, so the base pay
+    and bonus go out as a bonus there. A finisher is owed BASE_PAY plus the
+    bonus; a removed player their partial pay, which already includes the
+    prorated base. The latest submission that started before the game is used.
+    """
+    for payee in payees.values():
+        if payee.study_id:
+            continue
+        joined = _when(payee.joined_at)
+        found = []
+        for sid, subs in submissions.items():
+            for sub in subs:
+                if sub.get("participant_id") != payee.participant:
+                    continue
+                start = _when(sub.get("started_at"))
+                if joined is None or start is None or start <= joined:
+                    found.append((start or datetime.min, sid))
+        if not found:
+            continue
+        payee.study_id, payee.study_source = max(found)[1], "unsubmitted"
+        if payee.kind == "bonus":
+            payee.amount = round(prolific.BASE_PAY + payee.amount, 2)
+        payee.kind = "unsubmitted"
+
+
 def settle(study: Study, submissions: list[dict], game_payees: set[str],
-           overtime_after: float = OVERTIME_AFTER_MINUTES) -> None:
+           overtime_after: float = OVERTIME_AFTER_MINUTES, game_rate: float | None = None) -> None:
     """Add the study's lobby timeouts and decide what each payee is still owed.
 
     `submissions` is the study's submission list from Prolific, which carries
     `status` and `bonus_payments` (paid bonuses, in cents); `game_payees` is
-    everyone placed in a game, in any study, so that nobody is also counted as
-    a lobby timeout.
+    everyone who played a game in this study, so that nobody is also counted as
+    one of its lobby timeouts. It is per study because the same person can wait
+    out a lobby in one session and play in the next.
     """
     by_participant = {s.get("participant_id"): s for s in submissions if s.get("participant_id")}
     for pid, sub in by_participant.items():
@@ -221,10 +345,11 @@ def settle(study: Study, submissions: list[dict], game_payees: set[str],
             amount=round(prolific.LOBBY_TIMEOUT_PAY, 2), exit_reason="lobby timeout",
         ))
     for payee in list(study.payees):
-        overtime = overtime_payee(study, payee, by_participant.get(payee.participant), overtime_after)
+        rate = game_rate if payee.kind == "unsubmitted" else None
+        overtime = overtime_payee(study, payee, by_participant.get(payee.participant), overtime_after, rate)
         if overtime:
             study.payees.append(overtime)
-    earned = {p.participant: p.amount for p in study.payees if p.kind == "bonus"}
+    earned = {p.participant: p.amount for p in study.payees if p.kind in ("bonus", "unsubmitted")}
     for payee in study.payees:
         sub = by_participant.get(payee.participant)
         if sub is None:
@@ -233,7 +358,7 @@ def settle(study: Study, submissions: list[dict], game_payees: set[str],
             continue
         payee.status = prolific.norm_status(sub.get("status"))
         paid = round(sum(sub.get("bonus_payments") or []) / 100.0, 2)
-        if payee.kind == "bonus":
+        if payee.kind in ("bonus", "unsubmitted"):
             # Bonuses already paid count against the performance bonus first,
             # and anything beyond it against the overtime.
             payee.already_paid = min(paid, payee.amount)
@@ -277,7 +402,7 @@ def write_outputs(studies: dict[str, Study], out_dir: Path, offline: bool) -> li
         folder = out_dir / study.folder
         folder.mkdir()
         with open(folder / "status.csv", "w", newline="") as f:
-            columns = ["participant", "kind", "game", "batch", "exit_reason", "game_minutes",
+            columns = ["participant", "kind", "game", "batch", "exit_reason", "study_source", "game_minutes",
                        "minutes_taken", "status", "amount", "already_paid", "still_owed", "ready", "note"]
             writer = csv.DictWriter(f, fieldnames=columns)
             writer.writeheader()
@@ -343,11 +468,35 @@ def main(argv=None) -> None:
         studies.setdefault(study_id, Study(study_id))
     if not args.offline:
         token = prolific.load_token()
-        game_payees = set(payees)
+        # Every study seen on a player, or passed with --study, is a candidate;
+        # its submissions let a player without a study id be placed by their
+        # Prolific id (assign_studies).
+        candidates = sorted({p.study_id for p in payees.values() if p.study_id} | set(args.study))
+        submissions = {sid: list(prolific.paged(f"/studies/{sid}/submissions/", token)) for sid in candidates}
+        assign_studies(payees, submissions)
+        game_rate = next((round(s["reward"] / 100.0 / s["estimated_completion_time"], 4) for s in
+                          (prolific.api("GET", f"/studies/{sid}/", token) or {} for sid in candidates[-1:])
+                          if s.get("reward") and s.get("estimated_completion_time")), None)
+        if any(not p.study_id for p in payees.values()):
+            # Players with no game-study submission: look through the other
+            # recent studies (the scheduling surveys) for somewhere to pay them.
+            first = min((_when(p.joined_at) for p in payees.values() if _when(p.joined_at)), default=None)
+            others = [s["id"] for s in prolific.paged("/studies/", token)
+                      if s["id"] not in submissions and first and _when(s.get("date_created"))
+                      and _when(s.get("date_created")) >= first - timedelta(days=2)]
+            for sid in dict.fromkeys(others):
+                submissions[sid] = list(prolific.paged(f"/studies/{sid}/submissions/", token))
+            place_unsubmitted(payees, submissions)
+            candidates = sorted(set(candidates) | {p.study_id for p in payees.values() if p.study_id})
+        studies = group_by_study(payees)
+        for study_id in candidates:
+            studies.setdefault(study_id, Study(study_id))
         for study in studies.values():
             if study.study_id == NO_STUDY:
                 for payee in study.payees:
-                    payee.status, payee.note = "no study id", "no Prolific study recorded (local or test player?)"
+                    payee.status = "no study id"
+                    payee.note = ("no submission with this Prolific id in any candidate study "
+                                  "(a mistyped identifier, or a local or test player?)")
                     payee.still_owed = payee.amount
                 continue
             info = prolific.api("GET", f"/studies/{study.study_id}/", token) or {}
@@ -356,8 +505,8 @@ def main(argv=None) -> None:
             study.created = (info.get("date_created") or "")[:19]
             study.estimated_minutes = int(info.get("estimated_completion_time") or 0)
             study.reward = round((info.get("reward") or 0) / 100.0, 2)
-            settle(study, list(prolific.paged(f"/studies/{study.study_id}/submissions/", token)), game_payees,
-                   args.overtime_after)
+            in_study = {p.participant for p in study.payees}
+            settle(study, submissions[study.study_id], in_study, args.overtime_after, game_rate)
     else:
         for study in studies.values():
             mark_unverified(study)
