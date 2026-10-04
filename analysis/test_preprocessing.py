@@ -1472,3 +1472,25 @@ class TestHumanLabels:
     def test_a_missing_file_names_the_annotation_step(self, tmp_path):
         with pytest.raises(FileNotFoundError, match="annotation_sample.csv"):
             read_human_labels(tmp_path / "human_labels.csv")
+
+
+# ── extract_run: Prolific ids typed into free text ─────────────────────
+def test_redact_prolific_ids_scrubs_text_cells_only():
+    from extract_run import PROLIFIC_ID_PLACEHOLDER, redact_prolific_ids
+
+    # Shaped like a Prolific id (24 hex characters) but built at run time, so no
+    # id-shaped literal, real or not, sits in the source.
+    fake_id = "5e" * 12
+    df = pd.DataFrame(
+        {
+            "id": ["01M3FFPN0QSN20E5F66T9TXKZF"],  # a ULID is base32, not hex: untouched
+            "exitSurvey": ['{"feedback": "no feedback. prolific ID: ' + fake_id + '"}'],
+            "score": [12.5],
+        }
+    )
+    out, n = redact_prolific_ids(df)
+    assert n == 1
+    assert fake_id not in out.loc[0, "exitSurvey"]
+    assert PROLIFIC_ID_PLACEHOLDER in out.loc[0, "exitSurvey"]
+    assert out.loc[0, "id"] == "01M3FFPN0QSN20E5F66T9TXKZF"
+    assert out.loc[0, "score"] == 12.5

@@ -101,22 +101,46 @@ def unzip(zip_path: Path) -> Path:
     return tmp_dir
 
 
+# A Prolific participant id is exactly 24 hexadecimal characters. Participants
+# sometimes type theirs into a free-text survey answer or the chat, which the
+# column stripping cannot catch, so every text cell is scrubbed as well. The
+# pre-commit hook refuses any data file that still contains such a token.
+PROLIFIC_ID_PATTERN = re.compile(r"(?<![0-9a-fA-F])[0-9a-f]{24}(?![0-9a-fA-F])")
+PROLIFIC_ID_PLACEHOLDER = "[prolific id removed]"
+
+
+def redact_prolific_ids(df: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """Replace Prolific-id-shaped tokens inside text cells; returns the count replaced."""
+    count = 0
+    for col in df.columns:
+        if not (pd.api.types.is_string_dtype(df[col]) or df[col].dtype == object):
+            continue
+        mask = df[col].notna() & df[col].astype(str).str.contains(PROLIFIC_ID_PATTERN, regex=True)
+        if mask.any():
+            count += int(mask.sum())
+            df.loc[mask, col] = df.loc[mask, col].astype(str).str.replace(
+                PROLIFIC_ID_PATTERN, PROLIFIC_ID_PLACEHOLDER, regex=True
+            )
+    return df, count
+
+
 def anonymize_raw(unzipped_dir: Path, raw_dir: Path) -> None:
-    """Copy raw CSVs, stripping sensitive columns from player.csv."""
+    """Copy raw CSVs, stripping sensitive columns from player.csv and
+    redacting Prolific-id-shaped tokens from the text cells of every file."""
     print("Anonymizing raw CSVs...")
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     for csv_file in sorted(unzipped_dir.glob("*.csv")):
+        df = pd.read_csv(csv_file, low_memory=False)
         if csv_file.name == "player.csv":
-            df = pd.read_csv(csv_file)
             cols_to_drop = [c for c in SENSITIVE_COLUMNS if c in df.columns]
             if cols_to_drop:
                 df = df.drop(columns=cols_to_drop)
                 print(f"  {csv_file.name}: dropped {cols_to_drop}")
-            df.to_csv(raw_dir / csv_file.name, index=False)
-        else:
-            shutil.copy2(csv_file, raw_dir / csv_file.name)
-            print(f"  {csv_file.name}: copied")
+        df, redacted = redact_prolific_ids(df)
+        note = f", redacted {redacted} id-shaped token(s) in text" if redacted else ""
+        df.to_csv(raw_dir / csv_file.name, index=False)
+        print(f"  {csv_file.name}: copied{note}")
 
 
 def find_timestamped_dirs() -> list[Path]:
