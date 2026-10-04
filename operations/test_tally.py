@@ -36,20 +36,20 @@ PLAYERS_CSV = (
 )
 
 
-def test_tally_counts_intact_games_per_cell_and_marks_the_emptiest(tmp_path, monkeypatch):
+def test_tally_counts_games_per_cell_and_marks_the_next(tmp_path, monkeypatch):
     monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
     (tmp_path / "data" / "full").mkdir(parents=True)
     (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
-    counts, emptiest = tally.print_tally("full")
+    counts, next_cell = tally.print_tally("full")
     assert counts[("refer_separated", "0")]["intact"] == 1
     assert counts[("refer_separated", "1")]["intact"] == 1
     assert counts[("social_first", "1")] == {
         "intact": 0, "partial": 0, "incomplete": 1
     }
     assert len(counts) == 8
-    # No complete games in refer_mixed set 1, social_mixed set 0/1 or
-    # social_first set 0/1; the conditions' order breaks the tie.
-    assert emptiest == ("refer_mixed", "1")
+    # No games started in refer_mixed set 1, social_mixed set 0/1 or
+    # social_first set 0; the conditions' order breaks the tie.
+    assert next_cell == ("refer_mixed", "1")
 
 
 def test_a_game_that_lost_a_player_is_partial_not_intact(tmp_path, monkeypatch, capsys):
@@ -81,24 +81,24 @@ def test_tally_warns_when_it_cannot_see_removals(tmp_path, monkeypatch, capsys):
     assert "cannot be told from an intact one" in capsys.readouterr().out
 
 
-def test_the_emptiest_cell_is_chosen_on_intact_games(tmp_path, monkeypatch):
-    # refer_mixed set 0 has an intact game and refer_separated set 0 only a
-    # partial one, so the partial cell still needs a tally.
-    monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
-    (tmp_path / "data" / "full").mkdir(parents=True)
-    games = (
-        "gameId,condition,tangramSet,numPlayers,ended,endedReason\n"
-        "g1,refer_mixed,0.0,9,True,end of game\n"
-        "g2,refer_separated,0.0,9,True,end of game\n"
-    )
-    (tmp_path / "data" / "full" / "games.csv").write_text(games)
-    (tmp_path / "data" / "full" / "players.csv").write_text(PLAYERS_CSV)
-    counts, emptiest = tally.cell_counts(
-        tally.read_games_table(tmp_path / "data" / "full" / "games.csv")
-    )
-    assert counts[("refer_mixed", "0")]["intact"] == 1
-    assert counts[("refer_separated", "0")]["partial"] == 1
-    assert emptiest != ("refer_mixed", "0")
+def test_the_next_cell_is_chosen_on_started_games_not_intact_ones():
+    # Every cell has two partial games except refer_mixed set 0, which has one
+    # intact game. Balancing by intact games would send the next session
+    # anywhere but there; balancing by started games, as decided, sends it
+    # there, because it has spent the fewest of its share of the cap.
+    games = [(c, s, "partial") for c in tally.CONDITIONS for s in tally.TANGRAM_SETS for _ in range(2)
+             if (c, s) != ("refer_mixed", "0")]
+    games.append(("refer_mixed", "0", "intact"))
+    counts, next_cell = tally.cell_counts(games)
+    assert next_cell == ("refer_mixed", "0")
+
+
+def test_a_tie_on_started_games_goes_to_the_cell_with_fewer_intact():
+    games = [(c, s, "intact") for c in tally.CONDITIONS for s in tally.TANGRAM_SETS for _ in range(2)]
+    games = [g for g in games if g[:2] != ("social_first", "1")]
+    games += [("social_first", "1", "partial"), ("social_first", "1", "partial")]
+    _, next_cell = tally.cell_counts(games)
+    assert next_cell == ("social_first", "1")
 
 
 def test_read_player_removals_ignores_a_file_it_cannot_use(tmp_path):
@@ -112,14 +112,15 @@ def test_tally_lines_mark_exactly_one_cell(tmp_path, monkeypatch):
     monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
     (tmp_path / "data" / "full").mkdir(parents=True)
     (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
-    counts, emptiest = tally.cell_counts(
+    counts, next_cell = tally.cell_counts(
         tally.read_games_table(tmp_path / "data" / "full" / "games.csv")
     )
-    lines = tally.tally_lines(counts, emptiest)
+    lines = tally.tally_lines(counts, next_cell)
     assert len(lines) == 9
-    assert sum("<- emptiest" in line for line in lines) == 1
-    assert any(line.startswith("  refer_mixed") and "1" in line and "<- emptiest" in line
+    assert sum("<- next" in line for line in lines) == 1
+    assert any(line.startswith("  refer_mixed") and "1" in line and "<- next" in line
                for line in lines)
+    assert any(f"1/{tally.STARTED_TARGET_PER_CELL}" in line for line in lines)
 
 
 def test_the_cap_counts_every_started_game_not_only_the_intact_ones(tmp_path, monkeypatch):
@@ -140,47 +141,47 @@ def test_the_cap_counts_every_started_game_not_only_the_intact_ones(tmp_path, mo
     assert progress["intact"] == {
         "refer_mixed": 1, "refer_separated": 1, "social_mixed": 0, "social_first": 0
     }
-    assert progress["short"]["refer_mixed"] == tally.INTACT_TARGET_PER_CONDITION - 1
+    assert progress["started_by_condition"] == {
+        "refer_mixed": 1, "refer_separated": 2, "social_mixed": 0, "social_first": 1
+    }
 
 
-def test_the_target_is_counted_per_condition_over_both_tangram_sets(tmp_path, monkeypatch):
-    monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
+def test_the_target_splits_the_cap_evenly_over_conditions_and_sets():
+    assert tally.STARTED_TARGET_PER_CONDITION * len(tally.CONDITIONS) == tally.STARTED_GAMES_CAP
+    assert tally.STARTED_TARGET_PER_CONDITION == 30
+    assert tally.STARTED_TARGET_PER_CELL == 15
     counts, _ = tally.cell_counts([])
-    for tangram_set in tally.TANGRAM_SETS:
-        counts[("refer_mixed", tangram_set)]["intact"] = tally.INTACT_TARGET_PER_CELL
+    counts[("refer_mixed", "0")]["partial"] = 4
+    counts[("refer_mixed", "1")]["incomplete"] = 1
     progress = tally.stopping_rule_progress(counts)
-    assert progress["intact"]["refer_mixed"] == tally.INTACT_TARGET_PER_CONDITION
-    assert "refer_mixed" not in progress["short"]
-    assert set(progress["short"]) == {"refer_separated", "social_mixed", "social_first"}
+    assert progress["started_by_condition"]["refer_mixed"] == 5
 
 
-def test_tally_says_stop_when_a_limit_is_reached(tmp_path, monkeypatch):
-    monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
+def test_tally_says_stop_only_at_the_cap():
     counts, _ = tally.cell_counts([])
     assert not any("STOP" in line for line in tally.stopping_rule_lines(counts))
-    # The target reached in every condition.
+    # Twenty intact games in every condition does not stop collection: the
+    # author runs to the cap of started games.
     for cell in counts.values():
-        cell["intact"] = tally.INTACT_TARGET_PER_CELL
-    assert any("STOP: every condition has reached the target" in line
-               for line in tally.stopping_rule_lines(counts))
-    # The cap reached first, with conditions still short.
+        cell["intact"] = tally.INTACT_TARGET_PER_CONDITION // len(tally.TANGRAM_SETS)
+    assert not any("STOP" in line for line in tally.stopping_rule_lines(counts))
     counts, _ = tally.cell_counts([])
     counts[("refer_mixed", "0")]["partial"] = tally.STARTED_GAMES_CAP
     lines = tally.stopping_rule_lines(counts)
-    assert any("STOP: the cap is reached" in line for line in lines)
-    assert any(f"{tally.STARTED_GAMES_CAP} of {tally.STARTED_GAMES_CAP} games started, 0 left"
-               in line for line in lines)
+    assert any(f"STOP: {tally.STARTED_GAMES_CAP} games have been started" in line for line in lines)
+    assert any(f"Started: {tally.STARTED_GAMES_CAP} of {tally.STARTED_GAMES_CAP}, 0 left" in line
+               for line in lines)
 
 
-def test_the_tally_prints_both_preregistered_limits(tmp_path, monkeypatch, capsys):
+def test_the_tally_prints_the_cap_and_the_intact_counts(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
     (tmp_path / "data" / "full").mkdir(parents=True)
     (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
     (tmp_path / "data" / "full" / "players.csv").write_text(PLAYERS_CSV)
     tally.print_tally("full")
     out = capsys.readouterr().out
-    assert f"Target: {tally.INTACT_TARGET_PER_CONDITION} intact games per condition" in out
-    assert f"Cap: 4 of {tally.STARTED_GAMES_CAP} games started" in out
+    assert f"Started: 4 of {tally.STARTED_GAMES_CAP}" in out
+    assert f"other limit is {tally.INTACT_TARGET_PER_CONDITION} per condition" in out
 
 
 def test_tally_without_games_says_so(tmp_path, monkeypatch, capsys):
