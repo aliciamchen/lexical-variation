@@ -46,6 +46,12 @@ operations/.sessions/
 # Admin password and tajriba service token; see experiment/.empirica/empirica.toml.example
 experiment/.empirica/empirica.toml
 
+# Full-sample data stays local until collection ends; the public release will be
+# converted to the RefBank format rather than committed in this layout
+data/full/
+analysis/derived/full/
+figures/meetings/
+
 # Throwaway dataset written by `make smoke`
 data/smoke/
 analysis/derived/smoke/
