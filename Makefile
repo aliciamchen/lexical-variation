@@ -22,6 +22,7 @@
 #   make payments       # what each Prolific study still owes → data/payments/<name>/
 #   make tally          # games per condition and tangram set; stopping-rule progress
 #   make notebooks      # render the dataset's notebooks
+#   BAYES_FACTORS=never make notebooks DATASET=full   # interim render, no brms refits
 #   make llm-process    # process LLM simulation JSONs → CSVs
 #
 # Smoke-testing one export before it joins a dataset:

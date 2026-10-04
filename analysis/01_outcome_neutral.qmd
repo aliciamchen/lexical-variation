@@ -308,6 +308,32 @@ if (nrow(p1_pairwise) > 0) {
   cat("Group-specificity estimates and permutation p-values by game:\n")
   print(knitr::kable(gs_by_game, digits = 4))
 
+  # The permutation test runs on every game; the pooled trend models cover
+  # the three shared-Phase-1 conditions only, so both counts are given.
+  n_perm_all <- sum(!is.na(gs_by_game$p_value))
+  n_sig_all <- sum(gs_by_game$p_value < 0.05, na.rm = TRUE)
+  n_perm_shared <- sum(!is.na(gs_by_game$p_value) & gs_by_game$shared_phase1)
+  n_sig_shared <- sum(gs_by_game$p_value < 0.05 & gs_by_game$shared_phase1, na.rm = TRUE)
+  cat(sprintf(
+    paste(
+      "\nPhase 1 group-specificity above the permutation null (p < .05):",
+      "%d of %d games in all conditions; %d of %d in the three shared-Phase-1 conditions.\n"
+    ),
+    n_sig_all, n_perm_all, n_sig_shared, n_perm_shared
+  ))
+  if ("singular" %in% names(gs_results)) {
+    n_fit_gs <- sum(is.finite(gs_results$coefficient))
+    n_singular_gs <- sum(gs_results$singular %in% TRUE)
+    cat(sprintf(
+      paste(
+        "%d of %d per-game fits sat at a variance boundary (the tangram or",
+        "speaker-pair variance estimated at zero). Their same_group estimates are",
+        "kept: a zero variance component is a valid estimate and does not bias the fixed effect.\n"
+      ),
+      n_singular_gs, n_fit_gs
+    ))
+  }
+
   gs_by_condition <- gs_by_game |>
     group_by(condition) |>
     summarise(
@@ -439,9 +465,21 @@ if (exists("gs_shared_summary") && nrow(gs_shared_summary) == 1) {
     checksMedianGS = fmt_stat(gs_shared_summary$median_specificity)
   ))
 }
+# The permutation test covers every game, the pooled summary above only the
+# three shared-Phase-1 conditions; both denominators are written so a sentence
+# can say "k of n" with matching counts.
 if (exists("gs_by_game") && "p_value" %in% names(gs_by_game)) {
   macros <- c(macros, list(
-    checksNGamesSigGS = sum(gs_by_game$p_value < 0.05, na.rm = TRUE)
+    checksNGamesPerm = sum(!is.na(gs_by_game$p_value)),
+    checksNGamesSigGS = sum(gs_by_game$p_value < 0.05, na.rm = TRUE),
+    checksNGamesPermShared = sum(!is.na(gs_by_game$p_value) & gs_by_game$shared_phase1),
+    checksNGamesSigGSShared = sum(gs_by_game$p_value < 0.05 & gs_by_game$shared_phase1, na.rm = TRUE)
+  ))
+}
+if (exists("gs_results") && "singular" %in% names(gs_results)) {
+  macros <- c(macros, list(
+    checksNGamesFitGS = sum(is.finite(gs_results$coefficient)),
+    checksNGamesSingularGS = sum(gs_results$singular %in% TRUE)
   ))
 }
 

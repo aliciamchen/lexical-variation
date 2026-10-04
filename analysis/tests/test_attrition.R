@@ -223,3 +223,14 @@ check(
   quiz_failures(dropouts) == 2 && quiz_failures(tibble()) == 0 &&
     nrow(dropout_summary(tibble())) == 0
 )
+
+# ── idle_cascade_by_condition ────────────────────────────────────────────────
+
+cascade <- idle_cascade_by_condition(pa)
+check(
+  "idle cascade: a group whose idle loss was followed by another counts, an accuracy-screened group does not",
+  cascade$groups_with_idle_removal[cascade$condition == "social_mixed"] == 1 &&
+    cascade$lost_second[cascade$condition == "social_mixed"] == 1 &&
+    cascade$groups_with_idle_removal[cascade$condition == "refer_mixed"] == 0 &&
+    cascade$groups_with_idle_removal[cascade$condition == "refer_separated"] == 0
+)

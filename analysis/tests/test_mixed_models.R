@@ -287,3 +287,51 @@ check(
 )
 
 cat("\nAll mixed_models.R tests passed.\n")
+
+# ── zero_variance_components ────────────────────────────────────────────────
+
+# A grouping factor with no true variance (g0) beside one with a large
+# variance (subj). Whether a given sample puts g0 exactly at the boundary is
+# up to the optimizer, so the first seed that yields a singular fit is used
+# and the checks compare the helper against isSingular() and VarCorr().
+fit_dz <- function(seed) {
+  set.seed(seed)
+  dz <- expand.grid(subj = factor(1:30), rep = 1:10)
+  dz$g0 <- factor(rep(1:15, length.out = nrow(dz)))
+  dz$y <- rnorm(nrow(dz)) + rep(rnorm(30, 0, 2), times = 10)
+  suppressMessages(lme4::lmer(y ~ 1 + (1 | subj) + (1 | g0), data = dz))
+}
+mz <- NULL
+for (seed in 1:40) {
+  mz <- fit_dz(seed)
+  if (lme4::isSingular(mz)) break
+}
+zc <- zero_variance_components(mz)
+vc <- as.data.frame(lme4::VarCorr(mz))
+check(
+  "zero_variance_components agrees with isSingular and names only terms whose SD is zero",
+  (length(zc) > 0) == lme4::isSingular(mz) &&
+    setequal(
+      zc,
+      paste0(vc$grp, " ", vc$var1)[vc$grp != "Residual" & vc$sdcor < 1e-4]
+    )
+)
+check(
+  "the informative term is never reported as zero",
+  !"subj (Intercept)" %in% zc
+)
+check(
+  "report_variance_components prints the boundary terms or says there are none",
+  {
+    out <- capture.output(report_variance_components(mz))
+    if (length(zc) > 0) {
+      any(grepl(zc[1], out, fixed = TRUE))
+    } else {
+      any(grepl("No variance component", out))
+    }
+  }
+)
+check(
+  "a model without random effects has no variance components",
+  length(zero_variance_components(lm(y ~ 1, data = data.frame(y = rnorm(10))))) == 0
+)

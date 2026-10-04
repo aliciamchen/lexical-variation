@@ -14,9 +14,9 @@ their strategy, and, on a second page, whether they felt they were playing with
 other humans, plus age, gender, education, pay fairness, and open feedback.
 Players removed at the Phase 1 accuracy check complete the survey too.
 
-The pilot predates the revamped survey: it has the strategy question (as
-`strength`) and the demographics but none of the group or felt-human items, so
-those sections report "not collected" on the pilot data.
+Items added in the 2026 revamp (the group items and the felt-human question)
+are reported as "not collected" on a dataset that predates it, such as the
+pilot, whose strategy question was called `strength`.
 
 ```{r setup, message=FALSE, warning=FALSE}
 source(here::here("analysis", "config.R"))
@@ -112,7 +112,13 @@ if (!has_field(survey, "groupLanguage")) {
 # Felt they were playing with humans
 
 Games in which any respondent answered "no" are flagged for detailed
-inspection of their chat logs (paper, "AI detection").
+inspection of their chat logs (paper, "AI detection"). A flag is a prompt to
+inspect, not an exclusion: exclusions are decided from the chat logs and the
+other engagement indicators and recorded in `participant_exclusions.csv`
+(see `00_data_overview.qmd`). In the mixed conditions Phase 2 partners are
+anonymous, with names masked and avatars reassigned each trial, so a "no" is
+expected to be more common there for reasons unrelated to bots; the second
+table splits the rate by Phase 2 structure.
 
 ```{r felt-human}
 if (!has_field(survey, "feltHuman")) {
@@ -124,6 +130,16 @@ if (!has_field(survey, "feltHuman")) {
     summarise(n = n(), said_no = sum(feltHuman == "no"), prop_no = said_no / n, .groups = "drop") |>
     filter(n > 0)
   print(knitr::kable(fh, digits = 2, caption = "Respondents who did not feel they were playing with humans"))
+  fh_mixing <- survey |>
+    filter(!is.na(feltHuman)) |>
+    mutate(phase2 = ifelse(
+      condition == "refer_separated",
+      "same groups throughout (separated)",
+      "reshuffled with masked identities (mixed)"
+    )) |>
+    group_by(phase2) |>
+    summarise(n = n(), said_no = sum(feltHuman == "no"), prop_no = said_no / n, .groups = "drop")
+  print(knitr::kable(fh_mixing, digits = 3, caption = "The same, by Phase 2 structure"))
   flags <- felt_human_flags(survey)
   if (nrow(flags) == 0) {
     cat("\nNo game flagged: every respondent felt they were playing with humans.\n")
@@ -238,6 +254,12 @@ if (has_field(survey, "feltHuman")) {
     surveyFeltHumanPropNo = fmt_stat(mean(fh_all == "no")),
     surveyNGamesFlagged = nrow(flags),
     surveyNGroupsFlagged = nrow(group_flags)
+  ))
+  fh_sep <- survey |> filter(!is.na(feltHuman), condition == "refer_separated")
+  fh_mix <- survey |> filter(!is.na(feltHuman), condition != "refer_separated")
+  macros <- c(macros, list(
+    surveyFeltHumanPropNoSeparated = fmt_stat(mean(fh_sep$feltHuman == "no")),
+    surveyFeltHumanPropNoMixed = fmt_stat(mean(fh_mix$feltHuman == "no"))
   ))
 }
 if (has_field(survey, "understood")) {

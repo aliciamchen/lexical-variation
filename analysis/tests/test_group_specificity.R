@@ -234,3 +234,22 @@ check(
   "similarity_coverage is empty for an empty table",
   nrow(similarity_coverage(tibble(), cov_games)) == 0
 )
+
+# ── singular-fit flag ────────────────────────────────────────────────────────
+
+check(
+  "every fitted game carries a logical singular-fit flag",
+  "singular" %in% names(fit) && is.logical(fit$singular) && all(!is.na(fit$singular))
+)
+gs_tab_flag <- game_specificity_table(bind_rows(pw_effect, pw_null), games)
+ss <- singular_fit_summary(gs_tab_flag)
+check(
+  "singular_fit_summary counts the estimable fits per window and condition",
+  all(c("fits", "singular", "prop_singular") %in% names(ss)) &&
+    sum(ss$fits) == sum(gs_tab_flag$estimable) &&
+    all(ss$singular <= ss$fits)
+)
+check(
+  "the per-game fits print no lme4 boundary messages",
+  length(capture.output(fit_group_specificity(pw_null), type = "message")) == 0
+)

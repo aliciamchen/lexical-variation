@@ -61,16 +61,20 @@ demo_cols <- names(players)[str_detect(names(players), "^exitSurvey_")]
 if (length(demo_cols) > 0) {
   cat("Exit survey fields:", paste(demo_cols, collapse = ", "), "\n")
 
+  # Inside an if block only the last value would print, so each table is
+  # printed explicitly, and a missing answer is labeled rather than shown as NA
   if ("exitSurvey_gender" %in% names(players)) {
-    players |>
-      count(exitSurvey_gender) |>
-      knitr::kable(caption = "Gender distribution")
+    print(players |>
+      mutate(gender = coalesce(as.character(exitSurvey_gender), "not answered")) |>
+      count(gender) |>
+      knitr::kable(caption = "Gender distribution (all players; 'not answered' includes players removed before the survey)"))
   }
 
   if ("exitSurvey_education" %in% names(players)) {
-    players |>
-      count(exitSurvey_education) |>
-      knitr::kable(caption = "Education distribution")
+    print(players |>
+      mutate(education = coalesce(as.character(exitSurvey_education), "not answered")) |>
+      count(education) |>
+      knitr::kable(caption = "Education distribution (all players; 'not answered' includes players removed before the survey)"))
   }
 }
 ```
@@ -375,6 +379,26 @@ if (length(tests) == 0) {
     cat("\nComplete nine-player games by condition (Fisher's exact test; the game is the unit):\n")
     print(tests$games)
   }
+}
+```
+
+## Do removals cascade within a group?
+
+In the separated condition a group that loses one member keeps playing as a
+pair with a heavier speaking load, so a first loss may invite a second. Among
+original groups that lost at least one member to inactivity, this is the
+share that then lost another, by condition. Groups removed whole by the
+Phase 1 accuracy screen are left out because their members left together,
+and a group's disbanding (its last member removed once it fell below two) is
+a consequence of the earlier losses rather than a further dropout, so only
+idle removals count.
+
+```{r attrition-cascade}
+cascade <- idle_cascade_by_condition(pa)
+if (sum(cascade$groups_with_idle_removal) == 0) {
+  cat("No original group lost a member to inactivity.\n")
+} else {
+  print(knitr::kable(cascade, digits = 2))
 }
 ```
 

@@ -186,6 +186,59 @@ if (has_umap && exists("umap_data")) {
 ```
 
 
+# 3. Phase 1 conventions across all four conditions
+
+The preregistered H3a test compares final Phase 1 group-specificity in
+`social_first` with `social_mixed` only, and the convention-formation checks
+pool the three conditions with the shared Phase 1 procedure. Neither shows the
+four conditions side by side. This section does, descriptively: the game-level
+Phase 1 endpoint estimates and the length of final Phase 1 descriptions, by
+condition. Nothing here is a test.
+
+```{r phase1-all-conditions, fig.width=7, fig.height=5}
+if (has_rows(pairwise_sim)) {
+  gs_p1_all <- game_specificity_table(pairwise_sim, games, windows = "phase1_final") |>
+    filter(estimable)
+  p1_gs_by_condition <- gs_p1_all |>
+    group_by(condition, .drop = FALSE) |>
+    summarise(games = n(), mean = mean(coefficient), sd = sd(coefficient), .groups = "drop") |>
+    filter(games > 0)
+  print(knitr::kable(p1_gs_by_condition, digits = 3,
+                     caption = "Final Phase 1 group-specificity by condition (game-level estimates)"))
+  print(
+    ggplot(gs_p1_all, aes(x = condition, y = coefficient, color = condition)) +
+      geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+      geom_jitter(width = 0.12, size = 2.5, alpha = 0.7) +
+      stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.6) +
+      scale_color_condition() +
+      scale_x_discrete(labels = CONDITION_LABELS) +
+      labs(
+        x = "Condition",
+        y = "Group-specificity coefficient (Phase 1 final)",
+        title = "Phase 1 group-specificity by condition",
+        caption = "Points are games; black points and bars are bootstrap 95% CIs of the mean."
+      ) +
+      theme(legend.position = "none")
+  )
+}
+
+# Final Phase 1 descriptions (each game's last three Phase 1 blocks): words per
+# description, averaged within game first so every game counts once
+p1_final_len <- phase1_utterances(speaker_utts) |>
+  add_condition(games) |>
+  group_by(gameId) |>
+  filter(blockNum >= max(blockNum) - 2) |>
+  ungroup() |>
+  group_by(condition, gameId) |>
+  summarise(words = mean(uttLength, na.rm = TRUE), .groups = "drop")
+p1_len_by_condition <- p1_final_len |>
+  group_by(condition, .drop = FALSE) |>
+  summarise(games = n(), mean_words = mean(words), sd = sd(words), .groups = "drop") |>
+  filter(games > 0)
+print(knitr::kable(p1_len_by_condition, digits = 2,
+                   caption = "Words per description in the final three Phase 1 blocks, by condition (game means)"))
+```
+
 # Statistics for the manuscript
 
 This notebook is descriptive: it reports trajectories and embedding
@@ -228,6 +281,31 @@ if (exists("has_umap") && has_umap) {
   macros <- c(macros, list(
     exploratoryNUmapPoints = fmt_count(nrow(umap_data))
   ))
+}
+
+# Phase 1 endpoints across all four conditions (descriptive):
+# exploratoryPhaseOneGsReferSeparatedMean and so on
+if (exists("p1_gs_by_condition")) {
+  for (i in seq_len(nrow(p1_gs_by_condition))) {
+    cond <- condition_macro_name(p1_gs_by_condition$condition[i])
+    macros <- c(macros, setNames(
+      list(
+        p1_gs_by_condition$games[i],
+        fmt_stat(p1_gs_by_condition$mean[i]),
+        fmt_stat(p1_gs_by_condition$sd[i])
+      ),
+      paste0("exploratoryPhaseOneGs", cond, c("N", "Mean", "SD"))
+    ))
+  }
+}
+if (exists("p1_len_by_condition")) {
+  for (i in seq_len(nrow(p1_len_by_condition))) {
+    cond <- condition_macro_name(p1_len_by_condition$condition[i])
+    macros <- c(macros, setNames(
+      list(fmt_stat(p1_len_by_condition$mean_words[i], 2)),
+      paste0("exploratoryPhaseOneWords", cond)
+    ))
+  }
 }
 
 write_stats_tex(macros, stats_file("exploratory"), source = "analysis/04_exploratory.qmd")

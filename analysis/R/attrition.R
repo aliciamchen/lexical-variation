@@ -136,6 +136,35 @@ groups_by_condition <- function(ga) {
     )
 }
 
+# Do removals cascade within an original group? Among groups that lost at
+# least one member to inactivity, the share that went on to lose a second one,
+# by condition. Groups removed whole by the Phase 1 accuracy screen are left
+# out, since their members left together, and a group's disbanding (its last
+# member removed once it fell below two) is a consequence of the earlier
+# losses rather than a further dropout, so only idle removals are counted.
+idle_cascade_by_condition <- function(pa) {
+  groups <- pa |>
+    group_by(gameId, condition, originalGroup) |>
+    summarise(
+      idle_removals = sum(reason == "idle"),
+      low_accuracy = any(reason == "low accuracy"),
+      .groups = "drop"
+    ) |>
+    filter(!low_accuracy, idle_removals >= 1)
+  groups |>
+    group_by(condition, .drop = FALSE) |>
+    summarise(
+      groups_with_idle_removal = n(),
+      lost_second = sum(idle_removals >= 2),
+      prop_lost_second = if (n() > 0) {
+        lost_second / groups_with_idle_removal
+      } else {
+        NA_real_
+      },
+      .groups = "drop"
+    )
+}
+
 # ── Players who never played a real game ─────────────────────────────────────
 #
 # data/<dataset>/dropouts.csv (combine_runs.py): one row per player record

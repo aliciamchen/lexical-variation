@@ -2390,12 +2390,22 @@ class TestSessionInstrumentation:
         Both ends of selectionRt come from the participant's browser and the
         stage duration from the server, so a gross mismatch is the signal that
         one of those clocks is untrustworthy for that session.
+
+        Late clicks are left out: the grid stays on screen until the browser
+        hears that the stage ended, so on a slow server a listener can still
+        click after the deadline, and that click's response time legitimately
+        runs past the stage (game DGW5KK, 2026-09-26: 27.4 s in a 25.3 s stage,
+        flagged lateClick and unscored).
         """
-        both = trials[["selectionRt", "selectionDurationMs"]].dropna()
+        on_time = trials[trials["lateClick"].astype("boolean").fillna(False) == False] \
+            if "lateClick" in trials else trials  # noqa: E712
+        both = on_time[["selectionRt", "selectionDurationMs"]].dropna()
         if both.empty:
             pytest.skip("no response times recorded (export predates them)")
-        # One second of slack for the round trip that commits the selection.
-        over = both[both["selectionRt"] > both["selectionDurationMs"] + 1000]
+        # Two seconds of slack for the round trip that commits the selection.
+        # One second was too tight on a lagging server: two on-time clicks in
+        # the sessions of 2026-09-23 and 2026-09-25 ran 1.03 s past the stage.
+        over = both[both["selectionRt"] > both["selectionDurationMs"] + 2000]
         assert len(over) == 0, (
             f"{len(over)} trials have a response time longer than the stage "
             "they were made in"

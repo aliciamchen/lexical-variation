@@ -7,7 +7,12 @@
 # Usage:
 #   (sourced by config.R together with the other helpers in analysis/R/)
 #   results <- compute_group_specificity(pairwise_df, derived_dir, n_perm = 1000)
-#   # returns list(gs_results, perm_results) — loaded from cache if available
+#   # returns list(gs_results, perm_results) — loaded from cache if available;
+#   # gs_results carries a logical `singular` flag per game (a tangram or
+#   # speaker-pair variance estimated at zero) and the fits print no lme4
+#   # boundary messages
+#   singular_fit_summary(gs_table)
+#   # fits, singular fits, and their share, by window and condition
 #   gs_table <- game_specificity_table(pairwise_sim, games)
 #   # one row per game and endpoint window: coefficient, std_error, eligible,
 #   # estimable, note (why a game-window has no estimate), condition
@@ -23,33 +28,10 @@ suppressPackageStartupMessages({
   library(tidyverse)
 })
 
-# The two speaker random-effect structures.
+# The speaker random-effect structures.
 #
-# "multimembership" is the preregistered full-sample structure: one random
-# effect per speaker, shared across both pair positions with equal weights of
-# 1/2 and a common variance (see R/multimembership.R). "separate" is the
-# earlier structure, with an independent intercept for each pair position; the
-# paper records that the pilot estimates and permutation results use it, so
-# SI_pilot.qmd asks for it explicitly. Do not use it for the full sample: it
-# splits one person's effect across two variance components and makes the
-# estimate depend on an arbitrary ordering within each pair.
-# "multimembership_pair" is the preregistered structure: the shared speaker
-# effect plus a random intercept for the unordered speaker pair. The three
-# random effects stand for the three sources of resemblance between two
-# descriptions that are not the effect of interest -- the tangram, the two
-# individual speakers, and the pair itself. The pair term is the one a
-# shared convention lives in, and it cannot be recovered from the speakers'
-# individual tendencies because those enter additively.
-#
-# The design-matched simulations (analysis/simulate_mm_speaker.R) are why it
-# is the default: without it the standard error runs about 25% small when
-# pair-level dependence is present (95% intervals covering 86%), and with it
-# coverage is nominal at no real cost when no such dependence exists. Point
-# estimates are the same either way, so the choice shows up only in the
-# inverse-variance weights, which is exactly what it needs to get right.
-# The pair variance sits at the boundary in many games; the term is kept
-# anyway, so the model structure never depends on the data.
-# "pair" is the preregistered structure as the manuscript states it: a
+# "pair", the default for every notebook including SI_pilot.qmd, is the
+# preregistered structure as the manuscript states it: a
 # tangram intercept and an intercept for the unordered speaker-speaker pair,
 # with no speaker term. The pair intercept is the one the design-matched
 # simulations showed to matter (without it, 95% intervals cover about 86%;
@@ -57,7 +39,11 @@ suppressPackageStartupMessages({
 # precision and errs conservative -- on the pilot the same_group coefficients
 # are unchanged to two decimals and the standard errors are slightly larger
 # than with speaker terms added -- and it sidesteps the pair-ordering problem
-# entirely, since there is no per-position effect to split.
+# entirely, since there is no per-position effect to split. Point estimates
+# barely move with the structure, so the choice shows up mainly in the
+# inverse-variance weights of the game-level regression. The pair variance
+# sits at the boundary in many games; the term is kept anyway, so the model
+# structure never depends on the data.
 #
 # The other three remain for comparison: "multimembership_pair" adds a shared
 # speaker effect (1/2 weights across both pair positions) to the pair
@@ -87,6 +73,7 @@ fit_group_specificity_pair <- function(pairwise_df, covariates = NULL) {
     coefficient = numeric(),
     std_error = numeric(),
     t_value = numeric(),
+    singular = logical(),
     note = character()
   )
   if (!has_rows(pairwise_df)) {
@@ -113,17 +100,20 @@ fit_group_specificity_pair <- function(pairwise_df, covariates = NULL) {
       }
       tryCatch(
         {
-          model <- lmer(
+          # lme4's "boundary (singular) fit" message is recorded in `singular`
+          # instead of being printed once per game
+          model <- suppressMessages(lmer(
             model_formula,
             data = d,
             control = lmerControl(optimizer = "bobyqa")
-          )
+          ))
           coefs <- coef(summary(model))
           tibble(
             gameId = gid,
             coefficient = coefs["sameGroup", "Estimate"],
             std_error = coefs["sameGroup", "Std. Error"],
             t_value = coefs["sameGroup", "t value"],
+            singular = isSingular(model),
             note = NA_character_
           )
         },
@@ -133,6 +123,7 @@ fit_group_specificity_pair <- function(pairwise_df, covariates = NULL) {
             coefficient = NA_real_,
             std_error = NA_real_,
             t_value = NA_real_,
+            singular = NA,
             note = conditionMessage(e)
           )
         }
@@ -159,7 +150,7 @@ fit_group_specificity <- function(
         covariates = covariates,
         pair_term = speaker_structure == "multimembership_pair"
       ) |>
-        select(gameId, coefficient, std_error, t_value, note)
+        select(gameId, coefficient, std_error, t_value, singular, note)
     )
   }
   game_ids <- unique(pairwise_df$gameId)
@@ -181,17 +172,18 @@ fit_group_specificity <- function(
 
     tryCatch(
       {
-        model <- lmer(
+        model <- suppressMessages(lmer(
           model_formula,
           data = game_data,
           control = lmerControl(optimizer = "bobyqa")
-        )
+        ))
         coefs <- coef(summary(model))
         tibble(
           gameId = gid,
           coefficient = coefs["sameGroup", "Estimate"],
           std_error = coefs["sameGroup", "Std. Error"],
           t_value = coefs["sameGroup", "t value"],
+          singular = isSingular(model),
           note = NA_character_
         )
       },
@@ -201,6 +193,7 @@ fit_group_specificity <- function(
           coefficient = NA_real_,
           std_error = NA_real_,
           t_value = NA_real_,
+          singular = NA,
           note = conditionMessage(e)
         )
       }
@@ -223,13 +216,15 @@ permutation_test <- function(
   # One fitter, used for both the observed model and every permutation, so
   # the null distribution is always built from the same structure as the
   # observed coefficient it is compared against.
+  # Every fit is wrapped in suppressMessages(): a permutation that lands on a
+  # variance boundary is expected and would otherwise print a message per fit.
   fit_one <- function(d) {
     if (speaker_structure == "separate") {
-      model <- lmer(
+      model <- suppressMessages(lmer(
         similarity ~ sameGroup + (1 | target) + (1 | speaker1) + (1 | speaker2),
         data = d,
         control = lmerControl(optimizer = "bobyqa")
-      )
+      ))
       return(coef(summary(model))["sameGroup", "Estimate"])
     }
     d <- as.data.frame(d)
@@ -238,11 +233,11 @@ permutation_test <- function(
       pmax(d$speaker1, d$speaker2)
     )
     if (speaker_structure == "pair") {
-      model <- lmer(
+      model <- suppressMessages(lmer(
         similarity ~ sameGroup + (1 | target) + (1 | speakerPair),
         data = d,
         control = lmerControl(optimizer = "bobyqa")
-      )
+      ))
       return(coef(summary(model))["sameGroup", "Estimate"])
     }
     f <- if (speaker_structure == "multimembership_pair") {
@@ -250,11 +245,11 @@ permutation_test <- function(
     } else {
       similarity ~ sameGroup + (1 | target) + (1 | speaker)
     }
-    model <- lmer_multimember(
+    model <- suppressMessages(lmer_multimember(
       f,
       data = d,
       memberships = list(speaker = speaker_pair_weights(d$speaker1, d$speaker2))
-    )
+    ))
     coef(summary(model))["sameGroup", "Estimate"]
   }
 
@@ -348,9 +343,8 @@ compute_group_specificity <- function(
 ) {
   speaker_structure <- match.arg(speaker_structure, SPEAKER_STRUCTURES)
   # One set of cache files per speaker structure. They must not share a name:
-  # SI_pilot.qmd asks for "separate" and the full-sample notebooks use the
-  # default, so a single set would be overwritten by whichever notebook
-  # rendered last and the permutation test would rerun every time.
+  # a comparison fit with another structure would otherwise overwrite the
+  # default's cache, and the permutation test would rerun on every render.
   suffix <- paste0("_", speaker_structure)
   gs_cache <- file.path(cache_dir, paste0("gs_results", suffix, ".rds"))
   perm_cache <- file.path(cache_dir, paste0("perm_results", suffix, ".rds"))
@@ -395,8 +389,21 @@ compute_group_specificity <- function(
       identical(cached_key, key)
   ) {
     cat("Loading cached group-specificity results from", cache_dir, "\n")
+    gs_results <- readRDS(gs_cache)
+    if (!"singular" %in% names(gs_results)) {
+      # The cache predates the singular-fit flag: refit the observed models
+      # (seconds) and keep the permutation results, which do not depend on it.
+      cat(
+        "Cached estimates lack the singular-fit flag; refitting the observed models only.\n"
+      )
+      gs_results <- fit_group_specificity(
+        pairwise_df,
+        speaker_structure = speaker_structure
+      )
+      saveRDS(gs_results, gs_cache)
+    }
     return(list(
-      gs_results = readRDS(gs_cache),
+      gs_results = gs_results,
       perm_results = readRDS(perm_cache)
     ))
   }
@@ -425,6 +432,28 @@ compute_group_specificity <- function(
   cat("Cached results to", cache_dir, "\n")
 
   list(gs_results = gs_results, perm_results = perm_results)
+}
+
+
+# How many per-game fits sat at a variance boundary. A singular fit here means
+# the tangram or speaker-pair variance was estimated at zero. The same_group
+# coefficient and its standard error are those of the fitted model either way,
+# so the estimate is kept and the count is reported, by window and condition
+# when the table has them (game_specificity_table()) and overall otherwise
+# (fit_group_specificity()).
+singular_fit_summary <- function(gs) {
+  if (!is.data.frame(gs) || !"singular" %in% names(gs)) {
+    return(tibble())
+  }
+  gs |>
+    filter(is.finite(coefficient)) |>
+    group_by(across(any_of(c("window", "condition"))), .drop = TRUE) |>
+    summarise(
+      fits = n(),
+      singular = sum(singular %in% TRUE),
+      prop_singular = singular / fits,
+      .groups = "drop"
+    )
 }
 
 
@@ -545,6 +574,7 @@ game_specificity_table <- function(
     coefficient = numeric(),
     std_error = numeric(),
     t_value = numeric(),
+    singular = logical(),
     fit_note = character(),
     window = character()
   )
@@ -584,6 +614,7 @@ game_specificity_table <- function(
       coefficient,
       std_error,
       t_value,
+      singular,
       n_pairs,
       n_speakers,
       n_groups_two_speakers,

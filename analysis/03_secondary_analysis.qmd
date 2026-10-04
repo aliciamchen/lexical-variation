@@ -90,6 +90,38 @@ if (n_conditions >= 2) {
 } # end has_phase_change
 ```
 
+The condition means above average two kinds of speaker: those who kept their
+Phase 1 description and those who adopted another one. Group-specificity can
+fall in `refer_mixed` through the second kind alone, when a minority of
+speakers takes up another group's label while the rest keep theirs, so the
+mean of this measure need not separate `refer_mixed` from `refer_separated`
+even when H1 holds. The quantiles and the share of speaker-tangram
+observations below 0.5 show how much of each condition's mass sits in the
+switched tail. Whose label the switchers adopted is recorded per speaker,
+tangram, and block in `cross_group_borrowing.csv`.
+
+```{r semantic-change-decomposition}
+if (has_phase_change && nrow(phase_change) > 0) {
+  SWITCH_THRESHOLD <- 0.5
+  switch_by_condition <- phase_change |>
+    filter(!is.na(simPhase1Phase2)) |>
+    group_by(condition, .drop = FALSE) |>
+    summarise(
+      n = n(),
+      q10 = quantile(simPhase1Phase2, 0.10),
+      median = median(simPhase1Phase2),
+      q90 = quantile(simPhase1Phase2, 0.90),
+      prop_switched = mean(simPhase1Phase2 < SWITCH_THRESHOLD),
+      .groups = "drop"
+    ) |>
+    filter(n > 0)
+  print(knitr::kable(
+    switch_by_condition, digits = 3,
+    caption = sprintf("Phase 1 to Phase 2 self-similarity by condition (switched: below %.1f)", SWITCH_THRESHOLD)
+  ))
+}
+```
+
 ```{r plot-semantic-change, fig.width=7, fig.height=5}
 if (has_phase_change && nrow(phase_change) > 0) {
 # Plot 10: Semantic change by condition
@@ -805,6 +837,18 @@ if (exists("social_guesses_model") && has_rows(social_guesses_model)) {
 
 if (exists("m_p2_length")) {
   macros <- c(macros, coef_macros("secondaryLengthBlock", m_p2_length, "blockNum_c"))
+}
+
+# The share of speaker-tangram observations whose Phase 2 description moved
+# away from the Phase 1 one (self-similarity below SWITCH_THRESHOLD), by
+# condition: secondarySwitchedReferSeparated and so on
+if (exists("switch_by_condition")) {
+  for (i in seq_len(nrow(switch_by_condition))) {
+    macros <- c(macros, setNames(
+      list(fmt_stat(switch_by_condition$prop_switched[i])),
+      paste0("secondarySwitched", condition_macro_name(switch_by_condition$condition[i]))
+    ))
+  }
 }
 
 write_stats_tex(macros, stats_file("secondary"), source = "analysis/03_secondary_analysis.qmd")

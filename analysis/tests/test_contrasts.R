@@ -157,3 +157,28 @@ check(
   "contrast_table is NULL for NULL contrasts",
   is.null(contrast_table(NULL, "x"))
 )
+
+# ── support_sentence ─────────────────────────────────────────────────────────
+
+h12_fit <- fit_h12(gs)
+out <- capture.output(v <- support_sentence(h12_fit$contrasts, "H1", row = 1))
+check(
+  "support_sentence prints one labeled verdict for a planned contrast",
+  length(out) == 1 && grepl("^H1: ", out) && grepl("supported|contrary", v)
+)
+ratio_tab <- tibble(
+  contrast = "x", estimate = 1.2, SE = 0.3, lower = 0.7, upper = 2.1, p.value = 0.4
+)
+v_ratio <- support_sentence(ratio_tab, "H4a", null = 1)
+check(
+  "a ratio contrast is judged against 1",
+  grepl("not supported .*predicted direction", v_ratio)
+)
+v_contrary <- support_sentence(
+  tibble(contrast = "x", estimate = -0.3, SE = 0.05, lower = -0.4, upper = -0.2, p.value = 0.001),
+  "H3a"
+)
+check(
+  "a significant effect the other way is reported as contrary",
+  grepl("contrary", v_contrary)
+)

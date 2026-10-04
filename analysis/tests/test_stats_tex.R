@@ -144,7 +144,7 @@ check(
   "bf_macros formats a computed Bayes factor and skips a missing one",
   identical(
     bf_macros("primaryHOne", list(bf10 = 0.2531)),
-    list(primaryHOneBF = "0.253")
+    list(primaryHOneBF = "0.25")
   ) &&
     length(bf_macros("x", list(bf10 = NA_real_))) == 0 &&
     length(bf_macros("x", NULL)) == 0
@@ -158,4 +158,28 @@ check(
   "stats_file points into the manuscript project's stats directory with a letters-only stem",
   stats_file("primary") == file.path(manuscript_dir, "stats", "primary.tex") &&
     inherits(try(stats_file("02_primary"), silent = TRUE), "try-error")
+)
+
+# ── Bayes-factor formatting and condition macro names ───────────────────────
+
+check(
+  "fmt_bf uses two significant digits and never pads",
+  fmt_bf(1) == "1.0" && fmt_bf(0.177) == "0.18" && fmt_bf(12.3) == "12" &&
+    fmt_bf(0.0523) == "0.052" && fmt_bf(3.14) == "3.1" && fmt_bf(NA) == "NA" &&
+    !grepl(" ", fmt_bf(1.0004))
+)
+check(
+  "bf_macros writes an unpadded Bayes factor and nothing when it was not computed",
+  identical(
+    bf_macros("primaryHThreeA", list(bf10 = 1.0004)),
+    list(primaryHThreeABF = "1.0")
+  ) &&
+    length(bf_macros("x", list(bf10 = NA_real_))) == 0
+)
+check(
+  "condition_macro_name turns a condition id into a CamelCase macro fragment",
+  identical(
+    condition_macro_name(c("refer_separated", "social_first")),
+    c("ReferSeparated", "SocialFirst")
+  )
 )

@@ -19,7 +19,12 @@
 # pairwise_weights()  contrast weights for "a minus b" over a set of levels
 # robustness_rerun()  refit H1/H2 and the H4 models on a subset of games and
 #                     print each contrast beside the primary one; used for the
-#                     complete-games and roster-size checks
+#                     complete-games and roster-size checks. Returns the
+#                     rerun's contrast tables invisibly so the notebook can
+#                     write them as macros
+# support_sentence()  one line saying whether a planned contrast supports its
+#                     prediction under the reporting policy (p < .05 and the
+#                     predicted direction)
 #
 # Tests: analysis/tests/test_contrasts.R
 
@@ -47,6 +52,38 @@ contrast_table <- function(contrasts, label) {
     ) |>
     select(contrast, estimate, SE, lower, upper, p.value) |>
     mutate(analysis = label, .before = 1)
+}
+
+# One sentence on whether a planned contrast supports its prediction under the
+# reporting policy: p < .05 and the predicted direction. Every planned
+# contrast is written as "predicted minus comparison", so the predicted
+# direction is an estimate above `null` (0 for a difference, 1 for an odds
+# ratio). A significant effect the other way is reported as contrary to the
+# prediction rather than as support. `ct` is an emmeans contrast object or a
+# contrast_table() data frame.
+support_sentence <- function(ct, label, row = 1L, null = 0) {
+  tab <- if (is.data.frame(ct) && "estimate" %in% names(ct)) {
+    ct
+  } else {
+    contrast_table(ct, "")
+  }
+  if (is.null(tab) || nrow(tab) < row) {
+    return(invisible(NULL))
+  }
+  r <- tab[row, ]
+  predicted <- is.finite(r$estimate) && r$estimate > null
+  significant <- is.finite(r$p.value) && r$p.value < 0.05
+  verdict <- if (significant && predicted) {
+    "supported (p < .05 in the predicted direction)"
+  } else if (significant) {
+    "significant in the direction contrary to the prediction"
+  } else if (predicted) {
+    "not supported (p >= .05; the estimate is in the predicted direction)"
+  } else {
+    "not supported (p >= .05; the estimate is in the opposite direction)"
+  }
+  cat(sprintf("%s: %s.\n", label, verdict))
+  invisible(verdict)
 }
 
 # The planned contrasts of the game-level regressions, as "a minus b" pairs.
@@ -273,13 +310,21 @@ rerun_h4 <- function(spec, keep_games, label) {
     random_effects_structure(m_sub)
   ))
   print(knitr::kable(bind_rows(primary, restricted), digits = 3))
-  invisible(m_sub)
+  invisible(list(
+    model = m_sub,
+    table = restricted,
+    n_games = n_distinct(sub$gameId)
+  ))
 }
 
 # `gs` is the full game-level table (all conditions), `primary_contrasts` the
 # planned H1/H2 contrasts of the primary OLS analysis (or NULL), and `h4` a
 # list of specs for rerun_h4(). The H1/H2 rerun is the same equal-weight OLS
-# model as the primary analysis.
+# model as the primary analysis. Returns, invisibly, list(label, identical,
+# excluded, h12, n_games_h12, h4): `identical` is TRUE when the restriction
+# excluded no games (nothing was refit), `h12` the rerun's contrast table (or
+# NULL), and `h4` a list by spec name of rerun_h4() results, so the notebook
+# can write the rerun estimates as macros.
 robustness_rerun <- function(
   keep_games,
   label,
@@ -293,7 +338,7 @@ robustness_rerun <- function(
     cat(
       "No games are excluded under this restriction; the results are identical to the primary analyses.\n"
     )
-    return(invisible(NULL))
+    return(invisible(list(label = label, identical = TRUE)))
   }
   cat("Excluded games by condition:\n")
   print(knitr::kable(excluded |> count(condition, name = "excluded")))
@@ -315,8 +360,16 @@ robustness_rerun <- function(
       "H1/H2: too few games per condition under this restriction; skipping.\n"
     )
   }
+  h4_out <- list()
   for (spec in h4) {
-    rerun_h4(spec, keep_games, label)
+    h4_out[[spec$name]] <- rerun_h4(spec, keep_games, label)
   }
-  invisible(NULL)
+  invisible(list(
+    label = label,
+    identical = FALSE,
+    excluded = excluded |> count(condition, name = "excluded"),
+    h12 = if (enough) contrast_table(h12$contrasts, label) else NULL,
+    n_games_h12 = if (enough) nrow(h12$data) else NA_integer_,
+    h4 = h4_out
+  ))
 }

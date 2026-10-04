@@ -108,6 +108,12 @@ if (!has_pairwise) {
   cat("Endpoint coverage by window and condition:\n")
   print(knitr::kable(endpoint_coverage_summary(gs_table)))
 
+  cat(paste(
+    "\nPer-game fits at a variance boundary (singular: the tangram or speaker-pair",
+    "variance estimated at zero; the same_group estimate is kept), by window and condition:\n"
+  ))
+  print(knitr::kable(singular_fit_summary(gs_table), digits = 2))
+
   not_estimable <- gs_table |> filter(!estimable)
   if (nrow(not_estimable) > 0) {
     cat("\nGame-windows without an estimate:\n")
@@ -180,6 +186,8 @@ Two-tailed tests at α = 0.05.
 ```{r planned-contrasts}
 if (exists("contrasts") && !is.null(contrasts)) {
   print(summary(contrasts, infer = c(TRUE, TRUE)))
+  support_sentence(contrasts, "H1 (refer_separated > refer_mixed)", row = 1)
+  support_sentence(contrasts, "H2 (social_mixed > refer_mixed)", row = 2)
 } else {
   contrasts <- NULL
   cat("Skipping contrasts: need all three H1/H2 conditions.\n")
@@ -391,6 +399,9 @@ endpoint is estimable (the Phase 2 endpoint is not required). Contrast:
 `social_first > social_mixed`. The inverse-variance rerun (weights
 `1 / SE_phase1^2`) follows as a robustness check.
 
+A descriptive comparison of Phase 1 group-specificity across all four
+conditions is in `04_exploratory.qmd`; it is not part of this test.
+
 ```{r h3a-gs}
 if (!exists("gs_combined")) {
   cat("Skipping H3a: no group-specificity data.\n")
@@ -406,6 +417,7 @@ if (!exists("gs_combined")) {
     print(summary(ols_h3a))
     report_effect_sizes(ols_h3a)
     print(summary(contrast_h3a, infer = c(TRUE, TRUE)))
+    support_sentence(contrast_h3a, "H3a (social_first > social_mixed)")
 
     # H3a's model has no covariate, so the planned contrast and a two-sample
     # comparison of the game-level estimates are the same test: here the
@@ -547,7 +559,11 @@ if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
       color = "Condition",
       title = "H3b: within-group convergence and early alignment",
       subtitle = "H3b predicts a steeper slope and greater block-3 alignment in social-first.",
-      caption = "Intervals resample games; a single pilot game per condition cannot estimate between-game uncertainty."
+      caption = if (DATASET == DEFAULT_DATASET) {
+        "Intervals resample games; a single pilot game per condition cannot estimate between-game uncertainty."
+      } else {
+        "Intervals are bootstrap 95% CIs over games."
+      }
     )
 }
 ```
@@ -618,6 +634,16 @@ length > 1 are retained as *content words*.
   the `wordfreq` Python package (which draws on SUBTLEX and other corpora).
   Common words score higher (e.g., "the" ≈ 7.7); rare words score lower.
 
+Where a summary below reports a singular fit, the line after it names the
+variance components estimated at zero. Two of them are expected to sit there
+in the full sample. `group` is game-unique, so it is nested in `gameId` and
+the between-game variance can be carried by either term; a zero game variance
+means the two share one component, not that games do not differ. The
+by-description term has nothing left to explain once group and tangram are in,
+because the content words of one short description are close to independent
+given those. In each case the fit is equivalent to the same model without the
+zero terms, and the estimate and standard error are those of that model.
+
 ```{r h3c-description-properties}
 if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
   cat("Missing H3c data files. Run compute_description_properties() and compute_lexical_uniqueness() first.\n")
@@ -638,6 +664,7 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
         family = binomial
       )
       print(summary(m_concrete))
+      report_variance_components(m_concrete)
       report_odds_ratios(m_concrete)
     }
 
@@ -653,6 +680,7 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
         family = binomial
       )
       print(summary(m_uniqueness))
+      report_variance_components(m_uniqueness)
       report_odds_ratios(m_uniqueness)
     }
 
@@ -665,6 +693,7 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
         data = p1_freq
       )
       print(summary(m_freq))
+      report_variance_components(m_freq)
       report_effect_sizes(m_freq)
     }
   } else {
@@ -835,6 +864,7 @@ if (nrow(social_guesses) > 0) {
         H4a_socialfirst_gt_socialmixed = c(-1, 1)
       ))
       print(summary(contrast_h4a, infer = c(TRUE, TRUE)))
+      support_sentence(contrast_h4a, "H4a (social_first > social_mixed)", null = 1)
 
       p_h4a <- as.data.frame(summary(contrast_h4a, infer = c(TRUE, TRUE)))$p.value
       # Same formula that converged above; the null drops the fixed effect of condition
@@ -902,6 +932,7 @@ if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 
       H4b_socialmixed_gt_socialfirst = c(1, -1)
     ))
     print(summary(contrast_h4b, infer = c(TRUE, TRUE)))
+    support_sentence(contrast_h4b, "H4b (social_mixed > social_first)", null = 1)
 
     p_h4b <- as.data.frame(summary(contrast_h4b, infer = c(TRUE, TRUE)))$p.value
     bf_h4b <- maybe_bayes_factor(p_h4b, "H4b social_mixed vs social_first", function() {
@@ -947,6 +978,12 @@ primary ones. If the restriction excludes no games, the results are identical
 to the primary analyses by construction and nothing is refit. The paper
 explicitly does not restrict analyses to games with statistically significant
 Phase 1 group specificity, so no such rerun appears here.
+
+Each rerun's contrasts are also written as macros (`primaryHOneComplete...`,
+`primaryHOneThreeGroups...`, `primaryHOneActiveGroups...`, and the H2 and H4
+analogues), so the manuscript can state that H1 and H2 hold on complete
+games, on games that kept all three groups, and with the number of active
+groups as a covariate, without a hand-copied number.
 
 ```{r robustness-helper}
 # The H4 models to rerun, with their planned contrast weights
@@ -1022,8 +1059,8 @@ The complete-games restriction from the paper's dropout-handling section
 if (exists("gs_combined")) {
   complete <- complete_games(players, games)
   cat(sprintf("%d of %d games kept all nine players.\n", length(complete), sum(!is.na(games$condition))))
-  robustness_rerun(complete, "complete nine-player games",
-                   gs = gs_combined, primary_contrasts = contrasts, h4 = h4_specs)
+  rr_complete <- robustness_rerun(complete, "complete nine-player games",
+                                  gs = gs_combined, primary_contrasts = contrasts, h4 = h4_specs)
 } else {
   cat("Skipping: no group-specificity estimates.\n")
 }
@@ -1065,8 +1102,8 @@ if (!exists("gs_combined")) {
   three_groups <- roster |> filter(activeGroupsMin == 3) |> pull(gameId)
   cat(sprintf("%d of %d games kept all three original groups throughout Phase 2.\n",
               length(three_groups), nrow(roster)))
-  robustness_rerun(three_groups, "games with three active groups throughout Phase 2",
-                   gs = gs_combined, primary_contrasts = contrasts, h4 = h4_specs)
+  rr_three_groups <- robustness_rerun(three_groups, "games with three active groups throughout Phase 2",
+                                      gs = gs_combined, primary_contrasts = contrasts, h4 = h4_specs)
 
   gs_rs <- gs_combined |>
     left_join(roster, by = "gameId") |>
@@ -1442,6 +1479,43 @@ if (exists("h3b_jaccard")) {
     h3b_macros("primaryHThreeBJaccard", h3b_jaccard$summary),
     h3b_macros("primaryHThreeBBlockThreeJaccard", h3b_jaccard$block_summary)
   )
+}
+
+# The sensitivity reruns of the Phase 2 analyses: complete nine-player games,
+# games that kept all three original groups throughout Phase 2, and the
+# minimum number of active groups as a covariate. Nothing is written when a
+# restriction excludes no games, because the results are then the primary ones.
+rerun_macros <- function(suffix, rr) {
+  if (is.null(rr) || isTRUE(rr$identical)) return(list())
+  out <- list()
+  if (!is.null(rr$h12)) {
+    out <- c(
+      out,
+      setNames(list(rr$n_games_h12), paste0("primaryNGames", suffix)),
+      contrast_macros(paste0("primaryHOne", suffix), rr$h12, row = 1),
+      contrast_macros(paste0("primaryHTwo", suffix), rr$h12, row = 2)
+    )
+  }
+  if (!is.null(rr$h4$H4a)) out <- c(out, contrast_macros(paste0("primaryHFourA", suffix), rr$h4$H4a$table, row = 1))
+  if (!is.null(rr$h4$H4b)) out <- c(out, contrast_macros(paste0("primaryHFourB", suffix), rr$h4$H4b$table, row = 1))
+  out
+}
+if (exists("rr_complete")) macros <- c(macros, rerun_macros("Complete", rr_complete))
+if (exists("rr_three_groups")) macros <- c(macros, rerun_macros("ThreeGroups", rr_three_groups))
+if (exists("h12_rs") && !is.null(h12_rs$model) && !is.null(h12_rs$contrasts) &&
+      !any(is.na(coef(h12_rs$model)))) {
+  macros <- c(
+    macros,
+    contrast_macros("primaryHOneActiveGroups", h12_rs$contrasts, row = 1),
+    contrast_macros("primaryHTwoActiveGroups", h12_rs$contrasts, row = 2)
+  )
+}
+
+# Per-game fits at a variance boundary (see the coverage section)
+if (exists("gs_table") && "singular" %in% names(gs_table)) {
+  macros <- c(macros, list(
+    primaryNGameWindowsSingular = sum(gs_table$singular %in% TRUE & gs_table$estimable)
+  ))
 }
 
 write_stats_tex(macros, stats_file("primary"), source = "analysis/02_primary_analysis.qmd")

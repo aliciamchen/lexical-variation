@@ -385,7 +385,7 @@ report_bf <- function(result, label) {
     if (is.na(result$bf10)) {
       "NA"
     } else {
-      formatC(result$bf10, digits = 3, format = "g")
+      fmt_bf(result$bf10)
     },
     result$interpretation
   ))

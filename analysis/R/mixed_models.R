@@ -39,6 +39,8 @@
 #   m <- fit_progressively(y ~ x + (x | group) + (x | item), data = d)
 #   simplification_log(m)      # data frame of the steps taken
 #   summary(m)
+#   report_variance_components(m)  # names the variance components at zero
+#                                  # when the kept fit is singular
 #
 # Tests: analysis/tests/test_mixed_models.R (Rscript analysis/tests/run_all.R)
 
@@ -387,4 +389,40 @@ re_intercept_groups <- function(x) {
 
 random_effects_structure <- function(model) {
   attr(model, "random_effects_structure")
+}
+
+# ── Which variance components sat at the boundary ────────────────────────────
+
+# The grouping factors whose variance the fit estimated at (numerically) zero,
+# as "grp (term)" labels. A singular random-intercepts-only fit is the end of
+# the preregistered procedure; this names the terms that sat at the boundary
+# so a notebook can say which ones rather than only that the fit is singular.
+zero_variance_components <- function(model, tol = 1e-4) {
+  if (!inherits(model, "merMod")) {
+    return(character(0))
+  }
+  vc <- as.data.frame(lme4::VarCorr(model))
+  vc <- vc[vc$grp != "Residual" & !is.na(vc$var1) & is.na(vc$var2), , drop = FALSE]
+  zero <- vc[vc$sdcor < tol, , drop = FALSE]
+  paste0(zero$grp, " ", zero$var1)
+}
+
+# One sentence naming the variance components at zero, and what that means: a
+# zero component contributes nothing, so the fit is the same model without
+# those terms, and the fixed-effect estimate and standard error are theirs.
+report_variance_components <- function(model, tol = 1e-4) {
+  zero <- zero_variance_components(model, tol)
+  if (length(zero) == 0) {
+    cat("No variance component at zero.\n")
+  } else {
+    cat(sprintf(
+      paste(
+        "Variance components at zero: %s.",
+        "The fit is equivalent to the same model without these terms;",
+        "keeping them is what the singular-fit flag reports.\n"
+      ),
+      paste(zero, collapse = ", ")
+    ))
+  }
+  invisible(zero)
 }

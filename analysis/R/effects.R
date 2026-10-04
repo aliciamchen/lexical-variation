@@ -15,7 +15,10 @@ fmt_pval <- function(p) {
 report_effect_sizes <- function(model) {
   cat("\nStandardized parameters (effect sizes):\n")
   std_params <- standardize_parameters(model, method = "basic")
-  print(std_params)
+  # The intercept's standardized value is zero by construction and says
+  # nothing, so it is left out of the printed table
+  keep <- std_params$Parameter != "(Intercept)"
+  print(std_params[keep, , drop = FALSE])
   invisible(std_params)
 }
 

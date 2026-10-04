@@ -174,14 +174,41 @@ coef_macros <- function(prefix, model, term, digits = 3) {
   )
 }
 
-# The Bayes factor of a bf_* result as <prefix>BF (three significant digits),
-# or nothing when it was not computed
+# A Bayes factor to two significant digits and with no padding: 0.052, 0.18,
+# 1.0, 3.2, 12. formatC(format = "g") pads short values with spaces, which put
+# "   1" inside a \newcommand and typeset as a stray space.
+fmt_bf <- function(bf10) {
+  if (is.null(bf10) || length(bf10) == 0 || is.na(bf10)) {
+    return("NA")
+  }
+  x <- signif(bf10, 2)
+  if (x >= 10) {
+    return(formatC(x, digits = 0, format = "f"))
+  }
+  if (x >= 1) {
+    return(formatC(x, digits = 1, format = "f"))
+  }
+  if (x >= 0.1) {
+    return(formatC(x, digits = 2, format = "f"))
+  }
+  if (x >= 0.01) {
+    return(formatC(x, digits = 3, format = "f"))
+  }
+  trimws(formatC(x, digits = 2, format = "g"))
+}
+
+# The Bayes factor of a bf_* result as <prefix>BF (two significant digits, see
+# fmt_bf()), or nothing when it was not computed
 bf_macros <- function(prefix, bf) {
   if (is.null(bf) || is.null(bf$bf10) || is.na(bf$bf10)) {
     return(list())
   }
-  setNames(
-    list(formatC(bf$bf10, digits = 3, format = "g")),
-    paste0(prefix, "BF")
-  )
+  setNames(list(fmt_bf(bf$bf10)), paste0(prefix, "BF"))
+}
+
+# A condition id as the CamelCase fragment of a macro name, since macro names
+# are letters only: "refer_separated" -> "ReferSeparated"
+condition_macro_name <- function(x) {
+  x <- as.character(x)
+  gsub("_(\\w)", "\\U\\1", sub("^(\\w)", "\\U\\1", x, perl = TRUE), perl = TRUE)
 }
