@@ -20,7 +20,7 @@
 │   ├── tests/                # Playwright end-to-end tests
 │   └── .empirica/            # Treatments, lobbies, config
 ├── data/
-│   ├── pilots/               # Pilot dataset (committed); the full sample will sit beside it
+│   ├── pilots/               # Pilot dataset (committed); the full sample sits beside it, uncommitted until collection ends
 │   └── runs/                 # Per-run outputs from extract_run.py (gitignored)
 ├── analysis/                 # Analysis code & outputs
 │   ├── derived/              # Derived metrics per dataset (derived/pilots/ committed)
@@ -178,7 +178,7 @@ There are three scripts that should be run in order. Each reads the previous scr
 
 | Script | Reads from | Writes to |
 |--------|-----------|-----------|
-| `extract_run.py <zip>` | Empirica export zip in `experiment/data/` | `data/runs/{timestamp}/raw/`. Strips Prolific IDs and other PII from player.csv, and registers the run in the dataset's `runs.txt`. |
+| `extract_run.py <zip>` | Empirica export zip in `experiment/data/` | `data/runs/{timestamp}/raw/`. Strips Prolific IDs and other PII from player.csv, redacts Prolific-id-shaped tokens that participants typed into any text field (a survey answer or a chat message), and registers the run in the dataset's `runs.txt`. |
 | `combine_runs.py [--dataset NAME] [runs]` | `data/runs/*/raw/` for the runs in `data/<name>/runs.txt` | `data/<name>/raw_anonymized/` + `manifest.json` |
 | `process_data.py [--dataset NAME]` | `data/<name>/raw_anonymized/` | `data/<name>/*.csv` + `analysis/derived/<name>/` |
 | ↳ `preprocessing.py` | `data/<name>/raw_anonymized/` | `data/<name>/*.csv` |
@@ -191,19 +191,19 @@ Among the derived outputs, `pairwise_similarities_jaccard.csv` and `block_pairwi
 
 ### Payments
 
-`operations/payments.py` (run as `make payments DATASET=full`) works out what each Prolific study still owes. A session can span several Prolific studies and several Empirica batches, and each export is a cumulative snapshot of the server, so neither one export nor one batch lines up with the people a given study has to pay. The step therefore reads every export listed in the dataset's `runs.txt`, takes each player placed in a game, identified by the Prolific ID they entered on the identifier screen (filled in from the study link when it carries one), and asks Prolific, with read-only requests only, for the submissions of every study recorded on any player. Each player is paid in the study where their Prolific ID has a submission, matched by completion code and then by time. That covers participants who reached the game through a link sent by message, because Prolific had not yet shown them the study, and entered the code on the study afterwards. A player who never submitted the game study at all is paid the base pay and bonus as a bonus on their other recent submission, normally the session's scheduling survey, in a separate `unsubmitted.csv`. The submissions carry each one's status and the bonuses already paid on it, and they also identify the lobby-timeout participants by the completion code their exit screen gave them, since no game of theirs ever started.
+`operations/payments.py` (run as `make payments DATASET=full`) works out what each Prolific study still owes. A session can span several Prolific studies and several Empirica batches, and each export is a cumulative snapshot of the server, so neither one export nor one batch lines up with the people a given study has to pay. The step therefore reads every export listed in the dataset's `runs.txt`, takes each player placed in a game, identified by the Prolific ID they entered on the identifier screen (filled in from the study link when it carries one), and asks Prolific, with read-only requests only, for the submissions of every study recorded on any player. Each player is paid in the study where their Prolific ID has a submission, matched by completion code and then by time. That covers participants who reached the game through a link sent by message, because Prolific had not yet shown them the study, and entered the code on the study afterwards. A player who never submitted the game study at all is paid the base pay and bonus as a bonus on their other recent submission, normally the session's scheduling survey. The submissions carry each one's status and the bonuses already paid on it, and they also identify the lobby-timeout participants by the completion code their exit screen gave them, since no game of theirs ever started. A lobby timeout who returned the study without entering that code is found from the export instead, where their record shows they waited in the lobby for a game that never started.
 
-The output is written to `data/payments/<dataset>/`, which is gitignored because it contains Prolific IDs. There is one folder per study, named by the study's creation date and internal name, holding paste-ready `bonus.csv`, `partial.csv`, `lobby.csv` and `overtime.csv` files (`participant_id,amount`, no header) for Prolific's bulk bonus form, and a `status.csv` that lists everyone with the amount owed, the amount already paid, and the reason a row is not ready to pay. The directory is rewritten on every run, so running it again after paying on the website shows those people as settled. Finishers are owed their bonus, removed players their partial pay, and lobby timeouts the lobby payment; partial and lobby pay are paid as a bonus on a returned or awaiting-review submission, and an approved submission, which has already received the full base reward, is owed only whatever part of its amount exceeds that base. Finishers whose time on the study was longer than 60 minutes (the longer of Prolific's recorded time and the game's own record, from the identifier screen to the exit survey), the top of the "45 to 60 minutes" the instructions promise, are also owed overtime for the minutes beyond it, paid at the study's advertised rate and written to a separate `overtime.csv`. Games ran 42 to 49 minutes with up to three running at once and 52 to 74 minutes with four or five, so participants in the busy sessions spent well over the time Prolific told them to expect. The step never pays anyone itself. It needs `PROLIFIC_TOKEN` in `.env`, and `--offline` lists the payees by study without contacting Prolific.
+The output is written to `data/payments/<dataset>/`, which is gitignored because it contains Prolific IDs. There is one folder per study, named by the study's creation date and internal name, holding two paste-ready files for Prolific's bulk bonus form (`participant_id,amount`, no header, one line per person): `1_main.csv` with the bonuses, partial pay and lobby pay, and `2_overtime.csv`, which are pasted in that order. Beside them, `status.csv` lists everyone with the amount owed, the amount already paid, and the reason a row is not ready to pay, and `repeats.csv` lists anyone who took part in more than one session; the step prints a warning if anyone was placed in two games, which the eligibility filters should prevent. The directory is rewritten on every run, so running it again after paying on the website shows those people as settled. Finishers are owed their bonus, plus the base reward when they returned their submission instead of submitting the completion code (a returned submission cannot be approved), removed players their partial pay, and lobby timeouts the lobby payment; partial and lobby pay are paid as a bonus on a returned or awaiting-review submission, and an approved submission, which has already received the full base reward, is owed only whatever part of its amount exceeds that base. Finishers whose time on the study was longer than 60 minutes (the longer of Prolific's recorded time and the game's own record, from the identifier screen to the exit survey), the top of the "45 to 60 minutes" the instructions promise, are also owed overtime for the minutes beyond it, paid at the study's advertised rate and written to the separate `2_overtime.csv`. Games ran 42 to 49 minutes with up to three running at once and 52 to 74 minutes with four or five, so participants in the busy sessions spent well over the time Prolific told them to expect. The step never pays anyone itself. It needs `PROLIFIC_TOKEN` in `.env`, and `--offline` lists the payees by study without contacting Prolific.
 
 ### Processing new data
 
-Raw Empirica exports (`.zip` files) are in `experiment/data/<timestamp>/` via `empirica export` or the backup script. (Note: these are not committed because they contain identifiable participant data). Before adding an export to a dataset, run it through a throwaway dataset first:
+Raw Empirica exports (`.zip` files) are in `experiment/data/<timestamp>/` via `empirica export` or the backup script. They are not committed because they contain identifiable participant data, and they are never edited: each folder is the record of what the server held at that moment, and everything downstream is regenerated from it. The full sample's processed data is not committed yet either; it will be released after collection ends, converted to the RefBank format for reference-game corpora. Before adding an export to a dataset, run it through a throwaway dataset first:
 
 ```bash
 make smoke ZIP=experiment/data/<run>/empirica-export-<run>.zip
 ```
 
-This runs the whole pipeline on that one export in a dataset named `smoke` (without the LLM filter) and then the integrity suite, so a bad export is caught before it touches any committed data. The block-count checks fail for games played in `TEST_MODE`, and the bonus checks fail for exports from before the production pay rate; anything else that fails is a problem with the export. The `smoke` directories are gitignored; delete `data/smoke/` and `analysis/derived/smoke/` afterwards.
+This runs the whole pipeline on that one export in a dataset named `smoke` (without the LLM filter) and then the integrity suite, so a bad export is caught before it touches a real dataset. The block-count checks fail for games played in `TEST_MODE`, and the bonus checks fail for exports from before the production pay rate; anything else that fails is a problem with the export. The `smoke` directories are gitignored and are cleared at the start of the next smoke run.
 
 `extract_run.py` registers each export's timestamp in the dataset's `runs.txt` (pass `--no-register` to look at an export without adding it), then the rest of the pipeline follows:
 
@@ -261,6 +261,8 @@ These run the preregistered analyses on whichever dataset `DATASET` names, and d
 | `04_exploratory.qmd` | Exploratory analyses |
 | `05_exit_survey.qmd` | Exit survey responses |
 
+Rendering all six on the full sample takes many hours, because the Bayes factors refit three models in brms. `BAYES_FACTORS=never make notebooks DATASET=<name>` skips them for an interim look, and the brms fits are cached so that a render on unchanged data reuses them.
+
 The primary analyses evaluate each prespecified prediction separately with a
 two-tailed, unadjusted test at α = 0.05 and require the predicted direction for
 support. All results are reported, and this policy does not provide family-wise
@@ -287,20 +289,19 @@ one row per opportunity, with an empty guess where nobody answered. Lateness
 is recorded separately for each outcome, because a tangram selection and a
 social guess can arrive at different times. Failures that were documented as
 technical are listed in `data/<dataset>/technical_exclusions.csv` with a
-reason and treated as missing. The pilot supplement keeps the earlier coding,
-which is why its numbers differ from what the same data would give under this
-rule.
+reason and treated as missing. The pilot supplement uses the same rule.
 
-The per-game group-specificity model gives each speaker one random intercept
-shared across both positions of a similarity pair, weighted 1/2 each, instead
-of separate intercepts for `speaker1` and `speaker2`. lme4 has no formula
-syntax for a multiple-membership term, so `analysis/R/multimembership.R`
-builds it through lme4's modular interface and fits it by REML. The
-simulations that justify it are in `analysis/simulate_mm_speaker.R`, which
-checks convergence, invariance to which speaker is listed first, and whether
-the standard errors are the right size, both per game and after they become
-inverse-variance weights in the game-level regression. They cover incomplete
-endpoint coverage and pair-level dependence the model omits.
+The per-game group-specificity model has random intercepts for the tangram
+and for the unordered pair of speakers whose descriptions are compared, as the
+preregistration states, with no separate speaker term. The pair intercept is
+what keeps the standard errors honest: the design-matched simulations in
+`analysis/simulate_mm_speaker.R` show that without it the 95% intervals cover
+the true value only about 86% of the time when two speakers' descriptions
+resemble each other beyond their individual tendencies. Those simulations
+also compare structures that add a speaker effect shared across both pair
+positions, which `analysis/R/multimembership.R` fits through lme4's modular
+interface; they remain available for comparison but are not the preregistered
+model.
 
 H3b tests two separately reported contrasts: the difference in average linear
 change over Phase 1 blocks 2–6 and the difference in alignment at block 3,
