@@ -37,11 +37,15 @@ from dataset_paths import (
 )
 from preprocessing import UTTERANCE_KEY_COLUMNS, assemble_speaker_utterances
 
-# The Gemini model the classifier calls, and the one the committed pilot labels
-# were produced with. `classify --model` overrides it for one run; the labels
-# it writes carry no model name, so change the constant only together with a
-# full re-classification.
-MODEL_ID = "gemini-2.0-flash"
+# The Gemini model the classifier calls; `classify --model` overrides it for one
+# run. The labels carry no model name, so each dataset records its model in
+# `messages_classified.model.json`, and one dataset's cache should hold labels
+# from one model. The pilot labels came from gemini-2.0-flash, which Vertex AI
+# stopped serving in September 2026; the full sample uses gemini-2.5-flash,
+# chosen because it agreed with the pilot labels on 99.25% of messages and its
+# few disagreements leaned toward keeping a message (see the full sample's
+# model file).
+MODEL_ID = "gemini-2.5-flash"
 
 # The label cache: messages.csv plus `is_referential` and `llm_label`, keyed
 # by MESSAGE_KEY. `classify` reads it to skip messages already labeled and
@@ -592,7 +596,7 @@ def main():
     p_classify.add_argument("--data-dir", required=True, help="Path to data directory")
     p_classify.add_argument(
         "--model", default=MODEL_ID,
-        help=f"Gemini model (default: {MODEL_ID}, which produced the committed pilot labels)",
+        help=f"Gemini model (default: {MODEL_ID}, which produced the full-sample labels)",
     )
     p_classify.add_argument("--batch-size", type=int, default=30, help="Messages per API call")
     p_classify.add_argument("--project", help="GCP project ID")
