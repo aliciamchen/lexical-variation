@@ -15,24 +15,31 @@ also covers someone who reached the game without the study link's parameters
 and so has no study id recorded. The submissions carry each one's status and
 the bonuses already paid on it, and they add the lobby-timeout participants.
 Those do have player records in the exports, but no game that started, so they
-are identified the way they were paid for: by the lobby-timeout completion
-code on their Prolific submission. That also covers overflow players Empirica
-turned away with "no more games", whose exit screen shows the same code. A
-study whose players never reached a started game is not found through the
-exports, so pass it with --study.
+are identified mainly the way they were told to claim their pay: by the
+lobby-timeout completion code on their Prolific submission, which also covers
+overflow players Empirica turned away with "no more games", whose exit screen
+shows the same code. Someone who returned the study without entering that code
+is found from the export instead (visits_without_a_game). A study in
+which nobody reached a started game is found through those lobby records when
+the study link recorded it; otherwise pass it with --study.
 
 The output is one folder per study under data/payments/<dataset>/, named by the
 study's creation date and internal name, with paste-ready files for Prolific's
-bulk bonus box (`participant_id,amount`, no header) and a status.csv listing
-everyone with what they were owed, what is already paid, and why a row is not
-ready. The whole directory is rewritten on every run, so re-running after
-paying on the website shows those people as settled. It pays nobody: payments
-are made on the Prolific website, or with `prolific.py pay`.
+bulk bonus box (`participant_id,amount`, no header, one line per person):
+1_main.csv (performance bonuses, partial pay, lobby pay, and players paid
+through this study because they never submitted the game study) and
+2_overtime.csv, to be pasted in that order. status.csv lists everyone with
+what they were owed, what is already paid, and why a row is not ready, and
+repeats.csv lists anyone who took part in more than one session. The whole
+directory is rewritten on every run, so re-running after paying on the website
+shows those people as settled. It pays nobody: payments are made by hand on
+the Prolific website.
 
-Rules, the same as `prolific.py pay`: a finisher is owed their bonus; a removed
-player their partial pay; a lobby-timeout participant LOBBY_TIMEOUT_PAY.
-A partial or lobby amount is paid as a bonus on a RETURNED or AWAITING REVIEW
-submission. An APPROVED one already received the full base reward, so only the
+Rules: a finisher is owed their bonus, plus the BASE_PAY reward when they
+returned their submission (a returned submission cannot be approved); a
+removed player their partial pay; a lobby-timeout participant
+LOBBY_TIMEOUT_PAY. A partial or lobby amount is paid as a bonus on a RETURNED
+or AWAITING REVIEW submission. An APPROVED one already received the full base reward, so only the
 part of the amount above BASE_PAY is still owed (removed players who played
 most of the game can be owed more than the base). What Prolific
 records as paid in `bonus_payments` is subtracted, so a partly paid person is
@@ -47,9 +54,15 @@ longer than OVERTIME_AFTER_MINUTES is owed the minutes beyond it, paid at the
 study's own advertised rate (reward / estimated minutes, $12 / 50 = $0.24 a
 minute), counted in whole minutes. Counting from the threshold rather than from the study's estimate
 avoids a cliff between just under and just over it. Prolific's `time_taken`
-covers the whole submission, instructions and lobby included. Overtime goes out as a separate bonus file, overtime.csv; pay
-bonus.csv first, because what Prolific records as paid is counted against the
-performance bonus before the overtime.
+covers the whole submission, instructions and lobby included. Overtime goes out as a separate paste file, 2_overtime.csv;
+paste 1_main.csv first, because what Prolific records as paid is counted
+against the performance bonus before the overtime.
+
+Repeat participants: one Prolific id placed in two started games means
+someone played twice, which eligibility should have prevented, and is printed
+as a warning. Someone who waited out a lobby in one session and played in a
+later one is allowed (lobby timeouts stay eligible) and is listed for
+information.
 """
 from __future__ import annotations
 
@@ -78,6 +91,15 @@ KINDS = ("bonus", "partial", "lobby", "overtime", "unsubmitted")
 # the "45 to 60 minutes" the instructions promise.
 OVERTIME_AFTER_MINUTES = 60
 NO_STUDY = ""
+MAX_QUIZ_ATTEMPTS = prolific.GAME["max_quiz_attempts"]
+# The paste files, in the order they are pasted, and the kinds each one holds.
+PASTE_FILES = (("1_main.csv", ("bonus", "partial", "lobby", "unsubmitted")), ("2_overtime.csv", ("overtime",)))
+# Prolific approves a submission left awaiting review this long after it was
+# submitted, which pays a removed player or lobby timeout the full base reward.
+AUTO_APPROVAL = timedelta(days=21)
+# A lobby wait counts as an earlier session when it began at least this long
+# before the game the same person played; a reload in the same session is closer.
+RETURN_GAP = timedelta(minutes=30)
 
 
 @dataclass
@@ -96,6 +118,7 @@ class Payee:
     site_minutes: float = 0.0  # identifier entered to exit survey submitted, from the game's own records
     study_source: str = ""  # "link" (studyId on the player) or "identifier" (found by Prolific id)
     status: str = ""
+    submitted_at: str = ""  # when the Prolific submission was completed
     already_paid: float = 0.0
     still_owed: float = 0.0
     ready: bool = False
@@ -118,6 +141,17 @@ class Study:
             return "no-study-id"
         label = re.sub(r"[^A-Za-z0-9]+", "-", self.internal_name or self.name or "study").strip("-").lower()
         return f"{self.created[:10] or 'undated'}_{label[:40]}_{self.study_id[-6:]}"
+
+
+@dataclass
+class Visit:
+    """A player record that never reached a started game."""
+    participant: str
+    study_id: str
+    entered_at: str  # when they entered their identifier
+    ended: str
+    waited: bool = False  # waited in the lobby for a game that never started; owed lobby pay
+    quiz_failed: bool = False
 
 
 def _csv(z: zipfile.ZipFile, name: str) -> list[dict]:
@@ -190,6 +224,85 @@ def payees_from_exports(zips: list[Path], excluded_games: set[str] = frozenset()
                     if p.get("exitSurvey") else 0.0,
                 )
     return payees
+
+
+def _true(value) -> bool:
+    return str(value or "").strip().lower() in ("true", "1", "yes")
+
+
+def visits_without_a_game(zips: list[Path], excluded_games: set[str] = frozenset()) -> dict[str, list[Visit]]:
+    """Every player record that never reached a started game, by Prolific id.
+
+    `waited` marks the ones owed lobby pay: a player whose game failed while
+    they were in the lobby (intro and quiz done, then the lobby timer ran out),
+    or whom Empirica turned away with "no more games" after the game they were
+    assigned to filled. Both see the lobby-timeout screen. Quiz failures and
+    people still in the instructions when the game failed never reached the
+    lobby. Records are keyed by player id, so a later export replaces an
+    earlier snapshot of the same record.
+    """
+    records: dict[str, Visit] = {}
+    for path in sorted(zips, key=_export_stamp):
+        with zipfile.ZipFile(path) as z:
+            games = {g["id"]: g for g in _csv(z, "game.csv")}
+            for p in _csv(z, "player.csv"):
+                pid = (p.get("participantIdentifier") or p.get("prolificPid") or "").strip()
+                game_id = p.get("gameID") or ""
+                key = p.get("id") or f"{pid}:{game_id}"
+                if not pid or game_id in excluded_games:
+                    continue
+                if ((games.get(game_id) or {}).get("status") or "").lower() in ("ended", "running"):
+                    records.pop(key, None)
+                    continue
+                ended = (p.get("ended") or "").strip()
+                intro_done = _true(p.get("introDone"))
+                try:
+                    attempts = int(float(p.get("quiz_attempts") or 0))
+                except ValueError:
+                    attempts = 0
+                quiz_failed = not intro_done and attempts >= MAX_QUIZ_ATTEMPTS
+                waited = (ended == "game failed" and intro_done) or (ended == "no more games" and not quiz_failed)
+                records[key] = Visit(pid, (p.get("studyId") or "").strip(),
+                                     p.get("participantIdentifierLastChangedAt") or "", ended, waited, quiz_failed)
+    visits: dict[str, list[Visit]] = {}
+    for visit in records.values():
+        visits.setdefault(visit.participant, []).append(visit)
+    return visits
+
+
+def lobby_waiters(visits: dict[str, list[Visit]]) -> dict[str, list[Visit]]:
+    """The visits that are owed lobby pay, by Prolific id."""
+    waiters = {pid: [v for v in vs if v.waited] for pid, vs in visits.items()}
+    return {pid: vs for pid, vs in waiters.items() if vs}
+
+
+def repeat_participants(payees: dict[tuple[str, str], Payee], visits: dict[str, list[Visit]]) -> list[dict]:
+    """People who took part in more than one session.
+
+    "played twice": one Prolific id placed in two started games, which
+    eligibility should have prevented. Otherwise a visit without a game at
+    least RETURN_GAP before the game the person played means they came back:
+    "quiz failed earlier, then played" (quiz failures are not blocklisted, but
+    they have seen the quiz) or "earlier visit without a game, then played"
+    (a lobby timeout, who stays eligible on purpose).
+    """
+    games_by: dict[str, list[Payee]] = {}
+    for (pid, _), payee in payees.items():
+        games_by.setdefault(pid, []).append(payee)
+    rows = []
+    for pid, played in sorted(games_by.items()):
+        if len(played) > 1:
+            rows.append({"participant": pid, "kind": "played twice",
+                         "games": " ".join(sorted(p.game[-6:] for p in played))})
+            continue
+        start = _when(played[0].joined_at)
+        earlier = [v for v in visits.get(pid, []) if start and _when(v.entered_at)
+                   and _when(v.entered_at) <= start - RETURN_GAP]
+        if earlier:
+            kind = ("quiz failed earlier, then played" if any(v.quiz_failed for v in earlier)
+                    else "earlier visit without a game, then played")
+            rows.append({"participant": pid, "kind": kind, "games": played[0].game[-6:]})
+    return rows
 
 
 def _when(value: str | None) -> datetime | None:
@@ -326,24 +439,53 @@ def place_unsubmitted(payees: dict[tuple[str, str], Payee], submissions: dict[st
         payee.kind = "unsubmitted"
 
 
+def _waited_in(waiter: Visit, study_id: str, submission: dict) -> bool:
+    """Whether a lobby record belongs to this study's submission: the link recorded
+    the study, or the identifier was entered while the submission was open."""
+    if waiter.study_id and waiter.study_id == study_id:
+        return True
+    entered, start = _when(waiter.entered_at), _when(submission.get("started_at"))
+    if not entered or not start:
+        return False
+    end = _when(submission.get("completed_at")) or start + timedelta(hours=3)
+    return start - timedelta(minutes=10) <= entered <= end
+
+
 def settle(study: Study, submissions: list[dict], game_payees: set[str],
-           overtime_after: float = OVERTIME_AFTER_MINUTES, game_rate: float | None = None) -> None:
+           overtime_after: float = OVERTIME_AFTER_MINUTES, game_rate: float | None = None,
+           waiters: dict[str, list[Visit]] | None = None) -> None:
     """Add the study's lobby timeouts and decide what each payee is still owed.
 
     `submissions` is the study's submission list from Prolific, which carries
     `status` and `bonus_payments` (paid bonuses, in cents); `game_payees` is
     everyone who played a game in this study, so that nobody is also counted as
     one of its lobby timeouts. It is per study because the same person can wait
-    out a lobby in one session and play in the next.
+    out a lobby in one session and play in the next. `waiters` (from
+    lobby_waiters) finds lobby timeouts who returned the study without
+    entering the lobby code.
     """
     by_participant = {s.get("participant_id"): s for s in submissions if s.get("participant_id")}
     for pid, sub in by_participant.items():
-        if pid in game_payees or prolific.submission_code(sub) != prolific.LOBBY_TIMEOUT_CODE:
+        if pid in game_payees:
             continue
+        if prolific.submission_code(sub) == prolific.LOBBY_TIMEOUT_CODE:
+            reason = "lobby timeout"
+        else:
+            waited = [w for w in (waiters or {}).get(pid, []) if _waited_in(w, study.study_id, sub)]
+            if not waited:
+                continue
+            reason = f"{'lobby timeout' if waited[0].ended == 'game failed' else 'no more games'} (no code entered)"
         study.payees.append(Payee(
             participant=pid, study_id=study.study_id, kind="lobby",
-            amount=round(prolific.LOBBY_TIMEOUT_PAY, 2), exit_reason="lobby timeout",
+            amount=round(prolific.LOBBY_TIMEOUT_PAY, 2), exit_reason=reason,
         ))
+    for payee in study.payees:
+        sub = by_participant.get(payee.participant)
+        if payee.kind == "bonus" and sub and prolific.norm_status(sub.get("status")) == "RETURNED":
+            # A returned submission cannot be approved, so the base reward goes out
+            # as a bonus alongside the performance bonus.
+            payee.amount = round(prolific.BASE_PAY + payee.amount, 2)
+            payee.exit_reason = "; ".join(filter(None, [payee.exit_reason, "submission returned: base paid as bonus"]))
     for payee in list(study.payees):
         rate = game_rate if payee.kind == "unsubmitted" else None
         overtime = overtime_payee(study, payee, by_participant.get(payee.participant), overtime_after, rate)
@@ -357,6 +499,7 @@ def settle(study: Study, submissions: list[dict], game_payees: set[str],
             payee.still_owed = payee.amount
             continue
         payee.status = prolific.norm_status(sub.get("status"))
+        payee.submitted_at = (sub.get("completed_at") or "")[:19]
         paid = round(sum(sub.get("bonus_payments") or []) / 100.0, 2)
         if payee.kind in ("bonus", "unsubmitted"):
             # Bonuses already paid count against the performance bonus first,
@@ -403,7 +546,7 @@ def write_outputs(studies: dict[str, Study], out_dir: Path, offline: bool) -> li
         folder.mkdir()
         with open(folder / "status.csv", "w", newline="") as f:
             columns = ["participant", "kind", "game", "batch", "exit_reason", "study_source", "game_minutes",
-                       "minutes_taken", "status", "amount", "already_paid", "still_owed", "ready", "note"]
+                       "minutes_taken", "status", "submitted_at", "amount", "already_paid", "still_owed", "ready", "note"]
             writer = csv.DictWriter(f, fieldnames=columns)
             writer.writeheader()
             for p in sorted(study.payees, key=lambda p: (KINDS.index(p.kind), p.game, p.participant)):
@@ -415,11 +558,23 @@ def write_outputs(studies: dict[str, Study], out_dir: Path, offline: bool) -> li
             ready = [p for p in study.payees if p.kind == kind and p.ready]
             row[f"{kind}_ready"] = len(ready)
             row[f"{kind}_amount"] = round(sum(p.still_owed for p in ready), 2)
-            if ready and not offline:
-                with open(folder / f"{kind}.csv", "w", newline="") as f:
-                    for p in ready:
-                        f.write(f"{p.participant},{p.still_owed:.2f}\n")
+        for filename, kinds in PASTE_FILES:
+            # One line per person: Prolific's bulk bonus takes each participant once.
+            owed: dict[str, float] = {}
+            for p in study.payees:
+                if p.kind in kinds and p.ready:
+                    owed[p.participant] = round(owed.get(p.participant, 0.0) + p.still_owed, 2)
+            if owed and not offline:
+                with open(folder / filename, "w", newline="") as f:
+                    for participant, amount in owed.items():
+                        f.write(f"{participant},{amount:.2f}\n")
         row["not_ready"] = sum(1 for p in study.payees if not p.ready and p.still_owed > 0)
+        # Removed players and lobby timeouts must return their submission; one
+        # still awaiting review is approved by Prolific at AUTO_APPROVAL.
+        waiting = [p for p in study.payees if p.kind in ("partial", "lobby") and p.status == "AWAITING REVIEW"]
+        row["awaiting_return"] = len(waiting)
+        dates = [_when(p.submitted_at) for p in waiting if _when(p.submitted_at)]
+        row["auto_approval"] = (min(dates) + AUTO_APPROVAL).date().isoformat() if dates else ""
         summary.append(row)
     with open(out_dir / "summary.csv", "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(summary[0].keys()) if summary else ["study_id"])
@@ -435,11 +590,32 @@ def print_summary(summary: list[dict], out_dir: Path, offline: bool) -> None:
         print(f"{title}  [{row['study_id'] or '-'}]  games: {row['games'] or '-'}")
         owed = ", ".join(f"{k} {row[f'{k}_ready']} (${row[f'{k}_amount']:.2f})" for k in KINDS if row[f"{k}_ready"])
         print(f"    ready to pay: {owed or 'nothing'}" + (f"; {row['not_ready']} more owed but not ready (see status.csv)" if row["not_ready"] else ""))
+        if row["awaiting_return"]:
+            print(f"    {row['awaiting_return']} partial or lobby submission(s) still awaiting review: ask them to return it; "
+                  f"Prolific approves them" + (f" from {row['auto_approval']}" if row["auto_approval"] else " after 21 days"))
         print(f"    folder: {row['folder']}/")
     if offline:
         print("\n--offline: nothing was checked against Prolific, so no paste files were written.")
     else:
-        print("\nPaste each <kind>.csv into that study's bulk bonus on Prolific, then re-run to confirm.")
+        print("\nIn each study's bulk bonus on Prolific, paste 1_main.csv, then 2_overtime.csv; re-run to confirm.")
+
+
+def write_repeats(rows: list[dict], out_dir: Path) -> None:
+    """repeats.csv (with Prolific ids, so only on disk) and a summary without them."""
+    with open(out_dir / "repeats.csv", "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["participant", "kind", "games"])
+        writer.writeheader()
+        writer.writerows(rows)
+    twice = [r for r in rows if r["kind"] == "played twice"]
+    if twice:
+        print(f"\nWARNING: {len(twice)} participant(s) placed in more than one started game "
+              f"(games {'; '.join(r['games'] for r in twice)}); see repeats.csv.")
+    else:
+        print("\nRepeat participants: nobody was placed in more than one started game.")
+    for kind in ("quiz failed earlier, then played", "earlier visit without a game, then played"):
+        games = [r["games"] for r in rows if r["kind"] == kind]
+        if games:
+            print(f"  {len(games)} {kind} (games {' '.join(games)}); see repeats.csv.")
 
 
 def parse_args(argv=None):
@@ -461,6 +637,8 @@ def main(argv=None) -> None:
     args = parse_args(argv)
     excluded = set(read_excluded_games(PROJECT_ROOT / "data" / args.dataset))
     payees = payees_from_exports(args.zips, excluded)
+    visits = visits_without_a_game(args.zips, excluded)
+    waiters = lobby_waiters(visits)
     if excluded:
         print(f"Leaving out players in {len(excluded)} excluded game(s) (data/{args.dataset}/exclude_games.txt).")
     studies = group_by_study(payees)
@@ -471,7 +649,10 @@ def main(argv=None) -> None:
         # Every study seen on a player, or passed with --study, is a candidate;
         # its submissions let a player without a study id be placed by their
         # Prolific id (assign_studies).
-        candidates = sorted({p.study_id for p in payees.values() if p.study_id} | set(args.study))
+        # A study recorded only on lobby records (no game in it started) is a
+        # candidate too, so its lobby timeouts are not missed.
+        candidates = sorted({p.study_id for p in payees.values() if p.study_id} | set(args.study)
+                            | {w.study_id for ws in waiters.values() for w in ws if w.study_id})
         submissions = {sid: list(prolific.paged(f"/studies/{sid}/submissions/", token)) for sid in candidates}
         assign_studies(payees, submissions)
         game_rate = next((round(s["reward"] / 100.0 / s["estimated_completion_time"], 4) for s in
@@ -506,13 +687,14 @@ def main(argv=None) -> None:
             study.estimated_minutes = int(info.get("estimated_completion_time") or 0)
             study.reward = round((info.get("reward") or 0) / 100.0, 2)
             in_study = {p.participant for p in study.payees}
-            settle(study, submissions[study.study_id], in_study, args.overtime_after, game_rate)
+            settle(study, submissions[study.study_id], in_study, args.overtime_after, game_rate, waiters)
     else:
         for study in studies.values():
             mark_unverified(study)
     out_dir = PAYMENTS_DIR / args.dataset
     summary = write_outputs(studies, out_dir, args.offline)
     print_summary(summary, out_dir, args.offline)
+    write_repeats(repeat_participants(payees, visits), out_dir)
 
 
 if __name__ == "__main__":

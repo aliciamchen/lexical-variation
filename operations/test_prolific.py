@@ -63,6 +63,7 @@ export const conditions = [
 export const BASE_PAY = 12; // dollars; was 10
 export const LOBBY_TIMEOUT_PAY = 2;
 export const MAX_BONUS = 8;
+export const MAX_QUIZ_ATTEMPTS = 3; // attempts before exclusion
 export const getAvatarUrl = (seed) => `https://api.dicebear.com/9.x/identicon/svg?seed=${seed}`;
 export const PROLIFIC_CODES = {
   completion: "AAAA1111", // finished: "not this"
@@ -86,6 +87,7 @@ def test_comments_beside_declarations_do_not_leak_into_the_values(tmp_path, monk
     assert loaded["conditions"] == ["refer_separated", "refer_mixed"]
     assert loaded["players_per_game"] == 9
     assert loaded["base_pay"] == 12
+    assert loaded["max_quiz_attempts"] == 3
     assert game_constants.exit_reasons() == {"quiz failed", "player timeout", "game terminated"}
 
 

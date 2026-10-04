@@ -125,6 +125,7 @@ def load():
         "base_pay": _number(source, "BASE_PAY"),
         "lobby_timeout_pay": _number(source, "LOBBY_TIMEOUT_PAY"),
         "max_bonus": _number(source, "MAX_BONUS"),
+        "max_quiz_attempts": int(_number(source, "MAX_QUIZ_ATTEMPTS")),
         "conditions": _string_list(source, "conditions"),
     }
 

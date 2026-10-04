@@ -35,7 +35,8 @@ def make_export(path: Path, games: list[dict], players: list[dict]) -> Path:
         z.writestr("game.csv", table(games, ["id", "status", "batchID", "startLastChangedAt", "endedLastChangedAt"]))
         z.writestr("player.csv", table(players, [
             "id", "gameID", "participantIdentifier", "studyId", "is_active",
-            "bonus", "partialPay", "exitReason",
+            "bonus", "partialPay", "exitReason", "ended", "introDone", "quiz_attempts",
+            "participantIdentifierLastChangedAt",
         ]))
     return path
 
@@ -408,10 +409,24 @@ class TestWriteOutputs:
     def test_paste_files_hold_only_ready_rows_without_a_header(self, tmp_path):
         payments.write_outputs(self.studies(), tmp_path / "out", offline=False)
         folder = tmp_path / "out" / "2026-09-23_full-sample-batch-5_7d0805"
-        assert (folder / "bonus.csv").read_text() == "ready1,7.18\n"
-        assert (folder / "partial.csv").read_text() == "part1,9.80\n"
-        assert (folder / "overtime.csv").read_text() == "ready1,5.04\n"
-        assert not (folder / "lobby.csv").exists()
+        assert (folder / "1_main.csv").read_text() == "ready1,7.18\npart1,9.80\n"
+        assert (folder / "2_overtime.csv").read_text() == "ready1,5.04\n"
+        assert not (folder / "bonus.csv").exists()
+
+    def test_the_main_file_has_one_line_per_person(self, tmp_path):
+        studies = self.studies()
+        study = next(iter(studies.values()))
+        study.payees.append(payments.Payee("ready1", study.study_id, "lobby", 2.0, still_owed=2.0, ready=True))
+        payments.write_outputs(studies, tmp_path / "out", offline=False)
+        main = (tmp_path / "out" / "2026-09-23_full-sample-batch-5_7d0805" / "1_main.csv").read_text()
+        assert main == "ready1,9.18\npart1,9.80\n"
+
+    def test_no_overtime_file_when_nobody_is_owed_overtime(self, tmp_path):
+        studies = self.studies()
+        study = next(iter(studies.values()))
+        study.payees = [p for p in study.payees if p.kind != "overtime"]
+        payments.write_outputs(studies, tmp_path / "out", offline=False)
+        assert not (tmp_path / "out" / "2026-09-23_full-sample-batch-5_7d0805" / "2_overtime.csv").exists()
 
     def test_status_lists_everyone(self, tmp_path):
         payments.write_outputs(self.studies(), tmp_path / "out", offline=False)
@@ -427,7 +442,17 @@ class TestWriteOutputs:
         payments.write_outputs(self.studies(), tmp_path / "out", offline=True)
         folder = tmp_path / "out" / "2026-09-23_full-sample-batch-5_7d0805"
         assert (folder / "status.csv").exists()
-        assert not (folder / "bonus.csv").exists()
+        assert not (folder / "1_main.csv").exists()
+
+    def test_the_summary_counts_submissions_that_still_have_to_be_returned(self, tmp_path):
+        studies = self.studies()
+        study = next(iter(studies.values()))
+        study.payees.append(payments.Payee("lob1", study.study_id, "lobby", 2.0, status="AWAITING REVIEW",
+                                           submitted_at="2026-09-23T04:00:00"))
+        study.payees.append(payments.Payee("lob2", study.study_id, "lobby", 2.0, status="RETURNED"))
+        summary = payments.write_outputs(studies, tmp_path / "out", offline=False)
+        assert summary[0]["awaiting_return"] == 1
+        assert summary[0]["auto_approval"] == "2026-10-14"
 
     def test_the_directory_is_rewritten(self, tmp_path):
         stale = tmp_path / "out" / "old-study" / "bonus.csv"
@@ -435,3 +460,118 @@ class TestWriteOutputs:
         stale.write_text("someone,1.00\n")
         payments.write_outputs(self.studies(), tmp_path / "out", offline=False)
         assert not stale.exists()
+
+
+def waiter_row(pid, game, study, ended, intro="true", attempts="1", entered="2026-09-25T21:04:00.0Z", rid=None):
+    return {**player(pid, game, study), "id": rid or f"w-{pid}-{game}", "is_active": "", "ended": ended,
+            "introDone": intro, "quiz_attempts": attempts, "participantIdentifierLastChangedAt": entered}
+
+
+class TestLobbyWaiters:
+    """Lobby timeouts who returned the study without entering the lobby code."""
+
+    def export(self, tmp_path, rows, games=None):
+        games = games or [{"id": "F1", "status": "failed", "batchID": "B13"},
+                          {"id": "G9", "status": "ended", "batchID": "B14",
+                           "startLastChangedAt": "2026-09-25T22:15:00Z"}]
+        return make_export(tmp_path / "empirica-export-20260925_180641.zip", games, rows)
+
+    def test_a_lobby_timeout_and_an_overflow_player_are_waiters(self, tmp_path):
+        path = self.export(tmp_path, [waiter_row("lobby", "F1", "S13", "game failed"),
+                                      waiter_row("overflow", "", "S13", "no more games", intro="", attempts="")])
+        waiters = payments.lobby_waiters(payments.visits_without_a_game([path]))
+        assert set(waiters) == {"lobby", "overflow"}
+        assert waiters["lobby"][0].study_id == "S13"
+
+    def test_quiz_failures_and_people_still_in_the_instructions_are_not(self, tmp_path):
+        path = self.export(tmp_path, [
+            waiter_row("quizfail", "F1", "S13", "game failed", intro="", attempts="3"),
+            waiter_row("reading", "F1", "S13", "game failed", intro="", attempts=""),
+            waiter_row("quizfail2", "", "S13", "no more games", intro="", attempts="3"),
+        ])
+        assert payments.lobby_waiters(payments.visits_without_a_game([path])) == {}
+
+    def test_a_returned_submission_without_the_code_is_paid_lobby_pay(self, tmp_path):
+        path = self.export(tmp_path, [waiter_row("w", "F1", "S13", "game failed")])
+        waiters = payments.lobby_waiters(payments.visits_without_a_game([path]))
+        study = payments.Study("S13")
+        payments.settle(study, [submission("w", status="RETURNED"), submission("x", status="RETURNED")],
+                        set(), waiters=waiters)
+        [lobby] = study.payees
+        assert (lobby.participant, lobby.kind, lobby.ready) == ("w", "lobby", True)
+        assert lobby.amount == round(prolific.LOBBY_TIMEOUT_PAY, 2)
+        assert "no code entered" in lobby.exit_reason
+
+    def test_without_a_study_id_the_submission_window_decides(self, tmp_path):
+        path = self.export(tmp_path, [waiter_row("w", "F1", "", "game failed", entered="2026-09-25T21:04:00Z")])
+        waiters = payments.lobby_waiters(payments.visits_without_a_game([path]))
+        during = submission("w", status="RETURNED")
+        during["started_at"] = "2026-09-25T21:00:00Z"
+        later = submission("w", status="RETURNED")
+        later["started_at"], later["completed_at"] = "2026-09-26T21:00:00Z", "2026-09-26T21:05:00Z"
+        first, second = payments.Study("S13"), payments.Study("S15")
+        payments.settle(first, [during], set(), waiters=waiters)
+        payments.settle(second, [later], set(), waiters=waiters)
+        assert [p.kind for p in first.payees] == ["lobby"]
+        assert second.payees == []
+
+    def test_a_waiter_who_played_in_the_same_study_is_not_also_paid_lobby_pay(self, tmp_path):
+        path = self.export(tmp_path, [waiter_row("w", "F1", "S13", "game failed")])
+        study = payments.Study("S13")
+        payments.settle(study, [submission("w", status="RETURNED")], {"w"},
+                        waiters=payments.lobby_waiters(payments.visits_without_a_game([path])))
+        assert study.payees == []
+
+    def test_a_later_snapshot_where_the_game_started_is_not_a_waiter(self, tmp_path):
+        early = make_export(tmp_path / "empirica-export-20260925_180000.zip",
+                            [{"id": "G1", "status": "failed", "batchID": "B1"}],
+                            [waiter_row("p", "G1", "S1", "game failed", rid="r1")])
+        late = make_export(tmp_path / "empirica-export-20260925_190000.zip",
+                           [{"id": "G1", "status": "ended", "batchID": "B1"}],
+                           [{**player("p", "G1", "S1", bonus="5.00"), "id": "r1"}])
+        assert payments.lobby_waiters(payments.visits_without_a_game([early, late])) == {}
+
+
+class TestReturnedFinisher:
+    def test_a_returned_finisher_is_owed_the_base_as_a_bonus_too(self):
+        study = payments.Study("S1")
+        study.payees.append(payments.Payee(participant="a", study_id="S1", kind="bonus", amount=6.45, game="G1"))
+        payments.settle(study, [submission("a", status="RETURNED")], {"a"})
+        [payee] = study.payees
+        assert payee.ready and payee.still_owed == round(prolific.BASE_PAY + 6.45, 2)
+        assert "returned" in payee.exit_reason
+
+    def test_an_approved_finisher_is_owed_only_the_bonus(self):
+        study = payments.Study("S1")
+        study.payees.append(payments.Payee(participant="a", study_id="S1", kind="bonus", amount=6.45, game="G1"))
+        payments.settle(study, [submission("a", status="APPROVED")], {"a"})
+        assert study.payees[0].still_owed == 6.45
+
+
+class TestRepeatParticipants:
+    def test_someone_in_two_started_games_played_twice(self):
+        payees = {("p", "G1"): payments.Payee("p", "S1", "bonus", 3.0, game="00000G1"),
+                  ("p", "G2"): payments.Payee("p", "S2", "bonus", 4.0, game="00000G2"),
+                  ("q", "G1"): payments.Payee("q", "S1", "bonus", 3.0, game="00000G1")}
+        [row] = payments.repeat_participants(payees, {})
+        assert row["kind"] == "played twice" and row["games"] == "0000G1 0000G2"
+
+    def test_an_earlier_lobby_wait_is_listed_but_allowed(self):
+        payees = {("p", "G9"): payments.Payee("p", "S14", "bonus", 3.0, game="CSEVVD",
+                                              joined_at="2026-09-25T22:15:00Z")}
+        visits = {"p": [payments.Visit("p", "S13", "2026-09-25T21:04:00Z", "game failed", waited=True)]}
+        [row] = payments.repeat_participants(payees, visits)
+        assert row["kind"] == "earlier visit without a game, then played"
+
+    def test_a_quiz_failure_who_came_back_is_named_as_such(self):
+        payees = {("p", "G9"): payments.Payee("p", "S14", "bonus", 3.0, game="CSEVVD",
+                                              joined_at="2026-09-26T22:15:00Z")}
+        visits = {"p": [payments.Visit("p", "S13", "2026-09-25T21:04:00Z", "game failed", quiz_failed=True)]}
+        [row] = payments.repeat_participants(payees, visits)
+        assert row["kind"] == "quiz failed earlier, then played"
+
+    def test_a_record_from_the_same_session_is_not_a_return(self):
+        payees = {("p", "G9"): payments.Payee("p", "S14", "bonus", 3.0, game="CSEVVD",
+                                              joined_at="2026-09-25T22:15:00Z")}
+        visits = {"p": [payments.Visit("p", "S14", "2026-09-25T22:05:00Z", "no more games", waited=True)]}
+        assert payments.repeat_participants(payees, visits) == []
