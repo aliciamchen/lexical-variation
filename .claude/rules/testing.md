@@ -39,7 +39,9 @@ You can use the Playwright MCP browser tools to manually test the experiment wit
 - **Inactivity kicks**: The selection timer runs during testing. If you spend too long inspecting state between actions, players get kicked for inactivity. Work quickly or use TEST_MODE (longer timeouts).
 - **`fill()` vs real typing**: Playwright's `fill()` sets the value but doesn't fire React `onChange`. Follow `fill()` with `dispatchEvent('input')` to trigger typing indicators and other onChange-dependent state.
 - **One run at a time**: every Playwright run binds ports 3000 and 8844 and resets the same server, so the harness takes `.empirica/local/playwright-run.lock` in its global setup and refuses to start while another run on the machine holds it (a lock left by a dead process is cleared automatically). Free the ports with `npm run test:free-ports`, which refuses while a live run holds the lock; never use a raw `lsof ... | xargs kill -9` while another run may be active, because it kills that run's server (the harness only checks the lock, it cannot stop a manual kill). Editing anything under `server/src` during a run restarts the dev server and freezes the running stage, so hold those files still until the run ends.
-- **Finding players by role**: Use `.task` element's data attributes: `data-role` (speaker/listener), `data-current-group` (A/B/C) to identify which browser context belongs to which role/group.
+- **Finding players by role**: Use `.task` element's data attributes: `data-role` (speaker/listener), `data-current-group` (A/B/C) to identify which browser context belongs to which role/group. `.task` renders only during gameplay, not on transition screens.
+- **Each listener clicks their own target index**: `data-target-index` on `.task` is the target's position in that player's own shuffled grid, not a shared index, so read it from each listener's page (`getPlayerInfo` in `game-actions.ts` does) rather than reusing the speaker's.
+- **Transitions wait for everyone**: on a transition or bonus screen, Continue sets the player's stage `submit`, and the stage advances only once every player has submitted; otherwise it runs its full timer (`TRANSITION_DURATION`, 60 s). Wait for each player to reach the screen before clicking their Continue, and allow generous timeouts (about 120 s) when waiting for the next stage.
 
 ## Playwright Tests
 
@@ -47,7 +49,7 @@ Tests live in `experiment/tests/` and use `@playwright/test`. The server is mana
 
 **Running tests:**
 
-IMPORTANT: the test groups are chained via Playwright project dependencies, and Playwright runs dependencies UNFILTERED. A bare `npx playwright test <file>` or `--project=group-N` therefore replays every earlier group in full first (a group-4 file runs all of groups 1-3 before it). Use the npm scripts, which pair each group with its server-reset setup and pass `--no-deps`:
+The test groups are chained via Playwright project dependencies, and Playwright runs dependencies unfiltered. A bare `npx playwright test <file>` or `--project=group-N` therefore replays every earlier group in full first (a group-4 file runs all of groups 1-3 before it). Use the npm scripts, which pair each group with its server-reset setup and pass `--no-deps`:
 
 ```bash
 cd experiment
@@ -82,7 +84,7 @@ TEST_MODE=false npm test
 # Run with visible browser: append flags after --
 npm run test:group2 -- --headed
 
-# View the HTML report (reports no longer auto-open on failure)
+# View the HTML report (it does not open on its own after a failure)
 npm run test:report
 ```
 
@@ -90,7 +92,7 @@ Pipe long runs through `tee` to a stable file so results can be read without re-
 
 **Concurrency:** `communication/chat-concurrent.spec.ts` is the only spec where players act simultaneously. Everywhere else a send is awaited before the next begins, so nine players never hit Enter at once, and the group chat is a single shared stage attribute written with Empirica's atomic `append` precisely to survive that. Keep the `Promise.all` in that spec: serializing it would leave the `append` behaviour untested, and a lost message there is lost research data that nothing else would reveal.
 
-**Server-side errors:** the harness writes the Empirica server's stdout and stderr to `experiment/test-results/empirica-server.log` (it used to discard them with `stdio: 'ignore'`, so no spec could see a server failure) and the global teardown fails the run if that log contains a `CALLBACK ERROR` or an unhandled rejection. This matters because `server/src/guard.js` deliberately contains callback errors so the remaining players can finish, which leaves the browser looking healthy: before this, a run could pass while every round threw. If a run fails only in teardown, read that log.
+**Server-side errors:** the harness writes the Empirica server's stdout and stderr to `experiment/test-results/empirica-server.log`, and the global teardown fails the run if that log contains a `CALLBACK ERROR` or an unhandled rejection. This matters because `server/src/guard.js` deliberately contains callback errors so the remaining players can finish, which leaves the browser looking healthy: without the log check, a run could pass while every round threw. If a run fails only in teardown, read that log.
 
 **Test architecture:**
 

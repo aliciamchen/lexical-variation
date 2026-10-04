@@ -7,7 +7,7 @@ paths:
 
 ## Server (`experiment/server/src/`)
 
-- **constants.js**: Central configuration - player counts, phase blocks, scoring, avatar generation (DiceBear API)
+- **constants.js**: re-exports `experiment/shared/constants.js`, the game configuration (player counts, phase blocks, scoring, timing, exit reasons, and the seeds of the locally served avatar set)
 - **callbacks.js**: Game logic via Empirica callbacks:
   - `onGameStart`: Player/group assignment, round/stage creation
   - `onRoundStart`: Group reshuffling in mixed Phase 2 (`reshuffling.js` enumerates every one-player-per-index assignment, keeps the best under the one-in-group-listener rule, and the outcome is recorded on the round as `reshuffle_mode` and counts), role assignment (each player-round gets `speaker_id`, `group_size`, `speaker_reassigned`, and for listeners `in_group_listener`), identity masking
@@ -73,13 +73,11 @@ first is kept.
 
 ### Styling: a class that does not exist fails silently
 
-`uno.config.ts` used to put the empirica palette under `theme.extend.colors`.
-That is a Tailwind convention; UnoCSS merges `theme` directly and ignores an
-`extend` key, so **not one `*-empirica-*` utility was generated from it**. The
-only ones that worked were those `@empirica/core`'s own stylesheet ships, and
-`text-empirica-400/700/800` and a bare `border-empirica-500` fell back to the
-reset's grey. The palette now sits at `theme.colors`, and its values match the
-ones that stylesheet was built from, so nothing already covered moved.
+UnoCSS merges `theme` directly and ignores Tailwind's `extend` key, so the
+empirica palette sits at `theme.colors` in `uno.config.ts`, with the values
+`@empirica/core`'s own stylesheet was built from. Under `theme.extend.colors`
+it would generate not one `*-empirica-*` utility, and every such class would
+fall back to the reset's gray without an error.
 
 Two things to keep in mind when adding UI. `presetAttributify` is on, so a
 name like `m-x-auto` is a valid *attribute* and a dead *class*: a typo of that
@@ -155,12 +153,11 @@ record of how each file was made. Re-run the script after changing the block cou
 roster size or the style.
 
 A missing `avatar` attribute falls back to `AVATAR_PLACEHOLDER`, a neutral local SVG.
-**Never seed a fallback on the player.** The chat used to fall back to a DiceBear identicon
-seeded on `msg.sender.id`, which is persistent: had it rendered during mixed Phase 2 it would
-have shown one stable image per player while the anonymous avatars around it change every
-trial, which is a tracking cue in the condition whose whole purpose is masking identity. It
-was also the last third-party request in the game loop, and the one the pre-generated set
-could not cover, because the seed is an Empirica id rather than a known seed.
+**Never seed a fallback on the player.** A seed such as `msg.sender.id` is persistent:
+rendered during mixed Phase 2 it would show one stable image per player while the anonymous
+avatars around it change every trial, a tracking cue in the condition whose whole purpose is
+masking identity. It would also need a third-party request that the pre-generated set cannot
+cover, because the seed is an Empirica id rather than a known seed.
 
 ### Identity Masking (Phase 2 Mixed Conditions)
 
