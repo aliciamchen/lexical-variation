@@ -854,6 +854,18 @@ def _truthy(series):
     return series.isin([True, "True", "true"])
 
 
+def _excluded_speaker(trials):
+    """Trial rows whose speaker is an excluded player.
+
+    A participant exclusion drops the player's messages from messages.csv, but
+    the trial rows of the rounds they spoke in stay (flagged), so those rows
+    have no speaker message to check against.
+    """
+    reason = trials["exclusionReason"].fillna("")
+    own = _truthy(trials["excluded"]) & ~reason.str.startswith("speaker excluded")
+    return trials["speakerId"].isin(set(trials.loc[own, "playerId"]))
+
+
 class TestServerCallbackErrors:
     """The server's callback guard must not have fired during collection.
 
@@ -1755,10 +1767,12 @@ class TestMessages:
         The client blocks tangram clicks until the speaker has sent at least
         one message, so a recorded click with no speaker message in the same
         (roundId, currentGroup) chat means either the click or the message
-        data is corrupted.
+        data is corrupted. Rounds an excluded player spoke in are skipped,
+        since the exclusion dropped their messages.
         """
         clicked = trials[
             (trials["role"] == "listener") & (trials["clicked"].notna())
+            & ~_excluded_speaker(trials)
         ]
         speaker_msg_keys = set(
             zip(
@@ -1832,11 +1846,14 @@ class TestResponseOpportunities:
                 messages.loc[messages["senderRole"] == "speaker", "group"],
             )
         )
+        # hasSpeakerMessage records what happened in the game, so rounds an
+        # excluded player spoke in, whose messages were dropped, are left out.
+        kept = trials[~_excluded_speaker(trials)]
         expected = [
             (row["roundId"], row["currentGroup"]) in spoke
-            for _, row in trials.iterrows()
+            for _, row in kept.iterrows()
         ]
-        mismatched = (trials["hasSpeakerMessage"] != expected).sum()
+        mismatched = (kept["hasSpeakerMessage"] != expected).sum()
         assert mismatched == 0, (
             f"{mismatched} trials disagree with the messages table about "
             f"whether their group's speaker spoke"
