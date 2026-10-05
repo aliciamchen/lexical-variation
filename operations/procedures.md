@@ -1,7 +1,7 @@
 # Running a data-collection session
 
-This is the runbook for one session of the reference game: recruiting five or six games' worth
-of people (45 to 54 players, all in one treatment) on Prolific to be online at the same moment,
+This is the runbook for one session of the reference game: recruiting five games' worth of
+people (45 players, all in one treatment) on Prolific to be online at the same moment,
 running the games, and paying everyone afterwards. Recruitment, approvals and payments are done
 by hand on the Prolific website, and the games are run from the Empirica admin panel. Two
 commands help: `make tally` says which treatment the next session should run, and `make
@@ -22,10 +22,12 @@ manuscript describes this in the Recruitment paragraph of `writing/preregistrati
    and the server slows down with everything it holds as well as with the games running at
    once. Everything in the old file is already in the backups. Restarting or wiping ends any
    game in progress, so do it only between sessions.
-2. **Plan five or six games, all of one treatment.** More than six slows every game down: with
-   six running at once on 25 September, the pause between stages reached 15 to 28 seconds and
-   games ran 60 to 90 minutes, which costs overtime pay and draws complaints. To collect faster,
-   run more sessions in a day rather than more games per session. One treatment per session
+2. **Plan five games, all of one treatment.** A sixth game slows every game down. In the three
+   six-game sessions the typical pause between stages was 2.8 to 4.1 seconds, each game had 4 to
+   27 pauses longer than ten seconds, and 10 of 18 games ran past 60 minutes, which costs
+   overtime pay and draws complaints. In the five-game sessions the typical pause was about 1.5
+   seconds, long pauses were rare, and no game ran past 60 minutes. To collect faster, run more
+   sessions in a day rather than more games per session. One treatment per session
    also means nobody is left without a game because the open games are of another treatment.
 3. **Set a memory alert** in the DigitalOcean monitoring, at 75%. If it fires during a
    session, start no new games until the running ones finish.
@@ -76,17 +78,18 @@ reward and the three completion codes: a wrong value is copied silently into eve
 session. Add the previous session's game study to the survey's "Exclude participants from
 other studies" filter, so that nobody who has played can sign up again.
 
-**How many to recruit.** Aim for about 15 eligible people per game: 75 for five games, 90 for
-six. In the full-sample sessions about 78% of the eligible people opened the game study, and
-the sessions that filled their games had 13 to 18 eligible people per game. About three in four
+**How many to recruit.** A game starts only when nine people are ready, meaning they arrived
+and passed the quiz. In the four six-game sessions, between 56% and 70% of the allowlist ended
+up ready, and the most recent session (4 October) was the lowest: 82 people on the allowlist
+gave 46 ready players, so the sixth game never filled. Planning for that low rate means about
+16 eligible people per game: 80 for five games and 95 to 100 for six. About three in four
 survey responses come back eligible (the rest answer "No" to a question or return the survey),
-so set the survey's places as a ceiling of about 20 responses per game and stop it once you
-have enough:
+so set the survey's places as a ceiling and stop it once you have enough:
 
 | Games | Eligible people to allowlist | Survey responses to collect | Survey cost (before fees) |
 |-------|------------------------------|-----------------------------|---------------------------|
-| 5     | about 75                     | about 100                   | about $30                 |
-| 6     | about 90                     | about 120                   | about $36                 |
+| 5     | about 80                     | about 105                   | about $32                 |
+| 6     | 95 to 100                    | about 130                   | about $39                 |
 
 The buffer above nine per game is what absorbs the people who never open the study, quiz
 failures, and slow arrivals. Its cost is the lobby timeouts at $2 each when more people arrive
@@ -410,6 +413,16 @@ allowlist, are left out.
 Across these sessions about 78% of eligible people opened the study (60% to 94%), and about
 three in four scheduling-survey responses were eligible.
 
+What fills a game is the number of people who are ready, which the exports record (an entered
+identifier, then the intro and quiz completed). For the six-game sessions:
+
+| Session | Allowlist | Arrived | Ready | Ready share | Games filled |
+|---------|-----------|---------|-------|-------------|--------------|
+| 25 Sep, noon (batch 11) | 90 | 72 | 63 | 70% | 6 |
+| 25 Sep, 4:35 pm (batch 13) | 92 | 64 | 59 | 64% | 6 |
+| 26 Sep, 10 pm (batch 18) | 79 | 57 | 54 | 68% | 6 |
+| 4 Oct, 5:34 pm (batch 21) | 82 | 52 | 46 | 56% | 5 of 6 |
+
 ## Operational lessons
 
 - **Say that the study appears exactly at the announced time.** Participants go looking for
@@ -418,7 +431,7 @@ three in four scheduling-survey responses were eligible.
   confirmation step adds monitoring work without improving attendance.
 - **Tell participants to keep their sound on** and to watch for the sound that plays when
   the game starts.
-- **More sessions, not bigger ones.** Five or six games per session keeps the server
-  responsive; beyond that every game slows down and runs into overtime.
+- **More sessions, not bigger ones.** Five games per session keeps the server responsive; a
+  sixth roughly doubles the pauses between stages and pushes most games into overtime.
 - **Keep the laptop awake and open** while the backup loop runs; a closed lid stops the
   backups without warning.
