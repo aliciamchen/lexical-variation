@@ -575,3 +575,30 @@ class TestRepeatParticipants:
                                               joined_at="2026-09-25T22:15:00Z")}
         visits = {"p": [payments.Visit("p", "S14", "2026-09-25T22:05:00Z", "no more games", waited=True)]}
         assert payments.repeat_participants(payees, visits) == []
+
+
+class TestPlayedTwice:
+    def test_a_later_sessions_submission_does_not_claim_an_earlier_game(self):
+        # Played at noon through a messaged link (no study id, no game-study
+        # submission), then signed up again and finished an afternoon game.
+        noon = payments.Payee(participant="p", study_id="", kind="bonus", amount=7.17, game="G1",
+                              joined_at="2026-10-05T16:06:00Z", game_minutes=70.0)
+        later = submission("p", status="AWAITING REVIEW", code=prolific.FINISHED_CODE)
+        later["started_at"], later["completed_at"] = "2026-10-05T19:40:00Z", "2026-10-05T20:50:00Z"
+        payees = {("p", "G1"): noon}
+        payments.assign_studies(payees, {"S26": [later]})
+        assert payees[("p", "G1")].study_id == ""
+        survey = submission("p", status="APPROVED"); survey["started_at"] = "2026-10-05T15:40:00Z"
+        payments.place_unsubmitted(payees, {"SURVEY24": [survey], "S26": [later]})
+        assert payees[("p", "G1")].study_id == "SURVEY24"
+        assert payees[("p", "G1")].amount == round(prolific.BASE_PAY + 7.17, 2)
+
+    def test_a_submission_opened_soon_after_the_game_still_claims_it(self):
+        game = payments.Payee(participant="p", study_id="", kind="bonus", amount=5.0, game="G1",
+                              joined_at="2026-09-25T22:22:00Z", game_minutes=50.0)
+        sub = submission("p", code=prolific.FINISHED_CODE)
+        sub["started_at"], sub["completed_at"] = "2026-09-25T23:20:00Z", "2026-09-25T23:20:30Z"
+        payees = {("p", "G1"): game}
+        payments.assign_studies(payees, {"S14": [sub]})
+        assert payees[("p", "G1")].study_id == "S14"
+

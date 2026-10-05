@@ -100,6 +100,8 @@ AUTO_APPROVAL = timedelta(days=21)
 # A lobby wait counts as an earlier session when it began at least this long
 # before the game the same person played; a reload in the same session is closer.
 RETURN_GAP = timedelta(minutes=30)
+# A submission started this long after a game ended is not where that game was claimed.
+LATE_SUBMISSION = timedelta(hours=1)
 
 
 @dataclass
@@ -330,6 +332,9 @@ def assign_studies(payees: dict[tuple[str, str], Payee], submissions: dict[str, 
        treated as still open;
     4. otherwise a single match.
 
+    Submissions that started more than LATE_SUBMISSION after the game ended
+    are left out first: they belong to a later game by the same person.
+
     Order matters: on 2026-09-25 a participant returned a batch 13 submission
     with the lobby code, then reached a batch 14 game through a bare link and
     only opened their batch 14 submission to enter the finished code, so the
@@ -344,7 +349,14 @@ def assign_studies(payees: dict[tuple[str, str], Payee], submissions: dict[str, 
                 by_participant.setdefault(sub["participant_id"], []).append((study_id, sub))
     wanted = {"bonus": prolific.FINISHED_CODE, "partial": prolific.PARTIAL_CODE}
     for payee in payees.values():
-        matches = by_participant.get(payee.participant, [])
+        # A submission opened long after this game ended belongs to a later
+        # session (someone who played twice), so it cannot be where this game
+        # was claimed; the game then falls to place_unsubmitted.
+        joined = _when(payee.joined_at)
+        game_end = joined + timedelta(minutes=payee.game_minutes) if joined and payee.game_minutes else None
+        matches = [(sid, sub) for sid, sub in by_participant.get(payee.participant, [])
+                   if not (game_end and _when(sub.get("started_at"))
+                           and _when(sub.get("started_at")) > game_end + LATE_SUBMISSION)]
         if payee.study_id and any(sid == payee.study_id for sid, _ in matches):
             payee.study_source = "link"
             continue
