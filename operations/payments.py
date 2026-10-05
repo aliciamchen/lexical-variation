@@ -102,6 +102,10 @@ AUTO_APPROVAL = timedelta(days=21)
 RETURN_GAP = timedelta(minutes=30)
 # A submission started this long after a game ended is not where that game was claimed.
 LATE_SUBMISSION = timedelta(hours=1)
+# Per-player corrections the author decides on, in data/<dataset>/. Keyed by
+# the Empirica player id (as in players.csv), never a Prolific id.
+ADJUSTMENTS_FILE = "payment_adjustments.csv"
+ADJUSTMENTS = ("restore_bonus",)
 
 
 @dataclass
@@ -121,6 +125,9 @@ class Payee:
     study_source: str = ""  # "link" (studyId on the player) or "identifier" (found by Prolific id)
     status: str = ""
     submitted_at: str = ""  # when the Prolific submission was completed
+    player_id: str = ""  # the Empirica player id, which payment_adjustments.csv names
+    earned_bonus: float = 0.0  # the performance bonus the player had earned, forfeited or not
+    base_partial: float = 0.0  # the prorated base pay of a removed player
     already_paid: float = 0.0
     still_owed: float = 0.0
     ready: bool = False
@@ -224,8 +231,57 @@ def payees_from_exports(zips: list[Path], excluded_games: set[str] = frozenset()
                     site_minutes=_minutes_between(p.get("participantIdentifierLastChangedAt"),
                                                   p.get("exitSurveyLastChangedAt"))
                     if p.get("exitSurvey") else 0.0,
+                    player_id=p.get("id") or "",
+                    earned_bonus=_float(p.get("bonus")),
+                    base_partial=_float(p.get("partialBasePay")),
                 )
     return payees
+
+
+def read_adjustments(data_dir: Path) -> dict[str, tuple[str, str]]:
+    """{player id: (adjustment, reason)} from data/<dataset>/payment_adjustments.csv.
+
+    The file is optional and holds the author's per-player decisions, one row
+    each with columns playerId, adjustment, reason. `restore_bonus` pays a
+    removed player their prorated base plus the bonus they had earned, for a
+    removal that was not really theirs to answer for (a removal for inactivity
+    forfeits the bonus otherwise). An unknown adjustment is an error rather
+    than a silent no-op, and every row needs a reason.
+    """
+    path = data_dir / ADJUSTMENTS_FILE
+    if not path.exists():
+        return {}
+    adjustments = {}
+    with open(path, newline="") as f:
+        for i, row in enumerate(csv.DictReader(f), start=2):
+            player = (row.get("playerId") or "").strip()
+            kind = (row.get("adjustment") or "").strip()
+            reason = (row.get("reason") or "").strip()
+            if not player:
+                continue
+            if kind not in ADJUSTMENTS:
+                raise ValueError(f"{path.name} line {i}: unknown adjustment {kind!r} (expected one of {ADJUSTMENTS})")
+            if not reason:
+                raise ValueError(f"{path.name} line {i}: every adjustment needs a reason")
+            adjustments[player] = (kind, reason)
+    return adjustments
+
+
+def apply_adjustments(payees: dict[tuple[str, str], Payee], adjustments: dict[str, tuple[str, str]]) -> list[str]:
+    """Apply the author's adjustments to the payees; return the player ids that matched nobody."""
+    by_player = {p.player_id: p for p in payees.values() if p.player_id}
+    unmatched = []
+    for player, (kind, reason) in adjustments.items():
+        payee = by_player.get(player)
+        if payee is None:
+            unmatched.append(player)
+            continue
+        if kind == "restore_bonus" and payee.kind == "partial":
+            restored = round(payee.base_partial + payee.earned_bonus, 2)
+            if restored > payee.amount:
+                payee.amount = restored
+                payee.exit_reason = "; ".join(filter(None, [payee.exit_reason, f"bonus restored: {reason}"]))
+    return unmatched
 
 
 def _true(value) -> bool:
@@ -651,6 +707,12 @@ def main(argv=None) -> None:
     payees = payees_from_exports(args.zips, excluded)
     visits = visits_without_a_game(args.zips, excluded)
     waiters = lobby_waiters(visits)
+    adjustments = read_adjustments(PROJECT_ROOT / "data" / args.dataset)
+    unmatched = apply_adjustments(payees, adjustments)
+    if adjustments:
+        print(f"Applied {len(adjustments) - len(unmatched)} adjustment(s) from data/{args.dataset}/{ADJUSTMENTS_FILE}.")
+    for player in unmatched:
+        print(f"  WARNING: {ADJUSTMENTS_FILE} names player {player}, who is in no game of these exports.")
     if excluded:
         print(f"Leaving out players in {len(excluded)} excluded game(s) (data/{args.dataset}/exclude_games.txt).")
     studies = group_by_study(payees)

@@ -577,6 +577,43 @@ class TestRepeatParticipants:
         assert payments.repeat_participants(payees, visits) == []
 
 
+class TestAdjustments:
+    def payee(self, kind="partial", amount=9.43, **kw):
+        return payments.Payee(participant="p", study_id="S1", kind=kind, amount=amount, game="G1",
+                              player_id="E1", earned_bonus=1.52, base_partial=9.43, **kw)
+
+    def test_restore_bonus_adds_the_earned_bonus_to_the_prorated_base(self):
+        payees = {("p", "G1"): self.payee(exit_reason="player timeout")}
+        unmatched = payments.apply_adjustments(payees, {"E1": ("restore_bonus", "guess-only removal")})
+        payee = payees[("p", "G1")]
+        assert unmatched == [] and payee.amount == 10.95
+        assert "bonus restored: guess-only removal" in payee.exit_reason
+
+    def test_a_partial_pay_that_already_includes_the_bonus_is_not_doubled(self):
+        payees = {("p", "G1"): self.payee(amount=10.95, exit_reason="group disbanded")}
+        payments.apply_adjustments(payees, {"E1": ("restore_bonus", "x")})
+        assert payees[("p", "G1")].amount == 10.95
+
+    def test_a_finisher_is_unchanged(self):
+        payees = {("p", "G1"): self.payee(kind="bonus", amount=6.0)}
+        payments.apply_adjustments(payees, {"E1": ("restore_bonus", "x")})
+        assert payees[("p", "G1")].amount == 6.0
+
+    def test_an_adjustment_for_nobody_is_reported(self):
+        assert payments.apply_adjustments({}, {"E9": ("restore_bonus", "x")}) == ["E9"]
+
+    def test_the_file_needs_known_adjustments_and_reasons(self, tmp_path):
+        (tmp_path / payments.ADJUSTMENTS_FILE).write_text("playerId,adjustment,reason\nE1,restore_bonus,lag\n")
+        assert payments.read_adjustments(tmp_path) == {"E1": ("restore_bonus", "lag")}
+        (tmp_path / payments.ADJUSTMENTS_FILE).write_text("playerId,adjustment,reason\nE1,double_it,lag\n")
+        with pytest.raises(ValueError, match="unknown adjustment"):
+            payments.read_adjustments(tmp_path)
+        (tmp_path / payments.ADJUSTMENTS_FILE).write_text("playerId,adjustment,reason\nE1,restore_bonus,\n")
+        with pytest.raises(ValueError, match="needs a reason"):
+            payments.read_adjustments(tmp_path)
+        assert payments.read_adjustments(tmp_path / "missing") == {}
+
+
 class TestPlayedTwice:
     def test_a_later_sessions_submission_does_not_claim_an_earlier_game(self):
         # Played at noon through a messaged link (no study id, no game-study

@@ -302,7 +302,11 @@ researcher stopped, or idling out -- are paid by **returning the submission and 
 their partial pay as a bonus**, never by approval. The server's `computePartialPay`
 (`experiment/server/src/compensation.js`) already bundles prorated base pay with the earned
 bonus into one number, so approving would pay the full base reward on top of it. Players
-removed for inactivity get the prorated base pay only, without the bonus. This is what
+removed for inactivity get the prorated base pay only, without the bonus. When a removal
+was not the player's doing (their screen stopped updating, or they answered the group guess
+but never saw that a tangram click was also needed), add a line to
+`data/full/payment_adjustments.csv` with their Empirica player id, `restore_bonus` and the
+reason; `make payments` then pays the earned bonus as well. This is what
 Prolific recommends for participants who cannot be matched in live studies: partial payment
 by bonus, a return request, and a message explaining it.
 
