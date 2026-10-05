@@ -668,6 +668,28 @@ def print_summary(summary: list[dict], out_dir: Path, offline: bool) -> None:
         print("\nIn each study's bulk bonus on Prolific, paste 1_main.csv, then 2_overtime.csv; re-run to confirm.")
 
 
+def write_blocklist(payees: dict[tuple[str, str], Payee], out_dir: Path,
+                    visits: dict[str, list[Visit]] | None = None) -> int:
+    """blocklist_ids.txt: everyone who started a game, except finishers already blocked by study.
+
+    Nobody who has started the task may sign up again. The scheduling survey
+    excludes the participants of every earlier game study, which reliably
+    covers finishers who submitted that study. It may not cover removed
+    players, whose submissions are returned, and it cannot cover people who
+    played through a link sent by message and never submitted the game study.
+    This list holds both groups, for the survey's custom blocklist: every
+    Prolific id placed in a started game, minus those who finished a game with
+    a game-study submission. Quiz failures are added too: they never reached a
+    game but have read the instructions and seen the quiz. Lobby timeouts and
+    overflow players never started the task and stay eligible.
+    """
+    covered = {p.participant for p in payees.values() if p.study_id and p.kind == "bonus"}
+    quiz_failed = {pid for pid, vs in (visits or {}).items() if any(v.quiz_failed for v in vs)}
+    blocked = sorted(({p.participant for p in payees.values()} - covered) | (quiz_failed - covered))
+    (out_dir / "blocklist_ids.txt").write_text("".join(f"{pid}\n" for pid in blocked))
+    return len(blocked)
+
+
 def write_repeats(rows: list[dict], out_dir: Path) -> None:
     """repeats.csv (with Prolific ids, so only on disk) and a summary without them."""
     with open(out_dir / "repeats.csv", "w", newline="") as f:
@@ -769,6 +791,11 @@ def main(argv=None) -> None:
     summary = write_outputs(studies, out_dir, args.offline)
     print_summary(summary, out_dir, args.offline)
     write_repeats(repeat_participants(payees, visits), out_dir)
+    if not args.offline:
+        n = write_blocklist(payees, out_dir, visits)
+        print(f"  blocklist_ids.txt lists {n} people who started the task but are not blocked by a game study "
+              "(removed players, players without a game-study submission, quiz failures); paste it into the next "
+              "scheduling survey's custom blocklist.")
 
 
 if __name__ == "__main__":

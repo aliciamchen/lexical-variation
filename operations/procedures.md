@@ -76,7 +76,13 @@ The public names are all the same, so the internal name is how you and `make pay
 studies apart. Check every value in "Reference: what the studies look like", especially the
 reward and the three completion codes: a wrong value is copied silently into every later
 session. Add the previous session's game study to the survey's "Exclude participants from
-other studies" filter, so that nobody who has played can sign up again.
+other studies" filter, and paste `data/payments/full/blocklist_ids.txt` (written by `make
+payments`) into its custom blocklist. Nobody who has started a game may sign up again, and
+the study filter reliably covers only finishers who submitted: it may miss removed players,
+whose submissions are returned, and it cannot see anyone who played through a link sent by
+message without submitting the game study, which is how one person played two games on 5
+October. The list holds both groups, plus quiz failures, who have read the instructions and
+seen the quiz. Lobby timeouts and overflow players never started the task and stay eligible.
 
 **How many to recruit.** A game starts only when nine people are ready, meaning they arrived
 and passed the quiz. In the four six-game sessions, between 56% and 70% of the allowlist ended
@@ -286,10 +292,12 @@ privacy notice on any survey-backed study.
 The design is between subjects, so nobody may play twice. The game study is visible only to
 the session's Custom Allowlist, and the scheduling survey excludes everyone who took part in an
 earlier game study. That exclusion may not catch everyone, for example people who returned an
-earlier submission, so `make payments` checks every export for a Prolific ID placed in more
-than one started game and prints a warning if it finds one. It also lists, for information,
-anyone who came back after an earlier visit that never reached a game, such as a lobby
-timeout or a quiz failure.
+earlier submission or people who played through a messaged link without submitting the game
+study, so the survey also carries a custom blocklist pasted from `blocklist_ids.txt` (removed
+players, players without a game-study submission, and quiz failures). `make payments` also
+checks every export for a Prolific ID placed in more than one started game and prints a
+warning if it finds one. It also lists, for information, anyone who came back after an
+earlier visit that never reached a game, such as a lobby timeout or a quiz failure.
 
 ## Reference: how people are paid
 

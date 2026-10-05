@@ -639,3 +639,24 @@ class TestPlayedTwice:
         payments.assign_studies(payees, {"S14": [sub]})
         assert payees[("p", "G1")].study_id == "S14"
 
+
+def test_the_blocklist_holds_removed_players_and_players_without_a_game_study_submission(tmp_path):
+    payees = {
+        ("a", "G1"): payments.Payee("a", "S1", "bonus", 3.0, game="G1"),           # finished and submitted: covered
+        ("b", "G1"): payments.Payee("b", "SURVEY", "unsubmitted", 18.0, game="G1"),  # played by link only
+        ("c", "G1"): payments.Payee("c", "", "bonus", 3.0, game="G1"),             # no submission anywhere
+        ("r", "G1"): payments.Payee("r", "S1", "partial", 4.0, game="G1"),         # removed, returned
+        ("d", "G1"): payments.Payee("d", "SURVEY", "unsubmitted", 18.0, game="G1"),  # played twice: the
+        ("d", "G2"): payments.Payee("d", "S2", "bonus", 7.0, game="G2"),           # later study covers them
+    }
+    assert payments.write_blocklist(payees, tmp_path) == 3
+    assert (tmp_path / "blocklist_ids.txt").read_text() == "b\nc\nr\n"
+
+
+def test_quiz_failures_are_blocked_but_lobby_timeouts_are_not(tmp_path):
+    payees = {("a", "G1"): payments.Payee("a", "S1", "bonus", 3.0, game="G1")}
+    visits = {"q": [payments.Visit("q", "S1", "", "game failed", quiz_failed=True)],
+              "w": [payments.Visit("w", "S1", "", "game failed", waited=True)],
+              "a": [payments.Visit("a", "S0", "", "no more games", quiz_failed=True)]}
+    assert payments.write_blocklist(payees, tmp_path, visits) == 1
+    assert (tmp_path / "blocklist_ids.txt").read_text() == "q\n"
