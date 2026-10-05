@@ -1195,6 +1195,26 @@ class TestExclusionEndToEnd:
         assert bool(trials.loc[("r1", "A1"), "responseOpportunity"])
         assert bool(trials.loc[("r1", "A1"), "hasSpeakerMessage"])
 
+    def test_an_excluded_players_survey_answers_are_blanked(self, tmp_path, monkeypatch):
+        raw = _raw_dataset(tmp_path)
+        player = pd.read_csv(raw / "player.csv")
+        player["exitSurvey"] = json.dumps({"groupIdentification": 6, "feedback": "fun"})
+        player.to_csv(raw / "player.csv", index=False)
+        out = tmp_path / "data"
+        out.mkdir()
+        (out / "participant_exclusions.csv").write_text("playerId,reason\nA0,repeat participant\n")
+        _run_preprocessing(raw, out, monkeypatch)
+
+        players = pd.read_csv(out / "players.csv").set_index("playerId")
+        assert players.loc["A0", ["exitSurvey_groupIdentification", "exitSurvey_feedback"]].isna().all()
+        assert bool(players.loc["A0", "excluded"])
+        assert players.loc["A0", "exclusionReason"] == "repeat participant"
+        # The partners keep their answers and their rows are not flagged.
+        assert players.loc[["A1", "A2"], "exitSurvey_feedback"].tolist() == ["fun", "fun"]
+        assert not players.loc[["A1", "A2"], "excluded"].any()
+        # The raw answers are untouched.
+        assert "groupIdentification" in pd.read_csv(raw / "player.csv").set_index("id").loc["A0", "exitSurvey"]
+
     def test_the_derived_step_sees_only_the_remaining_speakers(self, tmp_path, monkeypatch):
         """The derived measures are computed from the post-exclusion utterances.
 
@@ -1225,6 +1245,7 @@ class TestExclusionEndToEnd:
         assert not trials["excluded"].any()
         assert trials["exclusionReason"].isna().all()  # written as empty strings
         assert len(pd.read_csv(out / "messages.csv")) == 2
+        assert not pd.read_csv(out / "players.csv")["excluded"].any()
 
     def test_an_unknown_player_id_is_refused(self, tmp_path, monkeypatch):
         raw = _raw_dataset(tmp_path)

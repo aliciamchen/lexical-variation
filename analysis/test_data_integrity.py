@@ -1061,6 +1061,15 @@ class TestParticipantExclusions:
         own = trials[trials["playerId"].isin(excluded_players)]
         assert _truthy(own["excluded"]).all()
 
+    def test_excluded_players_have_no_survey_answers(self, players):
+        if "excluded" not in players.columns:
+            pytest.skip("players.csv predates the exclusion flag")
+        reason = players["exclusionReason"].fillna("")
+        assert (_truthy(players["excluded"]) == (reason != "")).all()
+        survey_cols = [c for c in players.columns if c.startswith("exitSurvey_")]
+        answered = players.loc[_truthy(players["excluded"]), survey_cols].notna().any(axis=1)
+        assert not answered.any(), f"{int(answered.sum())} excluded player(s) still have exit-survey answers"
+
     def test_social_guesses_agree_with_trials(self, social_guesses, trials):
         if social_guesses.empty:
             pytest.skip("no social-guessing games in this dataset")
@@ -2248,11 +2257,23 @@ class TestTangramIdentity:
 # ============ 19. EXIT SURVEY ============
 
 
+def _not_excluded(players):
+    """Players whose exit-survey answers were kept (an exclusion blanks them).
+
+    The flag is absent from a players.csv written before it existed, such as
+    the pilot's, where nobody is excluded.
+    """
+    if "excluded" not in players.columns:
+        return players
+    return players[~_truthy(players["excluded"])]
+
+
 class TestExitSurvey:
     """Validate exit survey data for active players."""
 
     def test_active_players_have_exit_survey(self, active_players):
         """Active players who completed the game should have exit survey data."""
+        active_players = _not_excluded(active_players)
         exit_cols = [
             c for c in active_players.columns if c.startswith("exitSurvey_")
         ]
@@ -2270,6 +2291,7 @@ class TestExitSurvey:
         """exitSurvey_understood should be present for active players."""
         if "exitSurvey_understood" not in active_players.columns:
             pytest.skip("exitSurvey_understood column not found")
+        active_players = _not_excluded(active_players)
         null_count = active_players["exitSurvey_understood"].isna().sum()
         assert null_count == 0, (
             f"{null_count} active players missing exitSurvey_understood"

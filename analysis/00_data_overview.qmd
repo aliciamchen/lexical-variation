@@ -67,14 +67,14 @@ if (length(demo_cols) > 0) {
     print(players |>
       mutate(gender = coalesce(as.character(exitSurvey_gender), "not answered")) |>
       count(gender) |>
-      knitr::kable(caption = "Gender distribution (all players; 'not answered' includes players removed before the survey)"))
+      knitr::kable(caption = "Gender distribution (all players; 'not answered' includes players removed before the survey and excluded participants, whose answers are removed)"))
   }
 
   if ("exitSurvey_education" %in% names(players)) {
     print(players |>
       mutate(education = coalesce(as.character(exitSurvey_education), "not answered")) |>
       count(education) |>
-      knitr::kable(caption = "Education distribution (all players; 'not answered' includes players removed before the survey)"))
+      knitr::kable(caption = "Education distribution (all players; 'not answered' includes players removed before the survey and excluded participants, whose answers are removed)"))
   }
 }
 ```

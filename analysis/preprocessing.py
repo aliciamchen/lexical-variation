@@ -907,6 +907,26 @@ def apply_participant_exclusions(
     return trials
 
 
+def exclude_survey_answers(players: pd.DataFrame, exclusions: pd.DataFrame) -> pd.DataFrame:
+    """Add `excluded` and `exclusionReason` to players.csv and blank the excluded players' exit surveys.
+
+    The survey answers are among the excluded participant's responses, which
+    the preregistered rule removes along with their messages. They are blanked
+    here, as the messages are dropped from messages.csv, so that no consumer of
+    players.csv has to filter them out; the row itself stays, because the
+    roster, attrition and pay records still need the player. The answers
+    remain in raw_anonymized/player.csv.
+    """
+    players = players.copy()
+    reasons = dict(zip(exclusions["playerId"], exclusions["reason"]))
+    reason = players["playerId"].map(reasons)
+    players["excluded"] = reason.notna()
+    players["exclusionReason"] = reason.fillna("")
+    survey_cols = [c for c in players.columns if c.startswith("exitSurvey_")]
+    players.loc[players["excluded"], survey_cols] = pd.NA
+    return players
+
+
 def build_messages(
     player_round_df: pd.DataFrame, game_df: pd.DataFrame, round_df: pd.DataFrame
 ) -> pd.DataFrame:
@@ -1449,6 +1469,9 @@ def main():
         flag_length_increase(speaker_utterances), on=["gameId", "playerId"], how="left"
     )
     players["lengthIncreaseFlag"] = players["lengthIncreaseFlag"].fillna(False).astype(bool)
+    players = exclude_survey_answers(players, exclusions)
+    if not exclusions.empty:
+        print(f"  Blanked the exit-survey answers of {int(players['excluded'].sum())} excluded participant(s)")
     players.to_csv(output_dir / "players.csv", index=False)
     print(f"  {len(players)} players, {int(players['lengthIncreaseFlag'].sum())} flagged for a Phase 1 length increase")
 
