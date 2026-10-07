@@ -75,14 +75,19 @@ and both internal names (`full-sample scheduling survey batch 22`, `full sample 
 The public names are all the same, so the internal name is how you and `make payments` tell
 studies apart. Check every value in "Reference: what the studies look like", especially the
 reward and the three completion codes: a wrong value is copied silently into every later
-session. Add the previous session's game study to the survey's "Exclude participants from
-other studies" filter, and paste `data/payments/full/blocklist_ids.txt` (written by `make
-payments`) into its custom blocklist. Nobody who has started a game may sign up again, and
-the study filter reliably covers only finishers who submitted: it may miss removed players,
-whose submissions are returned, and it cannot see anyone who played through a link sent by
-message without submitting the game study, which is how one person played two games on 5
-October. The list holds both groups, plus quiz failures, who have read the instructions and
-seen the quiz. Lobby timeouts and overflow players never started the task and stay eligible.
+session. The survey blocks the participant group `Played the game` (a participant-group
+blocklist filter, which a duplicated survey keeps), and `make sync-blocklist` keeps that
+group current: after `make payments` it adds everyone in `blocklist_ids.txt`, that is,
+everyone who has started a game, the quiz failures, who have read the instructions and seen
+the quiz, and everyone assigned to a social-first game, whose instructions explain the Phase 2
+social task, even when that game never started for them. A participant group is live, so an
+addition takes effect at once on every survey that blocks it, a published one included. Lobby
+timeouts and overflow players ("no games available") of the other three conditions never
+started the task and stay eligible, which is why the survey does
+**not** use the "Exclude participants from other studies" filter for game studies: that
+filter excludes every submission in the listed studies, returned ones included, so it would
+block them too. Surveys duplicated before 7 October still list the earlier studies in that
+filter; remove the game studies from it.
 
 **How many to recruit.** A game starts only when nine people are ready, meaning they arrived
 and passed the quiz. In the four six-game sessions, between 56% and 70% of the allowlist ended
@@ -222,6 +227,14 @@ the details. The folder is rewritten on every run and contains Prolific IDs, whi
 **5. Run `make payments` again.** Everyone just paid now shows as settled; anything still
 listed was missed.
 
+**6. Run `make sync-blocklist DATASET=full`.** It adds this session's players and quiz failures,
+and after a social-first session its lobby timeouts and overflow players, to the `Played the game` group, so they cannot sign up again. It lists how many it will add and
+asks before adding (`SYNC_ARGS=--dry-run` only reports, `SYNC_ARGS=--yes` skips the question).
+Run from Claude Code's `!` prefix, which has no terminal to answer from, the question cannot be
+answered, so nothing is added: look at the count, then rerun with `SYNC_ARGS=--yes`.
+It never removes anyone: members who are not on the list, such as the pilot players, stay
+blocked.
+
 ## If something goes off script
 
 **Someone asks to be added after the allowlist was built.** Add their Prolific ID to the game
@@ -276,7 +289,7 @@ their browsers retry.
 | time | 1 min | 50 min estimated |
 | device | desktop | desktop |
 | URL | `https://prolific.com/surveys/<survey_id>` | the server, with `?PROLIFIC_PID={{%PROLIFIC_PID%}}&STUDY_ID={{%STUDY_ID%}}&SESSION_ID={{%SESSION_ID%}}` |
-| filters | current country of residence (US), fluent languages (English), Exclude participants from other studies (every earlier game study) | Custom Allowlist (the eligible respondents' Prolific IDs) |
+| filters | current country of residence (US), fluent languages (English), participant-group blocklist (`Played the game`); no game studies under "Exclude participants from other studies" | Custom Allowlist (the eligible respondents' Prolific IDs) |
 | completion codes | one, manually reviewed | `C2I8XDMC` finished (manual review) · `CMZUY3MK` lobby timeout (request return) · `CFTYDMIY` removed early (request return) |
 
 The completion paths are `https://app.prolific.com/submissions/complete?cc=<code>`; the exit
@@ -290,14 +303,23 @@ privacy notice on any survey-backed study.
 ## Reference: eligibility
 
 The design is between subjects, so nobody may play twice. The game study is visible only to
-the session's Custom Allowlist, and the scheduling survey excludes everyone who took part in an
-earlier game study. That exclusion may not catch everyone, for example people who returned an
-earlier submission or people who played through a messaged link without submitting the game
-study, so the survey also carries a custom blocklist pasted from `blocklist_ids.txt` (removed
-players, players without a game-study submission, and quiz failures). `make payments` also
-checks every export for a Prolific ID placed in more than one started game and prints a
+the session's Custom Allowlist, and the scheduling survey blocks the participant group
+`Played the game`, which `make sync-blocklist` fills from `blocklist_ids.txt`: every Prolific
+ID placed in a started game, every quiz failure, everyone assigned to a social-first game,
+and anyone whose game-study submission carries the finished or partial code (which catches a
+player who mistyped their ID on the identifier screen). Empirica assigns a participant to a
+game as soon as they arrive and shows that game's instructions and quiz, and an overflow
+player keeps the assignment's treatment on their record, so `make payments` can tell who saw
+the social-first instructions, which explain Phase 2 in advance; they are blocked even when
+their game never started. The other three conditions share instructions that social-first only
+adds to, so their lobby timeouts and overflow players stay eligible. The group also holds the
+pilot and test players added before the full sample began. The survey does not exclude earlier
+game studies, whose participants include those eligible lobby timeouts. Until 7 October the survey did exclude every earlier game study, so the lobby
+timeouts and overflow players of those sessions were kept out of later ones. `make payments`
+also checks every export for a Prolific ID placed in more than one started game and prints a
 warning if it finds one. It also lists, for information, anyone who came back after an
-earlier visit that never reached a game, such as a lobby timeout or a quiz failure.
+earlier visit that never reached a game, such as a lobby timeout, a quiz failure, or someone
+who saw the social-first instructions.
 
 ## Reference: how people are paid
 

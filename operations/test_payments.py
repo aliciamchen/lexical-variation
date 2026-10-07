@@ -36,7 +36,7 @@ def make_export(path: Path, games: list[dict], players: list[dict]) -> Path:
         z.writestr("player.csv", table(players, [
             "id", "gameID", "participantIdentifier", "studyId", "is_active",
             "bonus", "partialPay", "exitReason", "ended", "introDone", "quiz_attempts",
-            "participantIdentifierLastChangedAt",
+            "participantIdentifierLastChangedAt", "treatment",
         ]))
     return path
 
@@ -491,6 +491,19 @@ class TestLobbyWaiters:
         ])
         assert payments.lobby_waiters(payments.visits_without_a_game([path])) == {}
 
+    def test_a_visit_keeps_the_condition_of_the_game_it_was_assigned(self, tmp_path):
+        """Empirica copies the game's treatment onto the player, and an overflow player keeps it."""
+        sf = '{"condition":"social_first","tangram_set":1,"playerCount":9}'
+        path = self.export(tmp_path, [
+            {**waiter_row("lobby", "F1", "S13", "game failed"), "treatment": sf},
+            {**waiter_row("overflow", "", "S13", "no more games", intro="", attempts=""), "treatment": sf},
+            {**waiter_row("other", "F1", "S13", "game failed"), "treatment": '{"condition":"refer_mixed"}'},
+            {**waiter_row("broken", "F1", "S13", "game failed"), "treatment": "not json"},
+        ])
+        visits = payments.visits_without_a_game([path])
+        assert {pid: vs[0].condition for pid, vs in visits.items()} == {
+            "lobby": "social_first", "overflow": "social_first", "other": "refer_mixed", "broken": ""}
+
     def test_a_returned_submission_without_the_code_is_paid_lobby_pay(self, tmp_path):
         path = self.export(tmp_path, [waiter_row("w", "F1", "S13", "game failed")])
         waiters = payments.lobby_waiters(payments.visits_without_a_game([path]))
@@ -570,6 +583,14 @@ class TestRepeatParticipants:
         [row] = payments.repeat_participants(payees, visits)
         assert row["kind"] == "quiz failed earlier, then played"
 
+    def test_an_earlier_social_first_visit_is_named_as_such(self):
+        payees = {("p", "G9"): payments.Payee("p", "S14", "bonus", 3.0, game="CSEVVD",
+                                              joined_at="2026-09-26T22:15:00Z")}
+        visits = {"p": [payments.Visit("p", "S13", "2026-09-25T21:04:00Z", "game failed", waited=True,
+                                       condition="social_first")]}
+        [row] = payments.repeat_participants(payees, visits)
+        assert row["kind"] == "saw the social-first instructions earlier, then played"
+
     def test_a_record_from_the_same_session_is_not_a_return(self):
         payees = {("p", "G9"): payments.Payee("p", "S14", "bonus", 3.0, game="CSEVVD",
                                               joined_at="2026-09-25T22:15:00Z")}
@@ -640,23 +661,49 @@ class TestPlayedTwice:
         assert payees[("p", "G1")].study_id == "S14"
 
 
-def test_the_blocklist_holds_removed_players_and_players_without_a_game_study_submission(tmp_path):
+def test_the_blocklist_holds_everyone_placed_in_a_started_game(tmp_path):
     payees = {
-        ("a", "G1"): payments.Payee("a", "S1", "bonus", 3.0, game="G1"),           # finished and submitted: covered
+        ("a", "G1"): payments.Payee("a", "S1", "bonus", 3.0, game="G1"),           # finished and submitted
         ("b", "G1"): payments.Payee("b", "SURVEY", "unsubmitted", 18.0, game="G1"),  # played by link only
         ("c", "G1"): payments.Payee("c", "", "bonus", 3.0, game="G1"),             # no submission anywhere
         ("r", "G1"): payments.Payee("r", "S1", "partial", 4.0, game="G1"),         # removed, returned
-        ("d", "G1"): payments.Payee("d", "SURVEY", "unsubmitted", 18.0, game="G1"),  # played twice: the
-        ("d", "G2"): payments.Payee("d", "S2", "bonus", 7.0, game="G2"),           # later study covers them
+        ("d", "G1"): payments.Payee("d", "SURVEY", "unsubmitted", 18.0, game="G1"),  # played twice
+        ("d", "G2"): payments.Payee("d", "S2", "bonus", 7.0, game="G2"),
     }
-    assert payments.write_blocklist(payees, tmp_path) == 3
-    assert (tmp_path / "blocklist_ids.txt").read_text() == "b\nc\nr\n"
+    assert payments.write_blocklist(payees, tmp_path) == 5
+    assert (tmp_path / "blocklist_ids.txt").read_text() == "a\nb\nc\nd\nr\n"
 
 
-def test_quiz_failures_are_blocked_but_lobby_timeouts_are_not(tmp_path):
+def test_quiz_failures_are_blocked_but_lobby_timeouts_and_overflow_players_are_not(tmp_path):
+    """Outside social-first; these visits carry no condition."""
     payees = {("a", "G1"): payments.Payee("a", "S1", "bonus", 3.0, game="G1")}
     visits = {"q": [payments.Visit("q", "S1", "", "game failed", quiz_failed=True)],
               "w": [payments.Visit("w", "S1", "", "game failed", waited=True)],
-              "a": [payments.Visit("a", "S0", "", "no more games", quiz_failed=True)]}
-    assert payments.write_blocklist(payees, tmp_path, visits) == 1
-    assert (tmp_path / "blocklist_ids.txt").read_text() == "q\n"
+              "n": [payments.Visit("n", "S1", "", "no more games")]}
+    submissions = {"S1": [submission("w", status="RETURNED", code=prolific.LOBBY_TIMEOUT_CODE),
+                          submission("n", status="RETURNED")]}
+    assert payments.write_blocklist(payees, tmp_path, visits, submissions) == 2
+    assert (tmp_path / "blocklist_ids.txt").read_text() == "a\nq\n"
+
+
+def test_anyone_who_saw_the_social_first_instructions_is_blocked_without_a_game(tmp_path):
+    """Its instructions describe Phase 2; the other conditions' visitors stay eligible."""
+    visits = {"sl": [payments.Visit("sl", "S1", "", "game failed", waited=True, condition="social_first")],
+              "so": [payments.Visit("so", "S1", "", "no more games", condition="social_first")],
+              "sr": [payments.Visit("sr", "S1", "", "game failed", condition="social_first")],  # left mid-instructions
+              "ml": [payments.Visit("ml", "S1", "", "game failed", waited=True, condition="refer_mixed")],
+              "mo": [payments.Visit("mo", "S1", "", "no more games", condition="social_mixed")],
+              "un": [payments.Visit("un", "S1", "", "")],  # never assigned to a game
+              "tw": [payments.Visit("tw", "S1", "", "game failed", waited=True, condition="refer_separated"),
+                     payments.Visit("tw", "S2", "", "no more games", condition="social_first")]}
+    assert payments.write_blocklist({}, tmp_path, visits, {}) == 4
+    assert (tmp_path / "blocklist_ids.txt").read_text() == "sl\nso\nsr\ntw\n"
+
+
+def test_a_finished_or_partial_code_blocks_a_player_the_exports_do_not_name(tmp_path):
+    """A mistyped identifier leaves the player out of the payees; their code still blocks them."""
+    submissions = {"S1": [submission("t", code=prolific.FINISHED_CODE),
+                          submission("p", status="RETURNED", code=prolific.PARTIAL_CODE),
+                          submission("l", status="RETURNED", code=prolific.LOBBY_TIMEOUT_CODE)]}
+    assert payments.write_blocklist({}, tmp_path, {}, submissions) == 2
+    assert (tmp_path / "blocklist_ids.txt").read_text() == "p\nt\n"

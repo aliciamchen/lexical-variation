@@ -69,6 +69,7 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+import json
 import math
 import re
 import shutil
@@ -92,6 +93,12 @@ KINDS = ("bonus", "partial", "lobby", "overtime", "unsubmitted")
 OVERTIME_AFTER_MINUTES = 60
 NO_STUDY = ""
 MAX_QUIZ_ATTEMPTS = prolific.GAME["max_quiz_attempts"]
+# The condition whose instructions and quiz describe Phase 2 (the social guessing
+# task and its reward) before the game starts. Anyone assigned to one of its games
+# has seen them, so they are blocked even without a started game; the other three
+# conditions share instructions that social-first only adds to.
+SOCIAL_FIRST = "social_first"
+assert SOCIAL_FIRST in prolific.CONDITIONS, "SOCIAL_FIRST must name a condition in experiment/shared/constants.js"
 # The paste files, in the order they are pasted, and the kinds each one holds.
 PASTE_FILES = (("1_main.csv", ("bonus", "partial", "lobby", "unsubmitted")), ("2_overtime.csv", ("overtime",)))
 # Prolific approves a submission left awaiting review this long after it was
@@ -161,6 +168,7 @@ class Visit:
     ended: str
     waited: bool = False  # waited in the lobby for a game that never started; owed lobby pay
     quiz_failed: bool = False
+    condition: str = ""  # of the game they were assigned to, which set the instructions and quiz they saw
 
 
 def _csv(z: zipfile.ZipFile, name: str) -> list[dict]:
@@ -288,6 +296,15 @@ def _true(value) -> bool:
     return str(value or "").strip().lower() in ("true", "1", "yes")
 
 
+def _condition(treatment: str | None) -> str:
+    """The condition in a player's `treatment`, which Empirica copies from the game it assigns them to."""
+    try:
+        value = json.loads(treatment or "{}")
+    except json.JSONDecodeError:
+        return ""
+    return str(value.get("condition") or "") if isinstance(value, dict) else ""
+
+
 def visits_without_a_game(zips: list[Path], excluded_games: set[str] = frozenset()) -> dict[str, list[Visit]]:
     """Every player record that never reached a started game, by Prolific id.
 
@@ -298,6 +315,12 @@ def visits_without_a_game(zips: list[Path], excluded_games: set[str] = frozenset
     people still in the instructions when the game failed never reached the
     lobby. Records are keyed by player id, so a later export replaces an
     earlier snapshot of the same record.
+
+    `condition` is that of the game the player was assigned to. Empirica
+    assigns a game as soon as a participant arrives and shows the
+    instructions and quiz of its treatment, and it keeps the player's
+    `treatment` when it later turns them away with "no more games", so an
+    overflow player has seen those instructions too, often only in part.
     """
     records: dict[str, Visit] = {}
     for path in sorted(zips, key=_export_stamp):
@@ -321,7 +344,8 @@ def visits_without_a_game(zips: list[Path], excluded_games: set[str] = frozenset
                 quiz_failed = not intro_done and attempts >= MAX_QUIZ_ATTEMPTS
                 waited = (ended == "game failed" and intro_done) or (ended == "no more games" and not quiz_failed)
                 records[key] = Visit(pid, (p.get("studyId") or "").strip(),
-                                     p.get("participantIdentifierLastChangedAt") or "", ended, waited, quiz_failed)
+                                     p.get("participantIdentifierLastChangedAt") or "", ended, waited, quiz_failed,
+                                     _condition(p.get("treatment")))
     visits: dict[str, list[Visit]] = {}
     for visit in records.values():
         visits.setdefault(visit.participant, []).append(visit)
@@ -340,9 +364,11 @@ def repeat_participants(payees: dict[tuple[str, str], Payee], visits: dict[str, 
     "played twice": one Prolific id placed in two started games, which
     eligibility should have prevented. Otherwise a visit without a game at
     least RETURN_GAP before the game the person played means they came back:
-    "quiz failed earlier, then played" (quiz failures are not blocklisted, but
-    they have seen the quiz) or "earlier visit without a game, then played"
-    (a lobby timeout, who stays eligible on purpose).
+    "quiz failed earlier, then played" (quiz failures are blocklisted, so this
+    means one came back before the list reached the survey), "saw the
+    social-first instructions earlier, then played" (blocklisted for the same
+    reason) or "earlier visit without a game, then played" (a lobby timeout or
+    overflow player outside social-first, who stays eligible on purpose).
     """
     games_by: dict[str, list[Payee]] = {}
     for (pid, _), payee in payees.items():
@@ -357,8 +383,12 @@ def repeat_participants(payees: dict[tuple[str, str], Payee], visits: dict[str, 
         earlier = [v for v in visits.get(pid, []) if start and _when(v.entered_at)
                    and _when(v.entered_at) <= start - RETURN_GAP]
         if earlier:
-            kind = ("quiz failed earlier, then played" if any(v.quiz_failed for v in earlier)
-                    else "earlier visit without a game, then played")
+            if any(v.quiz_failed for v in earlier):
+                kind = "quiz failed earlier, then played"
+            elif any(v.condition == SOCIAL_FIRST for v in earlier):
+                kind = "saw the social-first instructions earlier, then played"
+            else:
+                kind = "earlier visit without a game, then played"
             rows.append({"participant": pid, "kind": kind, "games": played[0].game[-6:]})
     return rows
 
@@ -669,23 +699,33 @@ def print_summary(summary: list[dict], out_dir: Path, offline: bool) -> None:
 
 
 def write_blocklist(payees: dict[tuple[str, str], Payee], out_dir: Path,
-                    visits: dict[str, list[Visit]] | None = None) -> int:
-    """blocklist_ids.txt: everyone who started a game, except finishers already blocked by study.
+                    visits: dict[str, list[Visit]] | None = None,
+                    submissions: dict[str, list[dict]] | None = None) -> int:
+    """blocklist_ids.txt: everyone the scheduling surveys must keep out, for the participant group they block.
 
-    Nobody who has started the task may sign up again. The scheduling survey
-    excludes the participants of every earlier game study, which reliably
-    covers finishers who submitted that study. It may not cover removed
-    players, whose submissions are returned, and it cannot cover people who
-    played through a link sent by message and never submitted the game study.
-    This list holds both groups, for the survey's custom blocklist: every
-    Prolific id placed in a started game, minus those who finished a game with
-    a game-study submission. Quiz failures are added too: they never reached a
-    game but have read the instructions and seen the quiz. Lobby timeouts and
-    overflow players never started the task and stay eligible.
+    Nobody who has started the task may sign up again. Lobby timeouts and
+    overflow players ("no more games") never started it and stay eligible,
+    except in social-first: its instructions and quiz explain Phase 2 before
+    the game, so someone who has seen them must not be shown another
+    condition's instructions later, while someone who saw another condition's
+    may be assigned to social-first and simply read more. Prolific's "exclude
+    participants from other studies" filter cannot draw that line: it
+    excludes every submission in the listed studies, returned ones included.
+    The survey therefore blocks the participant group that sync_blocklist.py
+    fills from this list instead, and the list has to be complete on its own:
+    every Prolific id placed in a started game, every quiz failure, everyone
+    assigned to a social-first game that never started for them (lobby
+    timeouts, overflow players, people who left during the instructions),
+    and every submission in a fetched study that carries the finished or
+    partial code, which catches a player whose identifier was mistyped and so
+    matches no export record.
     """
-    covered = {p.participant for p in payees.values() if p.study_id and p.kind == "bonus"}
+    played = {p.participant for p in payees.values()}
     quiz_failed = {pid for pid, vs in (visits or {}).items() if any(v.quiz_failed for v in vs)}
-    blocked = sorted(({p.participant for p in payees.values()} - covered) | (quiz_failed - covered))
+    saw_social_first = {pid for pid, vs in (visits or {}).items() if any(v.condition == SOCIAL_FIRST for v in vs)}
+    by_code = {sub.get("participant_id") for subs in (submissions or {}).values() for sub in subs
+               if prolific.submission_code(sub) in (prolific.FINISHED_CODE, prolific.PARTIAL_CODE)}
+    blocked = sorted((played | quiz_failed | saw_social_first | by_code) - {None, ""})
     (out_dir / "blocklist_ids.txt").write_text("".join(f"{pid}\n" for pid in blocked))
     return len(blocked)
 
@@ -702,7 +742,8 @@ def write_repeats(rows: list[dict], out_dir: Path) -> None:
               f"(games {'; '.join(r['games'] for r in twice)}); see repeats.csv.")
     else:
         print("\nRepeat participants: nobody was placed in more than one started game.")
-    for kind in ("quiz failed earlier, then played", "earlier visit without a game, then played"):
+    for kind in ("quiz failed earlier, then played", "saw the social-first instructions earlier, then played",
+                 "earlier visit without a game, then played"):
         games = [r["games"] for r in rows if r["kind"] == kind]
         if games:
             print(f"  {len(games)} {kind} (games {' '.join(games)}); see repeats.csv.")
@@ -792,10 +833,10 @@ def main(argv=None) -> None:
     print_summary(summary, out_dir, args.offline)
     write_repeats(repeat_participants(payees, visits), out_dir)
     if not args.offline:
-        n = write_blocklist(payees, out_dir, visits)
-        print(f"  blocklist_ids.txt lists {n} people who started the task but are not blocked by a game study "
-              "(removed players, players without a game-study submission, quiz failures); paste it into the next "
-              "scheduling survey's custom blocklist.")
+        n = write_blocklist(payees, out_dir, visits, submissions)
+        print(f"  blocklist_ids.txt lists {n} people who started a game, failed the quiz or saw the social-first "
+              "instructions; "
+              "`make sync-blocklist` adds any new ones to the participant group the scheduling surveys block.")
 
 
 if __name__ == "__main__":
