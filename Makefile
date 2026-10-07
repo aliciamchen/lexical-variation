@@ -62,7 +62,7 @@ else
 NOTEBOOKS = $(wildcard analysis/0[0-9]_*.qmd)
 endif
 
-.PHONY: all pilot extract combine process process-no-filter payments tally notebooks llm-process test test-ops smoke runs help
+.PHONY: all pilot extract combine process process-no-filter payments sync-blocklist tally notebooks llm-process test test-ops smoke runs help
 
 # ── Main targets ────────────────────────────────────────────
 
@@ -97,15 +97,18 @@ payments: ## What each Prolific study still owes, from every zip in runs.txt →
 	@if [ -z "$(RUNS)" ]; then echo "Error: no runs listed in $(RUNS_FILE)"; exit 1; fi
 	uv run python operations/payments.py --dataset $(DATASET) $(ZIPS)
 
+sync-blocklist: ## Add everyone on data/payments/<name>/blocklist_ids.txt to the Prolific group the surveys block (asks first; the only Prolific write)
+	uv run python operations/sync_blocklist.py --dataset $(DATASET) $(SYNC_ARGS)
+
 tally: ## Games per (condition, tangram set) cell and progress against the stopping rule (reads data/<name>/)
 	uv run python operations/tally.py --dataset $(DATASET)
 
 test: ## Validate processed data against the integrity suite and run the Python and R helper tests
-	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py -q
+	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q
 	Rscript analysis/tests/run_all.R
 
-test-ops: ## Run only the operations tests: payments, tally, Prolific client (no API calls, no data needed)
-	uv run pytest operations/test_payments.py operations/test_tally.py operations/test_prolific.py -q
+test-ops: ## Run only the operations tests: payments, blocklist sync, tally, Prolific client (no API calls, no data needed)
+	uv run pytest operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q
 
 # The zip is extracted into data/runs/<run>/ like any other and registered in
 # data/smoke/runs.txt, so the combine step reads the same file it always does.

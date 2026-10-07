@@ -1,4 +1,7 @@
-"""Read-only access to the Prolific API, shared by operations/payments.py.
+"""Access to the Prolific API, shared by operations/payments.py and operations/sync_blocklist.py.
+
+Everything here only reads, except the participant-group additions that
+sync_blocklist.py makes, which are the one write in the tooling.
 
 The token comes from PROLIFIC_TOKEN in the repository-root .env and is never
 printed. Completion codes and pay figures come from the experiment itself
