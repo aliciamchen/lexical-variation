@@ -1932,21 +1932,26 @@ class TestResponseOpportunities:
 class TestIdlePlayerHandling:
     """Validate that idle players are handled correctly."""
 
-    def test_idle_player_has_fewer_trials(self, trials, idle_players, game_ids):
-        """Idle players should have fewer trials than active players."""
+    def test_idle_player_has_fewer_trials(self, trials, idle_players, active_players):
+        """Idle players should have fewer trials than active players.
+
+        The comparison is with players who stayed in the game to its end. A
+        game that ended at the Phase 1 accuracy check removed everyone after
+        the same 36 trials, so it has no active players and nothing to
+        compare against, like the score test below.
+        """
         for _, idle_p in idle_players.iterrows():
             gid = idle_p["gameId"]
             idle_trial_count = len(
                 trials[trials["playerId"] == idle_p["playerId"]]
             )
             # Active players in the same game
-            active_trial_counts = []
+            active_ids = set(active_players.loc[active_players["gameId"] == gid, "playerId"])
             game_trials = trials[trials["gameId"] == gid]
-            for pid in game_trials["playerId"].unique():
-                if pid != idle_p["playerId"]:
-                    active_trial_counts.append(
-                        len(game_trials[game_trials["playerId"] == pid])
-                    )
+            active_trial_counts = [
+                len(game_trials[game_trials["playerId"] == pid])
+                for pid in active_ids
+            ]
             if active_trial_counts:
                 max_active = max(active_trial_counts)
                 assert idle_trial_count < max_active, (
