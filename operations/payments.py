@@ -44,8 +44,10 @@ part of the amount above BASE_PAY is still owed (removed players who played
 most of the game can be owed more than the base). What Prolific
 records as paid in `bonus_payments` is subtracted, so a partly paid person is
 owed only the rest. Players in games listed in data/<dataset>/exclude_games.txt
-are left out. The files contain Prolific ids, which is why data/payments/ is
-gitignored.
+are paid like everyone else: excluding a game from the analysis, as for a
+game with a repeat participant, changes nothing about what its players are
+owed, and they stay on the blocklist and in the repeat check. The files
+contain Prolific ids, which is why data/payments/ is gitignored.
 
 Overtime: when many games run at once the server slows down, and a game that
 should take about 45 minutes can run 60 to 75, so the study takes well over the
@@ -80,10 +82,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "analysis"))
 
 import prolific  # noqa: E402
-from combine_runs import read_excluded_games  # noqa: E402
 
 PROJECT_ROOT = prolific.PROJECT_ROOT
 PAYMENTS_DIR = PROJECT_ROOT / "data" / "payments"
@@ -197,7 +197,7 @@ def _export_stamp(path: Path) -> str:
     return match.group(1) if match else path.name
 
 
-def payees_from_exports(zips: list[Path], excluded_games: set[str] = frozenset()) -> dict[tuple[str, str], Payee]:
+def payees_from_exports(zips: list[Path]) -> dict[tuple[str, str], Payee]:
     """Everyone placed in a game, keyed by (Prolific id, game id).
 
     The Prolific id is the identifier the participant entered, which the study
@@ -215,7 +215,7 @@ def payees_from_exports(zips: list[Path], excluded_games: set[str] = frozenset()
             for p in _csv(z, "player.csv"):
                 game_id = p.get("gameID") or ""
                 game = games.get(game_id)
-                if not game or game_id in excluded_games:
+                if not game:
                     continue
                 status = (game.get("status") or "").lower()
                 if status not in ("ended", "running"):
@@ -305,7 +305,7 @@ def _condition(treatment: str | None) -> str:
     return str(value.get("condition") or "") if isinstance(value, dict) else ""
 
 
-def visits_without_a_game(zips: list[Path], excluded_games: set[str] = frozenset()) -> dict[str, list[Visit]]:
+def visits_without_a_game(zips: list[Path]) -> dict[str, list[Visit]]:
     """Every player record that never reached a started game, by Prolific id.
 
     `waited` marks the ones owed lobby pay: a player whose game failed while
@@ -330,7 +330,7 @@ def visits_without_a_game(zips: list[Path], excluded_games: set[str] = frozenset
                 pid = (p.get("participantIdentifier") or p.get("prolificPid") or "").strip()
                 game_id = p.get("gameID") or ""
                 key = p.get("id") or f"{pid}:{game_id}"
-                if not pid or game_id in excluded_games:
+                if not pid:
                     continue
                 if ((games.get(game_id) or {}).get("status") or "").lower() in ("ended", "running"):
                     records.pop(key, None)
@@ -766,9 +766,8 @@ def parse_args(argv=None):
 
 def main(argv=None) -> None:
     args = parse_args(argv)
-    excluded = set(read_excluded_games(PROJECT_ROOT / "data" / args.dataset))
-    payees = payees_from_exports(args.zips, excluded)
-    visits = visits_without_a_game(args.zips, excluded)
+    payees = payees_from_exports(args.zips)
+    visits = visits_without_a_game(args.zips)
     waiters = lobby_waiters(visits)
     adjustments = read_adjustments(PROJECT_ROOT / "data" / args.dataset)
     unmatched = apply_adjustments(payees, adjustments)
@@ -776,8 +775,6 @@ def main(argv=None) -> None:
         print(f"Applied {len(adjustments) - len(unmatched)} adjustment(s) from data/{args.dataset}/{ADJUSTMENTS_FILE}.")
     for player in unmatched:
         print(f"  WARNING: {ADJUSTMENTS_FILE} names player {player}, who is in no game of these exports.")
-    if excluded:
-        print(f"Leaving out players in {len(excluded)} excluded game(s) (data/{args.dataset}/exclude_games.txt).")
     studies = group_by_study(payees)
     for study_id in args.study:
         studies.setdefault(study_id, Study(study_id))

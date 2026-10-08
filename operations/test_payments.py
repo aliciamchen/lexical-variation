@@ -75,7 +75,7 @@ def export(tmp_path):
         player("removed", "G1", "S1", active=False, partial="9.84", reason="group disbanded"),
         player("playing", "G2", "S2", bonus="3.00"),
         player("lobbyfail", "G3", "S2"),
-        player("rehearsal", "G4", "S1", bonus="5.00"),
+        player("excluded", "G4", "S1", bonus="5.00"),
         player("", "G1", "S1", bonus="1.00"),
     ]
     return make_export(tmp_path / "empirica-export-20260922_150048.zip", games, players)
@@ -103,8 +103,17 @@ class TestPayeesFromExports:
     def test_a_running_game_is_flagged(self, export):
         assert by_pid(payments.payees_from_exports([export]))["playing"].game_running
 
-    def test_excluded_games_are_left_out(self, export):
-        assert "rehearsal" not in by_pid(payments.payees_from_exports([export], {"G4"}))
+    def test_players_in_a_game_excluded_from_the_analysis_are_still_paid(self, tmp_path, export, monkeypatch):
+        # A game in exclude_games.txt, such as one with a repeat participant, is
+        # dropped from the analysis, but its players did the task and are owed.
+        (tmp_path / "data" / "t").mkdir(parents=True)
+        (tmp_path / "data" / "t" / "exclude_games.txt").write_text("G4\n")
+        monkeypatch.setattr(payments, "PROJECT_ROOT", tmp_path)
+        monkeypatch.setattr(payments, "PAYMENTS_DIR", tmp_path / "payments")
+        payments.main([str(export), "--dataset", "t", "--offline"])
+        listed = {r["participant"] for f in (tmp_path / "payments" / "t").glob("*/status.csv")
+                  for r in csv.DictReader(open(f))}
+        assert "excluded" in listed
 
     def test_a_later_export_replaces_an_earlier_one(self, tmp_path, export):
         later = make_export(
