@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import sys
 import zipfile
 from pathlib import Path
@@ -600,6 +601,13 @@ class TestRepeatParticipants:
         [row] = payments.repeat_participants(payees, visits)
         assert row["kind"] == "saw the social-first instructions earlier, then played"
 
+    def test_a_pilot_participant_who_played_is_named_as_such(self):
+        payees = {("p" * 24, "G9"): payments.Payee("p" * 24, "S14", "bonus", 3.0, game="6FK46P",
+                                                   joined_at="2026-10-07T19:36:00Z")}
+        visits = {"p" * 24: [payments.Visit("p" * 24, "S13", "2026-09-25T21:04:00Z", "game failed", waited=True)]}
+        [row] = payments.repeat_participants(payees, visits, pilot={"p" * 24})
+        assert row["kind"] == "took part in a pilot, then played" and row["games"] == "6FK46P"
+
     def test_a_record_from_the_same_session_is_not_a_return(self):
         payees = {("p", "G9"): payments.Payee("p", "S14", "bonus", 3.0, game="CSEVVD",
                                               joined_at="2026-09-25T22:15:00Z")}
@@ -707,6 +715,40 @@ def test_anyone_who_saw_the_social_first_instructions_is_blocked_without_a_game(
                      payments.Visit("tw", "S2", "", "no more games", condition="social_first")]}
     assert payments.write_blocklist({}, tmp_path, visits, {}) == 4
     assert (tmp_path / "blocklist_ids.txt").read_text() == "sl\nso\nsr\ntw\n"
+
+
+def test_pilot_participants_are_blocked(tmp_path):
+    payees = {("a", "G1"): payments.Payee("a", "S1", "bonus", 3.0, game="G1")}
+    assert payments.write_blocklist(payees, tmp_path, {}, {}, pilot={"b" * 24}) == 2
+    assert (tmp_path / "blocklist_ids.txt").read_text() == f"a\n{'b' * 24}\n"
+
+
+def tajriba_file(path: Path, players: list[tuple[str, str]], started: set[str]) -> Path:
+    """A minimal tajriba.json: one attribute record per line, as Empirica's event log writes them."""
+    def attr(node, key, val):
+        return json.dumps({"kind": "Attribute", "obj": {"key": key, "val": val, "nodeID": node}})
+    lines = [json.dumps({"version": "v1.12.1"}), attr("G1", "start", "false"), attr("G2", "start", "false")]
+    for i, (pid, game) in enumerate(players):
+        lines += [json.dumps({"kind": "Participant", "obj": {"Identifier": pid}}),
+                  attr(f"P{i}", "participantIdentifier", json.dumps(pid)), attr(f"P{i}", "gameID", json.dumps(game))]
+    lines += [attr(game, "start", "true") for game in started]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n")
+    return path
+
+
+def test_pilot_participants_come_from_the_zips_and_the_raw_tajriba_files(tmp_path):
+    """Players of started games and quiz failures count; lobby timeouts and test logins do not."""
+    played, quiz, lobby, early, early_lobby = ("a" * 24, "b" * 24, "c" * 24, "d" * 24, "e" * 24)
+    (tmp_path / "20260228_170936").mkdir()
+    make_export(tmp_path / "20260228_170936" / "empirica-export-20260228_170936.zip",
+                [{"id": "G1", "status": "ended"}, {"id": "F1", "status": "failed"}],
+                [player(played, "G1", ""), player("alice", "G1", ""),
+                 waiter_row(quiz, "F1", "", "game failed", intro="", attempts="3"),
+                 waiter_row(lobby, "F1", "", "game failed")])
+    tajriba_file(tmp_path / "20250327_232127" / "tajriba.json",
+                 [(early, "G1"), (early_lobby, "G2"), ("awerawer", "G1")], started={"G1"})
+    assert payments.pilot_participants(tmp_path) == {played, quiz, early}
 
 
 def test_a_finished_or_partial_code_blocks_a_player_the_exports_do_not_name(tmp_path):

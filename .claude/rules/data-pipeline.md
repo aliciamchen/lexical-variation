@@ -16,6 +16,7 @@ The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pil
 | Directory | Contents | Committed? |
 |-----------|----------|------------|
 | `experiment/data/<timestamp>/` | Raw Empirica export zips from `operations/copy_tajriba.sh` | No |
+| `experiment/pilot_data/<timestamp>/` | The pilot sessions' raw exports (zips, and for the March 2025 pilot only the server's `tajriba.json`); `make payments` reads them to blocklist pilot participants | No (gitignored) |
 | `data/runs/<timestamp>/` | Per-run extracts (the anonymized `raw/` CSVs), shared across datasets | No (gitignored) |
 | `data/payments/<name>/` | What each Prolific study still owes (`make payments`): one folder per study with the paste files `1_main.csv` (bonus, partial, lobby and unsubmitted pay, one line per person) and `2_overtime.csv`, plus `status.csv`; `repeats.csv` at the top lists anyone in more than one session. Rewritten on every run. Holds Prolific ids | No (gitignored) |
 | `data/<name>/runs.txt` | The export timestamps combined into the dataset, one per line | Yes |

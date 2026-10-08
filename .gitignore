@@ -12,6 +12,8 @@ scaffolding.R
 __pycache__
 .pytest_cache/
 experiment/data
+# The pilot sessions' raw exports, some unzipped, with Prolific ids
+experiment/pilot_data
 tajriba.json
 *.zip
 lexical-variation*/

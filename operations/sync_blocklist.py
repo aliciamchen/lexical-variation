@@ -1,7 +1,8 @@
 """Add everyone on blocklist_ids.txt to the participant group the scheduling surveys block.
 
 `make payments` writes data/payments/<dataset>/blocklist_ids.txt: everyone who
-has started a game, failed the quiz, or seen the social-first instructions. The scheduling surveys carry a
+has started a game, failed the quiz, or seen the social-first instructions, and
+everyone who took part in a pilot session. The scheduling surveys carry a
 `participant_group_blocklist` filter on the Prolific participant group named
 by GROUP_NAME, and a participant group is live: adding someone makes them
 ineligible for every study that blocks the group, including one that is

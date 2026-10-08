@@ -79,8 +79,9 @@ session. The survey blocks the participant group `Played the game` (a participan
 blocklist filter, which a duplicated survey keeps), and `make sync-blocklist` keeps that
 group current: after `make payments` it adds everyone in `blocklist_ids.txt`, that is,
 everyone who has started a game, the quiz failures, who have read the instructions and seen
-the quiz, and everyone assigned to a social-first game, whose instructions explain the Phase 2
-social task, even when that game never started for them. A participant group is live, so an
+the quiz, everyone assigned to a social-first game, whose instructions explain the Phase 2
+social task, even when that game never started for them, and everyone who took part in a pilot
+session. A participant group is live, so an
 addition takes effect at once on every survey that blocks it, a published one included. Lobby
 timeouts and overflow players ("no games available") of the other three conditions never
 started the task and stay eligible, which is why the survey does
@@ -306,20 +307,24 @@ The design is between subjects, so nobody may play twice. The game study is visi
 the session's Custom Allowlist, and the scheduling survey blocks the participant group
 `Played the game`, which `make sync-blocklist` fills from `blocklist_ids.txt`: every Prolific
 ID placed in a started game, every quiz failure, everyone assigned to a social-first game,
-and anyone whose game-study submission carries the finished or partial code (which catches a
-player who mistyped their ID on the identifier screen). Empirica assigns a participant to a
+anyone whose game-study submission carries the finished or partial code (which catches a
+player who mistyped their ID on the identifier screen), and everyone who took part in a pilot
+session, meaning they were placed in a started pilot game or failed a pilot quiz. `make payments`
+finds the pilot participants in the raw pilot exports in `experiment/pilot_data/`: the export
+zips, and the server's `tajriba.json` for the March 2025 pilot, which has no export zip. Empirica assigns a participant to a
 game as soon as they arrive and shows that game's instructions and quiz, and an overflow
 player keeps the assignment's treatment on their record, so `make payments` can tell who saw
 the social-first instructions, which explain Phase 2 in advance; they are blocked even when
 their game never started. The other three conditions share instructions that social-first only
-adds to, so their lobby timeouts and overflow players stay eligible. The group also holds the
-pilot and test players added before the full sample began. The survey does not exclude earlier
+adds to, so their lobby timeouts and overflow players stay eligible, as do the pilot's. The
+group also holds other pilot visitors and test players added before the full sample began. The survey does not exclude earlier
 game studies, whose participants include those eligible lobby timeouts. Until 7 October the survey did exclude every earlier game study, so the lobby
 timeouts and overflow players of those sessions were kept out of later ones. `make payments`
 also checks every export for a Prolific ID placed in more than one started game and prints a
-warning if it finds one. It also lists, for information, anyone who came back after an
-earlier visit that never reached a game, such as a lobby timeout, a quiz failure, or someone
-who saw the social-first instructions.
+warning if it finds one. It also lists anyone who took part in a pilot session and then
+played, and, for information, anyone who came back after an earlier visit that never reached
+a game, such as a lobby timeout, a quiz failure, or someone who saw the social-first
+instructions.
 
 ## Reference: how people are paid
 
