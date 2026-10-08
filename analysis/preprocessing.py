@@ -459,6 +459,33 @@ def _epoch_ms(series: pd.Series) -> pd.Series:
     return (delta // pd.Timedelta(milliseconds=1)).astype("Int64")
 
 
+def _late_arrival(pr: pd.DataFrame, flag: str, answer: str, at_deadline: str):
+    """Whether each listener's answer reached the server after the deadline.
+
+    The server sets `flag` (`late_click`, `late_social_guess`) at the end of
+    the Feedback stage, so an answer that arrives later still, after the
+    round is over, is recorded but never flagged (game 88DP5C, 2026-10-08: a
+    click 24 s past the deadline). The snapshot the server takes at the
+    deadline (`at_deadline`) settles it either way, so this applies the
+    server's own rule (`isLateClick` and `isLateSocialGuess` in
+    `experiment/server/src/idle.js`) as well as reading the flag. A missing
+    snapshot, as in exports from before September 2026, never counts as
+    late.
+    """
+    late = (
+        pr[flag].fillna(False).astype(bool)
+        if flag in pr.columns
+        else pd.Series(False, index=pr.index)
+    )
+    if answer in pr.columns and at_deadline in pr.columns:
+        absent_at_deadline = pr[at_deadline].map(
+            lambda v: v is False or str(v).lower() == "false"
+        )
+        answered = pr[answer].notna() & (pr[answer].astype(str) != "")
+        late = late | ((pr["role"] == "listener") & answered & absent_at_deadline)
+    return late.astype(bool).values
+
+
 def build_trials(
     player_round_df: pd.DataFrame,
     round_df: pd.DataFrame,
@@ -528,10 +555,9 @@ def build_trials(
     # at that instant, so the round earns no points; clickedCorrect is coded
     # False (no click yet), not null -- it is still coded, just coded as no
     # answer. Exports from before September 2026 do not have these attributes.
-    if "late_click" in pr.columns:
-        trials["lateClick"] = pr["late_click"].fillna(False).astype(bool).values
-    else:
-        trials["lateClick"] = False
+    trials["lateClick"] = _late_arrival(
+        pr, "late_click", "clicked", "clicked_at_deadline"
+    )
     # Participant-side timing (September 2026 onward; empty for the pilot).
     #
     # `clickedAt` is when the selection was committed to the server, which is
@@ -573,12 +599,9 @@ def build_trials(
     # the server at the end of the Feedback stage. Lateness has to be
     # established separately for each outcome, so a late tangram selection
     # says nothing about whether the social guess was on time.
-    if "late_social_guess" in pr.columns:
-        trials["lateSocialGuess"] = (
-            pr["late_social_guess"].fillna(False).astype(bool).values
-        )
-    else:
-        trials["lateSocialGuess"] = False
+    trials["lateSocialGuess"] = _late_arrival(
+        pr, "late_social_guess", "social_guess", "social_guess_at_deadline"
+    )
 
     # The server's own record of whether the designated speaker was replaced
     # (September 2026 onward); kept aside and added last so the column order

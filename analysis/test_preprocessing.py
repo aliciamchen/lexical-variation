@@ -565,6 +565,50 @@ def _trial_inputs(**player_round_extra):
     return pd.DataFrame(player_round), round_df, game_df
 
 
+class TestLateArrivals:
+    def test_the_servers_late_click_flag_is_kept(self):
+        pr, rd, gd = _trial_inputs(
+            late_click=[None, True], clicked_at_deadline=[None, False]
+        )
+        listener = build_trials(pr, rd, gd).query("role == 'listener'").iloc[0]
+        assert listener["lateClick"]
+
+    def test_a_click_that_arrived_after_the_round_is_late_without_the_flag(self):
+        # Game 88DP5C, 2026-10-08: the click reached the server after the end
+        # of Feedback, where the flag is set, so only the deadline snapshot
+        # records that it was late.
+        pr, rd, gd = _trial_inputs(
+            clicked_correct=[None, False],
+            late_click=[None, None],
+            clicked_at_deadline=[None, False],
+        )
+        listener = build_trials(pr, rd, gd).query("role == 'listener'").iloc[0]
+        assert listener["lateClick"]
+        # An unscored late click counts as a listener timeout.
+        assert listener["timeout"]
+
+    def test_a_click_present_at_the_deadline_is_on_time(self):
+        pr, rd, gd = _trial_inputs(
+            late_click=[None, None], clicked_at_deadline=[None, True]
+        )
+        listener = build_trials(pr, rd, gd).query("role == 'listener'").iloc[0]
+        assert not listener["lateClick"]
+
+    def test_an_export_without_the_deadline_snapshot_has_no_late_clicks(self):
+        pr, rd, gd = _trial_inputs()
+        assert not build_trials(pr, rd, gd)["lateClick"].any()
+
+    def test_a_social_guess_that_arrived_after_the_round_is_late(self):
+        pr, rd, gd = _trial_inputs(
+            social_guess=[None, "same_group"],
+            late_social_guess=[None, None],
+            social_guess_at_deadline=[None, False],
+        )
+        listener = build_trials(pr, rd, gd).query("role == 'listener'").iloc[0]
+        assert listener["lateSocialGuess"]
+        assert not listener["lateClick"]
+
+
 class TestTrialResponseTimes:
     def test_the_response_time_is_measured_within_the_participants_own_clock(self):
         # Stage rendered at 1000 on this browser, tangram chosen at 3500.

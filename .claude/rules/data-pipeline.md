@@ -184,7 +184,10 @@ all as 0.
 Lateness is established separately for each outcome: `lateClick` for a
 tangram selection and `lateSocialGuess` for a social guess, both set by the
 server at the end of the Feedback stage from a snapshot taken at the
-Selection deadline. Documented technical failures go in
+Selection deadline. An answer that reaches the server after Feedback has
+ended is recorded but never flagged, so `preprocessing.py` also reads the
+deadline snapshot (`clicked_at_deadline`, `social_guess_at_deadline`) and
+applies the server's own rule from `idle.js`. Documented technical failures go in
 `data/<dataset>/technical_exclusions.csv` (gameId, playerId, roundId,
 outcome, reason) and become missing rather than unsuccessful; the file is
 optional and every row needs a reason.
