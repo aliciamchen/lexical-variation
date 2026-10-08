@@ -19,7 +19,7 @@ The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pil
 | `data/runs/<timestamp>/` | Per-run extracts (the anonymized `raw/` CSVs), shared across datasets | No (gitignored) |
 | `data/payments/<name>/` | What each Prolific study still owes (`make payments`): one folder per study with the paste files `1_main.csv` (bonus, partial, lobby and unsubmitted pay, one line per person) and `2_overtime.csv`, plus `status.csv`; `repeats.csv` at the top lists anyone in more than one session. Rewritten on every run. Holds Prolific ids | No (gitignored) |
 | `data/<name>/runs.txt` | The export timestamps combined into the dataset, one per line | Yes |
-| `data/<name>/exclude_games.txt` | Optional input: Empirica game ids of test and rehearsal games to drop at the combine step (one per line, `#` comments) | Yes |
+| `data/<name>/exclude_games.txt` | Optional input: Empirica game ids of test and rehearsal games, and of games with a repeat participant, to drop at the combine step (one per line, `#` comments) | Yes |
 | `data/<name>/raw_anonymized/` | Anonymized raw Empirica CSVs stacked across those runs | Yes |
 | `data/<name>/*.csv` | Preprocessed analysis-ready CSVs (games, players, trials, messages, speaker_utterances, social_guesses) | Yes |
 | `data/<name>/manifest.json` | Provenance: which runs were combined, which games were filtered or excluded, how many dropout records | Yes |
