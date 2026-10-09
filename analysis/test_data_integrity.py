@@ -1778,10 +1778,22 @@ class TestMessages:
         (roundId, currentGroup) chat means either the click or the message
         data is corrupted. Rounds an excluded player spoke in are skipped,
         since the exclusion dropped their messages.
+
+        Late clicks are skipped too: a speaker message that reaches the server
+        after the deadline stays in the stage's chat but is left out of the
+        round's chat, which is what messages.csv is built from, while the
+        listener's browser has already shown it and so allows the click, which
+        then arrives late as well (game PY2GJM, 2026-10-08: the message 48 ms
+        after the deadline, the click 335 ms after, flagged lateClick and
+        scored as a timeout).
         """
+        late = (
+            trials["lateClick"].astype("boolean").fillna(False).astype(bool)
+            if "lateClick" in trials else False
+        )
         clicked = trials[
             (trials["role"] == "listener") & (trials["clicked"].notna())
-            & ~_excluded_speaker(trials)
+            & ~_excluded_speaker(trials) & ~late
         ]
         speaker_msg_keys = set(
             zip(
@@ -2129,12 +2141,19 @@ class TestPerGame:
         total_trials = len(game_trials)
         assert total_trials > 0, f"Game {game_id}: no trials found"
 
-        # Minimum: all 9 players for Phase 1 (6 blocks * 6 tangrams * 9)
-        # minus idle player's missed trials
-        # This is a loose sanity check
-        min_expected = (
-            PHASE_1_BLOCKS * NUM_TANGRAMS * (PLAYERS_PER_GAME - 1)
-        )
+        # Minimum: a full Phase 1 (6 blocks * 6 tangrams) for every player
+        # still there in its last block but one, whose missed trials an early
+        # idle removal can account for. This is a loose sanity check. Counting
+        # the players who reached the last block, rather than assuming nine,
+        # allows for games that lost several players early in Phase 1 and then
+        # ended at the accuracy screen (PY2GJM, 2026-10-08: one player per
+        # group removed in the first 12 minutes, 240 trials).
+        last_phase1_block = game_trials[
+            (game_trials["phaseNum"] == 1)
+            & (game_trials["blockNum"] == PHASE_1_BLOCKS - 1)
+        ]
+        present = min(last_phase1_block["playerId"].nunique(), PLAYERS_PER_GAME)
+        min_expected = PHASE_1_BLOCKS * NUM_TANGRAMS * max(present - 1, 0)
         assert total_trials >= min_expected, (
             f"Game {game_id}: only {total_trials} trials, expected at least "
             f"{min_expected}"
