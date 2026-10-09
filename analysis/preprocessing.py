@@ -222,6 +222,8 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
         "client_context",
         "engagement_events",
         "engagement_log_truncated",
+        "connection_events",
+        "connection_log_truncated",
         "partialPay",
         "partialBasePay",
         "partialBonus",
@@ -253,6 +255,8 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
         "client_context": "clientContext",
         "engagement_events": "engagementEvents",
         "engagement_log_truncated": "engagementLogTruncated",
+        "connection_events": "connectionEvents",
+        "connection_log_truncated": "connectionLogTruncated",
         "partialPay": "partialPay",
         "partialBasePay": "partialBasePay",
         "partialBonus": "partialBonus",
@@ -287,6 +291,7 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
 
     players = flatten_client_context(players)
     players = summarize_engagement(players)
+    players = summarize_connection(players)
 
     return players
 
@@ -354,6 +359,84 @@ def summarize_engagement(players: pd.DataFrame) -> pd.DataFrame:
     for column in summary_columns:
         players[column] = summaries.apply(lambda d, c=column: d[c])
     return players.drop(columns=["engagementEvents"])
+
+
+def summarize_connection(players: pd.DataFrame) -> pd.DataFrame:
+    """Reduce the raw connection log to per-player counts and disconnected time.
+
+    `ConnectionLog` (client/src/instrumentation.js, from 2026-09-25) appends a
+    `disconnect` event, with the drop's `durationMs`, once the websocket to the
+    game server is back, and a `page_load` event with the browser's navigation
+    type on every load, so a reload shows as `navigation: "reload"`. The
+    browser's own `offline` event, which the engagement log records, fires only
+    when the whole network goes, so this log is the record of the drops that
+    participants reported. The per-event list stays in the raw export; the tidy
+    table carries the counts, the total time disconnected, and whether the log
+    hit its cap (`connectionLogTruncated`). An export from before the log has
+    every column empty.
+    """
+    summary_columns = [
+        "disconnectCount",
+        "disconnectMs",
+        "pageLoadCount",
+        "reloadCount",
+    ]
+    if "connectionEvents" not in players.columns:
+        for column in summary_columns:
+            players[column] = pd.NA
+        if "connectionLogTruncated" not in players.columns:
+            players["connectionLogTruncated"] = pd.NA
+        return players
+
+    summaries = players["connectionEvents"].apply(
+        lambda raw: _connection_summary(parse_json_field(raw, "connection_events"))
+    )
+    for column in summary_columns:
+        players[column] = summaries.apply(lambda d, c=column: d[c])
+    if "connectionLogTruncated" not in players.columns:
+        players["connectionLogTruncated"] = pd.NA
+    return players.drop(columns=["connectionEvents"])
+
+
+def _connection_summary(events) -> dict:
+    """Counts and total disconnected time for one player's connection log.
+
+    A player whose record holds no list (an export from before the log, or a
+    participant whose client never wrote one) gets missing values, as the
+    engagement summary does, so "no log" is distinguishable from "no drops".
+    """
+    empty = {
+        "disconnectCount": pd.NA,
+        "disconnectMs": pd.NA,
+        "pageLoadCount": pd.NA,
+        "reloadCount": pd.NA,
+    }
+    if not isinstance(events, list):
+        return empty
+
+    disconnect_count = 0
+    disconnect_ms = 0
+    page_load_count = 0
+    reload_count = 0
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        kind = event.get("type")
+        if kind == "disconnect":
+            disconnect_count += 1
+            duration = event.get("durationMs")
+            if isinstance(duration, (int, float)) and not isinstance(duration, bool):
+                disconnect_ms += max(0, int(duration))
+        elif kind == "page_load":
+            page_load_count += 1
+            if event.get("navigation") == "reload":
+                reload_count += 1
+    return {
+        "disconnectCount": disconnect_count,
+        "disconnectMs": disconnect_ms,
+        "pageLoadCount": page_load_count,
+        "reloadCount": reload_count,
+    }
 
 
 def _engagement_summary(events) -> dict:

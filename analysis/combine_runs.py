@@ -234,7 +234,45 @@ def exclude_games(
 
 
 DROPOUTS_FILE = "dropouts.csv"
-DROPOUT_COLUMNS = ["playerId", "batchId", "ended", "exitReason", "quizAttempts"]
+DROPOUT_COLUMNS = [
+    "playerId",
+    "batchId",
+    "ended",
+    "exitReason",
+    "quizAttempts",
+    "condition",
+    "tangramSet",
+]
+
+
+def batch_treatments(batch_df: pd.DataFrame | None) -> pd.DataFrame:
+    """The condition and tangram set each batch was created with.
+
+    A batch's `config` is the JSON Empirica stores when the batch is created;
+    for a complete-assignment batch it lists the treatments with their factor
+    values. Every session batch here holds exactly one treatment (one batch per
+    game), which is what gives a dropout record a condition even though the
+    player never reached a game with one. A batch with several treatments, or
+    an unreadable config, gets missing values rather than a guess.
+    """
+    out = pd.DataFrame(columns=["batchId", "condition", "tangramSet"])
+    if batch_df is None or "id" not in batch_df.columns or "config" not in batch_df.columns:
+        return out
+    rows = []
+    for batch_id, raw in zip(batch_df["id"], batch_df["config"]):
+        condition, tangram_set = pd.NA, pd.NA
+        try:
+            treatments = json.loads(raw)["config"]["treatments"]
+            if len(treatments) == 1:
+                factors = treatments[0]["treatment"]["factors"]
+                condition = factors.get("condition", pd.NA)
+                tangram_set = factors.get("tangramSet", pd.NA)
+        except (TypeError, ValueError, KeyError, IndexError, AttributeError):
+            pass
+        rows.append({"batchId": batch_id, "condition": condition, "tangramSet": tangram_set})
+    if not rows:
+        return out
+    return pd.DataFrame(rows).drop_duplicates("batchId")
 
 
 def split_dropouts(
@@ -242,6 +280,7 @@ def split_dropouts(
     games_all: pd.DataFrame,
     combined: dict[str, pd.DataFrame],
     excluded_game_ids: list[str],
+    batches_all: pd.DataFrame | None = None,
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """Separate the player records that never played a real game.
 
@@ -252,8 +291,11 @@ def split_dropouts(
     and with them the attrition the manuscript has to report. They are written
     to `dropouts.csv` instead: one row per player record with no real game,
     with the batch it belonged to (through its game, when it had one), how
-    Empirica ended it, the exit reason the server set, and how many quiz
-    attempts it made. A record attached to a real game that was never started
+    Empirica ended it, the exit reason the server set, how many quiz attempts
+    it made, and the condition and tangram set of that batch's treatment
+    (`batches_all`, the batch table before any game was filtered; see
+    `batch_treatments`), so that quiz failures and lobby timeouts can be
+    reported by condition. A record attached to a real game that was never started
     (no original group, so the game began without it) is a dropout too and is
     moved out of player.csv. Players of games listed in exclude_games.txt are
     neither data nor dropouts and are left out.
@@ -274,15 +316,21 @@ def split_dropouts(
     is_dropout = (no_real_game | never_started) & ~in_excluded
 
     rows = players_all[is_dropout]
+    batch_ids = rows["gameID"].map(game_batch)
+    treatments = batch_treatments(batches_all).set_index("batchId")
     dropouts = pd.DataFrame(
         {
             "playerId": rows["id"].values,
-            "batchId": rows["gameID"].map(game_batch).values,
+            "batchId": batch_ids.values,
             "ended": rows["ended"].values if "ended" in rows.columns else pd.NA,
             "exitReason": rows["exitReason"].values if "exitReason" in rows.columns else pd.NA,
             "quizAttempts": pd.to_numeric(
                 rows["quiz_attempts"] if "quiz_attempts" in rows.columns else pd.Series(pd.NA, index=rows.index),
                 errors="coerce",
+            ).astype("Int64").values,
+            "condition": batch_ids.map(treatments["condition"]).values,
+            "tangramSet": pd.to_numeric(
+                batch_ids.map(treatments["tangramSet"]), errors="coerce"
             ).astype("Int64").values,
         },
         columns=DROPOUT_COLUMNS,
@@ -302,10 +350,9 @@ def split_dropouts(
 def enforce_anonymization(combined: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Strip sensitive Prolific columns if any slipped through extraction.
 
-    The output directory (data/<dataset>/raw_anonymized/) is committed to the
-    repo, so anonymization must be guaranteed here regardless of how the
-    per-run raw/ files were produced -- runs extracted before anonymization
-    was added to extract_run.py still carry these columns.
+    The output directory (data/<dataset>/raw_anonymized/) is committed for the
+    pilot and released for the full sample, so anonymization is guaranteed
+    here regardless of how the per-run raw/ files were produced.
     """
     player_df = combined.get("player.csv")
     if player_df is None:
@@ -453,6 +500,7 @@ def main():
     # Kept before any game is filtered, for the dropout record below.
     players_all = combined["player.csv"].copy()
     games_all = combined["game.csv"].copy()
+    batches_all = combined["batch.csv"].copy() if "batch.csv" in combined else None
 
     print("\nFiltering failed games...")
     combined, failed_game_ids = filter_failed_games(combined)
@@ -464,7 +512,9 @@ def main():
     combined, excluded_game_ids = exclude_games(combined, excluded)
 
     print("\nRecording player records with no real game...")
-    combined, dropouts = split_dropouts(players_all, games_all, combined, excluded_game_ids)
+    combined, dropouts = split_dropouts(
+        players_all, games_all, combined, excluded_game_ids, batches_all
+    )
     dropouts_path = dirs.data / DROPOUTS_FILE
     dirs.data.mkdir(parents=True, exist_ok=True)
     dropouts.to_csv(dropouts_path, index=False)

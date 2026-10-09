@@ -499,6 +499,38 @@ class TestEngagementSummary:
         assert players["offlineCount"].isna().all()
 
 
+class TestConnectionSummary:
+    def test_disconnects_and_page_loads_are_counted(self):
+        events = (
+            '[{"t": 1000, "type": "page_load", "navigation": "navigate"},'
+            ' {"t": 5000, "type": "disconnect", "durationMs": 2500},'
+            ' {"t": 9000, "type": "page_load", "navigation": "reload"},'
+            ' {"t": 12000, "type": "disconnect", "durationMs": 400}]'
+        )
+        players = build_players(
+            _minimal_player_df(connection_events=[events], connection_log_truncated=[False])
+        )
+        assert players["disconnectCount"].tolist() == [2]
+        assert players["disconnectMs"].tolist() == [2900]
+        assert players["pageLoadCount"].tolist() == [2]
+        assert players["reloadCount"].tolist() == [1]
+        assert players["connectionLogTruncated"].tolist() == [False]
+        # The raw event list is replaced by its summary, not carried twice.
+        assert "connectionEvents" not in players.columns
+
+    def test_a_log_with_no_drops_reads_zero_not_missing(self):
+        events = '[{"t": 1000, "type": "page_load", "navigation": "navigate"}]'
+        players = build_players(_minimal_player_df(connection_events=[events]))
+        assert players["disconnectCount"].tolist() == [0]
+        assert players["disconnectMs"].tolist() == [0]
+
+    def test_an_export_without_a_connection_log_still_has_the_columns(self):
+        players = build_players(_minimal_player_df())
+        assert players["disconnectCount"].isna().all()
+        assert players["reloadCount"].isna().all()
+        assert players["connectionLogTruncated"].isna().all()
+
+
 class TestPlayerSchemaIsStableAcrossExportVintages:
     def test_columns_added_later_are_present_and_empty_in_an_older_export(self):
         players = build_players(_minimal_player_df())
@@ -1343,6 +1375,51 @@ class TestDropouts:
         only_real = players_all[players_all["id"] == "p_ok"]
         _, dropouts = split_dropouts(only_real, games_all, combined, [])
         assert dropouts.empty and dropouts.columns.tolist() == DROPOUT_COLUMNS
+
+    @staticmethod
+    def _batches():
+        def config(condition, tangram_set):
+            return (
+                '{"kind": "complete", "config": {"treatments": [{"treatment": '
+                '{"name": "x", "desc": "", "factors": {"condition": "%s", '
+                '"playerCount": 9, "tangramSet": %d}}, "count": 1}]}}'
+                % (condition, tangram_set)
+            )
+        return pd.DataFrame({
+            "id": ["b0", "b1"],
+            "config": [config("refer_mixed", 0), config("social_first", 1)],
+        })
+
+    def test_dropouts_carry_the_condition_and_tangram_set_of_their_batch(self):
+        # A quiz failure or lobby timeout never reached a game with a
+        # condition, but the batch it was in was created for one treatment,
+        # so attrition can still be reported by condition.
+        players_all, games_all, combined = self._tables()
+        _, dropouts = split_dropouts(
+            players_all, games_all, combined, ["REHEARSAL"], self._batches()
+        )
+        by_id = dropouts.set_index("playerId")
+        assert by_id.loc["p_quiz", "condition"] == "social_first"
+        assert by_id.loc["p_quiz", "tangramSet"] == 1
+        assert by_id.loc["p_lobby", "condition"] == "social_first"
+        assert pd.isna(by_id.loc["p_late", "condition"])  # never reached a batch
+
+    def test_without_a_batch_table_the_treatment_columns_are_empty(self):
+        players_all, games_all, combined = self._tables()
+        _, dropouts = split_dropouts(players_all, games_all, combined, ["REHEARSAL"])
+        assert dropouts["condition"].isna().all()
+        assert dropouts["tangramSet"].isna().all()
+
+    def test_a_batch_with_several_treatments_gets_no_condition(self):
+        from combine_runs import batch_treatments
+
+        two = (
+            '{"kind": "complete", "config": {"treatments": ['
+            '{"treatment": {"factors": {"condition": "refer_mixed", "tangramSet": 0}}, "count": 1},'
+            '{"treatment": {"factors": {"condition": "social_mixed", "tangramSet": 0}}, "count": 1}]}}'
+        )
+        out = batch_treatments(pd.DataFrame({"id": ["b2", "b3"], "config": [two, "not json"]}))
+        assert out["condition"].isna().all()
 
 
 # ── Utterance assembly, malformed JSON, and the command-line guards ─────────
