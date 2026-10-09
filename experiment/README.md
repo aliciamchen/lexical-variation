@@ -2,18 +2,21 @@
 
 ## Recruiting participants and running experiment
 
+The full sample was collected in 31 Prolific sessions between 2026-09-22 and 2026-10-08. This
+section, and the runbook it points to, record how a session was run.
+
 The game needs nine people online at once, so participants are recruited in two stages: a
 short screening and scheduling form, then a session at an announced time. Around 75% of the
 people who say on the form that they can make it actually show up, so plan on inviting
 roughly twice the number of players you need.
 
 The full procedure, the messages sent to participants on Prolific, the per-session show-up
-numbers from the pilots, and the operational gotchas are in
+numbers from the full-sample sessions, and the operational gotchas are in
 [`operations/procedures.md`](../operations/procedures.md).
 
-Recruitment, approvals and payment are done on the Prolific website. Two commands help
-around a session: `make tally DATASET=full` counts the games in each condition and tangram
-set, so the next session can run the emptiest cell, and `make payments DATASET=full` lists,
+Recruitment, approvals and payment are done on the Prolific website. Two commands support
+that work: `make tally DATASET=full` counts the games in each condition and tangram set
+(during collection, the emptiest cell was the treatment the next session ran), and `make payments DATASET=full` lists,
 for each Prolific study, who is still owed a bonus, partial pay or lobby payment, with
 paste-ready files for Prolific's bulk bonus form. The second needs `PROLIFIC_TOKEN` in the
 repository-root `.env` and only reads from Prolific.
@@ -31,7 +34,7 @@ empirica
 - Admin: http://localhost:3000/admin
 - Players: http://localhost:3000/
 
-Click "New Batch" in admin, select a treatment, then open 9 player tabs. Each player goes through consent → identifier → instructions → quiz before entering the lobby. On Prolific the study link carries `PROLIFIC_PID`, and the identifier field is filled from it and locked so that ids cannot be mistyped; without that parameter, as in local testing and the Playwright suite, the field is editable and any identifier can be typed.
+Click "New Batch" in admin, select a treatment, then open 9 player tabs. Each player goes through consent → identifier → instructions → quiz before entering the lobby. On Prolific the study link carries `PROLIFIC_PID`, and the identifier field is filled from it and locked; without that parameter, as in local testing, the Playwright suite, or a participant who reached the game through a link sent by message, the field is editable and the identifier is typed.
 
 There are 4 between-subjects conditions (treatments): `refer_separated`, `refer_mixed`, `social_mixed`, `social_first`.
 
@@ -85,8 +88,8 @@ than a shared link.
 
 When creating the batch, pick the treatment for the session: there are two per condition, one
 per tangram set (names without a suffix use set 0, the "tangram set 1" variants use set 1).
-Alternate the sets across sessions within a condition so they are counterbalanced, 10 games
-per set per condition in the full sample.
+The sets were alternated across sessions within a condition so they are counterbalanced: 15
+games per set per condition in the full sample.
 
 ## Copying data locally
 
@@ -111,7 +114,7 @@ Client errors are reported to Sentry via `@sentry/react` (configured in `client/
 
 Every URL that Sentry reports is cut at the `?` before it leaves the browser, so the Prolific ids in the study link's query string never reach Sentry; the Sentry user is the Empirica player id only. Errors, performance events and breadcrumbs are covered by `beforeSend`, `beforeSendTransaction` and `beforeBreadcrumb` in `index.jsx`. Session replays need their own handling, because the SDK runs none of those hooks for them: the same scrubbing function is also registered as a global event processor, and `beforeAddRecordingEvent` cuts the page address out of the recording itself.
 
-During pilot sessions, keep the Sentry dashboard open to watch for client errors, slow page loads, and websocket disconnections.
+During a session, keep the Sentry dashboard open to watch for client errors and slow page loads. A websocket drop shows up in Sentry as an unhandled error from Empirica's `TajribaParticipant.emit`, which is noise rather than a game bug; the connection log on each player record is the record of disconnects.
 
 ## Playwright tests
 

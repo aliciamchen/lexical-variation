@@ -20,7 +20,7 @@
 │   ├── tests/                # Playwright end-to-end tests
 │   └── .empirica/            # Treatments, lobbies, config
 ├── data/
-│   ├── pilots/               # Pilot dataset (committed); the full sample sits beside it, uncommitted until collection ends
+│   ├── pilots/               # Pilot dataset (committed); the full sample (data/full/, gitignored) sits beside it until its public release
 │   └── runs/                 # Per-run outputs from extract_run.py (gitignored)
 ├── analysis/                 # Analysis code & outputs
 │   ├── derived/              # Derived metrics per dataset (derived/pilots/ committed)
@@ -80,9 +80,9 @@ git config core.hooksPath .githooks
 
 See [`experiment/README.md`](experiment/README.md) for full documentation on local development, production deployment, running sessions, copying data, error monitoring, and testing. The Prolific side of a session (the screening survey, the allowlist, reminders, publishing, approvals and payments) is done by hand on the Prolific website, and the step-by-step runbook is [`operations/procedures.md`](operations/procedures.md).
 
-Two commands support that work. `make tally DATASET=full` counts the intact games in `data/<dataset>/games.csv` in each of the eight condition-by-tangram-set cells and marks the emptiest cell, which is the treatment the next session should run. It also reports progress against both halves of the preregistered stopping rule, which ends recruitment at whichever limit comes first: 20 intact nine-player games in every condition, or 120 games started in total. The cap counts every game that began, including those that lost a player or did not finish, and `tally` says so when either limit is reached. `make payments DATASET=full` lists what each Prolific study still owes (see [Payments](#payments)). Backups taken with `operations/copy_tajriba.sh` each land in their own `experiment/data/<timestamp>/empirica-export-<timestamp>.zip`, named by the export's timestamp, so every backup during a session is an export the pipeline can find; the loop carries on through a failed connection and stops only after three consecutive failures.
+Two commands supported that work. `make tally DATASET=full` counts the games in `data/<dataset>/games.csv` in each of the eight condition-by-tangram-set cells, started, intact nine-player and partial, and reports them against the stopping rule the sample was collected under: 120 started games in total, balanced as 30 per condition and 15 per treatment, where a started game counts whether or not it lost a player or finished. During collection the cell with the fewest started games was the treatment the next session ran. `make payments DATASET=full` lists what each Prolific study still owes (see [Payments](#payments)). Backups taken with `operations/copy_tajriba.sh` each landed in their own `experiment/data/<timestamp>/empirica-export-<timestamp>.zip`, named by the export's timestamp, so every backup during a session is an export the pipeline can find; the loop carried on through a failed connection and stopped only after three consecutive failures.
 
-Participants reach the game from Prolific with their ID in the study link, and the identifier field is filled from it and locked so that ids cannot be mistyped. The last page of the exit survey keeps the completion code on screen (there is no Finish button to click past it), and reloading during the survey resumes at the first unanswered page. If a batch has to be stopped mid-game, the participants see an explanation, answer the exit survey, and receive the partial completion code with base pay prorated to their time plus the bonus earned so far. Sentry, which monitors client errors, receives no query strings (so no Prolific ids) and records session replays only for sessions that hit an error.
+Participants reach the game from Prolific with their ID in the study link, and the identifier field is filled from it and locked; someone who reaches the game through a link sent by message types their ID instead, which is one reason the payment step matches people by completion code and time rather than by the typed ID alone. The last page of the exit survey keeps the completion code on screen (there is no Finish button to click past it), and reloading during the survey resumes at the first unanswered page. If a batch has to be stopped mid-game, the participants see an explanation, answer the exit survey, and receive the partial completion code with base pay prorated to their time plus the bonus earned so far. Sentry, which monitors client errors, receives no query strings (so no Prolific ids) and records session replays only for sessions that hit an error.
 
 Quick start for local development:
 
@@ -109,7 +109,7 @@ See [`experiment/README.md`](experiment/README.md) for details on test architect
 
 ## Data files
 
-The preprocessed pilot data is in `data/pilots/`. See [`data/pilots/README.md`](data/pilots/README.md) for descriptions of the data columns. 
+Two datasets share one layout and one set of column definitions, described in [`data/pilots/README.md`](data/pilots/README.md). The pilot (`data/pilots/`, four games from early 2026, one per condition) is committed. The full sample (`data/full/`) was collected in 31 Prolific sessions between 2026-09-22 and 2026-10-08 and holds 120 started games, 30 per condition and 15 per condition-by-tangram-set treatment, of which 63 ran to the end with all nine players. It is gitignored and stays on the author's machine until it is released in the RefBank format for reference-game corpora, after the preregistered exclusion review and classifier check. Its columns are the pilot's plus the September 2026 instrumentation described below and `gameTerminated` in `games.csv`, which marks a game the researcher stopped from the admin panel.
 
 | File | Description |
 |------|-------------|
@@ -122,13 +122,16 @@ The preprocessed pilot data is in `data/pilots/`. See [`data/pilots/README.md`](
 | `speaker_utterances.csv` | Speaker messages concatenated per round (all messages) |
 | `speaker_utterances_filtered.csv` | Same as above, but with non-referential messages removed first |
 | `social_guesses.csv` | Listener guesses about speaker group membership (social conditions only) |
-| `dropouts.csv` | One row per participant who reached the experiment but played no real game (quiz failure, lobby timeout, arrival after the games were full), with the batch, how Empirica ended the record, the exit reason, and the number of quiz attempts. This is what the attrition report counts |
+| `dropouts.csv` | One row per participant who reached the experiment but played no real game (quiz failure, lobby timeout, arrival after the games were full), with the batch, how Empirica ended the record, the exit reason, the number of quiz attempts, and the condition and tangram set of the batch's treatment, so that quiz failures and lobby timeouts can be counted by condition. This is what the attrition report counts |
+| `integrity_exceptions.csv` | Optional input for the integrity suite, absent for the pilot: one row per documented case where an invariant that `analysis/test_data_integrity.py` checks does not hold, with the invariant's name, the game, player and round it concerns, and the reason. The full sample has two kinds: six exit surveys lost when the server crashed on the night of 2026-09-23 while participants were on the survey page, and five trials in which a double click wrote the commit time and the choice time in separate writes so that the commit appears to precede the choice by under a second. The tests that read the file require the cases they find to match it exactly, so a new case fails the suite and so does a documented case that has disappeared. The file records data loss and instrumentation races with their reasons; it is not a way to make failing data pass |
 | `speaker_utterances_filtered.source.json` | The sha256 and row count of the `messages.csv` that `speaker_utterances_filtered.csv` was built from. `compute_derived.py` refuses a filtered file whose record is missing or does not match, so a stale filtered file can never be analyzed in place of the current data |
 | `participant_exclusions.csv`, `exclude_games.txt` | Optional inputs, absent for the pilot. `exclude_games.txt` lists the Empirica game ids of rehearsal or deploy-check games that ran on the production server, and of games excluded because a player in them had already played an earlier session (one per line, `#` comments, each with its reason); `combine_runs.py` drops them and every row that belongs to them, so they are neither analyzed nor counted toward the stopping rule. Their players are still paid, because the payment step reads the exports themselves and ignores this file: a game excluded for a repeat participant was played in full by people who are owed for it. `participant_exclusions.csv` lists `playerId,reason` for participants excluded after the fact; preprocessing drops their messages and sets `excluded` and `exclusionReason` on their own rows and on the rows of the listeners they described to, in `trials.csv` and `social_guesses.csv`, so every derived measure is recomputed without them. Their exit-survey answers are responses too, so preprocessing blanks them in `players.csv` and flags the player's row there; the row itself stays because the attrition and pay records still need it, and the answers remain in `raw_anonymized/player.csv` |
 
 Sessions from September 2026 onward also record response times, how long each
 chat message took to compose, the device and viewport the participant played
-on, and when they switched away from the tab or lost their connection. These
+on, when they switched away from the tab or lost their network connection, and,
+from 2026-09-25, how often and for how long their connection to the game server
+dropped and how many times they reloaded the page. These
 columns are empty in the pilot data, which predates the instrumentation, and
 are described alongside the others in `data/pilots/README.md`. Timestamps taken
 in the participant's browser are meaningful only relative to one another within
@@ -160,7 +163,7 @@ The `make test` target runs the data integrity suite on the processed CSVs toget
 
 ### Datasets
 
-The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pilots`, and the full sample will be a second dataset beside it rather than an edit of the pilot paths. Every dataset follows the same layout, which is defined once in `analysis/dataset_paths.py` for the Python scripts and mirrored in `analysis/config.R` for the notebooks:
+The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pilots`, and the full sample is the dataset `full` beside it, never an edit of the pilot paths. Every dataset follows the same layout, which is defined once in `analysis/dataset_paths.py` for the Python scripts and mirrored in `analysis/config.R` for the notebooks:
 
 | Path | Contents |
 |------|----------|
@@ -197,7 +200,7 @@ The output is written to `data/payments/<dataset>/`, which is gitignored because
 
 ### Processing new data
 
-Raw Empirica exports (`.zip` files) are in `experiment/data/<timestamp>/` via `empirica export` or the backup script. They are not committed because they contain identifiable participant data, and they are never edited: each folder is the record of what the server held at that moment, and everything downstream is regenerated from it. The full sample's processed data is not committed yet either; it will be released after collection ends, converted to the RefBank format for reference-game corpora. Before adding an export to a dataset, run it through a throwaway dataset first:
+Raw Empirica exports (`.zip` files) are in `experiment/data/<timestamp>/` via `empirica export` or the backup script. They are not committed because they contain identifiable participant data, and they are never edited: each folder is the record of what the server held at that moment, and everything downstream is regenerated from it. Because the backup script exported the server every five minutes and each export is a cumulative snapshot, most folders are earlier states of a later one; `make final-exports` (`operations/final_exports.py`) stages the last export of each server period, with every export's server log, in the gitignored `backups/final_exports/` for the off-site copy, and verifies that those exports hold every record. The full sample's processed data (`data/full/`) is not committed either; it stays local until it is released in the RefBank format for reference-game corpora. An export that is new to a dataset goes through a throwaway dataset first:
 
 ```bash
 make smoke ZIP=experiment/data/<run>/empirica-export-<run>.zip
@@ -250,7 +253,7 @@ bash figures/sync_figures.sh   # copies SI_*.pdf into writing/preregistration/fi
 
 ### Notebooks for the full sample
 
-These run the preregistered analyses on whichever dataset `DATASET` names, and default to the pilot data (`data/pilots/` and `analysis/derived/pilots/`) because the full sample has not been collected yet. Once it has, `make notebooks DATASET=<name>` renders all of them against it.
+These run the preregistered analyses on whichever dataset `DATASET` names. Without it they run on the pilot data (`data/pilots/` and `analysis/derived/pilots/`), which is what a clone of this repository holds; that render exercises the code but gives no results, since the pilot has one game per condition, and it says so in a banner. `make notebooks DATASET=full` renders them against the full sample. Each notebook writes its statistics as `\newcommand` macros to `writing/manuscript/stats/<notebook>.tex` for the article, and the Bayes factors in `02` take many hours on the full sample, so that render is launched detached (see `.claude/skills/run-analysis/SKILL.md`).
 
 | Notebook | Purpose |
 |----------|---------|

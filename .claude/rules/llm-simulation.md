@@ -46,7 +46,7 @@ The processing script (`process_llm_results.py`) automatically skips incomplete 
 
 ## Non-Referential Message Filter
 
-LLM-based classifier to filter non-referential messages (e.g., "thanks", "good job") from speaker utterances before SBERT embedding analysis. Uses Gemini via Vertex AI: `gemini-2.5-flash` by default and for the full sample, `gemini-2.0-flash` for the pilot labels (see `.claude/rules/data-pipeline.md`). The preregistration promises a manual check of the classifications before the primary condition contrasts are examined, not a held-out agreement target; `sample` and `validate` are the tools for that check, and it has not been done for the full sample yet.
+LLM-based classifier to filter non-referential messages (e.g., "thanks", "good job") from speaker utterances before SBERT embedding analysis. Uses Gemini via Vertex AI: `gemini-2.5-flash` by default and for the full sample, `gemini-2.0-flash` for the pilot labels (see `.claude/rules/data-pipeline.md`). The preregistration promises a manual check of the classifications before the primary condition contrasts are examined, not a held-out agreement target; `sample` and `validate` are the tools for that check; for the full sample the 200-message sample was drawn on 2026-10-09 into `data/full/annotation_sample.csv` (stratified by length and block, condition not shown), and the author labels it and runs `validate` before the confirmatory render.
 
 ```bash
 # Sample messages for human annotation (stratified by length and block)

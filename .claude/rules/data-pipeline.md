@@ -4,6 +4,7 @@ paths:
   - "data/**"
   - "experiment/data/**"
   - "operations/copy_tajriba.sh"
+  - "operations/final_exports.py"
   - "operations/payments.py"
 ---
 
@@ -11,7 +12,7 @@ paths:
 
 ## Datasets
 
-The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pilots`; the full sample will be a second dataset beside it (suggested name `full`), never an edit of the pilot paths. The layout is defined once in `analysis/dataset_paths.py` (Python scripts) and mirrored in `analysis/config.R` (`use_dataset()`, for the notebooks); keep the two in sync. The active dataset is `--dataset` on a script, else the `DATASET` environment variable, else `pilots`. `make` exports `DATASET` to every step, so `make all DATASET=full` runs the whole pipeline on the full sample.
+The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pilots`; the full sample is the dataset `full` beside it, never an edit of the pilot paths. The layout is defined once in `analysis/dataset_paths.py` (Python scripts) and mirrored in `analysis/config.R` (`use_dataset()`, for the notebooks); keep the two in sync. The active dataset is `--dataset` on a script, else the `DATASET` environment variable, else `pilots`. `make` exports `DATASET` to every step, so `make all DATASET=full` runs the whole pipeline on the full sample.
 
 | Directory | Contents | Committed? |
 |-----------|----------|------------|
@@ -19,17 +20,18 @@ The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pil
 | `experiment/pilot_data/<timestamp>/` | The pilot sessions' raw exports (zips, and for the March 2025 pilot only the server's `tajriba.json`); `make payments` reads them to blocklist pilot participants | No (gitignored) |
 | `data/runs/<timestamp>/` | Per-run extracts (the anonymized `raw/` CSVs), shared across datasets | No (gitignored) |
 | `data/payments/<name>/` | What each Prolific study still owes (`make payments`): one folder per study with the paste files `1_main.csv` (bonus, partial, lobby and unsubmitted pay, one line per person) and `2_overtime.csv`, plus `status.csv`; `repeats.csv` at the top lists anyone in more than one session, and `unexplained.csv` the bonuses paid on Prolific that no row accounts for. Rewritten on every run. Holds Prolific ids | No (gitignored) |
-| `data/<name>/runs.txt` | The export timestamps combined into the dataset, one per line | Yes |
+| `data/<name>/runs.txt` | The export timestamps combined into the dataset, one per line (`#` comments allowed). For the full sample, the last export of each of the 31 server periods, as `operations/final_exports.py` identifies them | Yes |
 | `data/<name>/exclude_games.txt` | Optional input: Empirica game ids of test and rehearsal games, and of games with a repeat participant, to drop at the combine step (one per line, `#` comments). `make payments` ignores it, so those games' players are still paid, blocklisted and repeat-checked | Yes |
 | `data/<name>/raw_anonymized/` | Anonymized raw Empirica CSVs stacked across those runs | Yes |
 | `data/<name>/*.csv` | Preprocessed analysis-ready CSVs (games, players, trials, messages, speaker_utterances, social_guesses) | Yes |
 | `data/<name>/manifest.json` | Provenance: which runs were combined, which games were filtered or excluded, how many dropout records | Yes |
-| `data/<name>/dropouts.csv` | Written by `combine_runs.py`: one row per player record with no real game (`playerId,batchId,ended,exitReason,quizAttempts`), for the attrition report | Yes |
+| `data/<name>/dropouts.csv` | Written by `combine_runs.py`: one row per player record with no real game (`playerId,batchId,ended,exitReason,quizAttempts,condition,tangramSet`, the last two from the batch's treatment so quiz failures and lobby timeouts can be counted by condition; the pilot's file has the first five columns only), for the attrition report | Yes |
 | `data/<name>/participant_exclusions.csv` | Optional input: `playerId,reason` for participants excluded after the fact; preprocessing drops their messages, flags `excluded`/`exclusionReason` on trials.csv, social_guesses.csv and players.csv, and blanks their exit-survey answers in players.csv | Yes |
+| `data/<name>/integrity_exceptions.csv` | Optional input for the integrity suite: `invariant,gameId,playerId,roundId,reason`, one row per documented case where an invariant of `test_data_integrity.py` does not hold (an exit survey lost to the 2026-09-23 server crash, `exit_survey_missing`; a commit time recorded before the choice time by a double click, `commit_before_choice`). The tests that read it assert that the cases they find are exactly the documented ones, so a new case fails and so does a documented case that has disappeared. Never a way to make bad data pass: the reason is required, and the file records data loss or instrumentation races, not analytic choices | Yes |
 | `data/<name>/speaker_utterances_filtered.source.json` | Sidecar written by `filter_nonreferential.py apply`: the sha256 and row count of the `messages.csv` the filtered utterances were built from | Yes |
 | `data/smoke/`, `analysis/derived/smoke/` | Throwaway dataset written by `make smoke ZIP=<zip>` | No (delete after use) |
 | `analysis/derived/<name>/` | Computed outputs from `compute_derived.py`: embeddings, SBERT similarities, the same pairs scored by content-word Jaccard (`pairwise_similarities_jaccard.csv`, `block_pairwise_similarities_jaccard.csv`), UMAP, and cached model fits | Yes |
-| `figures/<name>/` | Notebook figures (`figures/pilots/` holds the SI figures from `SI_pilot.qmd`) | Yes |
+| `figures/<name>/` | Notebook figures (`figures/pilots/` holds the SI figures from `SI_pilot.qmd`; notebooks `00`–`05` do not save figures yet, so `figures/full/` is empty) | `pilots` yes; `full` no, gitignored with the rest of the full sample |
 | `figures/llm_plots/` | SI PDF figures from `SI_llm_simulation.qmd` | Yes |
 
 Cached fits are keyed to their inputs: `group_specificity.R` stores a hash of the pairwise data next to `gs_results_<speaker structure>.rds` and recomputes when it differs, and `bayes_factors.R` names each fit by a hash of data and formula. The speaker structure is in both the hash and the filename, so the full-sample notebooks and `SI_pilot.qmd` keep separate caches instead of overwriting each other's permutation run on every render. A stale cache can therefore not be reused silently, but recomputing the permutation test takes several minutes. The brms fits under `analysis/derived/<name>/bayes_factors/` are gitignored (tens of megabytes, reproducible); the group-specificity RDS files are committed.
@@ -45,6 +47,7 @@ Cached fits are keyed to their inputs: `group_specificity.R` stores a hash of th
   bash operations/copy_tajriba.sh --help     # show usage
   ```
   The script SSHs into the production server (set via `EMPIRICA_SERVER` in `.env`), runs `empirica export` in `~/empirica` to produce a CSV zip, then copies it locally into `experiment/data/<timestamp>/`. Safe to run while the experiment is live. Exits automatically after 3 consecutive failures.
+- Off-site backup of the raw exports: `make final-exports` (`operations/final_exports.py`) stages the last export of each server period in `backups/final_exports/exports/<timestamp>/`, found by checking that a later export holds every record of an earlier one in every table, together with every export's server log in `server-logs/` (each log covers only the twenty minutes before its export) and a `manifest.json` and `README.md`. The full sample's 376 five-minute exports reduce to 31 that hold every record, and `data/full/runs.txt` names exactly those 31; the script reports any registered run that is not a period's final export. `backups/` is gitignored and holds identifiable data.
 
 ## Pipeline scripts
 
@@ -126,7 +129,7 @@ make test DATASET=pilots
 make notebooks DATASET=pilots
 ```
 
-Starting the full sample: `mkdir data/full`, write its `runs.txt`, then the same commands with `--dataset full` (or `make all DATASET=full`). The integrity suite applies the production bonus rate to every dataset other than `pilots`.
+The full sample is rebuilt with the same commands and `--dataset full` (`make all DATASET=full`); the `rebuild-dataset` skill is the procedure for reprocessing it after a code change or an exclusion. The integrity suite applies the production bonus rate to every dataset other than `pilots`.
 
 ## Browsing runs
 
@@ -158,7 +161,7 @@ All notebooks source `config.R`, which sets `data_dir`, `derived_dir`, and `figu
 | `SI_pilot.qmd` | Pilot data analyses → `figures/pilots/` + `writing/preregistration/stats/pilot.tex` |
 | `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark → `figures/llm_plots/` + `writing/preregistration/stats/llm.tex` |
 
-**For the full sample** (the preregistered analyses; `make notebooks DATASET=<name>` renders all of them, and they default to the pilot data until the full sample exists):
+**For the full sample** (the preregistered analyses; `make notebooks DATASET=full` renders all of them, and without `DATASET` they run on the pilot, which exercises the code but gives no results):
 
 | Notebook | Purpose |
 |----------|---------|
@@ -169,7 +172,7 @@ All notebooks source `config.R`, which sets `data_dir`, `derived_dir`, and `figu
 | `04_exploratory.qmd` | Exploratory analyses |
 | `05_exit_survey.qmd` | Exit survey responses |
 
-Interim renders: `BAYES_FACTORS=never make notebooks DATASET=full` skips the brms refits behind the Bayes factors, which took about 13 hours on 57 games (three contrasts, 10,000 iterations across four chains, bridge sampling on two trial-level models); `BAYES_FACTORS=always` computes one for every planned contrast. The fits are cached by a hash of their data in `analysis/derived/<dataset>/bayes_factors/`, so a render on unchanged data reuses them, and a full render after new sessions belongs in a detached `nohup` run. The per-game group-specificity estimates carry a `singular` flag (a tangram or speaker-pair variance at zero) and the fits print no lme4 boundary messages; a cache written before the flag existed is refit for the observed models only, and the permutation results are reused.
+Renders without Bayes factors: `BAYES_FACTORS=never make notebooks DATASET=full` skips the brms refits behind the Bayes factors, which took about 13 hours on 57 games (three contrasts, 10,000 iterations across four chains, bridge sampling on two trial-level models); `BAYES_FACTORS=always` computes one for every planned contrast. The fits are cached by a hash of their data in `analysis/derived/<dataset>/bayes_factors/`, so a render on unchanged data reuses them, and the confirmatory render belongs in a detached `nohup` run (the `run-analysis` skill). The per-game group-specificity estimates carry a `singular` flag (a tangram or speaker-pair variance at zero) and the fits print no lme4 boundary messages; a cache written before the flag existed is refit for the observed models only, and the permutation results are reused.
 
 ## Accuracy denominators
 
@@ -194,8 +197,8 @@ outcome, reason) and become missing rather than unsuccessful; the file is
 optional and every row needs a reason.
 
 `SI_pilot.qmd` uses the default response-opportunity denominator, like the
-full-sample notebooks (realigned with the manuscript on 2026-09-19);
-`denominator = "submitted"` reproduces the earlier coding for comparison.
+full-sample notebooks; `denominator = "submitted"` counts only scored answers
+and is kept for comparison.
 
 ## Session instrumentation and the two clocks
 
@@ -229,9 +232,13 @@ ended it (`shared/engagement.js`). So the two always arrive as a pair, and a
 participant who went offline and never returned leaves no `offline` record at
 all -- their absence shows up as missing data instead.
 
-`players.csv` carries the device context as flattened `client*` columns and the
+`players.csv` carries the device context as flattened `client*` columns, the
 engagement log as counts (`tabHiddenCount`, `tabHiddenMs`, `offlineCount`,
-`resizeCount`, `engagementLogTruncated`); the per-event list stays in
+`resizeCount`, `engagementLogTruncated`), and, for sessions from 2026-09-25,
+the connection log as counts too (`disconnectCount`, `disconnectMs`,
+`pageLoadCount`, `reloadCount`, `connectionLogTruncated`: drops of the
+websocket to the game server, which the browser's `offline` event does not
+see, and page reloads); the per-event lists stay in
 `raw_anonymized/player.csv`. The raw user agent is recorded during a session
 for debugging but is in `SENSITIVE_COLUMNS` in `extract_run.py`, so it is
 stripped at anonymization and never committed.
@@ -259,4 +266,4 @@ Figures are generated in `figures/<name>/` (`figures/pilots/` for the SI) and `f
 bash figures/sync_figures.sh
 ```
 
-This copies all `SI_*.pdf` files into `writing/preregistration/figures/`. Overleaf doesn't support paths outside the project root, so figures must live inside `writing/preregistration/`. **Do not run it against `writing/preregistration/` now.** The preregistration is frozen, and its `figures/SI_group_specificity_generated.pdf`, which `main.tex` includes, was edited by hand by the author on 2026-09-21; the copy in `figures/pilots/` is the raw notebook output, so the script would overwrite the edit (Overleaf history is the only backup). The older `SI_group_specificity.pdf` beside it is the March figure, also hand-adjusted. Point the script at `writing/manuscript` once that project exists.
+This copies all `SI_*.pdf` files into `writing/preregistration/figures/`. Overleaf doesn't support paths outside the project root, so figures must live inside `writing/preregistration/`. **Do not run it against `writing/preregistration/` now.** The preregistration is frozen, and its `figures/SI_group_specificity_generated.pdf`, which `main.tex` includes, was edited by hand by the author on 2026-09-21; the copy in `figures/pilots/` is the raw notebook output, so the script would overwrite the edit (Overleaf history is the only backup). The older `SI_group_specificity.pdf` beside it is the March figure, also hand-adjusted. The article's project, `writing/manuscript/`, is where the script should point once the author has created it (so far only its `stats/` directory exists, written by the notebooks).

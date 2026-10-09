@@ -1,5 +1,8 @@
 # Running a data-collection session
 
+Collection is complete: the full sample's 31 sessions ran between 2026-09-22 and 2026-10-08,
+and this runbook is the record of how each was run, kept as written for the methods section.
+
 This is the runbook for one session of the reference game: recruiting five games' worth of
 people (45 players, all in one treatment) on Prolific to be online at the same moment,
 running the games, and paying everyone afterwards. Recruitment, approvals and payments are done
@@ -171,8 +174,10 @@ is paid through their scheduling-survey submission (see "Reference: how people a
 for the exit survey, take one more export with `bash operations/copy_tajriba.sh --once`, and
 stop the backup loop.
 
-**2. Run the export through the pipeline.** Claude does this with the `process-new-run` skill
-when told the session is done; it also refreshes the published pages. By hand:
+**2. Run the export through the pipeline.** During collection an agent did this when told the
+session was done, and also refreshed the published pages; the procedure now lives in the
+`rebuild-dataset` skill, which regenerates the dataset from the final export of each server
+period. By hand:
 
 ```bash
 make smoke ZIP=experiment/data/<ts>/empirica-export-<ts>.zip   # check the export first
