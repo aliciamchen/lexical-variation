@@ -585,6 +585,120 @@ class TestLobbyWaiters:
         assert payments.lobby_waiters(payments.visits_without_a_game([early, late])) == {}
 
 
+def timed(pid, started, completed=None, **kw):
+    sub = submission(pid, **kw)
+    sub["started_at"] = started
+    if completed:
+        sub["completed_at"] = completed
+    return sub
+
+
+class TestAssignWaiters:
+    """Each lobby wait is paid exactly once, including waits reached through a link sent by message."""
+
+    def wait(self, study="", entered="2026-10-08T20:04:00Z", ended="game failed"):
+        return {"w": [payments.Visit("w", study, entered, ended, waited=True)]}
+
+    def survey(self, **kw):
+        return timed("w", "2026-10-08T19:44:00Z", "2026-10-08T19:45:00Z", status="APPROVED", **kw)
+
+    def settle_all(self, studies, subs, assigned, game_studies):
+        for sid, study in studies.items():
+            payments.settle(study, subs.get(sid, []), set(), waiters=assigned.get(sid, {}),
+                            game_study=sid in game_studies)
+        return sorted((sid, p.kind) for sid, study in studies.items() for p in study.payees)
+
+    def test_a_wait_reached_through_a_link_is_paid_through_the_survey(self):
+        studies = {"S34": payments.Study("S34")}
+        subs = {"S34": [], "SURVEY34": [self.survey()]}
+        assigned = payments.assign_waiters(studies, {}, subs, self.wait(), {"S34"})
+        assert assigned == {}
+        [lobby] = studies["SURVEY34"].payees
+        assert (lobby.kind, lobby.study_source) == ("lobby", "unsubmitted")
+        self.settle_all(studies, subs, assigned, {"S34"})
+        # The survey's approval paid its own small reward, not the base, so the lobby pay is still owed.
+        assert lobby.ready and lobby.still_owed == round(prolific.LOBBY_TIMEOUT_PAY, 2)
+
+    def test_a_wait_the_lobby_code_accounts_for_is_left_to_settle(self):
+        coded = timed("w", "2026-10-08T20:30:00Z", "2026-10-08T20:31:00Z", code=LOBBY)
+        studies = {"S34": payments.Study("S34")}
+        subs = {"S34": [coded], "SURVEY34": [self.survey()]}
+        assigned = payments.assign_waiters(studies, {}, subs, self.wait(), {"S34"})
+        assert self.settle_all(studies, subs, assigned, {"S34"}) == [("S34", "lobby")]
+
+    def test_the_lobby_code_typed_into_the_survey_is_paid_there_in_full(self):
+        studies = {"S34": payments.Study("S34")}
+        subs = {"S34": [], "SURVEY34": [self.survey(code=LOBBY)]}
+        assigned = payments.assign_waiters(studies, {}, subs, self.wait(), {"S34"})
+        assert self.settle_all(studies, subs, assigned, {"S34"}) == [("SURVEY34", "lobby")]
+        [lobby] = studies["SURVEY34"].payees
+        assert lobby.ready and lobby.study_source == "unsubmitted"
+
+    def test_a_wait_followed_by_a_game_in_the_same_session_is_not_paid(self):
+        played = {("w", "G1"): payments.Payee("w", "", "bonus", 6.0, game="G1", joined_at="2026-10-08T20:10:00Z")}
+        studies = {}
+        assigned = payments.assign_waiters(studies, played, {"SURVEY34": [self.survey()]}, self.wait(), set())
+        assert assigned == {} and studies == {}
+
+    def test_a_game_in_a_later_session_does_not_cancel_the_wait(self):
+        played = {("w", "G1"): payments.Payee("w", "", "bonus", 6.0, game="G1", joined_at="2026-10-08T23:08:00Z")}
+        studies = {}
+        payments.assign_waiters(studies, played, {"SURVEY34": [self.survey()]}, self.wait(), set())
+        assert [p.kind for p in studies["SURVEY34"].payees] == ["lobby"]
+
+    def test_two_records_in_one_session_are_one_wait(self):
+        waits = {"w": [payments.Visit("w", "", "2026-10-08T23:04:00Z", "no more games", waited=True),
+                       payments.Visit("w", "", "2026-10-08T23:08:00Z", "no more games", waited=True)]}
+        studies = {}
+        payments.assign_waiters(studies, {}, {"SURVEY36": [self.survey()]}, waits, set())
+        assert [p.kind for p in studies["SURVEY36"].payees] == ["lobby"]
+
+    def test_a_wait_two_game_studies_account_for_is_paid_in_one(self):
+        returned_survey = timed("w", "2026-10-08T19:44:00Z", status="RETURNED")  # no end: open three hours
+        first = timed("w", "2026-10-08T19:50:00Z", status="RETURNED")
+        second = timed("w", "2026-10-08T20:00:00Z", status="RETURNED")
+        studies = {"S33": payments.Study("S33"), "S34": payments.Study("S34")}
+        subs = {"S33": [first], "S34": [second], "SURVEY34": [returned_survey]}
+        assigned = payments.assign_waiters(studies, {}, subs, self.wait(study="S34"), {"S33", "S34"})
+        assert self.settle_all(studies, subs, assigned, {"S33", "S34"}) == [("S34", "lobby")]
+
+    def test_an_earlier_sessions_open_submission_does_not_pay_a_coded_wait_again(self):
+        # Returned without an end, the earlier session's submission counts as open for three
+        # hours, which reaches into the next session, where the wait was paid by its code.
+        earlier = timed("w", "2026-10-08T15:40:00Z", status="RETURNED")
+        coded = timed("w", "2026-10-08T18:45:00Z", "2026-10-08T18:50:00Z", status="RETURNED", code=LOBBY)
+        studies = {"S32": payments.Study("S32"), "S33": payments.Study("S33")}
+        subs = {"S32": [earlier], "S33": [coded]}
+        assigned = payments.assign_waiters(studies, {}, subs, self.wait(study="S33", entered="2026-10-08T18:35:00Z"),
+                                           {"S32", "S33"})
+        assert self.settle_all(studies, subs, assigned, {"S32", "S33"}) == [("S33", "lobby")]
+
+    def test_with_no_earlier_submission_the_wait_has_no_study(self):
+        studies = {}
+        later = timed("w", "2026-10-09T19:44:00Z", "2026-10-09T19:45:00Z")
+        payments.assign_waiters(studies, {}, {"SURVEY35": [later]}, self.wait(), set())
+        assert [p.kind for p in studies[payments.NO_STUDY].payees] == ["lobby"]
+
+    def test_lobby_pay_beside_paid_game_pay_on_one_submission_is_still_owed(self):
+        # Waited out a failed lobby, then played in a later session, both paid through one survey submission.
+        study = payments.Study("SURVEY22")
+        study.payees = [payments.Payee("w", "SURVEY22", "unsubmitted", 19.62, game="G1", study_source="unsubmitted"),
+                        payments.Payee("w", "SURVEY22", "lobby", 2.0, study_source="unsubmitted")]
+        payments.settle(study, [timed("w", "2026-10-04T23:25:00Z", "2026-10-04T23:26:00Z", status="APPROVED",
+                                      paid_cents=[1962])], {"w"})
+        game, lobby = study.payees[:2]
+        assert not game.ready and game.already_paid == 19.62
+        assert lobby.ready and lobby.already_paid == 0 and lobby.still_owed == 2.0
+
+    def test_lobby_pay_through_a_survey_is_not_awaiting_return(self, tmp_path):
+        study = payments.Study("SURVEY18", internal_name="survey 18", created="2026-09-27T01:00:00")
+        study.payees = [payments.Payee("w", "SURVEY18", "lobby", 2.0, still_owed=2.0, ready=True,
+                                       status="AWAITING REVIEW", submitted_at="2026-09-27T01:46:00",
+                                       study_source="unsubmitted")]
+        [row] = payments.write_outputs({"SURVEY18": study}, tmp_path / "out", offline=False)
+        assert row["awaiting_return"] == 0 and row["lobby_ready"] == 1
+
+
 class TestReturnedFinisher:
     def test_a_returned_finisher_is_owed_the_base_as_a_bonus_too(self):
         study = payments.Study("S1")

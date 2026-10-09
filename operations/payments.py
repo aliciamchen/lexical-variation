@@ -19,9 +19,13 @@ are identified mainly the way they were told to claim their pay: by the
 lobby-timeout completion code on their Prolific submission, which also covers
 overflow players Empirica turned away with "no more games", whose exit screen
 shows the same code. Someone who returned the study without entering that code
-is found from the export instead (visits_without_a_game). A study in
+is found from the export instead (visits_without_a_game), and someone who
+reached the lobby through a link sent by message, with no submission in the
+session's study at all, is paid through their latest earlier submission,
+normally the scheduling survey (assign_waiters). A study in
 which nobody reached a started game is found through those lobby records when
-the study link recorded it; otherwise pass it with --study.
+the study link recorded it, or through a submission bearing the lobby code
+among the recent studies; otherwise pass it with --study.
 
 The output is one folder per study under data/payments/<dataset>/, named by the
 study's creation date and internal name, with paste-ready files for Prolific's
@@ -39,11 +43,13 @@ Rules: a finisher is owed their bonus, plus the BASE_PAY reward when they
 returned their submission (a returned submission cannot be approved); a
 removed player their partial pay; a lobby-timeout participant
 LOBBY_TIMEOUT_PAY. A partial or lobby amount is paid as a bonus on a RETURNED
-or AWAITING REVIEW submission. An APPROVED one already received the full base reward, so only the
-part of the amount above BASE_PAY is still owed (removed players who played
+or AWAITING REVIEW submission. An APPROVED game-study submission already received the full base
+reward, so only the part of the amount above BASE_PAY is still owed (removed players who played
 most of the game can be owed more than the base). What Prolific
 records as paid in `bonus_payments` is subtracted, so a partly paid person is
-owed only the rest. Players in games listed in data/<dataset>/exclude_games.txt
+owed only the rest; when one submission carries several of a person's rows, the
+payment counts against their game pay first, then partial or lobby pay, then
+overtime. Players in games listed in data/<dataset>/exclude_games.txt
 are paid like everyone else: excluding a game from the analysis, as for a
 game with a repeat participant, changes nothing about what its players are
 owed, and they stay on the blocklist and in the repeat check. The files
@@ -108,6 +114,10 @@ PILOT_EXPORTS = PROJECT_ROOT / "experiment" / "pilot_data"
 PROLIFIC_ID = re.compile(r"[0-9a-f]{24}")
 # The paste files, in the order they are pasted, and the kinds each one holds.
 PASTE_FILES = (("1_main.csv", ("bonus", "partial", "lobby", "unsubmitted")), ("2_overtime.csv", ("overtime",)))
+# The order in which what Prolific records as paid on a submission is counted
+# against one person's rows: their game pay first, then partial or lobby pay, then
+# overtime, which is pasted last.
+PAID_ORDER = {"bonus": 0, "unsubmitted": 0, "partial": 1, "lobby": 1, "overtime": 2}
 # Prolific approves a submission left awaiting review this long after it was
 # submitted, which pays a removed player or lobby timeout the full base reward.
 AUTO_APPROVAL = timedelta(days=21)
@@ -621,18 +631,92 @@ def _waited_in(waiter: Visit, study_id: str, submission: dict) -> bool:
     return start - timedelta(minutes=10) <= entered <= end
 
 
+def assign_waiters(studies: dict[str, Study], payees: dict[tuple[str, str], Payee],
+                   submissions: dict[str, list[dict]], waiters: dict[str, list[Visit]],
+                   game_studies: set[str]) -> dict[str, dict[str, list[Visit]]]:
+    """Decide where each lobby wait is paid; return the waits settle is to pay, by study.
+
+    One person's records within RETURN_GAP of each other are one wait (a
+    reload), and a wait followed within RETURN_GAP by a game the same person
+    played is paid with that game. settle pays one wait for every submission
+    that bears the lobby code, wherever the person typed it, so each such
+    submission accounts for the person's wait nearest to it in time, and its
+    study is added to `studies` when missing, since settle sees only those. A
+    remaining wait belongs to the game study the link recorded or whose
+    submission was open when they entered the lobby (_waited_in), the latest
+    of these when there are several, so that it is paid once. Someone who
+    reached the lobby through a link sent by message, because Prolific showed
+    them the session's study late, has no such submission: their
+    scheduling-survey submission closed hours before. Their wait is paid
+    here, through the latest submission that started before it, as
+    place_unsubmitted does for players, or listed under NO_STUDY when there is
+    none.
+    """
+    joined: dict[str, list[datetime]] = {}
+    for (pid, _), payee in payees.items():
+        if _when(payee.joined_at):
+            joined.setdefault(pid, []).append(_when(payee.joined_at))
+    own: dict[str, list[tuple[str, dict]]] = {}
+    for sid, subs in submissions.items():
+        for sub in subs:
+            if sub.get("participant_id"):
+                own.setdefault(sub["participant_id"], []).append((sid, sub))
+    assigned: dict[str, dict[str, list[Visit]]] = {}
+    for pid, visits in waiters.items():
+        waits: list[Visit] = []
+        for visit in sorted(visits, key=lambda v: v.entered_at):
+            entered = _when(visit.entered_at)
+            previous = _when(waits[-1].entered_at) if waits else None
+            if entered and previous and entered - previous < RETURN_GAP:
+                continue
+            if entered and any(timedelta(0) <= start - entered < RETURN_GAP for start in joined.get(pid, [])):
+                continue
+            waits.append(visit)
+        for sid, sub in own.get(pid, []):
+            played_there = any(p.participant == pid and p.kind != "lobby" for p in studies.get(sid, Study(sid)).payees)
+            if prolific.submission_code(sub) != prolific.LOBBY_TIMEOUT_CODE or played_there:
+                continue
+            studies.setdefault(sid, Study(sid))
+            at = _when(sub.get("completed_at")) or _when(sub.get("started_at"))
+            if waits:
+                waits.remove(min(waits, key=lambda v: abs((_when(v.entered_at) - at).total_seconds())
+                                 if at and _when(v.entered_at) else 0))
+        for visit in waits:
+            claiming = [(sid, sub) for sid, sub in own.get(pid, [])
+                        if sid in game_studies and _waited_in(visit, sid, sub)]
+            if claiming:
+                sid = max(claiming, key=lambda c: (c[0] == visit.study_id, _when(c[1].get("started_at")) or datetime.min))[0]
+                studies.setdefault(sid, Study(sid))
+                assigned.setdefault(sid, {}).setdefault(pid, []).append(visit)
+                continue
+            entered = _when(visit.entered_at)
+            if entered is None:
+                continue
+            earlier = [(_when(sub.get("started_at")), sid) for sid, sub in own.get(pid, [])
+                       if _when(sub.get("started_at")) and _when(sub.get("started_at")) <= entered]
+            sid = max(earlier)[1] if earlier else NO_STUDY
+            reason = "lobby timeout" if visit.ended == "game failed" else "no more games"
+            studies.setdefault(sid, Study(sid)).payees.append(Payee(
+                participant=pid, study_id=sid, kind="lobby", amount=round(prolific.LOBBY_TIMEOUT_PAY, 2),
+                exit_reason=f"{reason} (no submission in the session's study)", study_source="unsubmitted",
+            ))
+    return assigned
+
+
 def settle(study: Study, submissions: list[dict], game_payees: set[str],
            overtime_after: float = OVERTIME_AFTER_MINUTES, game_rate: float | None = None,
-           waiters: dict[str, list[Visit]] | None = None) -> None:
+           waiters: dict[str, list[Visit]] | None = None, game_study: bool = True) -> None:
     """Add the study's lobby timeouts and decide what each payee is still owed.
 
     `submissions` is the study's submission list from Prolific, which carries
     `status` and `bonus_payments` (paid bonuses, in cents); `game_payees` is
     everyone who played a game in this study, so that nobody is also counted as
     one of its lobby timeouts. It is per study because the same person can wait
-    out a lobby in one session and play in the next. `waiters` (from
-    lobby_waiters) finds lobby timeouts who returned the study without
-    entering the lobby code.
+    out a lobby in one session and play in the next. `waiters` (the waits
+    assign_waiters gave this study) finds lobby timeouts who returned the study
+    without entering the lobby code. `game_study` is false for a study that is
+    not a session's game study, such as a scheduling survey someone typed the
+    lobby code into, whose approval paid only its own reward.
     """
     by_participant = {s.get("participant_id"): s for s in submissions if s.get("participant_id")}
     for pid, sub in by_participant.items():
@@ -648,6 +732,7 @@ def settle(study: Study, submissions: list[dict], game_payees: set[str],
         study.payees.append(Payee(
             participant=pid, study_id=study.study_id, kind="lobby",
             amount=round(prolific.LOBBY_TIMEOUT_PAY, 2), exit_reason=reason,
+            study_source="" if game_study else "unsubmitted",
         ))
     for payee in study.payees:
         sub = by_participant.get(payee.participant)
@@ -661,8 +746,11 @@ def settle(study: Study, submissions: list[dict], game_payees: set[str],
         overtime = overtime_payee(study, payee, by_participant.get(payee.participant), overtime_after, rate)
         if overtime:
             study.payees.append(overtime)
-    earned = {p.participant: p.amount for p in study.payees if p.kind in ("bonus", "unsubmitted")}
-    for payee in study.payees:
+    # Bonuses already paid on the submission are counted against the person's
+    # rows in PAID_ORDER, so a lobby payment beside game pay on one survey
+    # submission is not taken as paid when only the game pay was.
+    unclaimed: dict[str, float] = {}
+    for payee in sorted(study.payees, key=lambda p: PAID_ORDER[p.kind]):
         sub = by_participant.get(payee.participant)
         if sub is None:
             payee.status, payee.note = "no submission", "no submission from this participant in this study"
@@ -670,19 +758,15 @@ def settle(study: Study, submissions: list[dict], game_payees: set[str],
             continue
         payee.status = prolific.norm_status(sub.get("status"))
         payee.submitted_at = (sub.get("completed_at") or "")[:19]
-        paid = round(sum(sub.get("bonus_payments") or []) / 100.0, 2)
-        if payee.kind in ("bonus", "unsubmitted"):
-            # Bonuses already paid count against the performance bonus first,
-            # and anything beyond it against the overtime.
-            payee.already_paid = min(paid, payee.amount)
-        elif payee.kind == "overtime":
-            payee.already_paid = round(max(0.0, paid - earned.get(payee.participant, 0.0)), 2)
-        else:
-            payee.already_paid = paid
+        paid = unclaimed.setdefault(payee.participant, round(sum(sub.get("bonus_payments") or []) / 100.0, 2))
+        payee.already_paid = round(min(paid, payee.amount), 2)
+        unclaimed[payee.participant] = round(paid - payee.already_paid, 2)
         payee.still_owed = round(max(0.0, payee.amount - payee.already_paid), 2)
-        if payee.kind in ("partial", "lobby") and payee.status == "APPROVED":
+        if payee.kind in ("partial", "lobby") and payee.status == "APPROVED" and payee.study_source != "unsubmitted":
             # Approval paid the full base reward, which covers a partial or lobby
-            # amount up to BASE_PAY; only the part above it is still owed.
+            # amount up to BASE_PAY; only the part above it is still owed. A wait
+            # paid through another study (a scheduling survey) got only that
+            # study's reward.
             payee.still_owed = round(max(0.0, payee.amount - prolific.BASE_PAY - payee.already_paid), 2)
             if payee.still_owed > 0:
                 payee.ready = True
@@ -741,7 +825,8 @@ def write_outputs(studies: dict[str, Study], out_dir: Path, offline: bool) -> li
         row["not_ready"] = sum(1 for p in study.payees if not p.ready and p.still_owed > 0)
         # Removed players and lobby timeouts must return their submission; one
         # still awaiting review is approved by Prolific at AUTO_APPROVAL.
-        waiting = [p for p in study.payees if p.kind in ("partial", "lobby") and p.status == "AWAITING REVIEW"]
+        waiting = [p for p in study.payees if p.kind in ("partial", "lobby") and p.status == "AWAITING REVIEW"
+                   and p.study_source != "unsubmitted"]
         row["awaiting_return"] = len(waiting)
         dates = [_when(p.submitted_at) for p in waiting if _when(p.submitted_at)]
         row["auto_approval"] = (min(dates) + AUTO_APPROVAL).date().isoformat() if dates else ""
@@ -861,24 +946,33 @@ def main(argv=None) -> None:
         candidates = sorted({p.study_id for p in payees.values() if p.study_id} | set(args.study)
                             | {w.study_id for ws in waiters.values() for w in ws if w.study_id})
         submissions = {sid: list(prolific.paged(f"/studies/{sid}/submissions/", token)) for sid in candidates}
+        # The session studies, which pay the game's base reward on approval; a
+        # scheduling survey pays a few cents. Found by reward below, so that a
+        # session study no player record names (no game in it started) counts.
+        game_studies = set(candidates)
         assign_studies(payees, submissions)
         game_rate = next((round(s["reward"] / 100.0 / s["estimated_completion_time"], 4) for s in
                           (prolific.api("GET", f"/studies/{sid}/", token) or {} for sid in candidates[-1:])
                           if s.get("reward") and s.get("estimated_completion_time")), None)
-        if any(not p.study_id for p in payees.values()):
-            # Players with no game-study submission: look through the other
-            # recent studies (the scheduling surveys) for somewhere to pay them.
-            first = min((_when(p.joined_at) for p in payees.values() if _when(p.joined_at)), default=None)
-            others = [s["id"] for s in prolific.paged("/studies/", token)
+        if waiters or any(not p.study_id for p in payees.values()):
+            # Players with no game-study submission, and lobby waiters who may
+            # have none: look through the other recent studies (the scheduling
+            # surveys) for somewhere to pay them.
+            first = min([_when(p.joined_at) for p in payees.values() if _when(p.joined_at)]
+                        + [_when(w.entered_at) for ws in waiters.values() for w in ws if _when(w.entered_at)],
+                        default=None)
+            others = [s for s in prolific.paged("/studies/", token)
                       if s["id"] not in submissions and first and _when(s.get("date_created"))
                       and _when(s.get("date_created")) >= first - timedelta(days=2)]
-            for sid in dict.fromkeys(others):
+            game_studies |= {s["id"] for s in others if (s.get("reward") or 0) / 100.0 >= prolific.BASE_PAY}
+            for sid in dict.fromkeys(s["id"] for s in others):
                 submissions[sid] = list(prolific.paged(f"/studies/{sid}/submissions/", token))
             place_unsubmitted(payees, submissions)
             candidates = sorted(set(candidates) | {p.study_id for p in payees.values() if p.study_id})
         studies = group_by_study(payees)
         for study_id in candidates:
             studies.setdefault(study_id, Study(study_id))
+        assigned = assign_waiters(studies, payees, submissions, waiters, game_studies)
         for study in studies.values():
             if study.study_id == NO_STUDY:
                 for payee in study.payees:
@@ -893,8 +987,9 @@ def main(argv=None) -> None:
             study.created = (info.get("date_created") or "")[:19]
             study.estimated_minutes = int(info.get("estimated_completion_time") or 0)
             study.reward = round((info.get("reward") or 0) / 100.0, 2)
-            in_study = {p.participant for p in study.payees}
-            settle(study, submissions[study.study_id], in_study, args.overtime_after, game_rate, waiters)
+            in_study = {p.participant for p in study.payees if p.kind != "lobby"}
+            settle(study, submissions[study.study_id], in_study, args.overtime_after, game_rate,
+                   assigned.get(study.study_id, {}), study.study_id in game_studies)
     else:
         for study in studies.values():
             mark_unverified(study)

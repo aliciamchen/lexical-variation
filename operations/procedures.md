@@ -351,11 +351,14 @@ including overflow players Empirica turned away with "no more games" -- are paid
 and a note. Their game never started, so `make payments` finds them by the lobby-timeout code
 on their submission, or, when they returned without entering it, by their export record, which
 shows they waited in the lobby (quiz failures and people who left during the instructions are
-not paid).
+not paid). Someone who waited after arriving through a link sent by message has no submission in
+the session's study, so there is nothing for them to return, and their $2 is paid on their
+scheduling-survey submission instead.
 
 **Players who never submitted the game study** (usually because they played through a link
 sent by message) are paid the $12 base plus their bonus, or their partial pay, as a bonus on
-their scheduling-survey submission; these lines are in that survey's `1_main.csv`.
+their scheduling-survey submission, and so are lobby timeouts in the same position; these lines
+are in that survey's `1_main.csv`.
 
 `make payments` applies all of this: a partial or lobby amount is listed in full for a
 submission that is returned or awaiting review; for one that was approved anyway, which
