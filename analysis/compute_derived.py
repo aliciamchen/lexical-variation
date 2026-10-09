@@ -45,25 +45,35 @@ def compute_adjacent_similarities(
 ) -> pd.DataFrame:
     """
     For each ORIGINAL group x tangram, compute cosine similarity between
-    successive descriptions across blocks within a phase, regardless of which
-    member spoke. In Phase 1 (and refer_separated) this is cross-speaker
-    convention convergence within the conversing group. In Phase 2 of the mixed
-    conditions original-group members no longer converse with one another, so
-    there it measures retention of the original group's convention, not
-    adjacency within a conversation.
+    successive descriptions across blocks, regardless of which member spoke:
+    `sim_adjacent` in the preregistration, "the cosine similarity between each
+    description and the one that most recently preceded it for the same
+    original group and the same tangram". In Phase 1 (and refer_separated)
+    this is cross-speaker convention convergence within the conversing group.
+    In Phase 2 of the mixed conditions original-group members no longer
+    converse with one another, so there it measures retention of the original
+    group's convention, not adjacency within a conversation.
 
-    Ordering within a group is by block, then trial, then player id, so ties
-    (two original-group members describing the same tangram in the same block,
-    possible after a speaker reassignment) are resolved deterministically.
+    The sequence runs across the phase boundary, as the preregistration
+    defines it: a group's first Phase 2 description of a tangram is compared
+    with its last Phase 1 description, which is exactly the retention the
+    Phase 2 measure is for. Only the first description of each group and
+    tangram has no predecessor.
+
+    Ordering within a group is by phase, then block, then trial, then player
+    id, so ties (two original-group members describing the same tangram in the
+    same block, possible after a speaker reassignment) are resolved
+    deterministically.
     """
     df = utterances.copy()
     df["embedding_idx"] = range(len(df))
     order_cols = [c for c in ["gameId", "originalGroup", "target", "phaseNum", "blockNum", "trialNum", "playerId"] if c in df.columns]
     df = df.sort_values(order_cols, kind="stable").copy()
 
-    # Shift to get previous embedding index within each (game, group, target, phase)
+    # The previous description's embedding within each (game, group, target),
+    # across both phases
     df["prev_embedding_idx"] = df.groupby(
-        ["gameId", "originalGroup", "target", "phaseNum"]
+        ["gameId", "originalGroup", "target"]
     )["embedding_idx"].shift(1)
 
     def get_similarity(row):
@@ -339,9 +349,12 @@ def build_block_pairwise_table(utterances: pd.DataFrame, similarity) -> pd.DataF
     to be describable. It is 0 for the first block of each phase, where each
     group has exactly one description and the cell holds between-group pairs
     alone, and for later cells where a removed or reassigned speaker has left
-    a group with one describer of that tangram. Consumers that need the
-    contrast filter on the flag (`specificity_eligible()` in analysis/R/prepare.R);
-    the descriptive within-vs-between panel plots every pair."""
+    a group with one describer of that tangram. A cell also needs at least two
+    original groups with a description, or there is no between-group pair to
+    compare against: a group that has described a tangram twice before any
+    other group has is not eligible. Consumers that need the contrast filter on the flag
+    (`specificity_eligible()` in analysis/R/prepare.R); the descriptive
+    within-vs-between panel plots every pair."""
     df = utterances.copy()
     if df.empty:
         return pd.DataFrame()
@@ -377,7 +390,7 @@ def build_block_pairwise_table(utterances: pd.DataFrame, similarity) -> pd.DataF
                     all_groups_paired = True
                     if "originalGroup" in latest.columns:
                         per_group = latest.groupby("originalGroup").size()
-                        all_groups_paired = not bool((per_group < 2).any())
+                        all_groups_paired = len(per_group) >= 2 and not bool((per_group < 2).any())
 
                     players = latest.index.tolist()
                     for s1, s2 in combinations(players, 2):
@@ -446,8 +459,14 @@ def extract_content_word_tokens(text: str) -> list[str]:
 
 # Concrete term stems from Boyce et al. 2024 (PNAS), Table S2.
 # Exact keyword list; only adaptation is prefix matching (e.g., "squar"
-# matches "square", "squares"). Four categories: geometric, body parts,
-# positional, posture.
+# matches "square", "squares"), which is how the preregistration states the
+# measure. Prefix matching also admits words that merely begin with a stem
+# ("butterfly" and "button" for "butt", "handle" for "hand", "earlier" for
+# "ear"). In the full sample about 3% of the tokens counted as concrete are
+# neither a stem nor an inflection of one, most of them compounds of a
+# concrete word ("sideways", "backwards", "headless"), so the preregistered
+# rule is kept and the over-inclusion is reported beside the measure. Four
+# categories: geometric, body parts, positional, posture.
 CONCRETE_STEMS_GEOMETRIC = [
     "squar", "triangle", "triangular", "diamond", "shape", "trapez",
     "angle", "degree", "parallel", "rhomb", "box", "cube", "line",
@@ -776,8 +795,8 @@ def compute_social_guess_retention(
     if "speakerId" in sg.columns and sg["speakerId"].notna().any():
         merged = sg.copy()
     else:
-        # Legacy exports without speaker attribution: recover the speaker via
-        # the guesser's listener trial (roundId, currentGroup).
+        # Exports without speaker attribution (the pilot's predate it): recover
+        # the speaker via the guesser's listener trial (roundId, currentGroup).
         sg = sg.drop(columns=[c for c in ("roundId", "currentGroup", "speakerId") if c in sg.columns])
         listener_trials = tr[tr["role"] == "listener"][
             ["gameId", "playerId", "blockNum", "target", "roundId", "currentGroup"]
@@ -1069,8 +1088,7 @@ def drop_empty_utterances(utterances: pd.DataFrame) -> pd.DataFrame:
     A speaker whose messages were all classified as non-referential has no
     description on that trial; the preregistration excludes such trials from
     the utterance-based analyses, as with trials in which the speaker sent
-    nothing. The filter step no longer emits these rows, but older filtered
-    files and hand-built inputs may still contain them.
+    nothing. The filter step emits no such rows; this guards hand-built inputs.
     """
     text = utterances["utterance"].fillna("").astype(str).str.strip()
     empty = text == ""

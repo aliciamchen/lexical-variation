@@ -53,21 +53,21 @@ check(
   )
 )
 
-# compute_derived.py keeps the rows the specificity start rule excludes -- the
-# first block of a phase, and later cells where one group has a single
-# describer -- so the descriptive within-vs-between panel can plot them, and
-# flags them `allGroupsPaired = 0`. The H3b aggregation must not pick them up.
+# compute_derived.py flags the cells the specificity start rule excludes
+# (`allGroupsPaired = 0`: another group has a single describer of the tangram).
+# That rule is for within-minus-between; H3b averages each group's own pairs
+# and must keep those cells.
 flagged_h3b <- pairs_h3b |>
   mutate(allGroupsPaired = if_else(blockNum == 2, 0, 1))
 check(
-  "within-group block means drop the rows the start rule excludes",
-  {
-    m <- within_group_block_means(flagged_h3b, games_h3b)
-    nrow(m) > 0L && !any(m$blockNum == 2)
-  }
+  "within-group block means keep the cells the specificity start rule excludes",
+  identical(
+    within_group_block_means(flagged_h3b, games_h3b) |> select(-any_of("allGroupsPaired")),
+    within_group_block_means(pairs_h3b, games_h3b) |> select(-any_of("allGroupsPaired"))
+  )
 )
 check(
-  "a table written before the flag existed is eligible throughout",
+  "a table without the flag gives the same means",
   nrow(within_group_block_means(pairs_h3b, games_h3b)) == nrow(means_h3b)
 )
 

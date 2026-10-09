@@ -19,6 +19,7 @@ import pytest
 
 import compute_derived
 from compute_derived import (
+    compute_adjacent_similarities,
     compute_block_pairwise,
     compute_lexical_uniqueness,
     compute_pairwise_similarities,
@@ -148,6 +149,79 @@ def test_block_trajectory_still_requires_two_participants_total():
     # Only one group: within-group pair exists from block 1 onward
     assert set(out["blockNum"]) == {1}
     assert len(out) == 1
+    # ... but with no other group there is nothing to compare it against, so
+    # the cell is not eligible for the specificity trajectory.
+    assert out["allGroupsPaired"].tolist() == [0]
+
+
+def test_block_trajectory_needs_a_second_group_before_a_cell_is_eligible():
+    # Group A has two describers by block 1 while no other group has described
+    # the tangram; group B's first describer arrives in block 2 and its second
+    # in block 3. Within-minus-between is a comparison between groups, so the
+    # cell becomes eligible only at block 3.
+    rows = [
+        _utt("g", "a1", "A", "t", 1, 0, "bunny"),
+        _utt("g", "a2", "A", "t", 1, 1, "bunny"),
+        _utt("g", "b1", "B", "t", 1, 2, "rabbit"),
+        _utt("g", "b2", "B", "t", 1, 3, "hare"),
+    ]
+    games = pd.DataFrame({"gameId": ["g"], "phase1Blocks": [6], "phase2Blocks": [6]})
+    out = compute_block_pairwise(pd.DataFrame(rows), FakeModel(), games)
+    eligible_by_block = out.groupby("blockNum")["allGroupsPaired"].first()
+    assert eligible_by_block.to_dict() == {1: 0, 2: 0, 3: 1}
+
+
+def _adjacent_row(player, group, target, phase, block, text):
+    return {
+        "gameId": "g",
+        "playerId": player,
+        "originalGroup": group,
+        "target": target,
+        "phase": f"phase{phase}",
+        "phaseNum": phase,
+        "blockNum": block,
+        "repNum": block,
+        "trialNum": block,
+        "utterance": text,
+    }
+
+
+def test_adjacent_similarity_runs_across_the_phase_boundary():
+    # Group A's last Phase 1 description of t is "bunny"; its first Phase 2
+    # description repeats it and the next one changes. The preregistration
+    # defines the predecessor as the most recent description for the same
+    # original group and tangram, with no reset at Phase 2, so the first Phase
+    # 2 description is scored against the Phase 1 one (that is the retention
+    # the Phase 2 measure is for) and only the very first description has none.
+    rows = [
+        _adjacent_row("a1", "A", "t", 1, 4, "rabbit"),
+        _adjacent_row("a2", "A", "t", 1, 5, "bunny"),
+        _adjacent_row("a3", "A", "t", 2, 0, "bunny"),
+        _adjacent_row("a1", "A", "t", 2, 1, "hare"),
+    ]
+    df = pd.DataFrame(rows)
+    model = FakeModel()
+    embeddings = model.encode(df["utterance"].tolist())
+    out = compute_adjacent_similarities(df, embeddings, model).set_index(["phaseNum", "blockNum"])
+    assert np.isnan(out.loc[(1, 4), "simAdjacent"])
+    assert out.loc[(1, 5), "simAdjacent"] == 0.0  # bunny after rabbit
+    assert out.loc[(2, 0), "simAdjacent"] == 1.0  # bunny after bunny, across the boundary
+    assert out.loc[(2, 1), "simAdjacent"] == 0.0  # hare after bunny
+
+
+def test_adjacent_similarity_stays_within_group_and_tangram():
+    rows = [
+        _adjacent_row("a1", "A", "t", 1, 0, "bunny"),
+        _adjacent_row("b1", "B", "t", 1, 1, "bunny"),  # other group: no predecessor
+        _adjacent_row("a2", "A", "u", 1, 1, "bunny"),  # other tangram: no predecessor
+        _adjacent_row("a2", "A", "t", 1, 2, "bunny"),  # same group and tangram
+    ]
+    df = pd.DataFrame(rows)
+    model = FakeModel()
+    out = compute_adjacent_similarities(df, model.encode(df["utterance"].tolist()), model)
+    assert out["simAdjacent"].notna().sum() == 1
+    scored = out[out["simAdjacent"].notna()].iloc[0]
+    assert (scored["originalGroup"], scored["target"], scored["blockNum"]) == ("A", "t", 2)
 
 
 def test_lexical_uniqueness_compares_within_the_same_phase():

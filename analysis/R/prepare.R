@@ -1,8 +1,8 @@
 # Data loading and preparation shared by the notebooks.
 #
-# Every notebook used to repeat the same recodes: booleans exported as
+# The recodes every notebook needs, in one place: booleans exported as
 # TRUE/"true", group labels that repeat across games, block centering, the join
-# from a listener's trial to its speaker. Those live here once. All functions
+# from a listener's trial to its speaker. All functions
 # take tables and return tables with the column names the notebooks use:
 #
 #   correct        0/1 numeric from the exported TRUE/"true" booleans (NA kept)
@@ -105,17 +105,16 @@ add_global_block <- function(df, games) {
 # denominator rather than counting as failures, and observations made
 # unanswerable by a documented technical failure become NA.
 #
-# `denominator = "submitted"` reproduces the earlier coding, in which only
-# scored answers counted, and exists so the pilot SI can keep reporting the
-# numbers it was written with (see main.tex on the pilot retaining its earlier
-# processing). It is not the preregistered rule and must not be used for the
-# full sample. None of this touches the live Phase 1 accuracy screening in
-# experiment/server/src/accuracy.js, which is unchanged.
+# `denominator = "submitted"` counts only scored answers, dropping
+# nonresponse, and is kept for comparison with that coding. It is not the
+# preregistered rule and must not be used for reported results. None of this
+# touches the live Phase 1 accuracy screening in
+# experiment/server/src/accuracy.js.
 
 DENOMINATOR_RULES <- c("opportunity", "submitted")
 
-# A dataset processed before the rule landed has no responseOpportunity
-# column; say so rather than silently reporting the old denominator.
+# A dataset without a responseOpportunity column cannot apply the rule; say so
+# rather than silently reporting the submitted-answers denominator.
 require_opportunity_columns <- function(df, needed, table_name) {
   missing <- setdiff(needed, names(df))
   if (length(missing)) {
@@ -380,7 +379,7 @@ convention_check_data <- function(speaker_utts, trials, adjacent_sim, games) {
 # Turn the `window` column of a similarity table into an ordered display
 # factor. An unrecognized window is an error rather than a silent relabel: the
 # three windows differ substantively, and folding phase2_early into the
-# Phase 2 bars had previously gone unnoticed in a descriptive figure.
+# Phase 2 bars would go unnoticed in a descriptive figure.
 label_window <- function(df, windows = names(WINDOW_LABELS)) {
   if (!has_rows(df)) {
     return(df)
@@ -766,9 +765,8 @@ phase2_utterances <- function(speaker_utts, games, conditions = NULL) {
 # who have described the tangram, so every group contributes a within-group
 # pair. compute_derived.py marks them `allGroupsPaired`; it keeps the rest in
 # the table because the descriptive within-vs-between panel can still plot
-# them (the first block of each phase holds between-group pairs alone). Files
-# written before the flag existed were filtered at source, so a table without
-# the column is already eligible throughout.
+# them (the first block of each phase holds between-group pairs alone). A
+# table without the column is taken as eligible throughout.
 specificity_eligible <- function(block_pairwise_sim) {
   if (
     !has_rows(block_pairwise_sim) ||
@@ -782,13 +780,18 @@ specificity_eligible <- function(block_pairwise_sim) {
 # Within-group pairs of the block-by-block similarities for one phase, with a
 # game-qualified group id (group1 == group2 for within-group pairs).
 #
-# The exported `blockNum` is 0-indexed, and the eligible rows of
-# block_pairwise_similarities.csv hold Phase 1 blockNum 1..5 (the first block
-# in which two speakers per group have described a target is 0-indexed block
-# 1). The paper counts blocks from 1 (H3b uses blocks 2-6 with the milestone
-# at block 3), so this is the one place the 1-indexed `block` column
-# (blockNum + 1) is created; H3b and its plots work on `block`, and `blockNum`
-# is kept only for traceability.
+# Every within-group pair enters. The `allGroupsPaired` start rule is not
+# applied here: it exists so that within-minus-between (the specificity
+# trajectory) compares groups with each other, whereas H3b averages each
+# group's own pairs, which the preregistration defines without reference to
+# the other groups.
+#
+# The exported `blockNum` is 0-indexed, and the within-group rows of
+# block_pairwise_similarities.csv start at Phase 1 blockNum 1 (the first block
+# in which two speakers of a group have described a target). The paper counts
+# blocks from 1 (H3b uses blocks 2-6 with the milestone at block 3), so this
+# is the one place the 1-indexed `block` column (blockNum + 1) is created; H3b
+# and its plots work on `block`, and `blockNum` is kept only for traceability.
 within_group_block_pairs <- function(
   block_pairwise_sim,
   games,
@@ -799,7 +802,6 @@ within_group_block_pairs <- function(
     return(tibble())
   }
   block_pairwise_sim |>
-    specificity_eligible() |>
     filter(phaseNum == .env$phase, sameGroup == 1) |>
     add_condition(games, conditions) |>
     mutate(
@@ -851,8 +853,8 @@ final_phase_properties <- function(
   }
   # `n_unique_words` rides along beside `uniqueness` so the binomial H3c
   # model has its numerator; the denominator `n_content_words` is the same in
-  # both tables and comes in with desc_props. Older derived files predate
-  # both counts, so they are selected only when present.
+  # both tables and comes in with desc_props. The counts are selected only
+  # when present.
   uniq_cols <- intersect(
     c("uniqueness", "n_unique_words"),
     names(lex_uniq)
@@ -883,7 +885,7 @@ final_phase_properties <- function(
 # observation-level random intercept. Descriptions with no content words have
 # no proportion to model and are dropped, as they are under the Gaussian
 # version. Errors rather than silently dropping everything when the counts
-# are missing, which happens if the derived files predate them.
+# are missing from the derived files.
 binomial_measure <- function(props, numerator) {
   if (!has_rows(props)) {
     return(tibble())
