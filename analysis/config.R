@@ -26,6 +26,49 @@ suppressPackageStartupMessages({
 
 DEFAULT_DATASET <- "pilots"
 
+# Refuse a speaker_utterances_filtered.csv that was not built from the current
+# messages.csv. The filtered file is derived from messages.csv through the
+# classifier's labels, and nothing in it says which messages.csv it came from,
+# so `filter_nonreferential.py apply` writes a sidecar with that file's sha256
+# and row count. The Python steps check it (dataset_paths.py); this is the same
+# check for the notebooks, which would otherwise analyze a stale file silently
+# after a reprocessing that rewrote messages.csv. A missing or unreadable
+# sidecar is refused as well, since the file's provenance is then unknown.
+check_filtered_utterances <- function(dir) {
+  sidecar <- file.path(dir, "speaker_utterances_filtered.source.json")
+  messages <- file.path(dir, "messages.csv")
+  refuse <- function(detail) {
+    stop(
+      "speaker_utterances_filtered.csv in ", dir, " cannot be used: ", detail,
+      ". Rerun the filter (`filter_nonreferential.py classify` and `apply`, or ",
+      "`make process`) to rebuild it from the current messages.csv.",
+      call. = FALSE
+    )
+  }
+  if (!file.exists(sidecar)) {
+    refuse(
+      "it has no speaker_utterances_filtered.source.json beside it, so which messages.csv it was built from is unknown"
+    )
+  }
+  record <- tryCatch(jsonlite::fromJSON(sidecar), error = function(e) NULL)
+  if (!is.list(record) || !is.character(record$sha256) || !nzchar(record$sha256)) {
+    refuse("its sidecar does not record the sha256 of the messages.csv it was built from")
+  }
+  if (!file.exists(messages)) {
+    refuse("messages.csv is missing, so it cannot be checked")
+  }
+  current <- digest::digest(file = messages, algo = "sha256")
+  if (!identical(record$sha256, current)) {
+    refuse(sprintf(
+      "it was built from a messages.csv with %s rows (sha256 %s...), but the current messages.csv differs (sha256 %s...)",
+      if (is.null(record$rows)) "?" else record$rows,
+      substr(record$sha256, 1, 12),
+      substr(current, 1, 12)
+    ))
+  }
+  invisible(TRUE)
+}
+
 use_dataset <- function(name = Sys.getenv("DATASET", unset = DEFAULT_DATASET)) {
   stopifnot(
     is.character(name),
@@ -39,10 +82,12 @@ use_dataset <- function(name = Sys.getenv("DATASET", unset = DEFAULT_DATASET)) {
   figures_dir <<- here("figures", name)
   dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
   dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
-  # Prefer filtered utterances when available
+  # Prefer filtered utterances when available, but only when their sidecar
+  # shows they were built from the messages.csv beside them.
   utterances_file <<- if (
     file.exists(file.path(data_dir, "speaker_utterances_filtered.csv"))
   ) {
+    check_filtered_utterances(data_dir)
     "speaker_utterances_filtered.csv"
   } else {
     "speaker_utterances.csv"
@@ -61,8 +106,9 @@ use_dataset()
 # ── Writing projects ─────────────────────────────────────────
 # Each manuscript is its own Overleaf project under writing/ (gitignored,
 # mirrored to Overleaf through Dropbox). The SI notebooks write their stats
-# macros and figures into the preregistration; the full-sample notebooks will
-# write into the manuscript once it exists.
+# macros and figures into the preregistration; notebooks 00-05 write theirs
+# into writing/manuscript/stats/, the article's project, of which only that
+# directory exists until the author creates the Overleaf clone.
 prereg_dir <- here("writing", "preregistration")
 manuscript_dir <- here("writing", "manuscript")
 
@@ -106,8 +152,8 @@ dataset_banner <- function(name = DATASET, games = NULL) {
       "Bayes factors, and between-game intervals below are not estimable or",
       "not meaningful; this render exercises the preregistered code and its",
       "numbers are not results. The statistics macros it writes to",
-      "`writing/manuscript/stats/` are placeholders until the full sample is",
-      "processed (`DATASET=<name>`)."
+      "`writing/manuscript/stats/` are placeholders; render with",
+      "`DATASET=full` for the full sample."
     )
   } else {
     kind <- "note"
