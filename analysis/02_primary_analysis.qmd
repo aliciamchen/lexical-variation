@@ -60,24 +60,23 @@ conventions. These checks do not gate H3/H4 or primary-analysis eligibility.
 # Compute group-specificity per game per phase
 
 For each game and endpoint window, fit:
-`similarity ~ sameGroup + (1 | target) + (1 | speaker) + (1 | speakerPair)`
+`similarity ~ sameGroup + (1 | target) + (1 | speakerPair)`
 
 Extract the `sameGroup` coefficient as the group-specificity score.
 
-The speaker term is a multiple-membership random intercept. Each observation
-is a pair of speakers describing the same tangram, so every speaker has one
-random effect shared across both pair positions, with a common variance and
-equal weights of 1/2. The `speakerPair` intercept is the unordered pair of
-speakers: it captures resemblance that belongs to two particular people rather
-than to either of them, which is where a shared convention resides, and it is
-retained even when its variance is estimated at the boundary. This replaces
-the earlier `(1 | speaker1) + (1 | speaker2)`, which split one person's effect
-across two variance components and made the estimate depend on an arbitrary
-ordering within each pair. Fitting is by REML through lme4's modular interface
-(`analysis/R/multimembership.R`); the design-matched simulations that check
-convergence, ordering invariance, and interval calibration are in
-`analysis/simulate_mm_speaker.R`. The pilot SI keeps the earlier structure,
-as the paper records.
+This is the preregistered per-game model as the manuscript states it: a
+tangram intercept and an intercept for the unordered pair of speakers, with no
+per-speaker term. Each observation is a pair of speakers describing the same
+tangram, and the `speakerPair` intercept captures resemblance that belongs to
+two particular people rather than to either of them, which is where a shared
+convention resides. The design-matched simulations in
+`analysis/simulate_mm_speaker.R` showed it to be the term that matters for
+interval calibration, and it is retained even when its variance is estimated
+at the boundary, so the structure never depends on the data. Because the pair
+is unordered, the estimate cannot depend on which speaker is listed first. The
+multiple-membership speaker structures remain in
+`analysis/R/group_specificity.R` (`speaker_structure`) for comparison only;
+`SI_pilot.qmd` uses the same pair model.
 
 Each game's standard error is reported as within-game uncertainty and feeds
 the inverse-variance weights of the robustness reruns below; it does not
@@ -471,8 +470,12 @@ in separate prespecified models and reported separately:
    cycle, tested in a model using only Phase 1 block 3 (`H3B_BLOCK`).
 
 Within-group pairwise similarities are averaged within group, tangram, and
-block (block 1 has no within-group pair yet). The rate model is
-`H3B_FORMULA` in `analysis/R/convergence.R`:
+block (block 1 has no within-group pair yet). Every within-group pair enters,
+whether or not the other groups have two describers of that tangram in that
+block: the start rule for the group-specificity trajectory (`allGroupsPaired`)
+exists so that within-minus-between compares groups with each other, and H3b
+compares each group only with itself. The rate model is `H3B_FORMULA` in
+`analysis/R/convergence.R`:
 
 ```
 within_group_similarity ~ condition * block
@@ -1271,10 +1274,10 @@ if (!has_rows(pairwise_sim_jaccard)) {
 }
 if (has_rows(block_pairwise_sim_jaccard)) {
   cat("\nWithin-group block pairs with and without a Jaccard similarity:\n")
-  # The eligible rows only, so this counts what the H3b Jaccard model sees.
+  # The within-group pairs, which are what the H3b Jaccard model sees.
   print(knitr::kable(
     similarity_coverage(
-      specificity_eligible(block_pairwise_sim_jaccard),
+      block_pairwise_sim_jaccard |> filter(sameGroup == 1),
       games,
       by = c("phaseNum", "condition")
     ),

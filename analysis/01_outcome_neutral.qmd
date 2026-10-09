@@ -84,8 +84,10 @@ starts the game becomes the interacting population.
 
 ```{r model-utt-length}
 # Structure from the preregistration; fit_progressively() simplifies it only
-# if it does not fit cleanly and prints the steps it took. The game intercept
-# is retained throughout (only slopes and correlations can go).
+# if it does not fit cleanly and prints the steps it took. The random
+# intercepts are retained throughout (only slopes and correlations can go).
+# There is no game term: in Phase 1 the group is the conversing unit (see
+# above).
 p1_utts <- p1_utts |> mutate(logUttLength = log(uttLength))
 
 m_length <- fit_progressively(
@@ -411,9 +413,9 @@ checks <- tibble(
     "4. Endpoint group-specificity"
   ),
   Model = c(
-    "log(uttLength) ~ blockNum + (1 | game) + slopes (lmer)",
-    "correct ~ blockNum + (1 | game) + slopes (glmer, listener trials)",
-    "simAdjacent ~ blockNum + (1 | game) + slopes (lmer)",
+    "log(uttLength) ~ blockNum + (blockNum | participant) + (blockNum | group) + (blockNum | tangram) + (1 | group:tangram) (lmer)",
+    "correct ~ blockNum + (blockNum | group) + (1 | tangram) + (1 | group:tangram) (glmer, listener trials)",
+    "simAdjacent ~ blockNum + (blockNum | group) + (1 | tangram) + (1 | group:tangram) (lmer)",
     "Permutation test"
   ),
   `Expected direction` = c("Negative", "Positive", "Positive", "Positive coefficient"),

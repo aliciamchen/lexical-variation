@@ -259,8 +259,10 @@ ref_correct ~ in_group_speaker * condition + block_num
   + (1 | game) + (1 | listener) + (1 | speaker) + (1 | tangram)
 ```
 
-The two questions this section answers are estimated by two different models,
-because they live at different levels.
+That trial-level model is not what is fitted here, for the reason given
+next; the two questions it was to answer are estimated at the listener level
+instead, and the in-group and out-group accuracy rates are reported
+descriptively beside the test.
 
 **The in-group advantage itself, and whether condition amplifies it**, are
 within-listener comparisons: the reshuffle rule gives each trio exactly one
@@ -284,15 +286,9 @@ advantage ~ condition + (1 | game)
 
 The intercept is the in-group advantage pooled over conditions; the condition
 coefficient is the interaction, i.e. whether anticipating the social goal
-amplifies it.
-
-There is no trial-level model here. One would need by-listener and by-game
-slopes on `inGroupSpeaker` to test those two quantities honestly, and they
-cannot be estimated from about a dozen Bernoulli trials per listener per
-cell -- across simulated slope SDs from 0.2 to 0.8 the ladder dropped them
-every time, leaving an intercepts-only model that runs a nominal .05 test
-near .26. In-group and out-group accuracy rates are reported descriptively
-below instead.
+amplifies it. Both reach the manuscript as macros (`secondaryIngroupAdv*`,
+`secondaryIngroupAmplify*`), with the five-or-more-trials sensitivity rerun as
+`secondaryIngroupAdvMinFive*`.
 
 ```{r model-ingroup}
 # Phase 2 listener trials in the social conditions, each with its speaker and
@@ -324,11 +320,12 @@ if (nrow(social_listener) > 0 && n_distinct(social_listener$condition) >= 2) {
     ))
     cat("Does the anticipated social goal amplify it? (condition coefficient)\n")
     print(emmeans(m_adv, "condition"))
-    print(summary(contrast(emmeans(m_adv, "condition"), list(
+    ct_adv <- contrast(emmeans(m_adv, "condition"), list(
       socialfirst_minus_socialmixed = pairwise_weights(
         SOCIAL_CONDITIONS, "social_first", "social_mixed"
       )
-    )), infer = c(TRUE, TRUE)))
+    ))
+    print(summary(ct_adv, infer = c(TRUE, TRUE)))
     # Thin cells are noisier; rerun on listeners with at least five each.
     adv5 <- ingroup_advantage(social_listener, min_trials = 5L)
     if (nrow(adv5) >= 4 && n_distinct(adv5$condition) >= 2) {
@@ -388,20 +385,21 @@ if (exists("social_listener") && nrow(social_listener) > 0 &&
 # 4. Group-specificity vs social accuracy
 
 Do games with higher Phase 2 social-identification accuracy also have more
-group-specific expressions, after accounting for condition and Phase 1
-group-specificity? The preregistered model is the ordinary least-squares
-regression
+group-specific expressions, after accounting for Phase 1 group-specificity?
+The preregistered model is the ordinary least-squares regression
 
 ```
-group_specificity_phase2 ~ social_accuracy + condition + group_specificity_phase1
+group_specificity_phase2 ~ social_accuracy + group_specificity_phase1
 ```
 
 restricted to the two social conditions, with equal weight for each eligible
-game (both endpoints estimable). The inverse-variance rerun (weights
+game (both endpoints estimable) and without a condition term: the analysis
+plan specifies an association across the two social conditions, not a
+comparison between them. The inverse-variance rerun (weights
 `1 / SE_phase2^2`) is a robustness check. A positive social-accuracy
-coefficient would indicate an association conditional on condition and
-baseline group-specificity, not that distinctive language causes better
-social identification.
+coefficient would indicate an association conditional on baseline
+group-specificity, not that distinctive language causes better social
+identification.
 
 ```{r model-gs-social}
 if (!has_pairwise || nrow(pairwise_sim) == 0) {
@@ -571,12 +569,14 @@ if (nrow(social_guesses) > 0) {
 
 How does description length evolve across Phase 2 blocks by condition?
 
-Paper formula:
-`log(utt_length) ~ condition * block_num + (1 | game) + (1 | group) + (1 | participant) + (1 | tangram)`,
-with `group` the game-unique original group. Length is log-transformed for the
-same reason as in the convention-formation check: word counts here are
-heavy-tailed (Hawkins et al. 2023). Slopes and marginal means are
-back-transformed to the word scale for reporting.
+The preregistration names the outcome but gives no Phase 2 formula, so the
+model mirrors the Phase 1 length check with condition added:
+`log(uttLength) ~ condition * blockNum + (blockNum | game) + (1 | group) + (1 | participant) + (blockNum | tangram) + (1 | group:tangram)`,
+with `group` the game-unique original group and a by-game block slope because
+once mixing starts the game is the interacting population. Length is
+log-transformed for the same reason as in the convention-formation check:
+word counts here are heavy-tailed (Hawkins et al. 2023). Slopes and marginal
+means are back-transformed to the word scale for reporting.
 
 ```{r model-utt-length-phase2}
 p2_utts <- phase2_utterances(speaker_utts, games) |>
@@ -694,10 +694,16 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
       }
       # A response-scale binomial grid calls the estimate `prob`; a linear one
       # calls it `emmean`. Normalize so the two stack into one plot.
+      # Likewise the interval columns: `lower.CL`/`upper.CL` with Satterthwaite
+      # or Kenward-Roger degrees of freedom, `asymp.LCL`/`asymp.UCL` when emmeans
+      # falls back to asymptotic intervals (binomial fits, or a linear fit on
+      # more observations than `lmerTest.limit`, which the full sample exceeds).
       em_df <- as.data.frame(summary(em))
       est_col <- intersect(c("emmean", "prob", "response"), names(em_df))[1]
+      lo_col <- intersect(c("lower.CL", "asymp.LCL"), names(em_df))[1]
+      hi_col <- intersect(c("upper.CL", "asymp.UCL"), names(em_df))[1]
       property_summaries[[length(property_summaries) + 1]] <- em_df |>
-        rename(estimate = all_of(est_col)) |>
+        rename(estimate = all_of(est_col), lower = all_of(lo_col), upper = all_of(hi_col)) |>
         mutate(phase = paste("Phase", ph), measure = PROPERTY_LABELS[[measure]])
       lv <- levels(droplevels(d$condition))
       if (all(c("refer_separated", "social_mixed") %in% lv)) {
@@ -713,7 +719,7 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
     property_plot <- bind_rows(property_summaries)
     print(
       ggplot(property_plot, aes(x = condition, y = estimate, color = condition)) +
-        geom_pointrange(aes(ymin = lower.CL, ymax = upper.CL)) +
+        geom_pointrange(aes(ymin = lower, ymax = upper)) +
         facet_grid(measure ~ phase, scales = "free_y") +
         scale_color_condition() +
         labs(x = "Condition", y = "Estimated marginal mean (95% CI)") +
@@ -787,24 +793,22 @@ if (exists("m_ref_accuracy")) {
   macros <- c(macros, coef_macros("secondaryAccBlock", m_ref_accuracy, "blockNum_c"))
 }
 
-if (exists("ct_within")) {
-  within_tab <- as.data.frame(summary(ct_within, infer = c(TRUE, TRUE)))
-  # One row per in-group status; name the macros by the status rather than the row
-  for (i in seq_len(nrow(within_tab))) {
-    status <- as.character(within_tab$inGroupSpeaker[i])
-    prefix <- if (identical(status, "in_group")) {
-      "secondaryIngroupWithinIn"
-    } else if (identical(status, "out_group")) {
-      "secondaryIngroupWithinOut"
-    } else {
-      NULL
-    }
-    if (is.null(prefix)) next
-    macros <- c(macros, emm_macros(prefix, ct_within, row = i))
-  }
+# The in-group advantage (section 3): the pooled advantage is the intercept of
+# the listener-level model, the amplification by condition is its
+# social_first-minus-social_mixed contrast, and the five-or-more-trials rerun
+# is the sensitivity check.
+if (exists("adv")) {
+  macros$secondaryIngroupListeners <- fmt_count(nrow(adv))
+  macros$secondaryIngroupGames <- fmt_count(n_distinct(adv$gameId))
 }
-if (exists("ct_interaction")) {
-  macros <- c(macros, emm_macros("secondaryIngroupInteraction", ct_interaction, row = 1))
+if (exists("m_adv")) {
+  macros <- c(macros, coef_macros("secondaryIngroupAdv", m_adv, "(Intercept)"))
+}
+if (exists("ct_adv")) {
+  macros <- c(macros, contrast_macros("secondaryIngroupAmplify", ct_adv))
+}
+if (exists("m_adv5")) {
+  macros <- c(macros, coef_macros("secondaryIngroupAdvMinFive", m_adv5, "(Intercept)"))
 }
 
 if (exists("sa_coef") && nrow(sa_coef) == 1) {
