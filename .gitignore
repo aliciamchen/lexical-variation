@@ -20,6 +20,9 @@ lexical-variation*/
 .playwright-mcp
 # Empirica export zips wherever a backup lands (experiment/data is ignored as a whole)
 **/empirica-export-*
+# Staged copies of the final export of each server period, with every server log,
+# for the off-site backup (operations/final_exports.py); identifiable raw data
+backups/
 
 *.tar.zst
 .zed

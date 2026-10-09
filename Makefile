@@ -22,7 +22,7 @@
 #   make payments       # what each Prolific study still owes → data/payments/<name>/
 #   make tally          # games per condition and tangram set; stopping-rule progress
 #   make notebooks      # render the dataset's notebooks
-#   BAYES_FACTORS=never make notebooks DATASET=full   # interim render, no brms refits
+#   BAYES_FACTORS=never make notebooks DATASET=full   # render without the brms refits (a fast check)
 #   make llm-process    # process LLM simulation JSONs → CSVs
 #
 # Smoke-testing one export before it joins a dataset:
@@ -62,7 +62,7 @@ else
 NOTEBOOKS = $(wildcard analysis/0[0-9]_*.qmd)
 endif
 
-.PHONY: all pilot extract combine process process-no-filter payments sync-blocklist tally notebooks llm-process test test-ops smoke runs help
+.PHONY: all pilot extract combine process process-no-filter payments sync-blocklist tally final-exports notebooks llm-process test test-ops smoke runs help
 
 # ── Main targets ────────────────────────────────────────────
 
@@ -102,6 +102,9 @@ sync-blocklist: ## Add everyone on data/payments/<name>/blocklist_ids.txt to the
 
 tally: ## Games per (condition, tangram set) cell and progress against the stopping rule (reads data/<name>/)
 	uv run python operations/tally.py --dataset $(DATASET)
+
+final-exports: ## Stage the final export of each server period, plus every server log, in backups/final_exports/ for the off-site backup
+	uv run python operations/final_exports.py --dataset $(DATASET)
 
 test: ## Validate processed data against the integrity suite and run the Python and R helper tests
 	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q
