@@ -699,6 +699,60 @@ class TestAssignWaiters:
         assert row["awaiting_return"] == 0 and row["lobby_ready"] == 1
 
 
+class TestReconciliation:
+    """Submissions and payments that no row would otherwise account for."""
+
+    def test_a_game_study_submission_owed_nothing_must_be_returned(self, tmp_path):
+        study = payments.Study("S8", internal_name="batch 8", created="2026-09-24T00:00:00")
+        payments.settle(study, [timed("q", "2026-09-24T00:22:00Z", "2026-09-24T00:42:00Z", code="NOCODE")], set())
+        [row] = study.payees
+        assert (row.kind, row.ready, row.still_owed) == ("none", False, 0.0)
+        [summary] = payments.write_outputs({"S8": study}, tmp_path / "out", offline=False)
+        assert summary["awaiting_return"] == 1 and summary["auto_approval"] == "2026-10-15"
+
+    def test_a_code_that_is_none_of_the_experiments_is_not_repeated(self):
+        study = payments.Study("S29")
+        payments.settle(study, [submission("q", code="a" * 24)], set())
+        assert "a" * 24 not in study.payees[0].exit_reason
+
+    def test_a_game_code_without_a_game_points_to_a_mistyped_identifier(self):
+        study = payments.Study("S8")
+        payments.settle(study, [submission("q", code=prolific.FINISHED_CODE)], set())
+        assert "mistyped" in study.payees[0].note
+
+    def test_a_survey_lists_nobody_owed_nothing(self):
+        study = payments.Study("SURVEY8")
+        payments.settle(study, [submission("q")], set(), game_study=False)
+        assert study.payees == []
+
+    def test_a_payment_no_row_explains_is_listed(self):
+        studies = {"S21": payments.Study("S21")}
+        rows = payments.reconcile(studies, {"SURVEY21": [submission("g", paid_cents=[200])]}, {"SURVEY21": "survey 21"})
+        assert [(r["study"], r["unexplained"], r["held_back"]) for r in rows] == [("survey 21", 2.0, "")]
+
+    def test_a_line_equal_to_a_payment_made_elsewhere_is_held_back(self):
+        # The bonus went out through the scheduling survey and was still listed in the game study.
+        owed = payments.Payee("d", "S17", "bonus", 18.16, still_owed=18.16, ready=True, game="G1")
+        study = payments.Study("S17", payees=[owed])
+        rows = payments.reconcile({"S17": study}, {"SURVEY17": [submission("d", paid_cents=[1816])], "S17": []},
+                                  {"SURVEY17": "survey 17", "S17": "batch 17"})
+        assert not owed.ready and "survey 17" in owed.note
+        assert rows[0]["held_back"] == "batch 17"
+
+    def test_paying_more_than_a_row_asked_for_holds_nothing_back(self):
+        # $4 for a $2 lobby wait in one session; a wait two weeks later is owed in full.
+        earlier = payments.Payee("w", "S10", "lobby", 2.0, already_paid=2.0)
+        later = payments.Payee("w", "S31", "lobby", 2.0, still_owed=2.0, ready=True)
+        studies = {"S10": payments.Study("S10", payees=[earlier]), "S31": payments.Study("S31", payees=[later])}
+        rows = payments.reconcile(studies, {"S10": [submission("w", paid_cents=[200, 200])], "S31": []}, {})
+        assert [r["unexplained"] for r in rows] == [2.0] and later.ready
+
+    def test_paid_rows_are_not_listed(self):
+        paid = payments.Payee("a", "S1", "bonus", 5.0, already_paid=5.0)
+        rows = payments.reconcile({"S1": payments.Study("S1", payees=[paid])}, {"S1": [submission("a", paid_cents=[500])]}, {})
+        assert rows == []
+
+
 class TestReturnedFinisher:
     def test_a_returned_finisher_is_owed_the_base_as_a_bonus_too(self):
         study = payments.Study("S1")

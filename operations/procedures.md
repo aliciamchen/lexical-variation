@@ -193,7 +193,7 @@ It prints a table per study and writes `data/payments/full/<date>_<internal name
 ```text
 full sample batch 20  [6ac021def53ee57a669004a9]  games: 2N1CT5 5F1AS9 HGKW39 QQK054
     ready to pay: bonus 28 ($198.77), partial 7 ($39.22), lobby 2 ($4.00), overtime 7 ($12.48)
-    2 partial or lobby submission(s) still awaiting review: ask them to return it; Prolific approves them from 2026-10-23
+    2 submission(s) awaiting review from people owed partial, lobby or no pay: ask them to return it; Prolific approves them from 2026-10-23
     folder: 2026-10-02_full-sample-batch-20_9004a9/
 ```
 
@@ -204,8 +204,14 @@ overtime owed to finishers whose time on the study ran past 60 minutes, the top 
 60 minutes" the instructions promise. `status.csv` lists everyone with the reason anything owed
 is not ready (a game still running, or no submission in the study). At the end it checks for
 repeat participants and prints a warning if anyone was placed in two games; `repeats.csv` has
-the details. The folder is rewritten on every run and contains Prolific IDs, which is why
-`data/payments/` is gitignored.
+the details. It also reconciles its rows against Prolific: anyone whose submission in a game
+study awaits review although they are owed nothing there (no game, lobby wait or removal under
+that Prolific ID) is listed in `status.csv` as `none` and counted with the submissions to be
+returned, and every bonus already paid that no row accounts for, such as a goodwill payment or
+a bonus sent through the wrong study, is listed in `unexplained.csv`. When such a payment was
+made in a study where the person has no row and equals a line they are still owed elsewhere,
+that line is held back from the paste file as a possible duplicate, with a warning. The folder
+is rewritten on every run and contains Prolific IDs, which is why `data/payments/` is gitignored.
 
 **4. On each study's submissions page:**
 
@@ -217,7 +223,9 @@ the details. The folder is rewritten on every run and contains Prolific IDs, whi
   request a return, but Prolific approves a submission left awaiting review 21 days after it
   was submitted, which pays the full base reward on top of the partial or lobby payment.
   `make payments` prints how many are still waiting and the first date Prolific will approve
-  them; message those participants and ask them to return the submission.
+  them, including people owed nothing in the study (a quiz failure or someone who never
+  reached the game who submitted anyway); message those participants and ask them to return
+  the submission.
 - **Paste `1_main.csv`, then `2_overtime.csv`,** into the study's bulk bonus form. The order
   matters because `make payments` counts what Prolific records as paid against the
   performance bonus first. Prolific shows the fee-inclusive total before you confirm.
@@ -249,7 +257,8 @@ means the export was taken before the game ended; take a new export once it has.
 **A participant was paid by mistake.** Prolific cannot reverse a bonus. `make payments`
 subtracts what Prolific has already paid on a submission, so re-running it never tells you to
 pay the same person twice in the same study, but check `status.csv` before pasting a file you
-edited by hand, and remember that a payment made on a different study is not visible to it.
+edited by hand. A payment made on a different study shows up in `unexplained.csv`, and a line
+it may duplicate is held back with a warning.
 
 **The Empirica server died mid-session.** Participants see "Just a moment" or a 502 while
 their browsers retry.

@@ -34,7 +34,11 @@ bulk bonus box (`participant_id,amount`, no header, one line per person):
 through this study because they never submitted the game study) and
 2_overtime.csv, to be pasted in that order. status.csv lists everyone with
 what they were owed, what is already paid, and why a row is not ready, and
-repeats.csv lists anyone who took part in more than one session. The whole
+repeats.csv lists anyone who took part in more than one session. The rows are
+reconciled against Prolific: a game-study submission awaiting review from
+someone owed nothing in that study is listed as kind "none" and counted with
+the submissions to be returned, and unexplained.csv lists every bonus paid that
+no row accounts for (reconcile). The whole
 directory is rewritten on every run, so re-running after paying on the website
 shows those people as settled. It pays nobody: payments are made by hand on
 the Prolific website.
@@ -95,7 +99,9 @@ import prolific  # noqa: E402
 
 PROJECT_ROOT = prolific.PROJECT_ROOT
 PAYMENTS_DIR = PROJECT_ROOT / "data" / "payments"
-KINDS = ("bonus", "partial", "lobby", "overtime", "unsubmitted")
+# "none" marks a game-study submission awaiting review from someone owed nothing in
+# that study, which has to be returned before Prolific approves it and pays the base.
+KINDS = ("bonus", "partial", "lobby", "overtime", "unsubmitted", "none")
 # Finishers are paid for the minutes their submission took beyond this, the top of
 # the "45 to 60 minutes" the instructions promise.
 OVERTIME_AFTER_MINUTES = 60
@@ -117,7 +123,7 @@ PASTE_FILES = (("1_main.csv", ("bonus", "partial", "lobby", "unsubmitted")), ("2
 # The order in which what Prolific records as paid on a submission is counted
 # against one person's rows: their game pay first, then partial or lobby pay, then
 # overtime, which is pasted last.
-PAID_ORDER = {"bonus": 0, "unsubmitted": 0, "partial": 1, "lobby": 1, "overtime": 2}
+PAID_ORDER = {"bonus": 0, "unsubmitted": 0, "partial": 1, "lobby": 1, "overtime": 2, "none": 3}
 # Prolific approves a submission left awaiting review this long after it was
 # submitted, which pays a removed player or lobby timeout the full base reward.
 AUTO_APPROVAL = timedelta(days=21)
@@ -779,6 +785,97 @@ def settle(study: Study, submissions: list[dict], game_payees: set[str],
             payee.note = "paid" if payee.amount > 0 else "nothing owed"
         else:
             payee.ready = True
+    if game_study:
+        listed = {p.participant for p in study.payees} | game_payees
+        for pid, sub in by_participant.items():
+            if pid in listed or prolific.norm_status(sub.get("status")) != "AWAITING REVIEW":
+                continue
+            code = prolific.submission_code(sub)
+            if code in (prolific.FINISHED_CODE, prolific.PARTIAL_CODE):
+                note = ("submitted a game code, but no game in this study was found under this Prolific id: "
+                        "look for a mistyped identifier (no-study-id/) before anything else")
+            else:
+                note = "owed nothing in this study: ask them to return it before Prolific approves it and pays the base"
+            study.payees.append(Payee(
+                participant=pid, study_id=study.study_id, kind="none", amount=0.0,
+                exit_reason=f"submitted {_code_name(code)}", status="AWAITING REVIEW",
+                submitted_at=(sub.get("completed_at") or "")[:19], note=note,
+            ))
+
+
+def _code_name(code: str) -> str:
+    """A completion code by what it stands for; one that is none of the experiment's
+    may be anything the participant typed, a Prolific id included, so it is not repeated."""
+    names = {prolific.FINISHED_CODE: "the finished code", prolific.PARTIAL_CODE: "the partial code",
+             prolific.LOBBY_TIMEOUT_CODE: "the lobby code", "": "no code", "NOCODE": "no code"}
+    return names.get(code, "a code that is none of the experiment's")
+
+
+def reconcile(studies: dict[str, Study], submissions: dict[str, list[dict]],
+              names: dict[str, str]) -> list[dict]:
+    """Bonuses paid on Prolific that no row accounts for, by person and study.
+
+    A payment can be the author's deliberate one (a goodwill payment for a
+    cancelled session, or more than a row asked for) or a row's pay sent
+    through the wrong study. When it was made in a study where the person has
+    no row at all and equals what a ready row still owes them in another
+    study, that row is held back as a possible duplicate, since pasting it
+    would pay twice if it is one (the batch 17 bonus of 2026-09-27 was paid
+    through the scheduling survey and still listed in the game study). Paying
+    more than a row in its own study asked for holds nothing back.
+    """
+    accounted: dict[tuple[str, str], float] = {}
+    for study in studies.values():
+        for payee in study.payees:
+            key = (payee.participant, study.study_id)
+            accounted[key] = accounted.get(key, 0.0) + payee.already_paid
+    rows = []
+    for sid, subs in submissions.items():
+        for sub in subs:
+            pid = sub.get("participant_id")
+            paid = round(sum(sub.get("bonus_payments") or []) / 100.0, 2)
+            extra = round(paid - accounted.get((pid, sid), 0.0), 2)
+            if pid and extra > 0.009:
+                rows.append({"participant": pid, "study_id": sid, "study": names.get(sid, sid),
+                             "paid": paid, "accounted": round(paid - extra, 2), "unexplained": extra,
+                             "held_back": "", "row_there": (pid, sid) in accounted})
+    for row in rows:
+        if row.pop("row_there"):
+            continue
+        for study in studies.values():
+            if study.study_id == row["study_id"]:
+                continue
+            for payee in study.payees:
+                if (payee.participant == row["participant"] and payee.ready and payee.kind != "overtime"
+                        and abs(payee.still_owed - row["unexplained"]) < 0.01):
+                    payee.ready = False
+                    payee.note = (f"possibly paid already: ${row['unexplained']:.2f} was paid to this person in "
+                                  f"{row['study']} and no row there accounts for it; check before paying")
+                    row["held_back"] = names.get(study.study_id, study.study_id)
+    return rows
+
+
+def write_unexplained(rows: list[dict], out_dir: Path) -> None:
+    """unexplained.csv (with Prolific ids, so only on disk) and a summary without them."""
+    columns = ["participant", "study_id", "study", "paid", "accounted", "unexplained", "held_back"]
+    with open(out_dir / "unexplained.csv", "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(rows)
+    if not rows:
+        print("\nReconciliation: every bonus paid on Prolific is accounted for by a row.")
+        return
+    by_study: dict[str, list[dict]] = {}
+    for row in rows:
+        by_study.setdefault(row["study"], []).append(row)
+    print(f"\nReconciliation: {len(rows)} bonus payment(s), ${sum(r['unexplained'] for r in rows):.2f} in all, "
+          "match no row; see unexplained.csv:")
+    for study, rs in sorted(by_study.items(), key=lambda x: -sum(r["unexplained"] for r in x[1])):
+        print(f"  {study}: {len(rs)} (${sum(r['unexplained'] for r in rs):.2f})")
+    held = [r for r in rows if r["held_back"]]
+    for row in held:
+        print(f"  WARNING: a line of ${row['unexplained']:.2f} in {row['held_back']} is held back, because the same "
+              f"amount was paid to that person in {row['study']}; check whether it is the same payment.")
 
 
 def mark_unverified(study: Study) -> None:
@@ -808,7 +905,7 @@ def write_outputs(studies: dict[str, Study], out_dir: Path, offline: bool) -> li
         row = {"study_id": study.study_id, "internal_name": study.internal_name, "name": study.name,
                "created": study.created, "folder": study.folder, "generated": generated,
                "games": " ".join(sorted({p.game[-6:] for p in study.payees if p.game}))}
-        for kind in KINDS:
+        for kind in KINDS[:-1]:
             ready = [p for p in study.payees if p.kind == kind and p.ready]
             row[f"{kind}_ready"] = len(ready)
             row[f"{kind}_amount"] = round(sum(p.still_owed for p in ready), 2)
@@ -825,7 +922,7 @@ def write_outputs(studies: dict[str, Study], out_dir: Path, offline: bool) -> li
         row["not_ready"] = sum(1 for p in study.payees if not p.ready and p.still_owed > 0)
         # Removed players and lobby timeouts must return their submission; one
         # still awaiting review is approved by Prolific at AUTO_APPROVAL.
-        waiting = [p for p in study.payees if p.kind in ("partial", "lobby") and p.status == "AWAITING REVIEW"
+        waiting = [p for p in study.payees if p.kind in ("partial", "lobby", "none") and p.status == "AWAITING REVIEW"
                    and p.study_source != "unsubmitted"]
         row["awaiting_return"] = len(waiting)
         dates = [_when(p.submitted_at) for p in waiting if _when(p.submitted_at)]
@@ -843,11 +940,12 @@ def print_summary(summary: list[dict], out_dir: Path, offline: bool) -> None:
     for row in summary:
         title = row["internal_name"] or row["name"] or "(no study id recorded on these players)"
         print(f"{title}  [{row['study_id'] or '-'}]  games: {row['games'] or '-'}")
-        owed = ", ".join(f"{k} {row[f'{k}_ready']} (${row[f'{k}_amount']:.2f})" for k in KINDS if row[f"{k}_ready"])
+        owed = ", ".join(f"{k} {row[f'{k}_ready']} (${row[f'{k}_amount']:.2f})" for k in KINDS[:-1] if row[f"{k}_ready"])
         print(f"    ready to pay: {owed or 'nothing'}" + (f"; {row['not_ready']} more owed but not ready (see status.csv)" if row["not_ready"] else ""))
         if row["awaiting_return"]:
-            print(f"    {row['awaiting_return']} partial or lobby submission(s) still awaiting review: ask them to return it; "
-                  f"Prolific approves them" + (f" from {row['auto_approval']}" if row["auto_approval"] else " after 21 days"))
+            print(f"    {row['awaiting_return']} submission(s) awaiting review from people owed partial, lobby or no pay: "
+                  f"ask them to return it; Prolific approves them"
+                  + (f" from {row['auto_approval']}" if row["auto_approval"] else " after 21 days"))
         print(f"    folder: {row['folder']}/")
     if offline:
         print("\n--offline: nothing was checked against Prolific, so no paste files were written.")
@@ -950,6 +1048,7 @@ def main(argv=None) -> None:
         # scheduling survey pays a few cents. Found by reward below, so that a
         # session study no player record names (no game in it started) counts.
         game_studies = set(candidates)
+        names: dict[str, str] = {}
         assign_studies(payees, submissions)
         game_rate = next((round(s["reward"] / 100.0 / s["estimated_completion_time"], 4) for s in
                           (prolific.api("GET", f"/studies/{sid}/", token) or {} for sid in candidates[-1:])
@@ -964,15 +1063,25 @@ def main(argv=None) -> None:
             others = [s for s in prolific.paged("/studies/", token)
                       if s["id"] not in submissions and first and _when(s.get("date_created"))
                       and _when(s.get("date_created")) >= first - timedelta(days=2)]
-            game_studies |= {s["id"] for s in others if (s.get("reward") or 0) / 100.0 >= prolific.BASE_PAY}
             for sid in dict.fromkeys(s["id"] for s in others):
                 submissions[sid] = list(prolific.paged(f"/studies/{sid}/submissions/", token))
+            # A study at the base reward with a submission from anyone in these
+            # exports is a session study; another project's would share nobody.
+            known = {pid for pid, _ in payees} | set(visits)
+            game_studies |= {s["id"] for s in others if (s.get("reward") or 0) / 100.0 >= prolific.BASE_PAY
+                             and any(x.get("participant_id") in known for x in submissions[s["id"]])}
+            names = {s["id"]: s.get("internal_name") or s.get("name") or s["id"] for s in others}
             place_unsubmitted(payees, submissions)
             candidates = sorted(set(candidates) | {p.study_id for p in payees.values() if p.study_id})
         studies = group_by_study(payees)
         for study_id in candidates:
             studies.setdefault(study_id, Study(study_id))
         assigned = assign_waiters(studies, payees, submissions, waiters, game_studies)
+        # A session study where someone's submission still awaits review is
+        # listed even if nobody is owed anything there (settle adds them as "none").
+        for sid in game_studies:
+            if any(prolific.norm_status(x.get("status")) == "AWAITING REVIEW" for x in submissions.get(sid, [])):
+                studies.setdefault(sid, Study(sid))
         for study in studies.values():
             if study.study_id == NO_STUDY:
                 for payee in study.payees:
@@ -990,12 +1099,16 @@ def main(argv=None) -> None:
             in_study = {p.participant for p in study.payees if p.kind != "lobby"}
             settle(study, submissions[study.study_id], in_study, args.overtime_after, game_rate,
                    assigned.get(study.study_id, {}), study.study_id in game_studies)
+        names.update({sid: st.internal_name or st.name or sid for sid, st in studies.items() if sid})
+        unexplained = reconcile(studies, submissions, names)
     else:
         for study in studies.values():
             mark_unverified(study)
     out_dir = PAYMENTS_DIR / args.dataset
     summary = write_outputs(studies, out_dir, args.offline)
     print_summary(summary, out_dir, args.offline)
+    if not args.offline:
+        write_unexplained(unexplained, out_dir)
     pilot = pilot_participants() if PILOT_EXPORTS.is_dir() else set()
     if not pilot:
         print(f"\nWARNING: no pilot participants found in {PILOT_EXPORTS.relative_to(PROJECT_ROOT)}/, so they are "
