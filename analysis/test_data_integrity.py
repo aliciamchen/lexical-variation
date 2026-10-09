@@ -140,6 +140,48 @@ def idle_players(players):
     return players[players["isActive"] == False].copy()
 
 
+# Documented cases where an invariant below does not hold, kept beside the data
+# in data/<dataset>/integrity_exceptions.csv so that no failure has to be
+# "known": each row names the invariant, the game, the player and (where it
+# applies) the round, and gives the reason. The tests that use the file assert
+# that the cases they find are exactly the documented ones, so a new case fails
+# the suite and so does a documented case that has disappeared (the file would
+# be stale).
+INTEGRITY_EXCEPTIONS_FILE = "integrity_exceptions.csv"
+INTEGRITY_EXCEPTION_COLUMNS = ["invariant", "gameId", "playerId", "roundId", "reason"]
+
+
+@pytest.fixture(scope="session")
+def integrity_exceptions():
+    path = DATA_DIR / INTEGRITY_EXCEPTIONS_FILE
+    if not path.exists():
+        return pd.DataFrame(columns=INTEGRITY_EXCEPTION_COLUMNS)
+    exceptions = pd.read_csv(path, dtype=str).fillna("")
+    assert exceptions.columns.tolist() == INTEGRITY_EXCEPTION_COLUMNS, (
+        f"{INTEGRITY_EXCEPTIONS_FILE} must have the columns {INTEGRITY_EXCEPTION_COLUMNS}"
+    )
+    assert exceptions["reason"].str.strip().ne("").all(), (
+        f"every row of {INTEGRITY_EXCEPTIONS_FILE} needs a reason"
+    )
+    return exceptions
+
+
+def documented_exceptions(exceptions, invariant, keys):
+    """The documented cases of one invariant, as a set of key tuples."""
+    rows = exceptions[exceptions["invariant"] == invariant]
+    return {tuple(row[k] for k in keys) for _, row in rows.iterrows()}
+
+
+def assert_exactly_the_documented_cases(found, documented, what):
+    unexpected = sorted(found - documented)
+    stale = sorted(documented - found)
+    assert not unexpected and not stale, (
+        f"{what}: {len(unexpected)} undocumented case(s) {unexpected[:5]}; "
+        f"{len(stale)} documented case(s) no longer present {stale[:5]} "
+        f"(see data/<dataset>/{INTEGRITY_EXCEPTIONS_FILE})"
+    )
+
+
 # ============ 1. SCHEMA VALIDATION ============
 
 
@@ -738,31 +780,34 @@ class TestShuffling:
             )
 
     def test_mixed_groups_are_truly_mixed(self, trials, game_condition_map):
-        """In mixed Phase 2, each group should contain players from 2+
-        original groups (per trial, since groups are reshuffled each trial).
+        """In mixed Phase 2, every group of a round in which every group is a
+        trio holds players from two original groups.
 
-        With constrained reshuffling and all 9 players active, ALL groups
-        are guaranteed mixed. We check per (roundId, currentGroup).
+        The reshuffle (server/src/reshuffling.js) ranks candidate assignments
+        first by the number of trios, then by the number of trios whose
+        speaker has exactly one in-group listener. When every group is a trio
+        that rule is met for all of them -- speaker, one in-group listener,
+        one out-group listener -- so every group spans two original groups,
+        and the check is per group. A round that had to form a pair carries
+        no such guarantee: a pair's lone listener is in-group or out-group by
+        a coin flip, and four players from two original groups can
+        legitimately come out as two same-group pairs (game 9687ZA,
+        2026-09-25, its last five rounds). Those rounds are checked against
+        the server's own record of the assignment in TestReshuffleNetwork.
         """
         for gid, cond in game_condition_map.items():
             if cond not in MIXED_CONDITIONS:
                 continue
-            game_trials = trials[trials["gameId"] == gid]
-            p2 = game_trials[game_trials["phaseNum"] == 2]
-            if len(p2) == 0:
-                continue
-            for rid in p2["roundId"].unique():
-                round_data = p2[p2["roundId"] == rid]
-                any_mixed = False
-                for grp in round_data["currentGroup"].unique():
-                    group_data = round_data[round_data["currentGroup"] == grp]
-                    original_groups = group_data["originalGroup"].nunique()
-                    if original_groups >= 2:
-                        any_mixed = True
-                        break
-                assert any_mixed, (
-                    f"Game {gid} ({cond}), Phase 2 round {rid}: "
-                    f"no group has players from 2+ original groups"
+            p2 = trials[(trials["gameId"] == gid) & (trials["phaseNum"] == 2)]
+            for rid, round_data in p2.groupby("roundId"):
+                sizes = round_data.groupby("currentGroup")["playerId"].nunique()
+                if (sizes < GROUP_SIZE).any():
+                    continue
+                original_groups = round_data.groupby("currentGroup")["originalGroup"].nunique()
+                unmixed = original_groups[original_groups < 2]
+                assert unmixed.empty, (
+                    f"Game {gid} ({cond}), Phase 2 round {rid}: group(s) "
+                    f"{list(unmixed.index)} hold players from one original group"
                 )
 
     def test_reshuffling_preserves_group_sizes(self, trials, game_condition_map):
@@ -2295,30 +2340,37 @@ def _not_excluded(players):
 class TestExitSurvey:
     """Validate exit survey data for active players."""
 
-    def test_active_players_have_exit_survey(self, active_players):
-        """Active players who completed the game should have exit survey data."""
+    def test_active_players_have_exit_survey(self, active_players, integrity_exceptions):
+        """Active players who completed the game have exit survey data.
+
+        The documented exceptions (invariant `exit_survey_missing` in
+        data/<dataset>/integrity_exceptions.csv) are players whose survey was
+        lost to a server failure after their game had ended.
+        """
         active_players = _not_excluded(active_players)
         exit_cols = [
             c for c in active_players.columns if c.startswith("exitSurvey_")
         ]
         if not exit_cols:
             pytest.skip("No exit survey columns found in players.csv")
+        without = active_players[active_players[exit_cols].isna().all(axis=1)]
+        assert_exactly_the_documented_cases(
+            set(zip(without["gameId"], without["playerId"])),
+            documented_exceptions(integrity_exceptions, "exit_survey_missing", ["gameId", "playerId"]),
+            "active players without exit survey data",
+        )
 
-        for _, p in active_players.iterrows():
-            # At least some exit survey fields should be non-null
-            has_survey = any(pd.notna(p[col]) for col in exit_cols)
-            assert has_survey, (
-                f"Active player {p['originalName']}: no exit survey data"
-            )
-
-    def test_exit_survey_understood_field(self, active_players):
-        """exitSurvey_understood should be present for active players."""
+    def test_exit_survey_understood_field(self, active_players, integrity_exceptions):
+        """exitSurvey_understood is present for every active player, except
+        the documented players whose whole survey is missing."""
         if "exitSurvey_understood" not in active_players.columns:
             pytest.skip("exitSurvey_understood column not found")
         active_players = _not_excluded(active_players)
-        null_count = active_players["exitSurvey_understood"].isna().sum()
-        assert null_count == 0, (
-            f"{null_count} active players missing exitSurvey_understood"
+        without = active_players[active_players["exitSurvey_understood"].isna()]
+        assert_exactly_the_documented_cases(
+            set(zip(without["gameId"], without["playerId"])),
+            documented_exceptions(integrity_exceptions, "exit_survey_missing", ["gameId", "playerId"]),
+            "active players without exitSurvey_understood",
         )
 
 
@@ -2336,7 +2388,10 @@ class TestDataCompleteness:
         path = DATA_DIR / "dropouts.csv"
         assert path.exists(), "dropouts.csv is missing; rerun combine_runs.py"
         dropouts = pd.read_csv(path)
-        assert dropouts.columns.tolist() == ["playerId", "batchId", "ended", "exitReason", "quizAttempts"]
+        # The pilot's committed file has the first five columns only; the full
+        # sample's also carries the batch's `condition` and `tangramSet`.
+        base = ["playerId", "batchId", "ended", "exitReason", "quizAttempts"]
+        assert dropouts.columns.tolist() in (base, base + ["condition", "tangramSet"])
         assert not dropouts["playerId"].isin(set(players["playerId"])).any(), (
             "a dropout record is also in players.csv"
         )
@@ -2474,14 +2529,28 @@ class TestSessionInstrumentation:
             "they were made in"
         )
 
-    def test_the_selection_is_never_committed_before_it_was_made(self, trials):
-        """clickedAt is the commit; tangramSelectedAt is the choice."""
-        both = trials[["clickedAt", "tangramSelectedAt"]].dropna()
+    def test_the_selection_is_never_committed_before_it_was_made(self, trials, integrity_exceptions):
+        """clickedAt is the commit; tangramSelectedAt is the choice.
+
+        Both are written by the client in one batch (Tangram.jsx on an
+        immediate click, Refgame.jsx's commitLocalSelections on submit), so
+        they can only disagree when a second click or commit inside the sync
+        window wrote the pair again and the server kept one value from each
+        write. The documented exceptions (invariant `commit_before_choice`)
+        are such trials: in every one the export's change log shows the choice
+        time updated after the commit time, and the gap is under a second,
+        which bounds the error in that trial's response time.
+        """
+        both = trials[["gameId", "playerId", "roundId", "clickedAt", "tangramSelectedAt"]].dropna()
         if both.empty:
             pytest.skip("no selection timestamps recorded")
         early = both[both["clickedAt"] < both["tangramSelectedAt"]]
-        assert len(early) == 0, (
-            f"{len(early)} trials were committed before the choice was made"
+        assert_exactly_the_documented_cases(
+            set(zip(early["gameId"], early["playerId"], early["roundId"])),
+            documented_exceptions(
+                integrity_exceptions, "commit_before_choice", ["gameId", "playerId", "roundId"]
+            ),
+            "trials committed before the choice was made",
         )
 
     def test_every_condition_records_the_choice_time(self, trials, game_condition_map):
