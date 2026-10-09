@@ -457,6 +457,14 @@ def _when(value: str | None) -> datetime | None:
         return None
 
 
+def _submission_window(sub: dict) -> tuple[datetime | None, datetime | None]:
+    """When a submission was open; a returned one with no end is given three hours rather than left open."""
+    start, end = _when(sub.get("started_at")), _when(sub.get("completed_at"))
+    if start and end is None:
+        end = start + timedelta(hours=3)
+    return start, end
+
+
 def assign_studies(payees: dict[tuple[str, str], Payee], submissions: dict[str, list[dict]]) -> None:
     """Decide which Prolific study pays each payee, using their Prolific id.
 
@@ -472,7 +480,15 @@ def assign_studies(payees: dict[tuple[str, str], Payee], submissions: dict[str, 
     3. otherwise the submission whose time window holds the game's start, a
        returned submission with no end being given three hours rather than
        treated as still open;
-    4. otherwise a single match.
+    4. otherwise a single match, unless that submission closed before the
+       game started (with the same three hours for a returned one without
+       an end): a game cannot be claimed on a submission that was already
+       over. On 2026-10-08 five players reached the last session through a
+       bare link and never opened its game study, and the only game-study
+       submission each had was a lobby wait returned in an earlier session,
+       which must keep paying that wait. Such a player falls to
+       place_unsubmitted, which pays them through the session's scheduling
+       survey.
 
     Submissions that started more than LATE_SUBMISSION after the game ended
     are left out first: they belong to a later game by the same person.
@@ -510,15 +526,15 @@ def assign_studies(payees: dict[tuple[str, str], Payee], submissions: dict[str, 
             joined = _when(payee.joined_at)
             covering = []
             for sid, sub in matches:
-                start, end = _when(sub.get("started_at")), _when(sub.get("completed_at"))
-                if start and end is None:
-                    end = start + timedelta(hours=3)
+                start, end = _submission_window(sub)
                 if joined and start and start <= joined <= end:
                     covering.append((start, sid))
             if covering:
                 chosen = max(covering)[1]
             elif len(matches) == 1:
-                chosen = matches[0][0]
+                end = _submission_window(matches[0][1])[1]
+                if not (joined and end and end < joined):
+                    chosen = matches[0][0]
         if chosen:
             payee.study_id, payee.study_source = chosen, "identifier"
         elif payee.study_id:

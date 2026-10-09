@@ -188,6 +188,36 @@ class TestAssignStudies:
         payments.assign_studies(payees, {"S13": [returned], "S15": [later]})
         assert payees[("p", "G1")].study_id == "S15"
 
+    def test_a_submission_closed_before_the_game_is_not_where_it_was_claimed(self):
+        # 2026-10-08: a player reached the last session through a bare link and
+        # never opened its game study. Their only game-study submission was a
+        # lobby wait returned two hours earlier, which still owes that wait; the
+        # game is paid through the session's scheduling survey instead.
+        payees = {("p", "G1"): self.payee(joined="2026-10-08T23:10:00Z")}
+        lobby = self.sub(start="2026-10-08T21:26:00Z", end="2026-10-08T21:36:00Z", code=LOBBY)
+        survey = self.sub(start="2026-10-08T22:35:00Z", end="2026-10-08T22:47:00Z")
+        payments.assign_studies(payees, {"S35": [lobby]})
+        assert payees[("p", "G1")].study_id == ""
+        payments.place_unsubmitted(payees, {"S35": [lobby], "SURVEY36": [survey]})
+        assert payees[("p", "G1")].study_id == "SURVEY36"
+        assert payees[("p", "G1")].kind == "unsubmitted"
+
+    def test_a_returned_submission_from_an_earlier_day_is_not_a_single_match(self):
+        payees = {("p", "G1"): self.payee(joined="2026-10-08T23:10:00Z")}
+        returned = self.sub(start="2026-10-07T19:55:00Z", end=None)
+        payments.assign_studies(payees, {"S30": [returned]})
+        assert payees[("p", "G1")].study_id == ""
+
+    def test_two_unclaimed_submissions_still_leave_the_payee_to_the_survey(self):
+        # 2026-10-07: an old lobby wait and a game-study submission opened after
+        # the game and returned without a code. Neither claims the game, which
+        # was paid through the scheduling survey; that placement must not move.
+        payees = {("p", "G1"): self.payee(joined="2026-10-07T19:52:00Z")}
+        lobby = self.sub(start="2026-09-24T03:30:00Z", end="2026-09-24T03:45:00Z", code=LOBBY)
+        returned = self.sub(start="2026-10-07T20:45:00Z", end=None)
+        payments.assign_studies(payees, {"S8": [lobby], "S30": [returned]})
+        assert payees[("p", "G1")].study_id == ""
+
     def test_no_matching_submission_leaves_the_payee_unassigned(self):
         payees = {("typo", "G1"): self.payee(pid="typo")}
         payments.assign_studies(payees, {"S14": [self.sub()]})
