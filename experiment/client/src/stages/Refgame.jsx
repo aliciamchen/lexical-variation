@@ -153,7 +153,7 @@ export function Refgame(props) {
   // Done per player, and only after their own selection is on the round, so a
   // submit cannot reach the server before the click it depends on. An effect
   // rather than a write during render: a render must not have side effects,
-  // and this one used to fire on every re-render of the waiting screen.
+  // and a write here would fire on every re-render of the waiting screen.
   useEffect(() => {
     if (
       isSelectionStage &&
@@ -267,11 +267,10 @@ export function Refgame(props) {
       } else if (isSocialMixed) {
         // Social phase: the picture and the group guess are reported
         // separately, because a round can hold one without the other (the
-        // deadline auto-commit saves whichever choices were made). This used
-        // to fall into the plain "did not respond, no points" branch whenever
-        // the picture was missing, which told a participant whose group guess
-        // had just been scored that the game had ignored their answer
-        // (2026-09-22 session).
+        // deadline auto-commit saves whichever choices were made). Falling into
+        // the plain "did not respond, no points" branch whenever the picture is
+        // missing would tell a participant whose group guess had just been
+        // scored that the game ignored their answer.
         const socialGuess = player.round.get("social_guess");
         const socialCorrect = player.round.get("social_guess_correct");
         const speakerWasSameGroup = player.round.get("speaker_was_same_group");

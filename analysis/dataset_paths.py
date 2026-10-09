@@ -4,8 +4,8 @@ Dataset layout shared by the pipeline scripts.
 (The module is named dataset_paths rather than datasets so it cannot shadow the
 Hugging Face `datasets` package that sentence-transformers imports.)
 
-The pipeline is keyed by a dataset name (`pilots` for the pilot sessions; the
-full sample gets its own name, e.g. `full`). Every dataset follows the same
+The pipeline is keyed by a dataset name (`pilots` for the pilot sessions,
+`full` for the full sample). Every dataset follows the same
 layout, so switching datasets is a single environment variable or flag rather
 than a set of edited paths:
 

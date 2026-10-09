@@ -155,10 +155,10 @@ function MessageComp({ msg }) {
   const ts = msg.timestamp ? new Date(msg.timestamp) : new Date();
 
   // The sender's avatar, or a neutral placeholder. The fallback must not be
-  // derived from the sender (it used to be a DiceBear identicon seeded on
-  // msg.sender.id): that id is persistent, so in mixed Phase 2 it would have
-  // rendered one stable image per player while the anonymous avatars around it
-  // change every trial. See AVATAR_PLACEHOLDER in shared/constants.js.
+  // derived from the sender (a DiceBear identicon seeded on msg.sender.id,
+  // say): that id is persistent, so in mixed Phase 2 it would render one
+  // stable image per player while the anonymous avatars around it change
+  // every trial. See AVATAR_PLACEHOLDER in shared/constants.js.
   const avatar = msg.sender.avatar || AVATAR_PLACEHOLDER;
 
   return (

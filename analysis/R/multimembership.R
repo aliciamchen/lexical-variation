@@ -2,12 +2,12 @@
 #
 # Each observation is a pair of speakers describing the same tangram, so a
 # speaker appears in many rows, sometimes as speaker1 and sometimes as
-# speaker2. The earlier model gave the two pair positions separate random
-# intercepts, `(1 | speaker1) + (1 | speaker2)`, which splits one person's
-# effect across two variance components and makes the fit depend on an
-# arbitrary ordering within each pair. The preregistered structure instead
-# gives every speaker one random effect shared across both positions, with a
-# common variance and equal weights of 1/2:
+# speaker2. The `separate` structure gives the two pair positions separate
+# random intercepts, `(1 | speaker1) + (1 | speaker2)`, which splits one
+# person's effect across two variance components and makes the fit depend on
+# an arbitrary ordering within each pair. The multiple-membership structure
+# instead gives every speaker one random effect shared across both positions,
+# with a common variance and equal weights of 1/2:
 #
 #   similarity ~ same_group + (1 | target) + (1 | speaker[multiple membership])
 #

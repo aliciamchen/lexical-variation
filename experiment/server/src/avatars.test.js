@@ -1,12 +1,12 @@
 // Every avatar the game can show must exist on our own origin.
 //
-// Avatars used to be fetched from api.dicebear.com at play time, once per
-// player per trial in the mixed conditions. They are now committed under
-// client/public/avatars/ (see scripts/fetch-avatars.mjs). The risk that
-// replaces the outage risk is a missing file: a seed the server generates but
-// nobody downloaded renders as a broken image, and in the mixed conditions
-// that is the identity cue the condition manipulates. So this enumerates every
-// seed the server can produce and checks the file is there.
+// Avatars are committed under client/public/avatars/ (see
+// scripts/fetch-avatars.mjs) rather than fetched from api.dicebear.com at play
+// time, once per player per trial in the mixed conditions. The risk is then a
+// missing file: a seed the server generates but nobody downloaded renders as a
+// broken image, and in the mixed conditions that is the identity cue the
+// condition manipulates. So this enumerates every seed the server can produce
+// and checks the file is there.
 import { existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { join } from "path";

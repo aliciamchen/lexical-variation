@@ -13,15 +13,15 @@ import React, { useEffect, useState } from "react";
 // spinner and then something to act on. Showing the full message every time
 // would train people to ignore it and make a healthy game look broken.
 //
-// The explanation used to appear after 3 s and told people to reload. On a
-// busy server a stage change can take several seconds (up to 12 s in the
-// six-game session of 2026-09-25), so that advice fired on ordinary slow
-// transitions. Reloading is the worst response to one: it discards the update
-// already on its way, reloads the app, and re-fetches the whole game from the
-// same busy server while the stage timer keeps running, which is how
-// participants missed rounds and were removed for inactivity on 2026-09-23.
-// So the first message asks them to wait, and a reload is suggested only once
-// a wait is long enough to mean a real disconnection.
+// The thresholds are generous because on a busy server a stage change can
+// take several seconds (up to 12 s in a six-game session), so advice given
+// after a few seconds would fire on ordinary slow transitions. Reloading is
+// the worst response to one: it discards the update already on its way,
+// reloads the app, and re-fetches the whole game from the same busy server
+// while the stage timer keeps running, which costs participants rounds and
+// can get them removed for inactivity. So the first message asks them to
+// wait, and a reload is suggested only once a wait is long enough to mean a
+// real disconnection.
 const SPINNER_AFTER_MS = 400;
 const WAIT_MESSAGE_AFTER_MS = 15000;
 const RELOAD_ADVICE_AFTER_MS = 30000;

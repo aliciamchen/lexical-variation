@@ -4,11 +4,11 @@ drift from the running experiment.
 
 `operations/payments.py` and `operations/tally.py` need a handful of values that the experiment already
 defines: the three Prolific completion codes, the pay figures, the condition
-names, and the exit reasons the server records when it removes a player. Those
-used to be copied into Python by hand, which meant a reworded exit reason or a
-regenerated completion code would change the experiment without changing the
-tooling that pays people. This module parses them out of the JavaScript instead
-and fails loudly when something it expects is missing.
+names, and the exit reasons the server records when it removes a player.
+Copying them into Python by hand would let a reworded exit reason or a
+regenerated completion code change the experiment without changing the tooling
+that pays people, so this module parses them out of the JavaScript and fails
+loudly when something it expects is missing.
 
 The parsing is deliberately narrow: it understands the few literal declarations
 it needs and nothing else, so an unexpected shape raises rather than guessing.
