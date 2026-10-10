@@ -42,6 +42,7 @@ from preprocessing import (
     build_social_guesses,
     build_trials,
     flag_length_increase,
+    participant_clock_offsets,
     read_participant_exclusions,
     retire_stale_filtered_utterances,
     selection_stage_times,
@@ -529,6 +530,82 @@ class TestConnectionSummary:
         assert players["disconnectCount"].isna().all()
         assert players["reloadCount"].isna().all()
         assert players["connectionLogTruncated"].isna().all()
+
+    # The game ran from 10 s to 20 s on the server's clock. Each drop below is
+    # stamped with the moment it began (`t`) and how long it lasted.
+    GAME = {"gameStartTime": [10_000], "gameEndTime": [20_000]}
+    DROPS = (
+        '[{"t": 1000, "type": "page_load", "navigation": "navigate"},'
+        ' {"t": 1000, "type": "disconnect", "durationMs": 500},'  # lobby: out
+        ' {"t": 9500, "type": "disconnect", "durationMs": 1000},'  # spans the start: 500 ms
+        ' {"t": 15000, "type": "disconnect", "durationMs": 1000},'  # inside: 1000 ms
+        ' {"t": 19500, "type": "disconnect", "durationMs": 3000},'  # spans the end: 500 ms
+        ' {"t": 30000, "type": "disconnect", "durationMs": 100000}]'  # after: out
+    )
+
+    @staticmethod
+    def _trials(offset_ms):
+        """Two trials whose render stamps put the participant's clock
+        `offset_ms` ahead of the server's."""
+        return pd.DataFrame(
+            {
+                "playerId": ["p1", "p1"],
+                "selectionRenderedAt": [12_000 + offset_ms, 14_000 + offset_ms],
+                "selectionStartedAt": [12_000, 14_000],
+            }
+        )
+
+    def test_drops_are_clipped_to_the_game_window(self):
+        players = build_players(
+            _minimal_player_df(connection_events=[self.DROPS], **self.GAME),
+            trials=self._trials(0),
+        )
+        assert players["disconnectCount"].tolist() == [3]
+        assert players["disconnectMs"].tolist() == [2000]
+        assert players["pageLoadCount"].tolist() == [1]
+
+    def test_the_window_is_moved_onto_the_participants_clock(self):
+        hour = 3_600_000
+        events = (
+            f'[{{"t": {15_000 + hour}, "type": "disconnect", "durationMs": 1000}},'
+            ' {"t": 15000, "type": "disconnect", "durationMs": 1000}]'
+        )
+        players = build_players(
+            _minimal_player_df(connection_events=[events], **self.GAME),
+            trials=self._trials(hour),
+        )
+        # On a clock an hour ahead, the first drop is mid-game and the second
+        # happened an hour before the game began.
+        assert players["disconnectCount"].tolist() == [1]
+        assert players["disconnectMs"].tolist() == [1000]
+
+    def test_without_trials_or_game_times_the_whole_log_counts(self):
+        players = build_players(_minimal_player_df(connection_events=[self.DROPS], **self.GAME))
+        assert players["disconnectCount"].tolist() == [5]
+        assert players["disconnectMs"].tolist() == [105_500]
+        players = build_players(
+            _minimal_player_df(connection_events=[self.DROPS]), trials=self._trials(0)
+        )
+        assert players["disconnectCount"].tolist() == [5]
+
+
+class TestParticipantClockOffsets:
+    def test_the_offset_is_the_median_over_the_participants_trials(self):
+        trials = pd.DataFrame(
+            {
+                "playerId": ["p1", "p1", "p1", "p2"],
+                "selectionRenderedAt": [1100, 1200, 101_000, np.nan],
+                "selectionStartedAt": [1000, 1000, 1000, 5000],
+            }
+        )
+        offsets = participant_clock_offsets(trials)
+        assert offsets.to_dict() == {"p1": 200.0}
+
+    def test_trials_without_the_stamps_give_no_offsets(self):
+        trials = pd.DataFrame({"playerId": ["p1"], "selectionRenderedAt": [np.nan], "selectionStartedAt": [np.nan]})
+        assert participant_clock_offsets(trials).empty
+        assert participant_clock_offsets(None).empty
+        assert participant_clock_offsets(pd.DataFrame({"playerId": ["p1"]})).empty
 
 
 class TestPlayerSchemaIsStableAcrossExportVintages:

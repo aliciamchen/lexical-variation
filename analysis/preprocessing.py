@@ -186,8 +186,15 @@ def add_active_groups_min(
     return games
 
 
-def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
-    """Build players.csv: 1 row per player."""
+def build_players(
+    player_df: pd.DataFrame, trials: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    """Build players.csv: 1 row per player.
+
+    `trials` (the table `build_trials` returns) supplies each participant's
+    clock offset, which `summarize_connection` needs to bound the connection
+    log by the game. Without it the whole log is summarized.
+    """
     player_df = drop_last_changed_cols(player_df)
 
     required_cols = [
@@ -291,7 +298,7 @@ def build_players(player_df: pd.DataFrame) -> pd.DataFrame:
 
     players = flatten_client_context(players)
     players = summarize_engagement(players)
-    players = summarize_connection(players)
+    players = summarize_connection(players, participant_clock_offsets(trials))
 
     return players
 
@@ -361,19 +368,60 @@ def summarize_engagement(players: pd.DataFrame) -> pd.DataFrame:
     return players.drop(columns=["engagementEvents"])
 
 
-def summarize_connection(players: pd.DataFrame) -> pd.DataFrame:
+def participant_clock_offsets(trials: pd.DataFrame | None) -> pd.Series:
+    """Each participant's clock minus the server's, in milliseconds.
+
+    The client stamps `selectionRenderedAt` on its own clock the moment it
+    hears that a Selection stage started, and the server stamps that start as
+    `selectionStartedAt`, so their difference is the offset between the two
+    clocks plus the delivery delay, a few hundred milliseconds. The median
+    over the participant's trials is taken so that one slow render cannot move
+    it. Most browsers are within seconds of the server, a few are hours off,
+    which is why a server-clock time can only be compared with a participant's
+    log after this shift. Indexed by playerId; empty when the trials carry no
+    stamps (exports before September 2026).
+    """
+    empty = pd.Series(dtype="float64", name="clockOffsetMs")
+    if trials is None or trials.empty:
+        return empty
+    if not {"playerId", "selectionRenderedAt", "selectionStartedAt"} <= set(trials.columns):
+        return empty
+    rendered = pd.to_numeric(trials["selectionRenderedAt"], errors="coerce")
+    started = pd.to_numeric(trials["selectionStartedAt"], errors="coerce")
+    offsets = (rendered - started).dropna()
+    if offsets.empty:
+        return empty
+    return offsets.groupby(trials.loc[offsets.index, "playerId"]).median().rename("clockOffsetMs")
+
+
+def summarize_connection(
+    players: pd.DataFrame, clock_offsets: pd.Series | None = None
+) -> pd.DataFrame:
     """Reduce the raw connection log to per-player counts and disconnected time.
 
     `ConnectionLog` (client/src/instrumentation.js, from 2026-09-25) appends a
-    `disconnect` event, with the drop's `durationMs`, once the websocket to the
-    game server is back, and a `page_load` event with the browser's navigation
+    `disconnect` event once the websocket to the game server is back, stamped
+    with the moment it went down (`t`, on the participant's clock) and the
+    drop's `durationMs`, and a `page_load` event with the browser's navigation
     type on every load, so a reload shows as `navigation: "reload"`. The
     browser's own `offline` event, which the engagement log records, fires only
     when the whole network goes, so this log is the record of the drops that
-    participants reported. The per-event list stays in the raw export; the tidy
-    table carries the counts, the total time disconnected, and whether the log
-    hit its cap (`connectionLogTruncated`). An export from before the log has
-    every column empty.
+    participants reported.
+
+    The log runs from the first page load to whenever the tab was closed, so
+    it also holds drops during the lobby and instructions and, for a tab left
+    open on the final page, reconnections hours after the game. Only the part
+    of each drop that falls between the player's `gameStartTime` and
+    `gameEndTime` counts, and a drop that lies wholly outside is not counted at
+    all. Those two times are the server's; `clock_offsets`
+    (`participant_clock_offsets`) moves the window onto the participant's
+    clock, which the log is on. A player with no offset or no game times has
+    the whole log summarized.
+
+    The per-event list stays in the raw export; the tidy table carries the
+    counts, the total time disconnected, and whether the log hit its cap
+    (`connectionLogTruncated`). An export from before the log has every
+    column empty.
     """
     summary_columns = [
         "disconnectCount",
@@ -388,8 +436,13 @@ def summarize_connection(players: pd.DataFrame) -> pd.DataFrame:
             players["connectionLogTruncated"] = pd.NA
         return players
 
-    summaries = players["connectionEvents"].apply(
-        lambda raw: _connection_summary(parse_json_field(raw, "connection_events"))
+    windows = _game_windows_on_participant_clocks(players, clock_offsets)
+    summaries = pd.Series(
+        [
+            _connection_summary(parse_json_field(raw, "connection_events"), window)
+            for raw, window in zip(players["connectionEvents"], windows)
+        ],
+        index=players.index,
     )
     for column in summary_columns:
         players[column] = summaries.apply(lambda d, c=column: d[c])
@@ -398,8 +451,37 @@ def summarize_connection(players: pd.DataFrame) -> pd.DataFrame:
     return players.drop(columns=["connectionEvents"])
 
 
-def _connection_summary(events) -> dict:
+def _game_windows_on_participant_clocks(
+    players: pd.DataFrame, clock_offsets: pd.Series | None
+) -> list:
+    """Each player's game window (start, end) in their own clock, or None.
+
+    The window is `gameStartTime` to `gameEndTime`, both server times, plus
+    the participant's clock offset. None where any of the three is unknown.
+    """
+    if clock_offsets is None or clock_offsets.empty:
+        return [None] * len(players)
+    if not {"gameStartTime", "gameEndTime"} <= set(players.columns):
+        return [None] * len(players)
+    start = pd.to_numeric(players["gameStartTime"], errors="coerce")
+    end = pd.to_numeric(players["gameEndTime"], errors="coerce")
+    offset = players["playerId"].map(clock_offsets)
+    windows = []
+    for s, e, o in zip(start, end, offset):
+        if pd.isna(s) or pd.isna(e) or pd.isna(o):
+            windows.append(None)
+        else:
+            windows.append((float(s) + float(o), float(e) + float(o)))
+    return windows
+
+
+def _connection_summary(events, window: tuple | None = None) -> dict:
     """Counts and total disconnected time for one player's connection log.
+
+    `window` is the player's game as (start, end) on the participant's clock;
+    each drop, which runs from its `t` for `durationMs`, is clipped to it, and
+    a drop wholly outside it is not counted. With no window every drop counts
+    in full.
 
     A player whose record holds no list (an export from before the log, or a
     participant whose client never wrote one) gets missing values, as the
@@ -423,10 +505,25 @@ def _connection_summary(events) -> dict:
             continue
         kind = event.get("type")
         if kind == "disconnect":
-            disconnect_count += 1
             duration = event.get("durationMs")
-            if isinstance(duration, (int, float)) and not isinstance(duration, bool):
-                disconnect_ms += max(0, int(duration))
+            duration = (
+                max(0, int(duration))
+                if isinstance(duration, (int, float)) and not isinstance(duration, bool)
+                else 0
+            )
+            down_since = event.get("t")
+            if (
+                window is not None
+                and isinstance(down_since, (int, float))
+                and not isinstance(down_since, bool)
+            ):
+                clipped_start = max(float(down_since), window[0])
+                clipped_end = min(float(down_since) + duration, window[1])
+                if clipped_start > clipped_end:
+                    continue
+                duration = int(clipped_end - clipped_start)
+            disconnect_count += 1
+            disconnect_ms += duration
         elif kind == "page_load":
             page_load_count += 1
             if event.get("navigation") == "reload":
@@ -1571,7 +1668,7 @@ def main():
     # players.csv is written after the utterances because the AI-use flag
     # (Phase 1 description-length increase) is computed from them.
     print("Building players.csv...")
-    players = build_players(player_df).merge(
+    players = build_players(player_df, trials).merge(
         flag_length_increase(speaker_utterances), on=["gameId", "playerId"], how="left"
     )
     players["lengthIncreaseFlag"] = players["lengthIncreaseFlag"].fillna(False).astype(bool)

@@ -10,11 +10,19 @@ Run with:
     DATASET=full uv run pytest analysis/test_data_integrity.py -v
 """
 
+import json
+import re
+from itertools import combinations
+
 import numpy as np
 import pandas as pd
 import pytest
 
-from dataset_paths import dataset_dirs
+from dataset_paths import (
+    FILTERED_UTTERANCES_FILE,
+    dataset_dirs,
+    filtered_utterances_status,
+)
 
 # ============ CONSTANTS (from experiment design) ============
 
@@ -41,6 +49,8 @@ SOCIAL_SPEAKER_POINTS_PER_CORRECT = 6
 # Data directory for the dataset under test ($DATASET, default pilots)
 DATASET = dataset_dirs()
 DATA_DIR = DATASET.data
+RAW_DIR = DATASET.raw
+DERIVED_DIR = DATASET.derived
 
 # The pilot runs were collected with BONUS_PER_POINT = 0.05; every later
 # dataset uses the production rate in experiment/shared/constants.js.
@@ -2360,6 +2370,31 @@ class TestExitSurvey:
             "active players without exit survey data",
         )
 
+    def test_the_second_survey_page_is_saved_with_the_first(self, active_players, integrity_exceptions):
+        """A surveyed player has the second page's required answers.
+
+        The survey saves each page whole when its form is submitted, and the
+        second page (ExitSurvey.jsx) cannot be submitted without the
+        felt-human, age and gender answers, so a player with any survey answer
+        either has those three or lost the page. The documented exceptions
+        (invariant `exit_survey_page_two_missing`) are players whose second
+        page was lost to a server failure after the first had been saved.
+        """
+        required = ["exitSurvey_feltHuman", "exitSurvey_age", "exitSurvey_gender"]
+        if not set(required) <= set(active_players.columns):
+            pytest.skip("survey predates the two-page form")
+        surveyed = _not_excluded(active_players)
+        exit_cols = [c for c in surveyed.columns if c.startswith("exitSurvey_")]
+        surveyed = surveyed[surveyed[exit_cols].notna().any(axis=1)]
+        without = surveyed[surveyed[required].isna().any(axis=1)]
+        assert_exactly_the_documented_cases(
+            set(zip(without["gameId"], without["playerId"])),
+            documented_exceptions(
+                integrity_exceptions, "exit_survey_page_two_missing", ["gameId", "playerId"]
+            ),
+            "surveyed players without the second page's required answers",
+        )
+
     def test_exit_survey_understood_field(self, active_players, integrity_exceptions):
         """exitSurvey_understood is present for every active player, except
         the documented players whose whole survey is missing."""
@@ -2397,6 +2432,42 @@ class TestDataCompleteness:
         )
         assert dropouts["playerId"].is_unique
         assert pd.to_numeric(dropouts["quizAttempts"], errors="raise").dropna().between(1, 3).all()
+
+    def test_a_dropout_has_a_condition_exactly_when_its_batch_had_one_treatment(self):
+        """`condition` and `tangramSet` on dropouts.csv come from the batch's
+        treatment, and only when the batch listed exactly one (combine_runs.
+        batch_treatments): a record with no batch, or a batch of several
+        treatments, must be blank, and every other record must carry its
+        batch's factors."""
+        dropouts = pd.read_csv(DATA_DIR / "dropouts.csv", dtype=str, keep_default_na=False)
+        if "condition" not in dropouts.columns:
+            pytest.skip("dropouts.csv predates the treatment columns")
+        batches = _raw_table("batch.csv", ["id", "config"])
+        if batches is None:
+            pytest.skip("raw_anonymized/batch.csv is not present")
+        treatments = {}
+        for batch_id, config in zip(batches["id"], batches["config"]):
+            try:
+                listed = json.loads(config)["config"]["treatments"]
+            except (TypeError, ValueError, KeyError):
+                treatments[batch_id] = None
+                continue
+            treatments[batch_id] = (
+                listed[0]["treatment"]["factors"] if len(listed) == 1 else None
+            )
+        wrong = []
+        for row in dropouts.itertuples(index=False):
+            if row.batchId not in treatments:
+                continue  # a batch outside the kept tables cannot be checked
+            factors = treatments[row.batchId]
+            expected = (
+                (str(factors.get("condition", "")), str(factors.get("tangramSet", "")))
+                if factors
+                else ("", "")
+            )
+            if (row.condition, row.tangramSet) != expected:
+                wrong.append((row.playerId, row.condition, row.tangramSet, expected))
+        assert not wrong, f"{len(wrong)} dropout rows disagree with their batch's treatment: {wrong[:5]}"
 
     def test_at_least_one_real_game(self, games):
         assert len(games) > 0, "No real (non-test) games found in games.csv"
@@ -2583,6 +2654,25 @@ class TestSessionInstrumentation:
             pytest.skip("no engagement log recorded")
         assert (hidden >= 0).all(), "negative tab-hidden time"
 
+    def test_disconnected_time_fits_inside_the_game(self, players):
+        """`summarize_connection` counts only the part of each drop that
+        falls within the player's game, so the total can never exceed the
+        time between the player's start and end; a tab that reconnected
+        hours after the game adds nothing."""
+        columns = ["gameStartTime", "gameEndTime", "disconnectCount", "disconnectMs"]
+        if not set(columns) <= set(players.columns):
+            pytest.skip("players.csv predates the connection log")
+        both = players[columns].apply(pd.to_numeric, errors="coerce").dropna()
+        if both.empty:
+            pytest.skip("no connection log recorded")
+        over = both[both["disconnectMs"] > both["gameEndTime"] - both["gameStartTime"]]
+        assert len(over) == 0, (
+            f"{len(over)} players were disconnected for longer than they were in the game"
+        )
+        assert not ((both["disconnectMs"] > 0) & (both["disconnectCount"] == 0)).any(), (
+            "disconnected time without a counted drop"
+        )
+
     def test_time_on_task_is_recorded_for_everyone_who_finished(self, players, games):
         """Finishers get an end time from onGameEnded, not just removals.
 
@@ -2606,3 +2696,410 @@ class TestSessionInstrumentation:
         assert missing == 0, (
             f"{missing} of {len(finished)} players whose game ended have no time on task"
         )
+
+
+# ============ 21. UTTERANCES AND DERIVED TABLES ============
+#
+# The chain from the chat log to the primary dependent variable, rebuilt here
+# from the data files alone: utterances from messages.csv and the classifier's
+# labels, and every similarity table from the utterance file and the saved
+# embeddings. None of the pipeline's functions are called, so a mistake in
+# them shows up as a disagreement rather than being reproduced.
+
+
+def _raw_table(name, columns):
+    """One raw_anonymized table as strings, or None when the file is absent."""
+    path = RAW_DIR / name
+    if not path.exists():
+        return None
+    return pd.read_csv(path, usecols=columns, dtype=str, keep_default_na=False)
+
+
+def _as_text_table(path):
+    return pd.read_csv(path, dtype=str, keep_default_na=False)
+
+
+def _message_key(frame):
+    """The columns that identify one chat message, normalized so that a
+    timestamp read back as a float and an empty text read back as NaN still
+    match (filter_nonreferential.MESSAGE_KEY)."""
+    key = frame[["gameId", "roundId", "senderId", "text"]].copy()
+    key["timestamp"] = pd.to_numeric(frame["timestamp"], errors="coerce").round().astype("int64")
+    return key
+
+
+def _assemble(speaker_messages):
+    """One utterance per speaker turn: the speaker's messages of the round
+    in timestamp order joined with ", " (preprocessing.assemble_speaker_
+    utterances), keyed by game, trial and speaker."""
+    ordered = speaker_messages.assign(
+        timestamp=pd.to_numeric(speaker_messages["timestamp"], errors="coerce")
+    ).sort_values(["roundId", "timestamp"], kind="stable")
+    return (
+        ordered.groupby(["gameId", "trialNum", "senderId"], sort=False)["text"]
+        .agg(", ".join)
+        .rename("rebuilt")
+        .reset_index()
+        .rename(columns={"senderId": "playerId"})
+    )
+
+
+@pytest.fixture(scope="session")
+def messages_text():
+    """messages.csv with every column as text, so message texts compare exactly."""
+    return _as_text_table(DATA_DIR / "messages.csv")
+
+
+@pytest.fixture(scope="session")
+def message_labels():
+    """The classifier's labels, keyed by message; None when the dataset has none."""
+    path = DATA_DIR / "messages_classified.csv"
+    if not path.exists():
+        return None
+    labels = _as_text_table(path)
+    key = _message_key(labels)
+    key["is_referential"] = labels["is_referential"].str.lower().isin(["true", "1"])
+    return key.drop_duplicates(["gameId", "roundId", "senderId", "timestamp", "text"])
+
+
+class TestUtteranceAssembly:
+    def test_speaker_utterances_are_the_speakers_messages_of_the_round(self, messages_text):
+        utterances = _as_text_table(DATA_DIR / "speaker_utterances.csv")
+        rebuilt = _assemble(messages_text[messages_text["senderRole"] == "speaker"])
+        merged = utterances.merge(rebuilt, on=["gameId", "trialNum", "playerId"], how="outer", indicator=True)
+        assert (merged["_merge"] == "both").all(), (
+            f"{int((merged['_merge'] != 'both').sum())} speaker turns are in only one of "
+            "messages.csv and speaker_utterances.csv"
+        )
+        differ = merged[merged["utterance"] != merged["rebuilt"]]
+        assert differ.empty, f"{len(differ)} utterances differ from the joined messages"
+        lengths = merged["utterance"].str.split().str.len()
+        assert (pd.to_numeric(merged["uttLength"]) == lengths).all(), "uttLength is not the word count"
+
+    def test_filtered_utterances_are_the_referential_messages_only(self, messages_text, message_labels):
+        """speaker_utterances_filtered.csv is the same assembly over the
+        messages the classifier labeled referential, and a round in which
+        every speaker message was non-referential has no row at all."""
+        path = DATA_DIR / FILTERED_UTTERANCES_FILE
+        if not path.exists():
+            pytest.skip("no filtered utterances")
+        if message_labels is None:
+            pytest.fail("speaker_utterances_filtered.csv exists but messages_classified.csv does not")
+        status, detail = filtered_utterances_status(DATA_DIR)
+        assert status == "current", detail
+        speaker = messages_text[messages_text["senderRole"] == "speaker"]
+        keyed = _message_key(speaker).merge(
+            message_labels, on=["gameId", "roundId", "senderId", "timestamp", "text"], how="left"
+        )
+        assert keyed["is_referential"].notna().all(), (
+            f"{int(keyed['is_referential'].isna().sum())} speaker messages have no classifier label"
+        )
+        referential = speaker[keyed["is_referential"].astype(bool).values]
+        rebuilt = _assemble(referential)
+        filtered = _as_text_table(path)
+        merged = filtered.merge(rebuilt, on=["gameId", "trialNum", "playerId"], how="outer", indicator=True)
+        assert (merged["_merge"] == "both").all(), (
+            f"{int((merged['_merge'] == 'left_only').sum())} filtered utterances have no referential "
+            f"message and {int((merged['_merge'] == 'right_only').sum())} speaker turns with one are missing"
+        )
+        differ = merged[merged["utterance"] != merged["rebuilt"]]
+        assert differ.empty, f"{len(differ)} filtered utterances differ from the joined referential messages"
+        assert (merged["utterance"].str.strip() != "").all(), "an empty utterance was kept"
+
+
+# The utterance table the derived step read (the filtered file when it is
+# current, else the unfiltered one), with the row position of every utterance,
+# which is its row in embeddings.npy.
+@pytest.fixture(scope="session")
+def derived_utterances():
+    if not (DERIVED_DIR / "embeddings.npy").exists():
+        pytest.skip(f"no derived tables for dataset '{DATASET.name}'")
+    status, detail = filtered_utterances_status(DATA_DIR)
+    if status == "current":
+        name = FILTERED_UTTERANCES_FILE
+    elif status == "absent":
+        name = "speaker_utterances.csv"
+    else:
+        pytest.fail(detail)
+    utterances = pd.read_csv(DATA_DIR / name, dtype={"playerId": str, "gameId": str})
+    text = utterances["utterance"].fillna("").astype(str).str.strip()
+    utterances = utterances[text != ""].reset_index(drop=True)
+    utterances["row"] = range(len(utterances))
+    return utterances
+
+
+@pytest.fixture(scope="session")
+def unit_embeddings(derived_utterances):
+    embeddings = np.load(DERIVED_DIR / "embeddings.npy").astype("float64")
+    assert embeddings.shape[0] == len(derived_utterances), (
+        f"embeddings.npy has {embeddings.shape[0]} rows for {len(derived_utterances)} utterances"
+    )
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    return embeddings / np.where(norms == 0, 1, norms)
+
+
+@pytest.fixture(scope="session")
+def content_words():
+    """The preregistration's content words: lowercase alphabetic runs, NLTK
+    English stopwords and one-letter words removed, each word once."""
+    import nltk
+
+    nltk.download("stopwords", quiet=True)
+    from nltk.corpus import stopwords
+
+    stop = frozenset(stopwords.words("english"))
+
+    def words(text):
+        if not isinstance(text, str):
+            return frozenset()
+        return frozenset(w for w in re.findall(r"[a-z]+", text.lower()) if w not in stop and len(w) > 1)
+
+    return words
+
+
+def _cosines(unit_embeddings, rows1, rows2):
+    return np.einsum("ij,ij->i", unit_embeddings[rows1], unit_embeddings[rows2])
+
+
+def _latest_per_speaker(utterances, keys):
+    """Each speaker's most recent description within `utterances`, grouped by
+    `keys` plus the speaker: the last row by block, ties by file order."""
+    return (
+        utterances.sort_values("blockNum", kind="stable")
+        .groupby(keys + ["playerId"], sort=False)
+        .tail(1)
+    )
+
+
+def _window_utterances(utterances, games, window):
+    """compute_derived.get_window_utterances: the final three blocks of a
+    phase, or the first three of Phase 2, per game."""
+    blocks = games.set_index("gameId")[["phase1Blocks", "phase2Blocks"]]
+    p1 = utterances["gameId"].map(blocks["phase1Blocks"]).fillna(6).astype(int)
+    p2 = utterances["gameId"].map(blocks["phase2Blocks"]).fillna(6).astype(int)
+    if window == "phase1_final":
+        keep = (utterances["phaseNum"] == 1) & (utterances["blockNum"] >= (p1 - 3).clip(lower=0))
+    elif window == "phase2_early":
+        keep = (utterances["phaseNum"] == 2) & (utterances["blockNum"] < 3)
+    else:
+        keep = (utterances["phaseNum"] == 2) & (utterances["blockNum"] >= (p2 - 3).clip(lower=0))
+    return utterances[keep]
+
+
+def _pairs_of(latest, keys):
+    """Every unordered pair of speakers within each cell of `keys`, in the
+    order the speakers first appear (itertools.combinations over them)."""
+    rows = []
+    for cell, members in latest.groupby(keys, sort=False):
+        if len(members) < 2:
+            continue
+        cell = cell if isinstance(cell, tuple) else (cell,)
+        for a, b in combinations(members.itertuples(index=False), 2):
+            rows.append(cell + (a.playerId, b.playerId, a.row, b.row, a.originalGroup, b.originalGroup, a.uttLength, b.uttLength))
+    return pd.DataFrame(rows, columns=keys + ["speaker1", "speaker2", "row1", "row2", "group1x", "group2x", "length1x", "length2x"])
+
+
+def _canonical_pairs(frame, paired_columns):
+    """Order each pair's speakers lexicographically, swapping the per-speaker
+    columns with them. The pipeline lists a pair in whichever order it met
+    the speakers, which differs between its tables, so pairs are compared
+    unordered."""
+    swap = (frame["speaker1"] > frame["speaker2"]).to_numpy()
+    out = frame.copy()
+    for first, second in paired_columns:
+        out.loc[swap, [first, second]] = frame.loc[swap, [second, first]].to_numpy()
+    return out
+
+
+def _assert_pairs_agree(table, expected, keys, unit_embeddings, what):
+    """`table` (a derived similarity table) holds exactly the pairs in
+    `expected`, with the same groups and the cosine of the two embeddings."""
+    assert len(table) == len(expected), f"{what}: {len(table)} rows, {len(expected)} pairs expected"
+    table = _canonical_pairs(
+        table,
+        [("speaker1", "speaker2"), ("group1", "group2")]
+        + ([("length1", "length2")] if "length1" in table.columns else []),
+    )
+    expected = _canonical_pairs(
+        expected,
+        [("speaker1", "speaker2"), ("row1", "row2"), ("group1x", "group2x"), ("length1x", "length2x")],
+    )
+    merged = table.merge(expected, on=keys + ["speaker1", "speaker2"], how="left", indicator=True)
+    assert (merged["_merge"] == "both").all(), (
+        f"{what}: {int((merged['_merge'] != 'both').sum())} rows are not a pair of latest descriptions"
+    )
+    assert not merged.duplicated(keys + ["speaker1", "speaker2"]).any(), f"{what}: duplicated pairs"
+    assert (merged["group1"] == merged["group1x"]).all() and (merged["group2"] == merged["group2x"]).all(), (
+        f"{what}: a speaker's original group differs"
+    )
+    assert (merged["sameGroup"] == (merged["group1x"] == merged["group2x"]).astype(int)).all(), (
+        f"{what}: sameGroup does not follow the original groups"
+    )
+    cosine = _cosines(unit_embeddings, merged["row1"].to_numpy(), merged["row2"].to_numpy())
+    gap = np.abs(merged["similarity"].to_numpy() - cosine)
+    assert np.nanmax(gap) < 1e-4, f"{what}: similarity differs from the embeddings' cosine by up to {np.nanmax(gap):.2e}"
+    return merged
+
+
+class TestDerivedTables:
+    """The similarity tables follow from the utterance file and embeddings.npy."""
+
+    def test_pairwise_windows_hold_every_pair_of_latest_descriptions(self, derived_utterances, unit_embeddings):
+        games = pd.read_csv(DATA_DIR / "games.csv", dtype={"gameId": str})
+        table = pd.read_csv(DERIVED_DIR / "pairwise_similarities.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
+        expected = pd.concat(
+            [
+                _pairs_of(_latest_per_speaker(_window_utterances(derived_utterances, games, window), ["gameId", "target"]), ["gameId", "target"]).assign(window=window)
+                for window in ("phase1_final", "phase2_early", "phase2_final")
+            ],
+            ignore_index=True,
+        )
+        merged = _assert_pairs_agree(table, expected, ["gameId", "target", "window"], unit_embeddings, "pairwise_similarities.csv")
+        assert (merged["length1"] == merged["length1x"]).all() and (merged["length2"] == merged["length2x"]).all(), (
+            "length1/length2 are not the word counts of the paired descriptions"
+        )
+        pairs = merged.apply(lambda r: "_".join(sorted([r["speaker1"], r["speaker2"]])), axis=1)
+        assert (merged["participantPair"] == pairs).all(), "participantPair is not the sorted speaker pair"
+
+    def test_jaccard_table_scores_the_same_pairs_by_content_word_overlap(self, derived_utterances, unit_embeddings, content_words):
+        sbert = pd.read_csv(DERIVED_DIR / "pairwise_similarities.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
+        jaccard = pd.read_csv(DERIVED_DIR / "pairwise_similarities_jaccard.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
+        keys = ["gameId", "target", "window", "speaker1", "speaker2", "group1", "group2", "sameGroup"]
+        assert sbert[keys].equals(jaccard[keys]), "the Jaccard table's rows are not the SBERT table's rows in order"
+        games = pd.read_csv(DATA_DIR / "games.csv", dtype={"gameId": str})
+        latest = pd.concat(
+            [
+                _latest_per_speaker(_window_utterances(derived_utterances, games, window), ["gameId", "target"]).assign(window=window)
+                for window in ("phase1_final", "phase2_early", "phase2_final")
+            ]
+        )
+        text = latest.set_index(["gameId", "target", "window", "playerId"])["utterance"]
+        words1 = [content_words(text.get((g, t, w, s))) for g, t, w, s in zip(jaccard["gameId"], jaccard["target"], jaccard["window"], jaccard["speaker1"])]
+        words2 = [content_words(text.get((g, t, w, s))) for g, t, w, s in zip(jaccard["gameId"], jaccard["target"], jaccard["window"], jaccard["speaker2"])]
+        expected = np.array([
+            len(a & b) / len(a | b) if a and b else np.nan for a, b in zip(words1, words2)
+        ])
+        got = jaccard["similarity"].to_numpy(dtype=float)
+        assert np.array_equal(np.isnan(got), np.isnan(expected)), "Jaccard is NaN exactly when a side has no content words"
+        assert np.nanmax(np.abs(got - expected), initial=0) < 1e-9, "Jaccard similarity differs from the content-word overlap"
+
+    def test_block_table_pairs_the_latest_descriptions_up_to_each_block(self, derived_utterances, unit_embeddings):
+        table = pd.read_csv(DERIVED_DIR / "block_pairwise_similarities.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
+        blocks_present = derived_utterances[["gameId", "phaseNum", "blockNum"]].drop_duplicates()
+        latest_by_block = []
+        for block in sorted(derived_utterances["blockNum"].unique()):
+            up_to = derived_utterances[derived_utterances["blockNum"] <= block]
+            latest = _latest_per_speaker(up_to, ["gameId", "phaseNum", "target"]).assign(blockNum=block)
+            latest_by_block.append(latest)
+        latest = pd.concat(latest_by_block).merge(blocks_present, on=["gameId", "phaseNum", "blockNum"])
+        keys = ["gameId", "phaseNum", "target", "blockNum"]
+        expected = _pairs_of(latest, keys)
+        merged = _assert_pairs_agree(table, expected, keys, unit_embeddings, "block_pairwise_similarities.csv")
+        # The start rule: every original group present has two describers,
+        # and at least two groups are present.
+        per_group = latest.groupby(keys + ["originalGroup"]).size().rename("n").reset_index()
+        flag = per_group.groupby(keys)["n"].agg(lambda n: int(len(n) >= 2 and (n >= 2).all())).rename("flag").reset_index()
+        merged = merged.merge(flag, on=keys, how="left")
+        assert (merged["allGroupsPaired"] == merged["flag"]).all(), "allGroupsPaired does not follow the start rule"
+        jaccard = pd.read_csv(DERIVED_DIR / "block_pairwise_similarities_jaccard.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
+        same = keys + ["speaker1", "speaker2", "group1", "group2", "sameGroup", "allGroupsPaired"]
+        assert table[same].equals(jaccard[same]), "the Jaccard block table's rows are not the SBERT block table's rows in order"
+
+    def test_adjacent_similarity_compares_each_description_with_the_groups_previous_one(self, derived_utterances, unit_embeddings):
+        table = pd.read_csv(DERIVED_DIR / "adjacent_similarities.csv", dtype={"gameId": str, "playerId": str})
+        ordered = derived_utterances.sort_values(
+            ["gameId", "originalGroup", "target", "phaseNum", "blockNum", "trialNum", "playerId"], kind="stable"
+        )
+        previous = ordered.groupby(["gameId", "originalGroup", "target"])["row"].shift(1)
+        has_previous = previous.notna()
+        expected = ordered.assign(expected=np.nan)
+        expected.loc[has_previous, "expected"] = _cosines(
+            unit_embeddings, ordered.loc[has_previous, "row"].to_numpy(), previous[has_previous].to_numpy(dtype=int)
+        )
+        keys = ["gameId", "playerId", "target", "phaseNum", "blockNum"]
+        merged = table.merge(expected[keys + ["expected"]], on=keys, how="outer", indicator=True)
+        assert (merged["_merge"] == "both").all() and len(merged) == len(table), (
+            "adjacent_similarities.csv does not have one row per utterance"
+        )
+        assert np.array_equal(merged["simAdjacent"].isna(), merged["expected"].isna()), (
+            "simAdjacent is missing exactly for a group's first description of a tangram"
+        )
+        gap = (merged["simAdjacent"] - merged["expected"]).abs().max()
+        assert gap < 1e-4, f"simAdjacent differs from the embeddings' cosine by up to {gap:.2e}"
+
+
+# ============ 22. RAW-TO-PROCESSED RECONCILIATION ============
+#
+# The processed tables account for every record the combine step kept, and the
+# manifest describes the raw tables beside them.
+
+
+@pytest.fixture(scope="session")
+def manifest():
+    path = DATA_DIR / "manifest.json"
+    if not path.exists() or not RAW_DIR.is_dir():
+        pytest.skip("no manifest or raw_anonymized tables for this dataset")
+    return json.loads(path.read_text())
+
+
+class TestRawReconciliation:
+    def test_the_manifest_describes_the_raw_tables_and_the_runs(self, manifest):
+        for name, count in manifest["row_counts"].items():
+            table = _raw_table(name, ["id"])
+            assert table is not None, f"raw_anonymized/{name} named in the manifest is missing"
+            assert len(table) == count, f"raw_anonymized/{name} has {len(table)} rows, the manifest says {count}"
+        assert manifest["source_runs"] == DATASET.read_runs(), "manifest source_runs differ from runs.txt"
+        raw_games = _raw_table("game.csv", ["id", "condition"])
+        assert manifest["games"] == len(raw_games)
+        assert manifest["conditions"] == raw_games["condition"].value_counts().to_dict()
+
+    def test_every_kept_game_and_player_is_processed_once(self, manifest, players):
+        all_games = pd.read_csv(DATA_DIR / "games.csv", dtype=str, keep_default_na=False)
+        raw_games = _raw_table("game.csv", ["id"])
+        assert set(all_games["gameId"]) == set(raw_games["id"]) and all_games["gameId"].is_unique
+        raw_players = _raw_table("player.csv", ["id", "gameID"])
+        player_games = _raw_table("playerGame.csv", ["playerID", "gameID"])
+        all_players = pd.read_csv(DATA_DIR / "players.csv", dtype=str, keep_default_na=False)
+        assert set(all_players["playerId"]) == set(raw_players["id"]) == set(player_games["playerID"])
+        assert all_players["playerId"].is_unique
+        game_of = raw_players.set_index("id")["gameID"]
+        assert (all_players["gameId"] == all_players["playerId"].map(game_of)).all(), "a player's game differs from the raw record"
+        for game in manifest["excluded_games"] + manifest["filtered_failed_games"]:
+            assert game not in set(all_games["gameId"]) and game not in set(raw_games["id"]), (
+                f"game {game} was excluded or failed but is still present"
+            )
+
+    def test_trials_are_the_player_rounds_with_a_role(self, manifest, trials):
+        player_rounds = _raw_table("playerRound.csv", ["playerID", "roundID", "role", "phase"])
+        with_role = player_rounds[(player_rounds["phase"] == "refgame") & (player_rounds["role"] != "")]
+        all_trials = pd.read_csv(DATA_DIR / "trials.csv", dtype=str, keep_default_na=False)
+        assert len(all_trials) == len(with_role), f"{len(all_trials)} trial rows for {len(with_role)} player rounds with a role"
+        assert set(zip(all_trials["playerId"], all_trials["roundId"])) == set(zip(with_role["playerID"], with_role["roundID"]))
+
+    def test_messages_are_the_distinct_chat_entries(self, manifest, messages_text):
+        """Each message is copied onto every group member's round, so the raw
+        chat holds one entry per member; messages.csv holds each once, less
+        the messages of excluded participants."""
+        player_rounds = _raw_table("playerRound.csv", ["roundID", "phase", "chat"])
+        raw = set()
+        for round_id, phase, chat in zip(player_rounds["roundID"], player_rounds["phase"], player_rounds["chat"]):
+            if phase != "refgame" or not chat:
+                continue
+            for entry in json.loads(chat):
+                sender = entry.get("sender") or {}
+                raw.add((round_id, sender.get("id"), int(round(float(entry.get("timestamp")))), entry.get("text", "")))
+        all_players = pd.read_csv(DATA_DIR / "players.csv", dtype=str, keep_default_na=False)
+        excluded = set(all_players.loc[_truthy(all_players["excluded"]), "playerId"]) if "excluded" in all_players else set()
+        raw = {entry for entry in raw if entry[1] not in excluded}
+        key = _message_key(messages_text)
+        processed = set(zip(key["roundId"], key["senderId"], key["timestamp"], key["text"]))
+        assert len(processed) == len(messages_text), "messages.csv holds a message twice"
+        assert processed == raw, (
+            f"{len(processed - raw)} messages are not in the raw chat and {len(raw - processed)} raw messages are missing"
+        )
+
+    def test_dropouts_are_the_records_the_manifest_counts(self, manifest):
+        dropouts = pd.read_csv(DATA_DIR / "dropouts.csv", dtype=str, keep_default_na=False)
+        assert len(dropouts) == manifest["dropouts"], f"{len(dropouts)} dropout rows, the manifest counts {manifest['dropouts']}"
+        raw_players = _raw_table("player.csv", ["id"])
+        assert not dropouts["playerId"].isin(set(raw_players["id"])).any(), "a dropout record is also a raw player record"
