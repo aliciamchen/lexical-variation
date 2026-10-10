@@ -61,3 +61,6 @@ figures/meetings/
 data/smoke/
 analysis/derived/smoke/
 figures/smoke/
+
+# Worktrees that Claude Code creates for parallel sessions
+.claude/worktrees/

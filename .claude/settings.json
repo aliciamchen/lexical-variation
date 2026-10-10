@@ -17,10 +17,7 @@
       "Bash(bat .env*)",
       "Bash(grep * .env*)",
       "Bash(awk * .env*)",
-      "Bash(sed * .env*)",
-      "Bash(git push)",
-      "Bash(git push:*)",
-      "Bash(git push *)"
+      "Bash(sed * .env*)"
     ]
   },
   "hooks": {
@@ -39,7 +36,8 @@
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/confirm-server-commands.sh"
-          }
+          },
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-git-push.sh" }
         ]
       }
     ]

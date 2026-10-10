@@ -11,7 +11,8 @@
           {
             "type": "command",
             "command": "\"$(git rev-parse --show-toplevel)/.codex/hooks/pre-commit-check.sh\""
-          }
+          },
+          { "type": "command", "command": "\"$(git rev-parse --show-toplevel)/.codex/hooks/guard-git-push.sh\"" }
         ]
       }
     ]
