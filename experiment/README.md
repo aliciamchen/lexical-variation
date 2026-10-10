@@ -1,50 +1,47 @@
-# Interactive experiment
+# The experiment
 
-## Recruiting participants and running experiment
-
-The full sample was collected in 31 Prolific sessions between 2026-09-22 and 2026-10-08. This
-section, and the runbook it points to, record how a session was run.
-
-The game needs nine people online at once, so participants are recruited in two stages: a
-short screening and scheduling form, then a session at an announced time. Around 75% of the
-people who say on the form that they can make it actually show up, so plan on inviting
-roughly twice the number of players you need.
-
-The full procedure, the messages sent to participants on Prolific, the per-session show-up
-numbers from the full-sample sessions, and the operational gotchas are in
-[`operations/procedures.md`](../operations/procedures.md).
-
-Recruitment, approvals and payment are done on the Prolific website. Two commands support
-that work: `make tally DATASET=full` counts the games in each condition and tangram set
-(during collection, the emptiest cell was the treatment the next session ran), and `make payments DATASET=full` lists,
-for each Prolific study, who is still owed a bonus, partial pay or lobby payment, with
-paste-ready files for Prolific's bulk bonus form. The second needs `PROLIFIC_TOKEN` in the
-repository-root `.env` and only reads from Prolific.
-
-
+The game is an [Empirica](https://empirica.ly/) app: the React client is in `client/`, the server callbacks in `server/src/`, the configuration both sides share (player counts, blocks, timing, scoring, exit reasons, completion codes) in `shared/constants.js`, and the treatments in `.empirica/treatments.yaml`, two per condition, one per tangram set. The Empirica release is pinned in `.empirica/release`.
 
 ## Local development
 
 ```bash
 cd experiment
-rm .empirica/local/tajriba.json  # fresh database
+rm .empirica/local/tajriba.json   # a fresh database
 empirica
 ```
 
-- Admin: http://localhost:3000/admin
-- Players: http://localhost:3000/
+The admin panel is at http://localhost:3000/admin and players join at http://localhost:3000/. Click "New Batch", choose a treatment and open nine player tabs. Each player goes through consent, an identifier screen, the instructions and a comprehension quiz before entering the lobby. On Prolific the study link carries the participant's id, which fills and locks the identifier field; locally the field is typed. The four conditions are `refer_separated`, `refer_mixed`, `social_mixed` and `social_first`.
 
-Click "New Batch" in admin, select a treatment, then open 9 player tabs. Each player goes through consent → identifier → instructions → quiz before entering the lobby. On Prolific the study link carries `PROLIFIC_PID`, and the identifier field is filled from it and locked; without that parameter, as in local testing, the Playwright suite, or a participant who reached the game through a link sent by message, the field is editable and the identifier is typed.
+The admin password and the token the server uses for its database are in `.empirica/empirica.toml`, created from `empirica.toml.example` with fresh random values. It is gitignored because `empirica bundle` ships it with the server.
 
-There are 4 between-subjects conditions (treatments): `refer_separated`, `refer_mixed`, `social_mixed`, `social_first`.
+## Tests
 
-## Production deployment
+```bash
+npm install
+npx playwright install chromium
+npm run test:unit         # server unit tests (vitest), no browser
+npm test                  # the whole Playwright suite in test mode (3+2 blocks at production timers)
+npm run test:group1       # one group: test:group1 to test:group4, test:group4:fast, test:holistic
+npm run test:smoke        # the specs tagged @smoke
+TEST_MODE=false npm test  # full-length games (6+6 blocks)
+npm run test:report       # the HTML report
+```
 
-No production server exists at the moment: the droplet that ran the full sample was destroyed on 2026-10-10 after its exports were backed up, so these steps describe how to deploy a new one.
+The server unit tests cover the pure modules beside the callbacks (scoring, reshuffling, roles, idle detection, accuracy screening, group viability, compensation, avatars) and the rules in `shared/` (chat input, the engagement log, Prolific codes). The Playwright suite has 47 spec files in 13 categories, grouped into five projects that each start from a reset server:
 
-The production server hostname is set via `EMPIRICA_SERVER` in `.env` (see `.env.example`). Deployment follows the [Empirica Ubuntu deployment guide](https://docs.empirica.ly/guides/deploying-my-experiment/ubuntu-tutorial).
+| Group | Categories |
+|---|---|
+| group-1 | happy-path, communication, lobby, edge-cases |
+| group-2 | ui-verification, timing |
+| group-3 | data-integrity, condition-specific, score-display |
+| group-4 | idle-detection, group-viability, compensation |
+| group-holistic | full end-to-end games at production timing |
 
-### Deploying a new build
+Run the groups through the npm scripts, which pair each group with its server-reset setup and pass `--no-deps`; a bare `npx playwright test <file>` replays every earlier group first. A single spec runs as `npx playwright test reset-server.setup tests/<category>/<spec>.spec.ts --project=setup-N --project=group-N --no-deps`. Only one run can use the Empirica server at a time, because every run binds ports 3000 and 8844 and resets the server's state: the harness takes a lock file and refuses to start while another run holds it, and `npm run test:free-ports` frees the ports. The test helpers are in `tests/helpers/`; `constants.ts` there re-exports `shared/constants.js`, so tests compare exit reasons and completion codes against the shared values rather than string literals.
+
+## Deployment
+
+No production server exists: the server that ran the full sample was destroyed on 2026-10-10 after its exports were backed up. A new one is deployed following the [Empirica Ubuntu guide](https://docs.empirica.ly/guides/deploying-my-experiment/ubuntu-tutorial), with its hostname in `EMPIRICA_SERVER` in the repository-root `.env`:
 
 ```bash
 cd experiment
@@ -52,175 +49,12 @@ empirica bundle
 scp lexical-variation.tar.zst root@$EMPIRICA_SERVER:~/empirica/empirica.tar.zst
 ```
 
-The Sentry DSN is compiled into the client bundle when you build, so it has to be available on the machine that runs `empirica bundle`, not on the server. The client build reads it from the `.env` file at the repository root (Vite is pointed there with `envDir`), and a production build fails with a clear message if the DSN is missing; set `ALLOW_NO_SENTRY=1` to build without Sentry on purpose. The server itself reads none of the `.env` values.
+Two things are easy to get wrong. The Sentry DSN is compiled into the client bundle, so it has to be in `.env` on the machine that builds, and a production build fails without it unless `ALLOW_NO_SENTRY=1` is set; the server reads none of the `.env` values. And after `empirica upgrade`, the server keeps running the old release until `~/empirica/.empirica/release` on the server is set to the new version and the service is restarted, because that file, not the bundle, chooses the release. The server restarts whenever the bundle file changes, which ends every game in progress, so a deploy happens before participants are invited.
 
-**After upgrading Empirica itself** (`empirica upgrade --version ...`, which changes `.empirica/release`), the bundle alone does not move the server to the new version. The server's `empirica` command chooses which release to run from `~/empirica/.empirica/release` in its working directory before it opens the bundle, and that file is not updated by a deploy, so the server keeps running the old release even when the new one is installed. After uploading the bundle, set that file to the new version and restart, then confirm what is running:
+Avatars are served from `client/public/avatars/` rather than fetched at play time. `node scripts/fetch-avatars.mjs` regenerates the set if the block count, the roster or the avatar style changes, and `server/src/avatars.test.js` fails if a seed the server can generate has no file.
 
-```bash
-ssh root@$EMPIRICA_SERVER
-printf 'version: v1.12.5\n' > ~/empirica/.empirica/release   # the version in experiment/.empirica/release
-systemctl restart empirica
-ss -tlnp | grep ':3000 '                                      # the process is named after the release, e.g. "v1.12.5"
-```
+During a session, `operations/copy_tajriba.sh` runs `empirica export` on the server every five minutes and copies the zip into `experiment/data/<timestamp>/`; those exports are the pipeline's input. The sessions were run by hand on Prolific following `operations/procedures.md`.
 
-The server is configured to automatically restart empirica when the bundle file is updated. That is convenient between sessions and destructive during one: copying a new bundle up while participants are playing restarts the server under them and ends their games. Deploy before inviting anyone, and treat the bundle as frozen once invitations have gone out (see `operations/procedures.md`).
+## Error monitoring
 
-Avatars are served from `client/public/avatars/` rather than fetched from DiceBear at play time. Every seed is deterministic, so the set is downloaded once with `node scripts/fetch-avatars.mjs` and committed; run it again if the block count, the roster size or the avatar style changes, and `server/src/avatars.test.js` will tell you if a seed has no file. They used to be requested from the third-party API on every trial in the mixed conditions, which put hundreds of external requests per game on the critical path in the condition where identity is the manipulation.
-
-If you want to do it manually:
-
-```bash
-ssh root@$EMPIRICA_SERVER
-cd ~/empirica
-# Remove the tajriba file from the server if needed:
-rm .empirica/local/tajriba.json
-
-empirica serve empirica.tar.zst
-```
-
-### Running an experiment session
-
-The step-by-step runbook for a session, from creating the screening survey through paying
-bonuses, is in [`operations/procedures.md`](../operations/procedures.md). The Empirica side of
-it is: verify the server process is alive, open the admin panel at
-`https://$EMPIRICA_SERVER/admin` and Sentry at `https://$SENTRY_ORG.sentry.io/`, create and
-start the batch before any participant can arrive, and run `operations/copy_tajriba.sh` locally to back
-up data every five minutes (see below). Participants reach the game through Prolific rather
-than a shared link.
-
-When creating the batch, pick the treatment for the session: there are two per condition, one
-per tangram set (names without a suffix use set 0, the "tangram set 1" variants use set 1).
-The sets were alternated across sessions within a condition so they are counterbalanced: 15
-games per set per condition in the full sample.
-
-## Copying data locally
-
-The `copy_tajriba.sh` script SSHs into the production server, runs `empirica export` to produce a CSV zip, and copies it into `experiment/data/<timestamp>/`. It is safe to run while the experiment is live. To process the exported zip, run `analysis/extract_run.py`.
-
-```bash
-bash operations/copy_tajriba.sh            # loop every 5 minutes (default)
-bash operations/copy_tajriba.sh --once     # single backup and exit
-bash operations/copy_tajriba.sh --help     # show usage
-```
-
-The script exits automatically after 3 consecutive failures. Press Ctrl-C to stop the loop.
-
-## Error monitoring (Sentry)
-
-Client errors are reported to Sentry via `@sentry/react` (configured in `client/src/index.jsx`).
-
-- **Organization**: set via `SENTRY_ORG` in `.env`
-- **Project**: `javascript-react`
-- **Dashboard**: `https://$SENTRY_ORG.sentry.io/`
-- **Features**: error tracking, session replays for sessions that hit an error (text and inputs masked), browser tracing, structured logs
-
-Every URL that Sentry reports is cut at the `?` before it leaves the browser, so the Prolific ids in the study link's query string never reach Sentry; the Sentry user is the Empirica player id only. Errors, performance events and breadcrumbs are covered by `beforeSend`, `beforeSendTransaction` and `beforeBreadcrumb` in `index.jsx`. Session replays need their own handling, because the SDK runs none of those hooks for them: the same scrubbing function is also registered as a global event processor, and `beforeAddRecordingEvent` cuts the page address out of the recording itself.
-
-During a session, keep the Sentry dashboard open to watch for client errors and slow page loads. A websocket drop shows up in Sentry as an unhandled error from Empirica's `TajribaParticipant.emit`, which is noise rather than a game bug; the connection log on each player record is the record of disconnects.
-
-## Playwright tests
-
-The test suite contains 47 spec files across 13 categories, covering all 4 conditions, idle detection, group viability, compensation (including the researcher stopping a batch both mid-game and while players are still waiting in the lobby), UI, timing, and more. The Empirica server is managed automatically by the test framework.
-
-### Setup
-
-```bash
-cd experiment
-npm install
-npx playwright install chromium
-```
-
-### Running tests
-
-The test groups are chained via Playwright project dependencies, and Playwright runs dependencies unfiltered — a bare `npx playwright test <file>` or `--project=group-N` replays every earlier group in full first. The npm scripts avoid this by pairing each group with its server-reset setup and passing `--no-deps`:
-
-Only one run can use the Empirica server at a time, because every run binds ports 3000 and 8844 and resets the server's state. The harness therefore takes a lock file (`.empirica/local/playwright-run.lock`) in its global setup and refuses to start while another run on the machine holds it; a lock left behind by a run that crashed is cleared automatically. To free the ports before a run, use `npm run test:free-ports`, which does the same check first. Avoid editing files under `server/src` while a run is in progress, since the dev server restarts on every change and the running stage never ends.
-
-```bash
-# Full suite (test mode: 3+2 blocks at production timers)
-npm test
-
-# One group only
-npm run test:group1       # happy-path, communication, lobby, edge-cases
-npm run test:group2       # ui-verification, timing
-npm run test:group3       # data-integrity, condition-specific, score-display
-npm run test:group4       # idle-detection, group-viability, compensation
-npm run test:group4:fast  # group 4 with shortened idle timers (IDLE_TEST_TIMING=true)
-npm run test:holistic     # holistic end-to-end games at production timing
-
-# Server unit tests (scoring and reshuffling logic; fast, no browser)
-npm run test:unit
-
-# A single spec file (include its group's reset setup, skip earlier groups)
-npx playwright test reset-server.setup tests/idle-detection/speaker-idle.spec.ts \
-  --project=setup-4 --project=group-4 --no-deps
-
-# Full-length games (6+6 blocks; timers are always the production values)
-TEST_MODE=false npm test
-
-# Quick smoke subset (tests tagged @smoke)
-npm run test:smoke
-
-# Visible browser (append flags after --)
-npm run test:group2 -- --headed
-
-# View report
-npm run test:report
-```
-
-### Test architecture
-
-Tests are split into 5 project groups in `playwright.config.ts`. Between each group, the server is restarted (tajriba.json deleted) to prevent state accumulation.
-
-| Group | Categories | Description |
-|-------|-----------|-------------|
-| group-1 | happy-path, communication, lobby, edge-cases | Core game flow |
-| group-2 | ui-verification, timing | UI and timing checks |
-| group-3 | data-integrity, condition-specific, score-display | Data and conditions |
-| group-4 | idle-detection, group-viability, compensation | Dropout handling |
-| group-holistic | holistic | Full end-to-end games at production timing |
-
-Unit tests for the server's scoring and reshuffling logic are in `server/src/*.test.js` (vitest); they import the production modules (`scoring.js`, `reshuffling.js`) directly, so they run in milliseconds without a browser or server.
-
-### Writing new tests
-
-Test helpers in `tests/helpers/`:
-
-- **`player-manager.ts`** — manages 9 browser contexts/pages
-- **`admin.ts`** — `createBatch()` creates and starts a batch via the admin UI; `stopAllBatches()` stops every running batch, which is how a researcher ends a session early and what `compensation/batch-terminated.spec.ts` exercises
-- **`game-actions.ts`** — `playRound()`, `playBlock()`, `handleTransition()`, `completeExitSurvey()`. The exit survey's confirmation page has no Finish button (the completion code stays on screen until the participant closes the tab), so `completeExitSurvey()` ends by waiting for that page, identified by its `data-prolific-code` attribute, or for the Sorry screen that removed players are routed to instead
-- **`assertions.ts`** — `expectPlayerInGame()`, `expectCondition()`, `expectSocialGuessUI()`
-- **`constants.ts`** — re-exports `shared/constants.js` (use `EXIT_REASONS` and `PROLIFIC_CODES` rather than string literals) plus test-only values such as the player count and quiz answers
-- **`selectors.ts`** — centralized DOM selectors
-- **`server-manager.ts`** — server lifecycle (start/stop/reset)
-
-Typical pattern:
-
-```typescript
-test.describe.serial('My Test Suite', () => {
-  let pm: PlayerManager;
-
-  test.beforeAll(async ({ browser }) => {
-    const adminContext = await browser.newContext();
-    const adminPage = await adminContext.newPage();
-    await createBatch(adminPage, 'refer_separated');
-    await adminContext.close();
-
-    pm = new PlayerManager(browser);
-    await pm.initialize();
-  });
-
-  test.afterAll(async () => {
-    await pm.cleanup();
-  });
-
-  test('all 9 players join', async () => {
-    await pm.registerAllPlayers();
-    await pm.completeAllIntros();
-    const started = await pm.waitForGameStart();
-    expect(started).toBe(true);
-  });
-});
-```
-
-Tests use `workers: 1`, `retries: 0`, and Chromium only. Screenshots, traces, and video are saved on failure. `TEST_MODE` is set automatically by the test framework.
+Client errors are reported to Sentry through `@sentry/react`, configured in `client/src/index.jsx`, with session replays for sessions that hit an error and all text and inputs masked. Every URL is cut at the `?` before it leaves the browser, so the Prolific id in the study link never reaches Sentry, and the Sentry user is the Empirica player id only. A websocket drop shows up as an unhandled error from Empirica's `TajribaParticipant.emit`; it is noise rather than a game bug, and the connection log on each player record is the record of disconnects.

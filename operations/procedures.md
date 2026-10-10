@@ -36,7 +36,7 @@ manuscript describes this in the Recruitment paragraph of `writing/preregistrati
    session, start no new games until the running ones finish.
 4. **Freeze the bundle.** The server restarts whenever `~/empirica/empirica.tar.zst` changes,
    so an upload during a session ends every game in progress. Deploy before anyone is invited
-   (`experiment/README.md`, "Deploying a new build").
+   (`experiment/README.md`, "Deployment").
 
 ## The session, step by step
 

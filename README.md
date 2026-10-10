@@ -1,368 +1,104 @@
 # Testing the roles of passive isolation and active social motivation in lexical variation using experimental microsocieties
 
-## Table of contents
+This repository holds the experiment, the data pipeline and the analyses for a preregistered study of how linguistic conventions diverge between groups. Nine participants play a tangram reference game in three groups of three. In Phase 1 each group describes and identifies the same tangrams among themselves. In Phase 2 the groups are either kept apart (`refer_separated`), mixed so that listeners hear speakers from other groups (`refer_mixed`), mixed and rewarded for identifying whether a speaker came from their own group (`social_mixed`), or told about that reward before the game begins (`social_first`). The preregistration is a Stage 1 manuscript and is frozen; its pilot analyses reproduce from the data in this repository.
 
-- [Repository structure](#repository-structure)
-- [Setup](#setup)
-- [Running the experiment](#running-the-experiment)
-- [Data files](#data-files)
-- [Analysis pipeline](#analysis-pipeline)
-- [LLM simulation](#llm-simulation)
-- [Power analysis](#power-analysis)
+The pilot, four games from March 2026, one per condition, is committed in `data/pilots/`. The full sample, 120 started games collected in 31 Prolific sessions between 2026-09-22 and 2026-10-08, is not public yet: it will be released in the RefBank format for reference-game corpora once the preregistered exclusion review and classifier check are complete. Until then the full-sample notebooks can be read but run only on the pilot.
 
 ## Repository structure
 
 ```
-├── experiment/               # Empirica app (React client + Node server)
-│   ├── client/src/           # React components & game UI
-│   ├── server/src/           # Game logic (callbacks, constants)
-│   ├── shared/               # Shared constants (timing, scoring)
-│   ├── tests/                # Playwright end-to-end tests
-│   └── .empirica/            # Treatments, lobbies, config
-├── data/
-│   ├── pilots/               # Pilot dataset (committed); the full sample (data/full/, gitignored) sits beside it until its public release
-│   └── runs/                 # Per-run outputs from extract_run.py (gitignored)
-├── analysis/                 # Analysis code & outputs
-│   ├── derived/              # Derived metrics per dataset (derived/pilots/ committed)
-│   ├── llm_simulation/       # LLM Phase 1 benchmark simulation
-│   └── power_analysis/       # Power analysis for sample size justification
-├── figures/                  # Generated & design assets
-├── writing/                  # Overleaf projects, one per manuscript (gitignored; synced via Overleaf)
-│   └── preregistration/      # The Stage 1 manuscript that serves as the preregistration
+experiment/        the Empirica game: React client, Node server, Playwright tests (see experiment/README.md)
+analysis/          the pipeline scripts, the R helpers the notebooks share (analysis/R/), the Quarto notebooks, and the tests
+analysis/derived/  derived metrics per dataset: embeddings, similarity tables, cached model fits (the pilot's are committed)
+data/              one directory per dataset; data/pilots/README.md is the codebook
+operations/        the Prolific tooling (payments, blocklist, tally) and procedures.md, the record of how a session was run
+figures/           the figures the notebooks write, per dataset
+writing/           Overleaf projects, one per manuscript (not committed; synced through Overleaf)
 ```
 
 ## Setup
 
-The game is built with [Empirica](https://empirica.ly/). Install it:
+Node 20 and [Empirica](https://empirica.ly/) run the experiment. Python 3.11 or later with [uv](https://docs.astral.sh/uv/), R 4.5 with renv, and [Quarto](https://quarto.org/) run the analyses.
 
 ```bash
-curl -fsS https://install.empirica.dev | sh
+curl -fsS https://install.empirica.dev | sh   # Empirica
+cd experiment && npm install && cd ..          # the game and its Playwright tests
+uv sync                                        # Python
+Rscript -e 'renv::restore()'                   # R
 ```
 
-Analysis notebooks are rendered with [Quarto](https://quarto.org/docs/get-started/), which needs to be installed before running any `quarto render` commands.
+The `rpy2` package needs R installed first, and the Cairo-based packages may need `brew install cairo pango` on macOS.
 
-Install dependencies:
+The analyses need no credentials. Running or deploying the experiment and the Prolific tooling read a `.env` file at the repository root, created with `cp .env.example .env` and filled in (the variables are documented in the example), and running the game locally needs `experiment/.empirica/empirica.toml`, created from `empirica.toml.example` with fresh random values. Both files are gitignored because they hold a hostname, an organization name and tokens. Contributors should also run `git config core.hooksPath .githooks`: the pre-commit hook refuses a commit that stages a participant identifier and runs the tests for whatever the commit touches. GitHub Actions runs the server unit tests and the data checks on the pilot on every push.
+
+## Reproducing the pilot results
 
 ```bash
-# JavaScript (experiment)
-cd experiment && npm install
-
-# Python (analysis)
-uv sync
-
-# R (analysis)
-# In R: renv::restore()
+make pilot
 ```
 
-Note: `rpy2` requires R to be installed. Cairo-based packages may require additional system libraries: `brew install cairo pango`
-
-Configure environment variables (needed for building and running the experiment, but not for reproducing the analyses):
+This recomputes the derived metrics from the committed pilot tables into `analysis/derived/pilots/` and renders the two supplementary notebooks, `analysis/SI_pilot.qmd` and `analysis/llm_simulation/SI_llm_simulation.qmd`. The figures go to `figures/pilots/` and `figures/llm_plots/`, and every statistic is written as a `\newcommand` macro to `writing/preregistration/stats/`, which the preregistration manuscript reads with `\input`, so no number in the manuscript is typed by hand. The step that labels chat messages as referential or not with an LLM is not run, because its labels are committed in `messages_classified.csv`.
 
 ```bash
-cp .env.example .env   # then fill in values
+make test
 ```
 
-The single `.env` file at the repository root is read only on your own machine: `empirica bundle` compiles the Sentry DSN into the client bundle and refuses to build a production bundle without it, and `operations/copy_tajriba.sh` uses the server hostname to pull backups. The Google Cloud project for the Gemini-based filter can also be set there, but the scripts fall back to your `gcloud` default project. Keep real hostnames and organization names in `.env`, never in committed files.
+This runs the data integrity suite on the processed tables of the active dataset, the Python unit tests for the preprocessing and derived-metric definitions, and the R tests for the analysis helpers. The integrity suite checks the tables against the experiment's design and server logic, rebuilds the utterances from the chat log, recomputes the similarity tables from the saved embeddings, and reconciles the processed tables with the raw ones.
 
-The Empirica admin password and the service token that the game server uses to talk to its database are in `experiment/.empirica/empirica.toml`, which is also gitignored because `empirica bundle` ships it to the production server. Create it from the template with fresh random values before running the experiment locally or building a bundle:
+## The data
 
-```bash
-cp experiment/.empirica/empirica.toml.example experiment/.empirica/empirica.toml   # then replace both values
-```
+Every dataset has the same layout, defined once in `analysis/dataset_paths.py` and mirrored in `analysis/config.R`:
 
-Finally, point git at the repository's pre-commit hook. It refuses any commit that stages a data file with a participant identifier in it, and it runs the unit tests that cover whatever the commit touches:
+| Path | Contents |
+|---|---|
+| `data/<name>/runs.txt` | The Empirica export timestamps the dataset is built from |
+| `data/<name>/raw_anonymized/` | The raw Empirica tables, stacked across those exports, with identifying columns removed |
+| `data/<name>/*.csv` | The analysis-ready tables: `games`, `players`, `trials`, `messages`, `speaker_utterances`, `speaker_utterances_filtered`, `social_guesses` and `dropouts` |
+| `analysis/derived/<name>/` | The SBERT embeddings, the pairwise and block-by-block similarity tables in sentence-embedding and content-word (Jaccard) versions, and cached model fits |
+| `figures/<name>/` | The figures the notebooks write |
 
-```bash
-git config core.hooksPath .githooks
-```
+The scripts take `--dataset <name>` and `make` takes `DATASET=<name>`; both default to `pilots`. The columns, and the optional input files that record exclusions and documented anomalies, are described in [`data/pilots/README.md`](data/pilots/README.md). Timestamps taken in a participant's browser are comparable only within that participant, because browser clocks are not synchronized; the codebook says which columns are on the server's clock.
+
+The pipeline from an Empirica export to the processed tables is `make extract combine process test`, or `make all`, which also renders the notebooks:
+
+1. `extract_run.py <zip>` unzips an export into `data/runs/<timestamp>/raw/`, removes the identifying columns, redacts Prolific-id-shaped tokens from every text field, and registers the export in `runs.txt`.
+2. `combine_runs.py` stacks the registered exports, keeping the newest version of each record, drops the games listed in `exclude_games.txt`, and writes `raw_anonymized/`, `dropouts.csv` and `manifest.json`.
+3. `process_data.py` runs `preprocessing.py`, which writes the analysis-ready tables; `filter_nonreferential.py`, which labels each speaker message as referential or not with Gemini on Vertex AI and rebuilds the utterances from the referential messages (labels are cached, so only unlabeled messages are sent, and `--skip-filter` uses the unfiltered utterances); and `compute_derived.py`, which writes the embeddings and similarity tables.
+4. `make test` checks the result.
+
+The raw exports under `experiment/data/` are not committed because they identify participants. `make smoke ZIP=<export>` runs the whole pipeline on one export in a throwaway dataset, so a bad export is caught before it is added to a real one.
+
+## The full-sample analyses
+
+The notebooks `analysis/00_data_overview.qmd` to `05_exit_survey.qmd` are the preregistered analyses. `make notebooks DATASET=full` renders them on the full sample; each writes its statistics to `writing/manuscript/stats/<notebook>.tex` for the article and its HTML to `_output/`. On a clone of this repository they run on the pilot, which exercises the code and gives no results, since one game per condition supports none, and a banner says so. The Bayes factors in `02_primary_analysis.qmd` refit three models with brms and take hours on the full sample; `BAYES_FACTORS=never make notebooks DATASET=full` skips them, and the fits are cached so that a render on unchanged data reuses them.
 
 ## Running the experiment
 
-See [`experiment/README.md`](experiment/README.md) for full documentation on local development, production deployment, running sessions, copying data, error monitoring, and testing. The Prolific side of a session (the screening survey, the allowlist, reminders, publishing, approvals and payments) is done by hand on the Prolific website, and the step-by-step runbook is [`operations/procedures.md`](operations/procedures.md).
-
-Two commands supported that work. `make tally DATASET=full` counts the games in `data/<dataset>/games.csv` in each of the eight condition-by-tangram-set cells, started, intact nine-player and partial, and reports them against the stopping rule the sample was collected under: 120 started games in total, balanced as 30 per condition and 15 per treatment, where a started game counts whether or not it lost a player or finished. During collection the cell with the fewest started games was the treatment the next session ran. `make payments DATASET=full` lists what each Prolific study still owes (see [Payments](#payments)). Backups taken with `operations/copy_tajriba.sh` each landed in their own `experiment/data/<timestamp>/empirica-export-<timestamp>.zip`, named by the export's timestamp, so every backup during a session is an export the pipeline can find; the loop carried on through a failed connection and stopped only after three consecutive failures.
-
-Participants reach the game from Prolific with their ID in the study link, and the identifier field is filled from it and locked; someone who reaches the game through a link sent by message types their ID instead, which is one reason the payment step matches people by completion code and time rather than by the typed ID alone. The last page of the exit survey keeps the completion code on screen (there is no Finish button to click past it), and reloading during the survey resumes at the first unanswered page. If a batch has to be stopped mid-game, the participants see an explanation, answer the exit survey, and receive the partial completion code with base pay prorated to their time plus the bonus earned so far. Sentry, which monitors client errors, receives no query strings (so no Prolific ids) and records session replays only for sessions that hit an error.
-
-Quick start for local development:
-
 ```bash
 cd experiment
-rm .empirica/local/tajriba.json
-empirica
+rm .empirica/local/tajriba.json   # a fresh database
+empirica                          # admin at http://localhost:3000/admin, players at http://localhost:3000/
 ```
 
-- Admin: http://localhost:3000/admin
-- Players: http://localhost:3000/
-
-### Testing
-
-```bash
-cd experiment
-npm test                  # full Playwright suite (test mode: shorter games)
-npm run test:group1       # one test group only (test:group1 ... test:group4)
-npm run test:unit         # server unit tests (scoring, reshuffling; no browser)
-npm run test:report       # view the HTML report
-```
-
-See [`experiment/README.md`](experiment/README.md) for details on test architecture and writing new tests.
-
-## Data files
-
-Two datasets share one layout and one set of column definitions, described in [`data/pilots/README.md`](data/pilots/README.md). The pilot (`data/pilots/`, four games from early 2026, one per condition) is committed. The full sample (`data/full/`) was collected in 31 Prolific sessions between 2026-09-22 and 2026-10-08 and holds 120 started games, 30 per condition and 15 per condition-by-tangram-set treatment, of which 63 ran to the end with all nine players. It is gitignored and stays on the author's machine until it is released in the RefBank format for reference-game corpora, after the preregistered exclusion review and classifier check. Its columns are the pilot's plus the September 2026 instrumentation described below and `gameTerminated` in `games.csv`, which marks a game the researcher stopped from the admin panel.
-
-| File | Description |
-|------|-------------|
-| `raw_anonymized/` | Anonymized raw Empirica CSVs (9 files), with Prolific IDs and PII stripped |
-| `games.csv` | One row per game session — condition, tangram set, block counts |
-| `players.csv` | One row per player — group assignment, score, exit survey responses |
-| `trials.csv` | One row per player per round — role, target, click, accuracy |
-| `messages.csv` | Individual chat messages, deduplicated across players in a group |
-| `messages_classified.csv` | Messages augmented with LLM referential/non-referential classification |
-| `speaker_utterances.csv` | Speaker messages concatenated per round (all messages) |
-| `speaker_utterances_filtered.csv` | Same as above, but with non-referential messages removed first |
-| `social_guesses.csv` | Listener guesses about speaker group membership (social conditions only) |
-| `dropouts.csv` | One row per participant who reached the experiment but played no real game (quiz failure, lobby timeout, arrival after the games were full), with the batch, how Empirica ended the record, the exit reason, the number of quiz attempts, and the condition and tangram set of the batch's treatment, so that quiz failures and lobby timeouts can be counted by condition. This is what the attrition report counts |
-| `integrity_exceptions.csv` | Optional input for the integrity suite, absent for the pilot: one row per documented case where an invariant that `analysis/test_data_integrity.py` checks does not hold, with the invariant's name, the game, player and round it concerns, and the reason. The full sample has two kinds: six exit surveys lost when the server crashed on the night of 2026-09-23 while participants were on the survey page, and five trials in which a double click wrote the commit time and the choice time in separate writes so that the commit appears to precede the choice by under a second. The tests that read the file require the cases they find to match it exactly, so a new case fails the suite and so does a documented case that has disappeared. The file records data loss and instrumentation races with their reasons; it is not a way to make failing data pass |
-| `speaker_utterances_filtered.source.json` | The sha256 and row count of the `messages.csv` that `speaker_utterances_filtered.csv` was built from. `compute_derived.py` refuses a filtered file whose record is missing or does not match, so a stale filtered file can never be analyzed in place of the current data |
-| `participant_exclusions.csv`, `exclude_games.txt` | Optional inputs, absent for the pilot. `exclude_games.txt` lists the Empirica game ids of rehearsal or deploy-check games that ran on the production server, and of games excluded because a player in them had already played an earlier session (one per line, `#` comments, each with its reason); `combine_runs.py` drops them and every row that belongs to them, so they are neither analyzed nor counted toward the stopping rule. Their players are still paid, because the payment step reads the exports themselves and ignores this file: a game excluded for a repeat participant was played in full by people who are owed for it. `participant_exclusions.csv` lists `playerId,reason` for participants excluded after the fact; preprocessing drops their messages and sets `excluded` and `exclusionReason` on their own rows and on the rows of the listeners they described to, in `trials.csv` and `social_guesses.csv`, so every derived measure is recomputed without them. Their exit-survey answers are responses too, so preprocessing blanks them in `players.csv` and flags the player's row there; the row itself stays because the attrition and pay records still need it, and the answers remain in `raw_anonymized/player.csv` |
-
-Sessions from September 2026 onward also record response times, how long each
-chat message took to compose, the device and viewport the participant played
-on, when they switched away from the tab or lost their network connection, and,
-from 2026-09-25, how often and for how long their connection to the game server
-dropped and how many times they reloaded the page. These
-columns are empty in the pilot data, which predates the instrumentation, and
-are described alongside the others in `data/pilots/README.md`. Timestamps taken
-in the participant's browser are meaningful only relative to one another within
-that participant, since browser clocks are not synchronized; the columns read
-from the server are comparable across everyone, and the column descriptions say
-which is which.
-
-## Analysis pipeline
-
-### Reproducing pilot results
-
-The preprocessed pilot data (including filtered utterances) is committed in `data/pilots/`. After installing dependencies (see [Setup](#setup)):
-
-```bash
-make pilot    # derive metrics + render notebooks
-```
-
-Or step by step:
-
-```bash
-uv run python analysis/process_data.py --skip-filter    # preprocess + derived metrics
-quarto render analysis/SI_pilot.qmd                     # pilot analyses → figures + stats
-quarto render analysis/llm_simulation/SI_llm_simulation.qmd  # LLM benchmark
-```
-
-The filter step requires Vertex AI (see [LLM simulation](#llm-simulation)). Its labels are cached in `messages_classified.csv`, so only speaker messages that have not been labeled before are sent to the model; `uv run python analysis/filter_nonreferential.py classify --data-dir data/<name> --dry-run` prints how many messages would be sent and the estimated number of API calls without calling anything, and a real run asks for confirmation (or `--yes`) first. The pilot labels are committed, so the step can be skipped for the pilot with `make process-no-filter`. Run `make help` to see all available targets.
-
-The `make test` target runs the data integrity suite on the processed CSVs together with unit tests for the derived-metric definitions (`analysis/test_compute_derived.py`) and for the preprocessing rules that the preregistration states precisely, such as the description-length flag and the treatment of trials with no referential message (`analysis/test_preprocessing.py`). It also runs the R helper tests in `analysis/tests/`, which check the shared data preparation, the group-specificity estimates and permutation test, the planned-contrast helpers, the stats-to-LaTeX writer, and the random-effects simplification procedure that every mixed model goes through (`fit_progressively()` in `analysis/R/mixed_models.R`: the maximal structure, then correlations removed, then slopes dropped from the smallest variance component, as preregistered). The primary-analysis notebook computes Bayes factors for non-significant planned contrasts with `brms`, which takes several minutes per contrast; set the environment variable `BAYES_FACTORS=never` before rendering to skip them, or `BAYES_FACTORS=always` to compute them for every contrast.
-
-### Datasets
-
-The pipeline is keyed by a dataset name. The pilot sessions are the dataset `pilots`, and the full sample is the dataset `full` beside it, never an edit of the pilot paths. Every dataset follows the same layout, which is defined once in `analysis/dataset_paths.py` for the Python scripts and mirrored in `analysis/config.R` for the notebooks:
-
-| Path | Contents |
-|------|----------|
-| `data/<name>/runs.txt` | The Empirica export timestamps that make up the dataset, one per line |
-| `data/<name>/raw_anonymized/` | The anonymized raw Empirica CSVs, stacked across those runs |
-| `data/<name>/*.csv` | The preprocessed analysis-ready CSVs |
-| `analysis/derived/<name>/` | Derived metrics (embeddings, similarities, UMAP) and cached model fits |
-| `figures/<name>/` | Figures written by the notebooks |
-
-The active dataset is chosen with the `DATASET` environment variable, or the `--dataset` flag on the individual scripts, and defaults to `pilots`. For example, `make all DATASET=full` runs the whole pipeline on a dataset named `full`, and `DATASET=full quarto render analysis/02_primary_analysis.qmd` renders a notebook against it. Per-run extracts are shared across datasets in `data/runs/`.
-
-### Data processing scripts
-
-There are three scripts that should be run in order. Each reads the previous script's output:
-
-| Script | Reads from | Writes to |
-|--------|-----------|-----------|
-| `extract_run.py <zip>` | Empirica export zip in `experiment/data/` | `data/runs/{timestamp}/raw/`. Strips Prolific IDs and other PII from player.csv, redacts Prolific-id-shaped tokens that participants typed into any text field (a survey answer or a chat message), and registers the run in the dataset's `runs.txt`. |
-| `combine_runs.py [--dataset NAME] [runs]` | `data/runs/*/raw/` for the runs in `data/<name>/runs.txt` | `data/<name>/raw_anonymized/` + `manifest.json` |
-| `process_data.py [--dataset NAME]` | `data/<name>/raw_anonymized/` | `data/<name>/*.csv` + `analysis/derived/<name>/` |
-| ↳ `preprocessing.py` | `data/<name>/raw_anonymized/` | `data/<name>/*.csv` |
-| ↳ `filter_nonreferential.py` | `data/<name>/messages.csv` | `data/<name>/speaker_utterances_filtered.csv` (requires Vertex AI; `--skip-filter`) |
-| ↳ `compute_derived.py` | `data/<name>/*.csv` | `analysis/derived/<name>/` (`--skip-derived`) |
-
-The block-by-block similarity tables carry one row per pair of speakers who have both described a tangram by that block, and an `allGroupsPaired` flag marking the rows where every original group has two such speakers. Group specificity, the difference between within-group and between-group similarity, is only defined on the flagged rows, which is why the analyses that compute it keep those alone; the descriptive figure that plots the two similarities separately uses every row, so it can show the first block of each phase, where each group has described the tangram once and only between-group pairs exist.
-
-Among the derived outputs, `pairwise_similarities_jaccard.csv` and `block_pairwise_similarities_jaccard.csv` repeat the sentence-embedding similarity tables pair for pair with the Jaccard overlap of the two descriptions' content words, which is the preregistered robustness check on the similarity measure; pairs where either description has no content words carry an empty similarity.
-
-### Payments
-
-`operations/payments.py` (run as `make payments DATASET=full`) works out what each Prolific study still owes. A session can span several Prolific studies and several Empirica batches, and each export is a cumulative snapshot of the server, so neither one export nor one batch lines up with the people a given study has to pay. The step therefore reads every export listed in the dataset's `runs.txt`, takes each player placed in a game, identified by the Prolific ID they entered on the identifier screen (filled in from the study link when it carries one), and asks Prolific, with read-only requests only, for the submissions of every study recorded on any player. Each player is paid in the study where their Prolific ID has a submission, matched by completion code and then by time. That covers participants who reached the game through a link sent by message, because Prolific had not yet shown them the study, and entered the code on the study afterwards. A player who never submitted the game study at all is paid the base pay and bonus as a bonus on their other recent submission, normally the session's scheduling survey. The submissions carry each one's status and the bonuses already paid on it, and they also identify the lobby-timeout participants by the completion code their exit screen gave them, since no game of theirs ever started. A lobby timeout who returned the study without entering that code is found from the export instead, where their record shows they waited in the lobby for a game that never started. Someone who reached the lobby through a link sent by message has no submission in the session's study at all, so their lobby payment goes out as a bonus on their latest earlier submission, normally the scheduling survey, just as it does for players in that position. Each wait is paid in exactly one study, even when submissions in two studies could account for it, and repeated records from one person within half an hour count as a single wait.
-
-The output is written to `data/payments/<dataset>/`, which is gitignored because it contains Prolific IDs. There is one folder per study, named by the study's creation date and internal name, holding two paste-ready files for Prolific's bulk bonus form (`participant_id,amount`, no header, one line per person): `1_main.csv` with the bonuses, partial pay and lobby pay, and `2_overtime.csv`, which are pasted in that order. Beside them, `status.csv` lists everyone with the amount owed, the amount already paid, and the reason a row is not ready to pay, and `repeats.csv` lists anyone who took part in more than one session; the step prints a warning if anyone was placed in two games, which the eligibility filters should prevent. The step also reconciles its rows against what Prolific records. Anyone whose submission in a game study awaits review although they are owed nothing there is listed as `none` and counted with the submissions that must be returned, since Prolific would approve it after 21 days and pay the base reward. Every bonus already paid that no row accounts for is listed in `unexplained.csv`, and when such a payment was made in a study where the person has no row and equals a line still owed to them elsewhere, that line is held back from the paste file as a possible duplicate. The step also writes `blocklist_ids.txt`, a plain list of the Prolific IDs that the scheduling surveys must keep out. It holds everyone who started a game, everyone who failed the quiz, since they have read the instructions, everyone who was assigned to a social-first game that never started for them, and anyone whose game-study submission carries the finished or partial code, which catches a player who mistyped their ID. It also holds everyone who took part in a pilot session, meaning they started a pilot game or failed a pilot quiz, which the step reads from the raw pilot exports in `experiment/pilot_data/` (the export zips, and for the March 2025 pilot, which has none, the server's `tajriba.json` event log); `repeats.csv` lists any of them who later played. The social-first instructions and quiz explain the Phase 2 social task before the game begins, and Empirica shows a participant the instructions of the game it assigns them to as soon as they arrive, so a lobby timeout, an overflow player or someone who left during those instructions has already seen them and must not be shown another condition's instructions later. Lobby timeouts and the overflow players turned away when the games were full in the other three conditions never started the task and stay eligible, since if they are later assigned to social-first they only read more, which is why the survey blocks this list rather than using Prolific's filter for excluding the participants of earlier studies: that filter excludes every submission in those studies, returned ones included. The list reaches the survey through a Prolific participant group, `Played the game`, which the survey blocks: `operations/sync_blocklist.py` (run as `make sync-blocklist DATASET=full`) adds everyone on the list who is not yet a member. A participant group is live, so the addition takes effect at once on every survey that blocks it. This is the one step in the repository that writes to Prolific, and it only ever adds members to that group; it asks before adding, and `SYNC_ARGS=--dry-run` reports without changing anything. The directory is rewritten on every run, so running it again after paying on the website shows those people as settled. Finishers are owed their bonus, plus the base reward when they returned their submission instead of submitting the completion code (a returned submission cannot be approved), removed players their partial pay, and lobby timeouts the lobby payment. A removal for inactivity forfeits the bonus; when the researcher decides a removal was not the player's doing (a screen that stopped updating, for example), a line in `data/<dataset>/payment_adjustments.csv` (`playerId,adjustment,reason`, with the Empirica player id and `restore_bonus`) adds the earned bonus back on every later run; partial and lobby pay are paid as a bonus on a returned or awaiting-review submission, and an approved submission, which has already received the full base reward, is owed only whatever part of its amount exceeds that base. Finishers whose time on the study was longer than 60 minutes (the longer of Prolific's recorded time and the game's own record, from the identifier screen to the exit survey), the top of the "45 to 60 minutes" the instructions promise, are also owed overtime for the minutes beyond it, paid at the study's advertised rate and written to the separate `2_overtime.csv`. Games ran 42 to 49 minutes with up to three running at once and 52 to 74 minutes with four or five, so participants in the busy sessions spent well over the time Prolific told them to expect. The step never pays anyone itself. It needs `PROLIFIC_TOKEN` in `.env`, and `--offline` lists the payees by study without contacting Prolific.
-
-### Processing new data
-
-Raw Empirica exports (`.zip` files) are in `experiment/data/<timestamp>/` via `empirica export` or the backup script. They are not committed because they contain identifiable participant data, and they are never edited: each folder is the record of what the server held at that moment, and everything downstream is regenerated from it. Because the backup script exported the server every five minutes and each export is a cumulative snapshot, most folders are earlier states of a later one; `make final-exports` (`operations/final_exports.py`) stages the last export of each server period, with every export's server log, in the gitignored `backups/final_exports/` for the off-site copy, and verifies that those exports hold every record. The full sample's processed data (`data/full/`) is not committed either; it stays local until it is released in the RefBank format for reference-game corpora. An export that is new to a dataset goes through a throwaway dataset first:
-
-```bash
-make smoke ZIP=experiment/data/<run>/empirica-export-<run>.zip
-```
-
-This runs the whole pipeline on that one export in a dataset named `smoke` (without the LLM filter) and then the integrity suite, so a bad export is caught before it touches a real dataset. The block-count checks fail for games played in `TEST_MODE`, and the bonus checks fail for exports from before the production pay rate; anything else that fails is a problem with the export. The `smoke` directories are gitignored and are cleared at the start of the next smoke run.
-
-`extract_run.py` registers each export's timestamp in the dataset's `runs.txt` (pass `--no-register` to look at an export without adding it), then the rest of the pipeline follows:
-
-```bash
-make all                 # pilot: extract zips → combine → process → test → render notebooks
-make all DATASET=full    # the same for a dataset named full (data/full/runs.txt)
-```
-
-Or step by step:
-
-```bash
-# 1. Extract each zip (unzip, anonymize, register the run)
-uv run python analysis/extract_run.py experiment/data/20260301_132907/empirica-export-20260301_132907.zip
-uv run python analysis/extract_run.py experiment/data/20260301_214147/empirica-export-20260301_214147.zip
-
-# 2. Combine the runs listed in data/pilots/runs.txt into data/pilots/raw_anonymized/
-uv run python analysis/combine_runs.py --dataset pilots
-
-# 3. Run the pipeline (preprocess → filter → derived metrics)
-uv run python analysis/process_data.py --dataset pilots
-```
-
-For the full sample, `make payments DATASET=full` then shows what each Prolific study still owes (see [Payments](#payments)).
-
-### Notebooks for the pilot data
-
-These produce the figures and statistics for the pilot section of the preregistration manuscript. Run them after data are processed:
-
-```bash
-quarto render analysis/SI_pilot.qmd                              # pilot analyses
-quarto render analysis/llm_simulation/SI_llm_simulation.qmd      # LLM benchmark
-```
-
-| Notebook | Generates | Output |
-|----------|-----------|--------|
-| `SI_pilot.qmd` | Pilot data analyses | `figures/pilots/` + `writing/preregistration/stats/pilot.tex` |
-| `llm_simulation/SI_llm_simulation.qmd` | LLM benchmark | `figures/llm_plots/` + `writing/preregistration/stats/llm.tex` |
-
-The stats are written as `\newcommand` definitions to `writing/preregistration/stats/*.tex`, which the manuscript `\input`s. Sync figures to the paper before pushing to Overleaf:
-
-```bash
-bash figures/sync_figures.sh   # copies SI_*.pdf into writing/preregistration/figures/
-```
-
-### Notebooks for the full sample
-
-These run the preregistered analyses on whichever dataset `DATASET` names. Without it they run on the pilot data (`data/pilots/` and `analysis/derived/pilots/`), which is what a clone of this repository holds; that render exercises the code but gives no results, since the pilot has one game per condition, and it says so in a banner. `make notebooks DATASET=full` renders them against the full sample. Each notebook writes its statistics as `\newcommand` macros to `writing/manuscript/stats/<notebook>.tex` for the article, and the Bayes factors in `02` take many hours on the full sample, so that render is launched detached (see `.claude/skills/run-analysis/SKILL.md`).
-
-| Notebook | Purpose |
-|----------|---------|
-| `00_data_overview.qmd` | Data overview |
-| `01_outcome_neutral.qmd` | Convention-formation checks for interpreting H1/H2 |
-| `02_primary_analysis.qmd` | Primary analyses (H1 through H4) |
-| `03_secondary_analysis.qmd` | Secondary analyses |
-| `04_exploratory.qmd` | Exploratory analyses |
-| `05_exit_survey.qmd` | Exit survey responses |
-
-Rendering all six on the full sample takes many hours, because the Bayes factors refit three models in brms. `BAYES_FACTORS=never make notebooks DATASET=<name>` skips them for an interim look, and the brms fits are cached so that a render on unchanged data reuses them.
-
-The primary analyses evaluate each prespecified prediction separately with a
-two-tailed, unadjusted test at α = 0.05 and require the predicted direction for
-support. All results are reported, and this policy does not provide family-wise
-error control. H3a, H3b, and the three H3c description-property predictions have
-separate interpretations, without an omnibus H3 support decision.
-
-The convention-formation trend checks pool the three conditions with the
-shared Phase 1 procedure, excluding `social_first`, while descriptive plots
-show each condition and variation across games. These checks inform whether
-H1/H2 can be interpreted as convergence or preservation of established
-conventions; they do not block reporting the primary contrasts or testing
-H3/H4. There is no study-level pass/fail threshold. The historical pilot
-notebook retains its original four-condition analyses and does not define
-the full-sample policy.
-
-Both accuracy outcomes are proportions of eligible listener response
-opportunities rather than of submitted answers. An opportunity is an active
-listener assigned to the task on a played trial whose group's speaker sent a
-message; a correct answer received by the server's scoring cutoff counts as a
-success, and an incorrect answer, an ordinary timeout, and a late arrival all
-count as failures. Trials the listener could not have answered leave the
-denominator instead of counting against them, so `social_guesses.csv` holds
-one row per opportunity, with an empty guess where nobody answered. Lateness
-is recorded separately for each outcome, because a tangram selection and a
-social guess can arrive at different times. Failures that were documented as
-technical are listed in `data/<dataset>/technical_exclusions.csv` with a
-reason and treated as missing. The pilot supplement uses the same rule.
-
-The per-game group-specificity model has random intercepts for the tangram
-and for the unordered pair of speakers whose descriptions are compared, as the
-preregistration states, with no separate speaker term. The pair intercept is
-what keeps the standard errors honest: the design-matched simulations in
-`analysis/simulate_mm_speaker.R` show that without it the 95% intervals cover
-the true value only about 86% of the time when two speakers' descriptions
-resemble each other beyond their individual tendencies. Those simulations
-also compare structures that add a speaker effect shared across both pair
-positions, which `analysis/R/multimembership.R` fits through lme4's modular
-interface; they remain available for comparison but are not the preregistered
-model.
-
-H3b tests two separately reported contrasts: the difference in average linear
-change over Phase 1 blocks 2–6 and the difference in alignment at block 3,
-the end of the first scheduled speaker cycle. The analysis averages overlapping
-description pairs within each group, tangram, and block. The longitudinal
-model includes block slopes for group and tangram; a separate block-3-only
-model includes their random intercepts. Neither includes a game term. The
-implementation is in `analysis/R/convergence.R`; its tests verify that later
-blocks cannot affect the early-alignment estimate. Each model requires at
-least two games per condition in its analysis subset, so the current pilot
-provides descriptive trajectories only. H3b does not use Bayes factors.
-
-For H1, H2, and H3a, `analysis/R/bayes_factors.R` parameterizes each tested
-condition difference directly, placing the preregistered Cauchy prior on
-that difference in outcome SD units. The full and null models retain the
-same nuisance parameters and priors, including when the tested conditions
-have unequal sample sizes.
+Create a batch in the admin panel, choose a treatment (two per condition, one per tangram set) and open nine player tabs. [`experiment/README.md`](experiment/README.md) covers the game's layout, deployment, error monitoring and the test suite. The sessions themselves, from a scheduling survey to approvals and payment, were run by hand on Prolific following [`operations/procedures.md`](operations/procedures.md); `make payments`, `make tally` and `make sync-blocklist` are the tooling around that work and need a Prolific token in `.env`.
 
 ## LLM simulation
 
-All simulation code is in `analysis/llm_simulation/`. The code simulates groups of 3 LLM agents playing the reference game to benchmark whether AI can form stable conventions (paper, AI detection section). This uses Gemini via Vertex AI (needs a Google Cloud project with the Vertex AI API enabled): 
+`analysis/llm_simulation/` simulates groups of three Gemini agents playing Phase 1 of the game, the benchmark behind the preregistration's check for AI-assisted play. It needs a Google Cloud project with the Vertex AI API enabled and application-default credentials (`gcloud auth application-default login`); the project is read from `gcloud config`, `GOOGLE_CLOUD_PROJECT` or `--project`.
 
 ```bash
-# Install gcloud CLI if needed: https://cloud.google.com/sdk/docs/install
-
-# Login and set up application default credentials
-gcloud auth application-default login
-
-# Set your default project
-gcloud config set project YOUR_PROJECT_ID
+bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 20    # as in the paper: nucleus sampling, temperature 1.0, top-p 0.95
+uv run python analysis/llm_simulation/process_llm_results.py          # the JSON results to CSVs
+quarto render analysis/llm_simulation/SI_llm_simulation.qmd
 ```
 
-Your credentials will be stored at `~/.config/gcloud/application_default_credentials.json`.
-
-The script auto-detects the project from your gcloud config. You can override with:
-- `--project` flag
-- `GOOGLE_CLOUD_PROJECT` environment variable
-- `.env` file with `GOOGLE_CLOUD_PROJECT=your-project-id`
-
-### Running the simulations
-
-```bash
-# Run simulation (quick test)
-bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 2 --blocks 2
-
-# Full run as in the paper: 20 groups with nucleus sampling (temperature 1.0, top-p 0.95, the script's default)
-bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 20
-
-# Process results → CSVs, then render analysis notebook
-uv run python analysis/llm_simulation/process_llm_results.py
-cd analysis/llm_simulation && quarto render SI_llm_simulation.qmd
-```
+The results the preregistration reports are committed in `analysis/llm_simulation/llm_results_nucleus_20260323_012900/`, so the notebook renders without rerunning the simulation.
 
 ## Power analysis
 
-The power analysis provides sample size justification using simulated data from Boyce et al. (2023). The code is in `analysis/power_analysis/`.
+`analysis/power_analysis/` justifies the sample size with data simulated from Boyce et al. (2023):
 
 ```bash
-quarto render analysis/power_analysis/power_analysis_setup.Qmd    # generate simulated data
-quarto render analysis/power_analysis/power_analysis_plots.Qmd    # plot power curves
+quarto render analysis/power_analysis/power_analysis_setup.Qmd   # simulate the data
+quarto render analysis/power_analysis/power_analysis_plots.Qmd   # plot the power curves
 ```
