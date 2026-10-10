@@ -4,71 +4,31 @@ paths:
   - "analysis/filter_nonreferential.py"
 ---
 
-# LLM Simulation & Message Filter
+# LLM simulation and the message filter
 
-## LLM Simulation (Phase 1 benchmark)
+Both use Gemini through Vertex AI and need `gcloud auth application-default login` and a project with Vertex AI enabled (the project can be set in `.env`; the scripts fall back to the gcloud default). Every run spends credit: count the calls and say so before running anything.
 
-All LLM simulation code lives in `analysis/llm_simulation/`. Simulates groups of 3 LLM agents playing the Phase 1 reference game using Gemini via Vertex AI. Used as an AI detection benchmark (paper, AI detection section). Requires `gcloud auth application-default login` and a GCP project with Vertex AI enabled.
+## Phase 1 benchmark (`analysis/llm_simulation/`)
 
-| File | Purpose |
-|------|---------|
-| `llm_simulation.py` | Run one group simulation (3 players, 16 tangrams) |
-| `llm_prompts.yaml` | Speaker/listener prompt templates |
-| `run_llm_simulation.sh` | Orchestrate N groups with configurable model and sampling. The paper's run (`llm_results_nucleus_20260323_012900`) used gemini-3.1-pro-preview with temperature 1.0 and top-p 0.95, recorded in its `config.json`; `--temperature 0` is greedy decoding, not what the paper reports |
-| `process_llm_results.py` | Convert group JSONs → analysis CSVs + SBERT similarity |
-| `SI_llm_simulation.qmd` | R Quarto notebook: plots, exclusion criterion, draft SI paragraph |
-| `tangram_images.py` | SVG-to-PNG conversion utility |
+Three LLM agents play Phase 1 (`llm_simulation.py`, prompts in `llm_prompts.yaml`). `run_llm_simulation.sh` orchestrates N groups, `process_llm_results.py` turns the group JSONs into CSVs with SBERT similarities, and `SI_llm_simulation.qmd` writes `figures/llm_plots/` and `writing/preregistration/stats/llm.tex`. The paper's run is `llm_results_nucleus_20260323_012900` (gemini-3.1-pro-preview, temperature 1.0, top-p 0.95, recorded in its `config.json`); `--temperature 0` is greedy decoding and not what the paper reports. A group is 36 rounds of 3 calls, 108 calls. Results are saved after every round, so rerun with `--output-dir <same directory>` to resume (a closed laptop suspends tmux processes too), and the processor skips groups still marked `in_progress`.
 
 ```bash
-# 1. Run simulation
-bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 2 --blocks 2  # quick test
-bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 20  # full run as in the paper: nucleus sampling, temperature 1.0, top-p 0.95
-
-# 2. Process JSONs → CSVs
+bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 2 --blocks 2   # quick test
+bash analysis/llm_simulation/run_llm_simulation.sh --num-groups 20             # the paper's run
 uv run python analysis/llm_simulation/process_llm_results.py
-
-# 3. Render analysis notebook
 cd analysis/llm_simulation && quarto render SI_llm_simulation.qmd
 ```
 
-Each group simulation runs 6 blocks x 6 tangrams = 36 rounds with 3 API calls per round (1 speaker + 2 listeners) = 108 Gemini calls per group. Output is JSON per group in `analysis/llm_simulation/llm_results_{timestamp}/`.
+## Non-referential message filter (`analysis/filter_nonreferential.py`)
 
-**Fault tolerance:** Results are saved after every round, so interrupted runs preserve all completed work. If a group fails (API error, laptop sleep, etc.), re-run the shell script with `--output-dir` pointing at the same results directory:
+Speaker messages that carry no information about the target ("thanks", "ready") are removed before speaker utterances are concatenated and embedded. The classifier sees batches of numbered message texts and nothing else, at temperature 0, and labels each R or NR under the criterion "when in doubt, R" (`CLASSIFICATION_PROMPT`). Labels are cached in `messages_classified.csv`, keyed on `gameId, roundId, senderId, timestamp, text`, so only messages without a label are ever sent. `classify` prints the count and the estimated calls (batches of 30) and proceeds only with `--yes` or an interactive yes; it writes back the labels obtained before a failed batch; and at temperature 0 a batch occasionally comes back malformed (`BatchParseError`), which a different `--batch-size` (29, 31, 27, 23) moves past. `MODEL_ID` is `gemini-2.5-flash`, the model behind the full sample's labels; the pilot's came from `gemini-2.0-flash`, which Vertex AI no longer serves. Each dataset's `messages_classified.model.json` records the model, dates and counts of its labels; add a line after classifying new messages.
 
-```bash
-# Resume a failed/interrupted run — completed groups are skipped, partial groups resume
-bash analysis/llm_simulation/run_llm_simulation.sh --output-dir analysis/llm_simulation/llm_results_nucleus_20260321_182301
-```
-
-Note: closing a laptop suspends processes even inside tmux (tmux only survives terminal disconnects, not system sleep). Use `--output-dir` to resume after reopening.
-
-The processing script (`process_llm_results.py`) automatically skips incomplete group files (those still marked `in_progress`).
-
-## Non-Referential Message Filter
-
-LLM-based classifier to filter non-referential messages (e.g., "thanks", "good job") from speaker utterances before SBERT embedding analysis. Uses Gemini via Vertex AI: `gemini-2.5-flash` by default and for the full sample, `gemini-2.0-flash` for the pilot labels (see `.claude/rules/data-pipeline.md`). The preregistration promises a manual check of the classifications before the primary condition contrasts are examined, not a held-out agreement target; `sample` and `validate` are the tools for that check; for the full sample the 200-message sample was drawn on 2026-10-09 into `data/full/annotation_sample.csv` (stratified by length and block, condition not shown), and the author labels it and runs `validate` before the confirmatory render.
+The preregistration promises a manual check of the labels before the primary contrasts are examined, with no agreement target. `sample` draws `annotation_sample.csv` (200 speaker messages, stratified by length and block, fixed seed, no condition or model label shown); the author fills `human_label` with R or NR, saves it as `human_labels.csv`, and `validate` reports agreement, the confusion matrix, Cohen's kappa and every disagreement. `apply` writes `speaker_utterances_filtered.csv` with the sidecar that `.claude/rules/data-pipeline.md` describes; every downstream step prefers the filtered file when it exists and is current.
 
 ```bash
-# Sample messages for human annotation (stratified by length and block)
-uv run python analysis/filter_nonreferential.py sample --data-dir data/pilots/ --n 200
-
-# Classify all speaker messages with LLM
-uv run python analysis/filter_nonreferential.py classify --data-dir data/pilots/ --dry-run   # count first: labels are cached in messages_classified.csv, only unlabeled messages are sent
-uv run python analysis/filter_nonreferential.py classify --data-dir data/pilots/             # asks for confirmation (or --yes) before the first API call
-
-# Validate against human labels (target: 95% agreement)
-uv run python analysis/filter_nonreferential.py validate --data-dir data/pilots/ --labels data/pilots/human_labels.csv
-
-# Apply filter -> produce speaker_utterances_filtered.csv
-uv run python analysis/filter_nonreferential.py apply --data-dir data/pilots/
-
-# Full pipeline (filtering is on by default; skip with --skip-filter)
-uv run python analysis/process_data.py
+uv run python analysis/filter_nonreferential.py sample   --data-dir data/<name> --n 200
+uv run python analysis/filter_nonreferential.py classify --data-dir data/<name> --dry-run
+uv run python analysis/filter_nonreferential.py classify --data-dir data/<name>            # asks before the first call
+uv run python analysis/filter_nonreferential.py validate --data-dir data/<name>
+uv run python analysis/filter_nonreferential.py apply    --data-dir data/<name>
 ```
-
-Output: `messages_classified.csv` (with `is_referential` column) and `speaker_utterances_filtered.csv` (non-referential messages removed before concatenation).
-
-**Filtered data is used by default.** When `speaker_utterances_filtered.csv` exists in the data directory, all downstream analysis automatically uses it:
-- `compute_derived.py` prefers filtered file (override with `--utterances-file speaker_utterances.csv`)
-- All Quarto notebooks (`00`–`05`, `SI_pilot`) use the `utterances_file` variable from `config.R`, which resolves to filtered when present
-- The `config.R` variable `utterances_file` controls which file the R notebooks load

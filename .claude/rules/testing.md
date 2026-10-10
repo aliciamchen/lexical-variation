@@ -6,158 +6,38 @@ paths:
 
 # Testing
 
-## Testing the Experiment Manually
+Facts about the suites. The `run-playwright-tests` skill is the procedure for running them and triaging a failure.
 
-How to test the experiment locally by hand:
+## Suites
 
-```bash
-cd experiment
-rm .empirica/local/tajriba.json
-empirica
-```
+Run everything from `experiment/`, through the npm scripts:
 
-This starts both server and client. Admin interface at `localhost:3000/admin`, players at `localhost:3000/`. Press "new player" on the player interface to start a new player.
+| Script | What it runs |
+|--------|--------------|
+| `npm run test:unit` | vitest on the pure server modules and the tests in `shared/`, where client logic worth unit testing goes (the client has no test runner: it is pinned to Vite 5 and every installable vitest needs Vite 6). Never a bare `npx vitest`, which finds no config and globs the Playwright specs |
+| `npm run test:group1` to `test:group4` | one Playwright group with its server reset and `--no-deps` |
+| `npm run test:group4:fast` | group 4 with `IDLE_TEST_TIMING=true` (30 s timers, 2 idle rounds) |
+| `npm run test:smoke` | the `@smoke` specs plus the `@setup` resets |
+| `npm run test:holistic` | full games at production timing |
+| `npm test` | every group in order, holistic last |
+| `npm run test:report`, `npm run test:free-ports` | the HTML report (it does not open itself); free ports 3000 and 8844 |
 
-To test:
-- click "new batch" on the admin console. "complete" refers to the assignment method, we want to do complete assignment. we can select treatment on the dropdown, lobby config is default shared fail. then click "create"
-- open player interface at `localhost:3000/`
-  - press "new player" to start a new player, we need to click this 9 times to get 9 players
+Groups: 1 happy-path, communication, lobby, edge-cases; 2 ui-verification, timing; 3 data-integrity, condition-specific, score-display; 4 idle-detection, group-viability, compensation; then holistic. The groups are chained as Playwright project dependencies and Playwright runs dependencies unfiltered, so a bare `npx playwright test <file>` or `--project=group-N` replays every earlier group first. One file: `npx playwright test reset-server.setup tests/<dir>/<file>.spec.ts --project=setup-N --project=group-N --no-deps`. Append `-- --headed` to watch.
 
-## Testing with Playwright MCP (interactive)
+## Harness facts
 
-You can use the Playwright MCP browser tools to manually test the experiment with multiple simulated players. This is useful for verifying UI changes without running the full test suite.
+- **One run at a time.** Every run binds ports 3000 and 8844 and resets the same server. The global setup takes `.empirica/local/playwright-run.lock` and refuses to start while another run holds it (a dead process's lock is cleared automatically); `test:free-ports` refuses while a live run holds the lock. Never `lsof ... | xargs kill -9`, and do not edit anything under `server/src` during a run, which restarts the dev server and freezes the running stage.
+- **Modes.** `TEST_MODE` (default `false`; `server-manager.ts` and `tests/helpers/set-default-test-mode.ts` set it `true` for tests) gives 3+2 blocks. Timers and the idle threshold are always the production values (45 s and 25 s selection, 15 s feedback, 3 idle rounds); the per-test timeout is 600 s, or 5400 s in production mode. `tests/helpers/set-production-mode.ts` flips to production only inside a worker (`TEST_WORKER_INDEX`), because Playwright loads every spec in the runner process when it collects a multi-project run and a flip there would be inherited by every group; `reset-server.setup.ts` refuses to start in that state and `server-manager.ts` logs the mode it spawns with. `LOBBY_TESTS=true` un-skips the lobby-timeout test, which waits out the ten-minute lobby.
+- **Server errors are visible only in the log.** The harness writes the server's output to `test-results/empirica-server.log` and the global teardown fails the run if it contains a `CALLBACK ERROR` or an unhandled rejection, because `guard.js` contains callback errors and the browser looks healthy. A run that fails only in teardown means the game played and the server threw.
+- **Concurrency.** `communication/chat-concurrent.spec.ts` is the only spec where players act at once; keep its `Promise.all`, which is what tests the chat's atomic `append`.
+- Specs run with `workers: 1` on one shared server; use `test.describe.serial` within a file. Between groups the server is restarted with `tajriba.json` deleted.
 
-**Setup:**
-1. Start the server in background: `cd experiment && rm .empirica/local/tajriba.json && empirica`
-2. Navigate to `http://localhost:3000/admin` and create+start a batch
-3. Use `browser_run_code` to create 9 player contexts and walk them through the intro
+## Writing a spec
 
-**Key lessons:**
-- **Dialog handler first**: The quiz uses `window.alert()` which blocks Playwright. Register `page.on('dialog', async d => await d.accept())` on each player page *before* submitting the quiz, not after.
-- **Player intro flow**: I consent → Enter identifier → 6x Next → Quiz (6 radio answers; `social_first` adds a 7th) → Submit. The built-in Empirica "I AGREE" consent is disabled; the custom consent page comes first. See exact quiz answer text in `experiment/client/src/intro-exit/Quiz.jsx` and the answers listed in `architecture.md`.
-- **Globals don't persist**: `globalThis.__var` set in one `browser_run_code` call is NOT available in the next. Instead, access player pages via `browser.contexts()` (admin is `contexts[0]`, players are `contexts[1..9]`, each has `.pages()[0]`).
-- **Inactivity kicks**: The selection timer runs during testing. If you spend too long inspecting state between actions, players get kicked for inactivity. Work quickly or use TEST_MODE (longer timeouts).
-- **`fill()` vs real typing**: Playwright's `fill()` sets the value but doesn't fire React `onChange`. Follow `fill()` with `dispatchEvent('input')` to trigger typing indicators and other onChange-dependent state.
-- **One run at a time**: every Playwright run binds ports 3000 and 8844 and resets the same server, so the harness takes `.empirica/local/playwright-run.lock` in its global setup and refuses to start while another run on the machine holds it (a lock left by a dead process is cleared automatically). Free the ports with `npm run test:free-ports`, which refuses while a live run holds the lock; never use a raw `lsof ... | xargs kill -9` while another run may be active, because it kills that run's server (the harness only checks the lock, it cannot stop a manual kill). Editing anything under `server/src` during a run restarts the dev server and freezes the running stage, so hold those files still until the run ends.
-- **Finding players by role**: Use `.task` element's data attributes: `data-role` (speaker/listener), `data-current-group` (A/B/C) to identify which browser context belongs to which role/group. `.task` renders only during gameplay, not on transition screens.
-- **Each listener clicks their own target index**: `data-target-index` on `.task` is the target's position in that player's own shuffled grid, not a shared index, so read it from each listener's page (`getPlayerInfo` in `game-actions.ts` does) rather than reusing the speaker's.
-- **Transitions wait for everyone**: on a transition or bonus screen, Continue sets the player's stage `submit`, and the stage advances only once every player has submitted; otherwise it runs its full timer (`TRANSITION_DURATION`, 60 s). Wait for each player to reach the screen before clicking their Continue, and allow generous timeouts (about 120 s) when waiting for the next stage.
+Put it under a category directory the config maps to a group, and copy the setup of an existing spec in that group. Helpers: `tests/helpers/admin.ts` (`createBatch(page, condition)`, `stopAllBatches(page)`, which ends a session the way a researcher does), `player-manager.ts` (`PlayerManager`, one browser context per player; `registerAllPlayers` opens `/` without `PROLIFIC_PID`, so the identifier field is editable), `game-actions.ts` (`completeIntro`, `completeExitSurvey`, which waits for the confirmation page or the Sorry screen, `getExitInfo`, `getPlayerInfo`), `constants.ts` (re-exports `shared/constants.js`; compare against `EXIT_REASONS.*` and `PROLIFIC_CODES.*`, never literals) and `selectors.ts`.
 
-## Playwright Tests
+Things specs get wrong: the quiz uses `window.alert()`, so register a dialog handler before submitting; `fill()` does not fire React `onChange`, so follow it with `dispatchEvent('input')`; each listener's `data-target-index` is the target's position in that player's own shuffled grid, so read it from each page; `.task` carries `data-role` and `data-current-group` and renders only during gameplay; a transition or bonus screen advances when every player has pressed Continue and otherwise after its full timer (60 s), so wait for each player to reach it and allow about 120 s for the next stage; a spec that idles players for exactly `MAX_IDLE_ROUNDS` and asserts removal is fragile, because a round whose speaker stayed silent resets the counter by design.
 
-Tests live in `experiment/tests/` and use `@playwright/test`. The server is managed automatically by the test framework (no need to start it manually).
+## By hand
 
-**Running tests:**
-
-The test groups are chained via Playwright project dependencies, and Playwright runs dependencies unfiltered. A bare `npx playwright test <file>` or `--project=group-N` therefore replays every earlier group in full first (a group-4 file runs all of groups 1-3 before it). Use the npm scripts, which pair each group with its server-reset setup and pass `--no-deps`:
-
-```bash
-cd experiment
-
-# Full suite in order (test mode: 3+2 blocks at production timers; the full-length holistic group runs last)
-npm test
-
-# One group only (server reset + that group, nothing else)
-npm run test:group1       # happy-path, communication, lobby, edge-cases
-npm run test:group2       # ui-verification, timing
-npm run test:group3       # data-integrity, condition-specific, score-display
-npm run test:group4       # idle-detection, group-viability, compensation
-npm run test:group4:fast  # same as group4 with IDLE_TEST_TIMING=true (30s timers,
-                          # 2 idle rounds instead of 45s x 3 -- idle tests wait out
-                          # full timers, so this is faster)
-npm run test:smoke        # tests tagged @smoke (quiz failure, chat, tangram set): a few minutes
-npm run test:holistic     # holistic end-to-end, production timing
-
-# Server unit tests (fast, no browser or server needed). Also runs the tests
-# in experiment/shared/, which is where client logic worth unit testing lives:
-# the client itself has no test runner, being pinned to Vite 5 while every
-# installable vitest now needs Vite 6 or later (see experiment/server/vitest.config.js).
-npm run test:unit
-
-# A single spec file: include its group's reset setup and skip earlier groups
-npx playwright test reset-server.setup tests/idle-detection/speaker-idle.spec.ts \
-  --project=setup-4 --project=group-4 --no-deps
-
-# Full-length games for everything (6+6 blocks; timers are always production)
-TEST_MODE=false npm test
-
-# Run with visible browser: append flags after --
-npm run test:group2 -- --headed
-
-# View the HTML report (it does not open on its own after a failure)
-npm run test:report
-```
-
-Pipe long runs through `tee` to a stable file so results can be read without re-running: `npm run test:group4 2>&1 | tee /tmp/test-results.txt`
-
-**Concurrency:** `communication/chat-concurrent.spec.ts` is the only spec where players act simultaneously. Everywhere else a send is awaited before the next begins, so nine players never hit Enter at once, and the group chat is a single shared stage attribute written with Empirica's atomic `append` precisely to survive that. Keep the `Promise.all` in that spec: serializing it would leave the `append` behaviour untested, and a lost message there is lost research data that nothing else would reveal.
-
-**Server-side errors:** the harness writes the Empirica server's stdout and stderr to `experiment/test-results/empirica-server.log`, and the global teardown fails the run if that log contains a `CALLBACK ERROR` or an unhandled rejection. This matters because `server/src/guard.js` deliberately contains callback errors so the remaining players can finish, which leaves the browser looking healthy: without the log check, a run could pass while every round threw. If a run fails only in teardown, read that log.
-
-**Test architecture:**
-
-Tests are split into 5 project groups in `playwright.config.ts`. Between each group, the Empirica server is restarted (tajriba.json deleted) to prevent state accumulation. Full-suite execution order: `setup-1 → group-1 → ... → setup-4 → group-4 → setup-5 → group-holistic`.
-
-| Group | Categories | Description |
-|-------|-----------|-------------|
-| group-1 | happy-path, communication, lobby, edge-cases | Core game flow |
-| group-2 | ui-verification, timing | UI and timing checks |
-| group-3 | data-integrity, condition-specific, score-display | Data and conditions |
-| group-4 | idle-detection, group-viability, compensation | Dropout handling |
-| group-holistic | holistic | Full end-to-end games at production timing |
-
-**Writing a new test:**
-
-1. Create a `.spec.ts` file in the appropriate category directory under `experiment/tests/` (e.g., `tests/ui-verification/my-test.spec.ts`). The file must be in a directory matching one of the group patterns above so the config picks it up.
-
-2. Use the shared helpers:
-   - `tests/helpers/admin.ts` — `createBatch(page, condition)` to set up a game via the admin UI; `stopAllBatches(page)` to stop every running batch the way a researcher ends a session early (Empirica writes `game terminated` to every assigned player, whether or not their game had started; `compensation/batch-terminated.spec.ts` covers a game in progress and `compensation/batch-terminated-lobby.spec.ts` the players still waiting, who are paid as lobby timeouts because no game of theirs ever ran)
-   - `tests/helpers/player-manager.ts` — `PlayerManager` class to create and manage multiple browser contexts (one per player). `registerAllPlayers` opens `/` without `PROLIFIC_PID`, so the identifier field is editable and `completeIntro` types one; with the parameter the field is prefilled and read-only
-   - `tests/helpers/game-actions.ts` — `completeIntro(page)` to walk a player through consent, instructions, and quiz; `completeExitSurvey(page)` fills both survey pages and then waits for either the confirmation page (the exit-survey container with `data-prolific-code`; it has no Finish button) or the Sorry screen that removed players get instead. `getExitInfo` reports `prolificCode` from the Sorry screen or from that confirmation page
-   - `tests/helpers/constants.ts` — re-exports `shared/constants.js`; compare exit reasons against `EXIT_REASONS.*` and codes against `PROLIFIC_CODES.*`, never string literals
-   - `tests/helpers/selectors.ts` — shared CSS selectors
-
-3. Typical test setup pattern:
-   ```typescript
-   import { test, expect } from '@playwright/test';
-   import { createBatch } from '../helpers/admin';
-   import { PlayerManager } from '../helpers/player-manager';
-
-   test.describe.serial('My Test Suite', () => {
-     let pm: PlayerManager;
-
-     test.beforeAll(async ({ browser }) => {
-       // Create batch via admin
-       const adminPage = await browser.newPage();
-       await createBatch(adminPage, 'refer_separated');
-       await adminPage.close();
-
-       // Set up 9 players
-       pm = new PlayerManager(browser);
-       await pm.initialize();
-       await pm.registerAllPlayers();
-       await pm.completeAllIntros();
-       await pm.waitForGameStart();
-     });
-
-     test.afterAll(async () => {
-       await pm.cleanup();
-     });
-
-     test('my test case', async () => {
-       const pages = pm.getPages();
-       // ... assertions
-     });
-   });
-   ```
-
-4. Tests run sequentially (`workers: 1`, `fullyParallel: false`) because they share a single Empirica server. Use `test.describe.serial` for tests that depend on ordering within a file.
-
-**Key config values** (from `experiment/shared/constants.js`, mirrored in `tests/helpers/constants.ts`):
-- `TEST_MODE` — controlled by `TEST_MODE` env var (defaults to `false` for production; `server-manager.ts` and `tests/helpers/set-default-test-mode.ts` default it to `true` for tests)
-- `tests/helpers/set-production-mode.ts` (imported by the holistic specs and their setup) sets `TEST_MODE=false` only inside a Playwright worker (`TEST_WORKER_INDEX` is set). Playwright also loads every spec file in the runner process when it collects a multi-project run such as `npm test`; a flip there was inherited by every worker, so groups 1-4 started the server with production block counts and failed late (2026-09-17). `reset-server.setup.ts` now refuses to start in that state, and `server-manager.ts` logs the mode it spawns with; check that line first when a group fails in unexpected places.
-- Test mode: 3+2 blocks; timers and idle threshold are the production values (45s/25s selection, 15s feedback, 3 idle rounds); 600s per-test timeout
-- Production mode (`TEST_MODE=false`): 6+6 blocks, same timers; 5400s per-test timeout
-- `IDLE_TEST_TIMING=true` (used by `npm run test:group4:fast`): 30s selection, 2 idle rounds — for suites whose tests wait out full idle timers
-- `LOBBY_TESTS=true`: un-skips the lobby-timeout compensation test, which waits out the 10-minute production lobby
-- `tests/helpers/constants.ts` re-exports `shared/constants.js`; only test-specific values (player count, quiz answers, treatment names) are defined there
+`cd experiment && rm .empirica/local/tajriba.json && empirica` starts server and client: admin at `localhost:3000/admin` (new batch, assignment "complete", pick the treatment, default lobby, create, start), players at `localhost:3000/` ("new player", nine times). With the Playwright MCP tools, create the player contexts in `browser_run_code` and reach them again through `browser.contexts()` (admin first, then the players), since globals do not persist between calls; the production selection timer runs, so work quickly or in `TEST_MODE`.

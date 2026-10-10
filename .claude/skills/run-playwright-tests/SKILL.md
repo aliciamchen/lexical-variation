@@ -23,7 +23,7 @@ Facts about the suite (groups, helpers, config values) are in `.claude/rules/tes
 
 5. **Check the server log, and expect the teardown to.** The harness writes the Empirica server's output to `experiment/test-results/empirica-server.log`, and the global teardown fails the run if it contains a `CALLBACK ERROR` or an unhandled rejection. This is the only way a server-side failure is visible: `guard()` contains callback errors so the remaining players can finish, so the browser looks healthy and no assertion trips. A run that fails **only** in teardown means the game played fine and the server threw; read that log, not the specs.
 
-6. **Triage a failure in this order.** Suspect the harness before the game: every one of the three failures found on 2026-09-17 was in the harness, and each looked like a broken experiment.
+6. **Triage a failure in this order.** Suspect the harness before the game: harness failures have looked exactly like a broken experiment.
 
    (a) **Wrong mode.** Check the `[server-manager] Starting empirica with TEST_MODE=...` line first. Groups 1 to 4 need `true`; only the holistic group needs `false`. A flip leaking out of the holistic specs into the runner process once made every group play 6+6 blocks against specs written for 3+2.
    (b) **A filtered run with no server.** If tests fail in milliseconds against an unreachable admin page, no server started. Playwright's `--grep` filters every project including the setup that starts it, which is why both resets are tagged `@setup` and `test:smoke` greps `@smoke|@setup`.

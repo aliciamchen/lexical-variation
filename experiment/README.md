@@ -40,6 +40,8 @@ There are 4 between-subjects conditions (treatments): `refer_separated`, `refer_
 
 ## Production deployment
 
+No production server exists at the moment: the droplet that ran the full sample was destroyed on 2026-10-10 after its exports were backed up, so these steps describe how to deploy a new one.
+
 The production server hostname is set via `EMPIRICA_SERVER` in `.env` (see `.env.example`). Deployment follows the [Empirica Ubuntu deployment guide](https://docs.empirica.ly/guides/deploying-my-experiment/ubuntu-tutorial).
 
 ### Deploying a new build
