@@ -14,21 +14,24 @@
 #   figures/<name>/           the article's figures
 # The default is the full sample; pass DATASET=<name> for another one.
 #
-# From scratch with raw Empirica export zips listed in data/<name>/runs.txt:
-#   make all                      # the full sample
-#   make all DATASET=smoke        # another dataset
+# The four steps from the exports to the article, each a verb:
+#   make data           # extract, combine and process the exports into data/<name>/
+#   make test           # the integrity suite on the dataset, the Python unit tests and the R tests
+#   make models         # render the three notebooks: the model fits, their macros and estimates
+#   make paper          # the descriptive macros (and the figures, once their scripts exist)
+# `make all` runs the four in that order; `make all DATASET=smoke` on another dataset.
 #
-# Individual targets:
+# The finer steps underneath:
 #   make extract        # extract the dataset's zips → data/runs/<timestamp>/
 #   make combine        # stack runs → data/<name>/raw/
 #   make process        # preprocess → filter → derived metrics → model-input frames
 #   make frames         # only the model-input frames (fast; needs processed and derived tables)
-#   make test           # every test; make test-unit for the Python unit tests alone
+#   make test-unit      # the Python unit tests alone (no data needed)
+#   make notebooks      # what `make models` runs
+#   make descriptives   # what `make paper` runs
 #   make payments       # what each Prolific study still owes → data/payments/<name>/
 #   make tally          # games per condition and tangram set; stopping-rule progress
-#   make notebooks      # render the analysis notebooks (models and inferential macros)
-#   make descriptives   # the descriptive macros, from the tables and the notebooks' results
-#   BAYES_FACTORS=never make notebooks   # render without the brms refits (a fast check)
+#   BAYES_FACTORS=never make models      # render without the brms refits (a fast check)
 #
 # Smoke-testing one export before it joins a dataset:
 #   make smoke ZIP=experiment/data/<run>/empirica-export-<run>.zip
@@ -60,11 +63,17 @@ ZIPS = $(foreach run,$(RUNS),$(call zip_for_run,$(run)))
 # The preregistered analysis notebooks, rendered on the active dataset
 NOTEBOOKS = analysis/checks.qmd analysis/primary.qmd analysis/secondary.qmd
 
-.PHONY: all extract combine process process-no-filter frames payments sync-blocklist tally final-exports notebooks descriptives test test-unit test-ops smoke runs help
+.PHONY: all data models paper extract combine process process-no-filter frames payments sync-blocklist tally final-exports notebooks descriptives test test-unit test-ops smoke runs help
 
-# ── Main targets ────────────────────────────────────────────
+# ── The four verbs ──────────────────────────────────────────
 
-all: extract combine process test notebooks descriptives  ## Full pipeline from zips to rendered notebooks and macros
+all: data test models paper  ## Everything from the export zips to the article's macros
+
+data: extract combine process  ## Build data/<name>/ from the exports listed in runs.txt (extract, combine, process)
+
+models: notebooks  ## Fit the preregistered models: render the three notebooks, which write the inferential macros and the estimates
+
+paper: descriptives  ## Write the article's descriptive macros from the tables and the estimates
 
 # ── Pipeline steps ──────────────────────────────────────────
 

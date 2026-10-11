@@ -4,19 +4,35 @@ This repository holds the experiment, the data pipeline and the analyses for a p
 
 The full sample, 120 started games collected in 31 Prolific sessions between 2026-09-22 and 2026-10-08, is not public yet: it will be released in the RefBank format for reference-game corpora. Until then the processed data and the derived tables exist only in the author's checkout, so the analyses can be read here but not run from a clone. The pilot the preregistration reports on, four games from March 2026, and the LLM benchmark behind its check for AI-assisted play were retired from the working tree; both remain at the git tag `pilot-archive`, from which the preregistration's supplementary analyses reproduce.
 
-## Repository structure
+## How the pieces fit together
+
+The work runs in one direction, from the game to the article, and each step has its own directory and its own `make` verb:
+
+```
+experiment/   the Empirica game, which writes an export zip per session
+     │   make data        pipeline/ (Python) turns the exports into one dataset
+     ▼
+data/full/    the dataset: hand-written inputs at the top, generated files one level down
+     │   make test        the integrity suite checks the dataset against the design and the raw tables
+     │   make models      analysis/ (R) fits the preregistered models and writes their macros and estimates
+     │   make paper       paper/ (Python) writes the descriptive macros and the figures
+     ▼
+writing/manuscript/   the article's Overleaf project reads the macros and the figures
+```
 
 ```
 experiment/        the Empirica game: React client, Node server, Playwright tests (see experiment/README.md)
 pipeline/          the data pipeline: extraction, combination, preprocessing, the message filter, the derived metrics and the model-input frames, with their tests
+data/              one directory per dataset: the hand-written inputs at the top and the generated files one level down, in a directory per stage (raw, tables, classifier, derived, frames, estimates, cache); data/README.md is the codebook
 analysis/          the R side: config.R, the helpers in analysis/R/ with their tests, and the three Quarto notebooks that fit the preregistered models
 paper/             the Python side of the article: the descriptive macros, the figure style and the macro writer
-simulations/       the design-matched simulation behind the speaker random effect, and the power analysis
-data/              one directory per dataset: the hand-written inputs at the top and the generated files one level down, in a directory per stage (raw, tables, classifier, derived, frames, estimates, cache); data/README.md is the codebook
-operations/        the Prolific tooling (payments, blocklist, tally) and procedures.md, the record of how a session was run
 figures/           the article's figures per dataset, and figures/manual/ for the hand-made ones (the Illustrator source, the schematic and condition diagrams, the avatar designs)
 writing/           Overleaf projects, one per manuscript (not committed; synced through Overleaf)
+simulations/       the design-matched simulation behind the speaker random effect, and the power analysis
+operations/        the Prolific tooling (payments, blocklist, tally) and procedures.md, the record of how a session was run
 ```
+
+The verbs are groups of finer targets, listed by `make help`: `make data` is `extract`, `combine` and `process`; `make models` renders the three notebooks; `make paper` writes the descriptive macros. `make all` runs the four in order.
 
 ## Setup
 
@@ -29,7 +45,7 @@ uv sync                                        # Python
 Rscript -e 'renv::restore()'                   # R
 ```
 
-The analyses need no credentials. Running or deploying the experiment and the Prolific tooling read a `.env` file at the repository root, created with `cp .env.example .env` and filled in (the variables are documented in the example), and running the game locally needs `experiment/.empirica/empirica.toml`, created from `empirica.toml.example` with fresh random values. Both files are gitignored because they hold a hostname, an organization name and tokens. Contributors should also run `git config core.hooksPath .githooks`: the pre-commit hook refuses a commit that stages a participant identifier and runs the tests for whatever the commit touches. GitHub Actions runs the server unit tests and the preprocessing unit tests on every push.
+The analyses need no credentials. Running or deploying the experiment and the Prolific tooling read a `.env` file at the repository root, created with `cp .env.example .env` and filled in (the variables are documented in the example), and running the game locally needs `experiment/.empirica/empirica.toml`, created from `empirica.toml.example` with fresh random values. Both files are gitignored because they hold a hostname, an organization name and tokens. Contributors should also run `git config core.hooksPath .githooks`: the pre-commit hook refuses a commit that stages a participant identifier and runs the tests for whatever the commit touches. GitHub Actions runs the server unit tests and the Python unit tests on every push.
 
 ## Reproducing the results
 
@@ -37,38 +53,37 @@ The analyses need no credentials. Running or deploying the experiment and the Pr
 make test
 ```
 
-This runs the data integrity suite on the processed tables of the active dataset (`full` unless `DATASET` names another), the Python unit tests for the preprocessing and derived-metric definitions, and the R tests for the analysis helpers. The integrity suite checks the tables against the experiment's design and server logic, rebuilds the utterances from the chat log, recomputes the similarity tables from the saved embeddings, and reconciles the processed tables with the raw ones. It needs the processed dataset, so on a clone without `data/full/` it stops with a message that says so, while the unit tests run anywhere.
+This runs the data integrity suite on the dataset (`full` unless `DATASET` names another), the Python unit tests for the preprocessing and derived-metric definitions, and the R tests for the analysis helpers. The integrity suite checks the tables against the experiment's design and server logic, rebuilds the utterances from the chat log, recomputes the similarity tables from the saved embeddings, and reconciles the processed tables with the raw ones. It needs the dataset, so on a clone without `data/full/` it stops with a message that says so, while the unit tests run anywhere.
 
 ## The data
 
-Every dataset has the same layout, defined once in `pipeline/dataset_paths.py` and mirrored in `analysis/config.R`:
+Every dataset has the same layout, defined once in `pipeline/dataset_paths.py` and mirrored in `analysis/config.R`. The files at the top of the dataset directory are the ones somebody wrote by hand; everything the pipeline and the notebooks generate sits one level down, in a directory named for the step that writes it:
 
-| Path | Contents |
-|---|---|
-| `data/<name>/` | The hand-written inputs: `runs.txt`, the Empirica export timestamps the dataset is built from, and the exclusion and exception files described in the codebook |
-| `data/<name>/raw/` | The raw Empirica tables, stacked across those exports, with identifying columns removed, and the `manifest.json` that records what went into them |
-| `data/<name>/tables/` | The analysis-ready tables: `games`, `players`, `trials`, `messages`, `speaker_utterances`, `speaker_utterances_filtered`, `social_guesses` and `dropouts` |
-| `data/<name>/classifier/` | The message filter's label cache, the record of the model that wrote it, and the author's annotation check |
-| `data/<name>/derived/` | The SBERT embeddings, the pairwise and block-by-block similarity tables in sentence-embedding and content-word (Jaccard) versions, and the per-description properties |
-| `data/<name>/frames/` | The model-input frames the notebooks fit to |
-| `data/<name>/estimates/` | The model estimates the notebooks write for the figures and the descriptive macros |
-| `data/<name>/cache/` | Cached model fits, keyed to the data they were fit on |
-| `figures/<name>/` | The figures |
+| Path | Written by | Contents |
+|---|---|---|
+| `data/<name>/` | by hand | `runs.txt`, the Empirica export timestamps the dataset is built from, and the exclusion and exception files described in the codebook |
+| `data/<name>/raw/` | `make data` | The raw Empirica tables, stacked across those exports, with identifying columns removed, and the `manifest.json` that records what went into them |
+| `data/<name>/tables/` | `make data` | The analysis-ready tables: `games`, `players`, `trials`, `messages`, `speaker_utterances`, `speaker_utterances_filtered`, `social_guesses` and `dropouts` |
+| `data/<name>/classifier/` | `make data` | The message filter's label cache, the record of the model that wrote it, and the author's annotation check |
+| `data/<name>/derived/` | `make data` | The SBERT embeddings, the pairwise and block-by-block similarity tables in sentence-embedding and content-word (Jaccard) versions, and the per-description properties |
+| `data/<name>/frames/` | `make data` | The model-input frames the notebooks fit to |
+| `data/<name>/estimates/` | `make models` | The model estimates the notebooks write for the figures and the descriptive macros |
+| `data/<name>/cache/` | `make models` | Cached model fits, keyed to the data they were fit on |
+| `figures/<name>/` | `make paper` | The figures |
 
 The scripts take `--dataset <name>` and `make` takes `DATASET=<name>`; both default to `full`. The columns, and the optional input files that record exclusions and documented anomalies, are described in [`data/README.md`](data/README.md). Timestamps taken in a participant's browser are comparable only within that participant, because browser clocks are not synchronized; the codebook says which columns are on the server's clock.
 
-The pipeline from an Empirica export to the processed tables is `make extract combine process test`, or `make all`, which also renders the notebooks:
+`make data` runs three steps:
 
 1. `extract_run.py <zip>` unzips an export into `data/runs/<timestamp>/raw/`, removes the identifying columns, redacts Prolific-id-shaped tokens from every text field, and registers the export in `runs.txt`.
 2. `combine_runs.py` stacks the registered exports, keeping the newest version of each record, drops the games listed in `exclude_games.txt`, and writes `raw/` with its `manifest.json` and `tables/dropouts.csv`.
-3. `process_data.py` runs `preprocessing.py`, which writes the analysis-ready tables; `filter_nonreferential.py`, which labels each speaker message as referential or not with Gemini on Vertex AI and rebuilds the utterances from the referential messages (labels are cached, so only unlabeled messages are sent, and `--skip-filter` uses the unfiltered utterances); `compute_derived.py`, which writes the embeddings and similarity tables; and `build_frames.py`, which aggregates them into the tables the models are fit to.
-4. `make test` checks the result.
+3. `process_data.py` runs `preprocessing.py`, which writes the analysis-ready tables; `filter_nonreferential.py`, which labels each speaker message as referential or not with Gemini on Vertex AI and rebuilds the utterances from the referential messages (labels are cached, so only unlabeled messages are sent, and `--skip-filter` uses the unfiltered utterances); `compute_derived.py`, which writes the embeddings, the similarity tables and the description properties; and `build_frames.py`, which aggregates them into the tables the models are fit to.
 
 The raw exports under `experiment/data/` are not committed because they identify participants. `make smoke ZIP=<export>` runs the whole pipeline on one export in a throwaway dataset, so a bad export is caught before it is added to a real one.
 
-## The full-sample analyses
+## The analyses
 
-The notebooks `analysis/checks.qmd`, `primary.qmd` and `secondary.qmd` are the preregistered analyses: the convention-formation, dropout and survey checks, the primary hypotheses and the secondary analyses. `make notebooks` renders them on the full sample; each writes its statistics to `writing/manuscript/stats/` as `\newcommand` macros for the article and its HTML to `_output/`, and `primary.qmd` writes its per-game estimates to `data/full/estimates/`. `make descriptives` then writes the descriptive macros, the data overview, the exploratory summaries and the exit survey, from the processed tables and those estimates with `paper/descriptives.py`. A render on any other dataset is marked with a warning banner, because its numbers are not results. The Bayes factors in `primary.qmd` refit three models with brms, which took about twenty minutes on the full sample; `BAYES_FACTORS=never make notebooks` skips them, and the fits are cached so that a render on unchanged data reuses them.
+`make models` renders the notebooks `analysis/checks.qmd`, `primary.qmd` and `secondary.qmd`, which are the preregistered analyses: the convention-formation, dropout and survey checks, the primary hypotheses and the secondary analyses. Each writes its statistics to `writing/manuscript/stats/` as `\newcommand` macros for the article and its HTML to `_output/`, and `primary.qmd` writes its per-game estimates to `data/full/estimates/`. `make paper` then writes the descriptive macros, the data overview, the exploratory summaries and the exit survey, from the processed tables and those estimates with `paper/descriptives.py`; the article's figures will be made there too, in Python, with `paper/plot_style.py` as the one description of how they look. A render on any other dataset is marked with a warning banner, because its numbers are not results. The Bayes factors in `primary.qmd` refit three models with brms, which took about twenty minutes on the full sample; `BAYES_FACTORS=never make models` skips them, and the fits are cached so that a render on unchanged data reuses them.
 
 ## Running the experiment
 

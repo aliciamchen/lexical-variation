@@ -28,7 +28,7 @@ Outputs worth knowing: `raw/manifest.json` (runs combined, games filtered and ex
 
 ## Steps
 
-`make extract combine process test notebooks`, or `make smoke ZIP=<zip>` to run everything on a throwaway dataset `smoke` (it clears `data/smoke/` itself; leave it afterwards, since the agent hook blocks recursive deletes; the block-count checks fail for TEST_MODE games). The `rebuild-dataset` skill is the procedure for `full`.
+`make data test models paper`, each verb a group of the finer targets below (`make help` lists them), or `make smoke ZIP=<zip>` to run everything on a throwaway dataset `smoke` (it clears `data/smoke/` itself; leave it afterwards, since the agent hook blocks recursive deletes; the block-count checks fail for TEST_MODE games). The `rebuild-dataset` skill is the procedure for `full`.
 
 - **Extract** (`extract_run.py <zip>`) unzips into `data/runs/<ts>/raw/`, drops `SENSITIVE_COLUMNS` from `player.csv`, redacts 24-hex Prolific-id tokens in every text cell, and registers the timestamp in `runs.txt` unless `--no-register`. It is deterministic.
 - **Combine** (`combine_runs.py --dataset <name>`) unions the registered exports on record id, keeping the newest version of each record, drops excluded games, removes player records of games that never started, and writes `raw/` with its manifest and `tables/dropouts.csv`.

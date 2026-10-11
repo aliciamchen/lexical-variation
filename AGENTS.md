@@ -12,7 +12,7 @@ A nine-player Empirica reference game for studying lexical variation and social 
 uv sync && uv run python <script>     # Python; never bare python or pip
 Rscript -e 'renv::restore()'          # R
 cd experiment && npm install          # Empirica app and Playwright
-make help                             # extract, combine, process, frames, test, notebooks, descriptives, smoke, payments, final-exports
+make help                             # data, test, models, paper, and the finer steps underneath (extract, combine, process, frames, notebooks, descriptives, smoke, payments)
 make test DATASET=full                # integrity suite plus the Python and R unit tests
 cd experiment && npm run test:unit    # server unit tests; Playwright only through the npm scripts
 ```
