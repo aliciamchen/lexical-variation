@@ -23,7 +23,7 @@
 # The H1/H2 reruns read the per-game estimates from group_specificity.R; the
 # H4 reruns refit the models h4.R saved, on the same data.
 #
-# Writes results/<dataset>/estimates/primary/robustness.csv (every rerun
+# Writes results/estimates/primary/robustness.csv (every rerun
 # contrast, with the restriction and the games it kept) and
 # primary/robustness_restrictions.csv (per restriction, how many games it
 # kept and whether that left the primary analyses unchanged).

@@ -9,7 +9,7 @@
 # The named contrast is refer_separated minus social_mixed; all pairwise
 # comparisons follow, Tukey-adjusted.
 #
-# Writes results/<dataset>/estimates/secondary/utterance_properties.csv (the
+# Writes results/estimates/secondary/utterance_properties.csv (the
 # named contrast and the pairwise comparisons, per phase and measure) and
 # secondary/utterance_properties_by_condition.csv (the marginal means).
 

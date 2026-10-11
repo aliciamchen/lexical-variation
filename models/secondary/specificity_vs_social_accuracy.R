@@ -12,7 +12,7 @@
 # is an association conditional on baseline specificity, not a causal claim.
 # The per-game estimates come from models/primary/group_specificity.R.
 #
-# Writes results/<dataset>/estimates/secondary/specificity_vs_social_accuracy.csv:
+# Writes results/estimates/secondary/specificity_vs_social_accuracy.csv:
 # the social-accuracy coefficient of the OLS and the weighted fit.
 
 source(here::here("models", "config.R"))

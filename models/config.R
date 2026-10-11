@@ -25,7 +25,8 @@ suppressPackageStartupMessages({
 #   data/<name>/measures/       similarity tables and description properties
 #   data/<name>/model_inputs/   the aggregated tables the models are fit to
 # and write
-#   results/<name>/estimates/   the estimates tables, one per script
+#   results/estimates/          the estimates tables, one per script (a dataset
+#                               other than the full sample writes them to data/<name>/results/)
 #   data/<name>/cache/          fitted objects kept between runs
 # The active dataset comes from the DATASET environment variable (default
 # "full").
@@ -91,7 +92,8 @@ use_dataset <- function(name = Sys.getenv("DATASET", unset = DEFAULT_DATASET)) {
   measures_dir <<- file.path(dataset_dir, "measures")
   model_inputs_dir <<- file.path(dataset_dir, "model_inputs")
   cache_dir <<- file.path(dataset_dir, "cache")
-  results_dir <<- here("results", name)
+  # The full sample's results are results/; any other dataset keeps its results inside its own data directory.
+  results_dir <<- if (name == DEFAULT_DATASET) here("results") else file.path(dataset_dir, "results")
   estimates_dir <<- file.path(results_dir, "estimates")
   dir.create(estimates_dir, showWarnings = FALSE, recursive = TRUE)
   dir.create(cache_dir, showWarnings = FALSE, recursive = TRUE)

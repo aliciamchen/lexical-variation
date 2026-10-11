@@ -2,7 +2,7 @@
 Statistics as LaTeX macros.
 
 Numbers reach the manuscript only as `\\newcommand` macros in the files of
-results/<dataset>/stats/, which `make sync` copies into the Overleaf project
+results/stats/, which `make sync` copies into the Overleaf project
 where main.tex reads them with `\\input`. Two writers produce them:
 report/inferential.py formats the model estimates (checks, primary and
 secondary) and report/descriptives.py the descriptive statistics (overview,
@@ -37,7 +37,7 @@ MACRO_PATTERN = re.compile(r"\\newcommand\{\\([A-Za-z]+)\}")
 
 
 def stats_file(name: str, dirs=None) -> Path:
-    """Where a stats file goes: results/<dataset>/stats/<name>.tex.
+    """Where a stats file goes: results/stats/<name>.tex.
 
     The stem is the file's macro prefix, letters only, so the file name and
     the macro names agree. `dirs` is the dataset's DatasetDirs; the active

@@ -12,7 +12,7 @@
 # keyed by a hash of the pairwise data; a rebuild that changes the pairwise
 # table recomputes them.
 #
-# Writes results/<dataset>/estimates/checks/phase1_group_specificity.csv: one
+# Writes results/estimates/checks/phase1_group_specificity.csv: one
 # row per game with the coefficient, its standard error, whether the fit sat
 # at a variance boundary, the permutation p-value and whether the game is in
 # the shared-Phase-1 conditions.

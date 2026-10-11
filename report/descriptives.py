@@ -4,7 +4,7 @@ The descriptive statistics the article quotes, written as LaTeX macros.
 Reads the processed tables, the measures and the per-game group-specificity
 estimates models/primary/group_specificity.R wrote, computes the descriptive
 summaries (counts, attrition, endpoint means, survey responses) and writes
-them as macros to results/<dataset>/stats/overview.tex, exploratory.tex and
+them as macros to results/stats/overview.tex, exploratory.tex and
 survey.tex. Nothing here fits a model; report/inferential.py writes the
 inferential files (checks, primary, secondary) from the estimates tables.
 

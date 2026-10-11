@@ -5,7 +5,7 @@
 #
 # with the overall accuracy (chance is 50%) reported beside the slope.
 #
-# Writes results/<dataset>/estimates/secondary/social_accuracy_trend.csv: the
+# Writes results/estimates/secondary/social_accuracy_trend.csv: the
 # block coefficient with the overall accuracy and the number of scored
 # opportunities.
 

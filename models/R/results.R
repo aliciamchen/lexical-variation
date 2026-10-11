@@ -2,7 +2,7 @@
 # other's.
 #
 # Every model script ends by writing what it estimated as a tidy CSV in
-# results/<dataset>/estimates/<family>/<name>.csv, where the family is checks,
+# results/estimates/<family>/<name>.csv, where the family is checks,
 # primary or secondary and the name matches the script's own
 # (models/primary/h1_h2.R writes primary/h1_h2.csv; a script with several
 # tables adds a suffix, primary/h4_social_components.csv). The manifest.json

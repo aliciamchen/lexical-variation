@@ -30,16 +30,19 @@ the data:
                                  runs (permutation results, brms fits, the H4
                                  fits the robustness and Bayes-factor scripts
                                  reuse); never committed
-    results/<name>/estimates/    the tidy estimates tables each model script
+    results/estimates/           the tidy estimates tables each model script
                                  writes, with a manifest.json (models/)
-    results/<name>/stats/        the LaTeX macro files the manuscript reads
+    results/stats/               the LaTeX macro files the manuscript reads
                                  (report/inferential.py, report/descriptives.py)
-    results/<name>/figures/      the article's figures, each with the table it
-                                 plots beside it (report/figures/)
+    results/figures/             the article's figures, each with the table it
+                                 plots beside it (report/figures/), and in
+                                 manual/ the hand-made ones
 
 Everything generated sits one level down in the data tree, so a file at the
 top of the dataset directory is one somebody wrote by hand. The results tree
-is committed; `make sync` copies its stats and figures into the manuscript's
+is the full sample's and is committed; any other dataset keeps its results
+inside its own data directory, data/<name>/results/, so a trial run never
+touches it. `make sync` copies the stats and figures into the manuscript's
 Overleaf project.
 
 Per-run extracts are dataset-agnostic and go to data/runs/<timestamp>/.
@@ -107,7 +110,8 @@ class DatasetDirs:
         self.measures = self.data / "measures"
         self.model_inputs = self.data / "model_inputs"
         self.cache = self.data / "cache"
-        self.results = PROJECT_ROOT / "results" / name
+        # The full sample's results are results/; any other dataset keeps its results inside its own data directory.
+        self.results = PROJECT_ROOT / "results" if name == DEFAULT_DATASET else self.data / "results"
         self.estimates = self.results / "estimates"
         self.stats = self.results / "stats"
         self.figures = self.results / "figures"

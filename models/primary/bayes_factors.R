@@ -20,7 +20,7 @@
 # it is unreliable; the warnings are recorded beside each result and the
 # formatter refuses to write a macro for a Bayes factor that carries one.
 #
-# Writes results/<dataset>/estimates/primary/bayes_factors.csv: one row per
+# Writes results/estimates/primary/bayes_factors.csv: one row per
 # hypothesis with the p-value that decided whether to compute it, BF10, its
 # interpretation and any warnings.
 

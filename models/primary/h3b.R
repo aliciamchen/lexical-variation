@@ -15,7 +15,7 @@
 # preregistered robustness check. Details of the models are in
 # models/R/convergence.R.
 #
-# Writes results/<dataset>/estimates/primary/h3b.csv: the rate and alignment
+# Writes results/estimates/primary/h3b.csv: the rate and alignment
 # contrasts for each measure, with whether each was supported.
 
 source(here::here("models", "config.R"))

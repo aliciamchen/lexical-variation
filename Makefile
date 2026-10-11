@@ -11,17 +11,17 @@
 #   data/<name>/measures/        embeddings, similarity tables, description properties (measures)
 #   data/<name>/model_inputs/    the aggregated tables the models are fit to (model-inputs)
 #   data/<name>/cache/           fitted objects kept between model runs (never committed)
-#   results/<name>/estimates/    one tidy estimates table per model script (models)
-#   results/<name>/stats/        the LaTeX macro files (stats)
-#   results/<name>/figures/      the figures, each with the table it plots (figures)
+#   results/estimates/           one tidy estimates table per model script (models)
+#   results/stats/               the LaTeX macro files (stats)
+#   results/figures/             the figures, each with the table it plots, and the hand-made ones in manual/ (figures)
 #
 # The verbs, in the order the work runs:
 #   make data           # extract, combine and process the exports into data/<name>/ (private
 #                       # inputs: the raw exports and Vertex AI credit for the message filter)
 #   make test           # the integrity suite on the dataset, the Python unit tests and the R tests
 #   make models         # fit every model script in models/ whose estimates are out of date
-#   make report          # the macros (inferential and descriptive) and the figures from the estimates
-#   make sync           # copy results/<name>/stats and figures into writing/manuscript/
+#   make report         # the macros (inferential and descriptive) and the figures from the estimates
+#   make sync           # copy results/stats and figures into writing/manuscript/
 # `make all` runs data, test, models and report in that order.
 #
 # Reproducing from the processed tables alone (no raw exports): with a
@@ -29,7 +29,7 @@
 #   make model-inputs models report
 # rebuilds everything downstream; `make measures` regenerates the measures first.
 #
-# The model scripts are real Make targets: results/<name>/estimates/<family>/<name>.csv
+# The model scripts are real Make targets: results/estimates/<family>/<name>.csv
 # is built by models/<family>/<name>.R and depends on the data it reads, the
 # shared R code and the estimates of earlier scripts, so `make models` reruns
 # only what changed. The Bayes factors (minutes to tens of minutes, cached by
@@ -53,7 +53,7 @@
 # Smoke-testing one export before it joins a dataset:
 #   make smoke ZIP=experiment/data/<run>/empirica-export-<run>.zip
 # runs extract → combine → process (no Vertex AI) → integrity suite in a
-# throwaway dataset named `smoke` (data/smoke/, results/smoke/), which is never
+# throwaway dataset named `smoke` (data/smoke/, its results included), which is never
 # committed. The block-count checks are expected to fail for games played in
 # TEST_MODE, whose phases are shorter than production.
 #
@@ -69,7 +69,8 @@ DATA_DIR = data/$(DATASET)
 TABLES_DIR = $(DATA_DIR)/tables
 MEASURES_DIR = $(DATA_DIR)/measures
 MODEL_INPUTS_DIR = $(DATA_DIR)/model_inputs
-RESULTS_DIR = results/$(DATASET)
+# The full sample's results are results/; any other dataset keeps its results inside its own data directory
+RESULTS_DIR = $(if $(filter full,$(DATASET)),results,$(DATA_DIR)/results)
 ESTIMATES_DIR = $(RESULTS_DIR)/estimates
 STATS_DIR = $(RESULTS_DIR)/stats
 FIGURES_DIR = $(RESULTS_DIR)/figures
@@ -96,10 +97,10 @@ data: extract combine process  ## Build data/<name>/ from the exports listed in 
 
 report: stats figures  ## Write the macros and the figures from the estimates and the tables
 
-sync: ## Copy results/<name>/stats/*.tex and figures/*.pdf into writing/manuscript/, where Overleaf reads them
+sync: ## Copy results/stats/*.tex and results/figures/*.pdf, the hand-made ones in manual/ included, into writing/manuscript/, where Overleaf reads them
 	@mkdir -p $(MANUSCRIPT_DIR)/stats $(MANUSCRIPT_DIR)/figures
 	cp $(STATS_DIR)/*.tex $(MANUSCRIPT_DIR)/stats/
-	@n=0; for f in $(FIGURES_DIR)/*.pdf; do [ -e "$$f" ] && cp "$$f" $(MANUSCRIPT_DIR)/figures/ && n=$$((n+1)); done; echo "Synced $$(ls $(STATS_DIR)/*.tex | wc -l | tr -d ' ') stats files and $$n figures from $(RESULTS_DIR)/ to $(MANUSCRIPT_DIR)/"
+	@n=0; for f in $(FIGURES_DIR)/*.pdf $(FIGURES_DIR)/manual/*.pdf; do [ -e "$$f" ] && cp "$$f" $(MANUSCRIPT_DIR)/figures/ && n=$$((n+1)); done; echo "Synced $$(ls $(STATS_DIR)/*.tex | wc -l | tr -d ' ') stats files and $$n figures from $(RESULTS_DIR)/ to $(MANUSCRIPT_DIR)/"
 
 # ── Pipeline steps ──────────────────────────────────────────
 
@@ -197,7 +198,7 @@ $(ESTIMATES_DIR)/secondary/utterance_properties.csv: $(FINAL_PROPERTIES)
 $(ESTIMATES_DIR)/%.csv: models/%.R $(R_COMMON)
 	Rscript $<
 
-models: $(ESTIMATES)  ## Fit the model scripts whose estimates are out of date (results/<name>/estimates/)
+models: $(ESTIMATES)  ## Fit the model scripts whose estimates are out of date (results/estimates/)
 
 # A data file a model needs but the dataset does not have yet
 $(TABLES_DIR)/%.csv $(MEASURES_DIR)/%.csv $(MODEL_INPUTS_DIR)/%.csv:
@@ -209,13 +210,13 @@ bayes-factors: $(ESTIMATES_DIR)/primary/bayes_factors.csv  ## Only the Bayes fac
 
 stats: inferential descriptives  ## Both macro writers
 
-inferential: ## The inferential macros (checks, primary, secondary) from results/<name>/estimates/
+inferential: ## The inferential macros (checks, primary, secondary) from results/estimates/
 	$(PY) -m report.inferential --dataset $(DATASET)
 
 descriptives: ## The descriptive macros (overview, exploratory, survey) from the tables, the measures and the estimates
 	$(PY) -m report.descriptives --dataset $(DATASET)
 
-figures: ## The article's figures, each with its plotted table → results/<name>/figures/
+figures: ## The article's figures, each with its plotted table → results/figures/
 	$(PY) -m report.figures --dataset $(DATASET)
 
 # ── Tests ───────────────────────────────────────────────────
@@ -232,13 +233,13 @@ test-ops: ## Only the operations tests: payments, blocklist sync, tally, Prolifi
 
 # The zip is extracted into data/runs/<run>/ like any other and registered in
 # data/smoke/runs.txt, so the combine step reads the same file it always does.
-# Nothing under data/smoke/ or results/smoke/ is meant to be committed.
+# Nothing under data/smoke/ is meant to be committed.
 smoke: ## Smoke-test one export end to end in a throwaway dataset: make smoke ZIP=<path to zip>
 	@if [ -z "$(ZIP)" ]; then \
 		echo "Usage: make smoke ZIP=experiment/data/<run>/empirica-export-<run>.zip"; exit 1; \
 	fi
 	@if [ ! -f "$(ZIP)" ]; then echo "Error: $(ZIP) does not exist"; exit 1; fi
-	rm -rf data/smoke results/smoke
+	rm -rf data/smoke
 	$(PY) -m preprocessing.extract_run "$(ZIP)" --dataset smoke
 	$(PY) -m preprocessing.combine_runs --dataset smoke
 	$(PY) -m preprocessing.process_data --dataset smoke --skip-filter
@@ -251,7 +252,7 @@ smoke: ## Smoke-test one export end to end in a throwaway dataset: make smoke ZI
 	@echo "that fails is a real problem with the export."
 	-DATASET=smoke uv run pytest preprocessing/test_data_integrity.py -q
 	@echo
-	@echo "Smoke test finished. Output: data/smoke/ and results/smoke/ (throwaway)"
+	@echo "Smoke test finished. Output: data/smoke/ (throwaway, its results included)"
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'

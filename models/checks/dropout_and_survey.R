@@ -8,7 +8,7 @@
 # counts and means themselves are descriptive statistics written by
 # report/descriptives.py.
 #
-# Writes results/<dataset>/estimates/checks/dropout_and_survey.csv: one row
+# Writes results/estimates/checks/dropout_and_survey.csv: one row
 # per test with its statistic, degrees of freedom and p-value.
 
 source(here::here("models", "config.R"))

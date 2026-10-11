@@ -9,7 +9,7 @@ maps the number to the name). A module defines two functions:
     def data(dirs) -> pd.DataFrame
         The table the figure plots, read from the model inputs in
         data/<dataset>/model_inputs/ and the estimates in
-        results/<dataset>/estimates/. Nothing is aggregated or re-indexed
+        results/estimates/. Nothing is aggregated or re-indexed
         here beyond what the figure needs to draw; an aggregate that a
         model also uses belongs in preprocessing, and a bootstrap interval
         over games comes from report.bootstrap.
@@ -20,7 +20,7 @@ maps the number to the name). A module defines two functions:
 
 The runner (`uv run python -m report.figures --dataset full`, or `make
 figures`) calls both for every module and saves the figure as
-results/<dataset>/figures/<name>.pdf with the plotted table beside it as
+results/figures/<name>.pdf with the plotted table beside it as
 <name>.csv, so every number in a figure can be read, checked and diffed
 without the PDF. `make sync` copies the PDFs into the manuscript's project.
 

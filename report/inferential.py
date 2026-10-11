@@ -3,7 +3,7 @@ The inferential macros: checks.tex, primary.tex and secondary.tex from the
 estimates tables the model scripts wrote.
 
 The R scripts in models/ fit the models and write tidy estimates tables to
-results/<dataset>/estimates/ (one row per estimated quantity; the shape is
+results/estimates/ (one row per estimated quantity; the shape is
 described in models/R/tidy.R). This module reads those tables and writes the
 three inferential macro files, one per preregistered family, with the macro
 names the manuscript uses:

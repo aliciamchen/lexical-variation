@@ -16,7 +16,7 @@
 # sensitivity rerun. The in-group and out-group accuracy rates are reported
 # descriptively beside the test.
 #
-# Writes results/<dataset>/estimates/secondary/ingroup_advantage.csv (the
+# Writes results/estimates/secondary/ingroup_advantage.csv (the
 # pooled advantage, the amplification contrast and the sensitivity rerun) and
 # secondary/ingroup_advantage_by_condition.csv (per-listener accuracy by
 # condition and listener type).

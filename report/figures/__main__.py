@@ -9,7 +9,7 @@ from report.figures import figure_names, run_figures
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Draw the article's figures for one dataset into results/<dataset>/figures/")
+    parser = argparse.ArgumentParser(description="Draw the article's figures for one dataset into results/figures/")
     add_dataset_argument(parser)
     parser.add_argument("names", nargs="*", help=f"figure modules to draw (default: all of {', '.join(figure_names()) or 'none yet'})")
     args = parser.parse_args()

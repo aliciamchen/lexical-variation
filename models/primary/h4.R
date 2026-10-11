@@ -22,7 +22,7 @@
 # components of social identification (in-group and out-group opportunities,
 # on-time rate, hit rate, false-alarm rate, balanced accuracy).
 #
-# Writes results/<dataset>/estimates/primary/h4.csv (the two contrasts),
+# Writes results/estimates/primary/h4.csv (the two contrasts),
 # primary/h4_coefficients.csv, primary/h4_response_opportunities.csv and
 # primary/h4_social_components.csv, and saves the two fitted models in
 # data/<dataset>/cache/fits/ for robustness.R and bayes_factors.R.

@@ -12,7 +12,7 @@
 # speaker-tangram observations below 0.5 (the switched tail) is reported by
 # condition beside the quantiles.
 #
-# Writes results/<dataset>/estimates/secondary/semantic_change.csv (the two
+# Writes results/estimates/secondary/semantic_change.csv (the two
 # contrasts), secondary/semantic_change_coefficients.csv and
 # secondary/semantic_change_switched.csv (the distribution by condition).
 

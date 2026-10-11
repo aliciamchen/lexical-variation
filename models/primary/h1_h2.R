@@ -21,7 +21,7 @@
 # second test. The per-game estimates come from group_specificity.R; nothing
 # is refit here.
 #
-# Writes results/<dataset>/estimates/primary/h1_h2.csv (the contrasts, with
+# Writes results/estimates/primary/h1_h2.csv (the contrasts, with
 # the games in each model), primary/h1_h2_coefficients.csv (the OLS
 # coefficients) and primary/h1_h2_effect_sizes.csv (Cohen's d).
 

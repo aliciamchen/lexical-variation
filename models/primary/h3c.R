@@ -17,7 +17,7 @@
 # against. Where a fit is singular, the variance components at zero are
 # named; the estimate is then that of the same model without those terms.
 #
-# Writes results/<dataset>/estimates/primary/h3c.csv: the condition
+# Writes results/estimates/primary/h3c.csv: the condition
 # coefficient of each of the three models (social_first minus social_mixed,
 # with the odds ratio for the two logistic ones).
 

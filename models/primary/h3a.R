@@ -13,7 +13,7 @@
 # the contrast on the content-word Jaccard estimates. The per-game estimates
 # come from group_specificity.R.
 #
-# Writes results/<dataset>/estimates/primary/h3a.csv (the contrasts, with the
+# Writes results/estimates/primary/h3a.csv (the contrasts, with the
 # games in each model), primary/h3a_coefficients.csv and
 # primary/h3a_effect_sizes.csv.
 

@@ -12,7 +12,7 @@
 # figure. The ordering is tested as consecutive contrasts of the condition
 # marginal means at the mean block, on the log-odds scale.
 #
-# Writes results/<dataset>/estimates/secondary/phase2_accuracy.csv (the
+# Writes results/estimates/secondary/phase2_accuracy.csv (the
 # ordering contrasts and the block slope), secondary/phase2_accuracy_coefficients.csv
 # and secondary/phase2_accuracy_by_condition.csv (each condition's estimated
 # accuracy with its one-sided test against chance).

@@ -18,7 +18,7 @@
 # term. fit_progressively() simplifies a structure only when it does not
 # converge and records the structure it kept.
 #
-# Writes results/<dataset>/estimates/checks/convention_trends.csv: the block
+# Writes results/estimates/checks/convention_trends.csv: the block
 # coefficient of each model, with the pooled sample sizes.
 
 source(here::here("models", "config.R"))

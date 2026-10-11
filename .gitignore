@@ -50,13 +50,11 @@ experiment/.empirica/empirica.toml
 # The full sample stays local until its public release, which will be in the
 # RefBank format rather than this layout
 data/full/
-figures/meetings/
 
 # Throwaway dataset written by `make smoke`
 data/smoke/
-results/smoke/
 
-# Manifest lock a model script holds while it updates results/<name>/estimates/manifest.json
+# Manifest lock a model script holds while it updates results/estimates/manifest.json
 results/**/.manifest.lock
 
 # Worktrees that Claude Code creates for parallel sessions

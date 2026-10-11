@@ -9,7 +9,7 @@
 # interacting population. Slopes and marginal means are back-transformed to
 # the word scale for reporting.
 #
-# Writes results/<dataset>/estimates/secondary/phase2_length.csv (the block
+# Writes results/estimates/secondary/phase2_length.csv (the block
 # coefficient), secondary/phase2_length_coefficients.csv and
 # secondary/phase2_length_by_condition.csv (each condition's slope and mean
 # length at the mean block).
