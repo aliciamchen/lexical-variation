@@ -43,7 +43,7 @@ cd experiment && npm run test:unit    # server unit tests; Playwright only throu
 ## Style
 
 - Sentence case for headings and titles; US spelling in prose (library API names keep theirs); the native R pipe `|>`; no digits in LaTeX macro names.
-- Comments, docstrings and docs describe current behavior only, never history or before-and-after comparisons, which belong in `full-sample-todos.md`. Public docs are natural prose written for reviewers and the author's future self.
+- Comments, docstrings and docs describe current behavior only, never history or before-and-after comparisons, which belong in `full-sample-todos.md`. Public docs (`README.md`, `data/README.md`, `experiment/README.md`) are natural prose written for reviewers and the author's future self; they describe what the repository is and how to run it, never the project's state, plans or open tasks, which belong in the Now section of `full-sample-todos.md`.
 - Commit messages follow conventional commits, `type(scope): subject`, lower case, imperative, no period, with a body only when the why is not in the diff.
 - Manuscript text is short and conceptual, with no statistical minutiae and no new SI sections unless asked; apply agreed edits in the `.tex`.
 
