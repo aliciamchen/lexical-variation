@@ -6,10 +6,10 @@ from the export zips themselves by operations/payments.py (`make payments`),
 not here.
 
 Usage:
-    uv run python analysis/extract_run.py <zip> --dataset full          # extract one export and register it
-    uv run python analysis/extract_run.py --dataset full                # most recent zip under experiment/data/
-    uv run python analysis/extract_run.py <zip> --dataset smoke --no-register      # extract without touching runs.txt
-    uv run python analysis/extract_run.py list                          # list extracted runs
+    uv run python -m pipeline.extract_run <zip> --dataset full          # extract one export and register it
+    uv run python -m pipeline.extract_run --dataset full                # most recent zip under experiment/data/
+    uv run python -m pipeline.extract_run <zip> --dataset smoke --no-register      # extract without touching runs.txt
+    uv run python -m pipeline.extract_run list                          # list extracted runs
 
 The options of the default (extract) form may come in any order around the zip
 path.
@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from dataset_paths import (
+from pipeline.dataset_paths import (
     PROJECT_ROOT,
     RAW_CSV_FILES,
     RUNS_DIR,
@@ -203,7 +203,7 @@ def cmd_extract(
         print(f"Registered {datetime_str} in {dirs.runs_file}")
     else:
         print(f"Already registered in {dirs.runs_file}")
-    print(f"Next: uv run python analysis/combine_runs.py --dataset {dirs.name}")
+    print(f"Next: uv run python -m pipeline.combine_runs --dataset {dirs.name}")
 
 
 def build_parser() -> argparse.ArgumentParser:

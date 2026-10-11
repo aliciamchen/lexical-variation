@@ -5,7 +5,7 @@ treatment of speaker rounds whose messages were all classified non-referential,
 and the response-opportunity denominator shared by both accuracy outcomes.
 
 Run with:
-    uv run pytest analysis/test_preprocessing.py -v
+    uv run pytest pipeline/test_preprocessing.py -v
 """
 
 import json
@@ -15,22 +15,22 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import preprocessing
+from pipeline import preprocessing
 
-from dataset_paths import (
+from pipeline.dataset_paths import (
     FILTERED_UTTERANCES_FILE,
     FILTERED_UTTERANCES_SIDECAR,
     filtered_utterances_status,
     write_filtered_sidecar,
 )
-from filter_nonreferential import (
+from pipeline.filter_nonreferential import (
     BatchParseError,
     attach_labels,
     build_filtered_utterances,
     parse_batch_labels,
 )
-from combine_runs import DROPOUT_COLUMNS, exclude_games, read_excluded_games, split_dropouts
-from preprocessing import (
+from pipeline.combine_runs import DROPOUT_COLUMNS, exclude_games, read_excluded_games, split_dropouts
+from pipeline.preprocessing import (
     add_active_groups_min,
     add_network_columns,
     add_server_network_columns,
@@ -1378,7 +1378,7 @@ class TestExclusionEndToEnd:
         the ones worth having there.
         """
         pytest.importorskip("nltk")
-        from compute_derived import compute_lexical_uniqueness
+        from pipeline.compute_derived import compute_lexical_uniqueness
 
         raw = _raw_dataset(tmp_path)
         out = tmp_path / "data"
@@ -1488,7 +1488,7 @@ class TestDropouts:
         assert dropouts["tangramSet"].isna().all()
 
     def test_a_batch_with_several_treatments_gets_no_condition(self):
-        from combine_runs import batch_treatments
+        from pipeline.combine_runs import batch_treatments
 
         two = (
             '{"kind": "complete", "config": {"treatments": ['
@@ -1501,13 +1501,13 @@ class TestDropouts:
 
 # ── Utterance assembly, malformed JSON, and the command-line guards ─────────
 
-import extract_run  # noqa: E402
-from filter_nonreferential import (  # noqa: E402
+from pipeline import extract_run  # noqa: E402
+from pipeline.filter_nonreferential import (  # noqa: E402
     cached_labels,
     classified_frame,
     read_human_labels,
 )
-from preprocessing import (  # noqa: E402
+from pipeline.preprocessing import (  # noqa: E402
     assemble_speaker_utterances,
     build_speaker_utterances,
     parse_json_column,
@@ -1680,7 +1680,7 @@ class TestHumanLabels:
 
 # ── extract_run: Prolific ids typed into free text ─────────────────────
 def test_redact_prolific_ids_scrubs_text_cells_only():
-    from extract_run import PROLIFIC_ID_PLACEHOLDER, redact_prolific_ids
+    from pipeline.extract_run import PROLIFIC_ID_PLACEHOLDER, redact_prolific_ids
 
     # Shaped like a Prolific id (24 hex characters) but built at run time, so no
     # id-shaped literal, real or not, sits in the source.

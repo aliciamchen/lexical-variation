@@ -102,7 +102,7 @@ add_global_block <- function(df, games) {
 # opportunities*, not of submitted answers. An opportunity is an active
 # listener assigned to the task on a played trial with a speaker message
 # available during the response period; `responseOpportunity` is computed once
-# in the pipeline (analysis/preprocessing.py). A correct answer received by
+# in the pipeline (pipeline/preprocessing.py). A correct answer received by
 # the server's scoring cutoff is 1; an incorrect answer, an ordinary timeout,
 # and a late arrival are all 0. Trials with no response opportunity leave the
 # denominator rather than counting as failures, and observations made

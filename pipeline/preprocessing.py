@@ -4,7 +4,7 @@ Preprocessing script for Empirica experiment data.
 Parses raw Empirica export CSVs and produces clean analysis-ready CSVs.
 
 Usage:
-    uv run python analysis/preprocessing.py data/<dataset>/raw_anonymized/ --output data/<dataset>/
+    uv run python -m pipeline.preprocessing data/<dataset>/raw_anonymized/ --output data/<dataset>/
 
 process_data.py runs this as its first step with those two paths for the
 active dataset.
@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from dataset_paths import (
+from pipeline.dataset_paths import (
     FILTERED_UTTERANCES_FILE,
     FILTERED_UTTERANCES_SIDECAR,
     dataset_dirs,
@@ -306,7 +306,7 @@ def build_players(
 
 # Coarse device fields recorded at the start of the session, and the tidy
 # column each becomes. The raw user agent is deliberately absent: it is
-# stripped during anonymization (see analysis/extract_run.py).
+# stripped during anonymization (see pipeline/extract_run.py).
 CLIENT_CONTEXT_FIELDS = {
     "viewportWidth": "clientViewportWidth",
     "viewportHeight": "clientViewportHeight",

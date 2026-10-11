@@ -72,11 +72,11 @@ fit_group_specificity_by_game <- function(pairwise_df, condition_name) {
   return(results)
 }
 
-pairwise_mixed <- read.csv("analysis/power_analysis/pairwise_mixed.csv")
-pairwise_separate <- read.csv("analysis/power_analysis/pairwise_separate.csv")
+pairwise_mixed <- read.csv("analysis/simulations/power_analysis/pairwise_mixed.csv")
+pairwise_separate <- read.csv("analysis/simulations/power_analysis/pairwise_separate.csv")
 
 results_mixed <- fit_group_specificity_by_game(pairwise_mixed, "Mixed")
 results_separate <- fit_group_specificity_by_game(pairwise_separate, "Separate")
 
-write.csv(results_mixed, "analysis/power_analysis/results_mixed.csv", row.names = FALSE)
-write.csv(results_separate, "analysis/power_analysis/results_separate.csv", row.names = FALSE)
+write.csv(results_mixed, "analysis/simulations/power_analysis/results_mixed.csv", row.names = FALSE)
+write.csv(results_separate, "analysis/simulations/power_analysis/results_separate.csv", row.names = FALSE)

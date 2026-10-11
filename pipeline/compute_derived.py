@@ -6,7 +6,7 @@ phase-change), term retention/dominance, description properties, lexical
 uniqueness, UMAP projections, and other derived CSVs.
 
 Usage:
-    uv run python analysis/compute_derived.py data/full/ --output analysis/derived/full/
+    uv run python -m pipeline.compute_derived data/full/ --output analysis/derived/full/
 """
 
 import argparse
@@ -25,7 +25,7 @@ import pandas as pd
 ANALYSIS_COLUMNS = ["condition", "block", "gameBlock"]
 from sentence_transformers import SentenceTransformer
 
-from dataset_paths import (
+from pipeline.dataset_paths import (
     FILTERED_UTTERANCES_FILE,
     filtered_utterances_status,
     stale_filtered_message,

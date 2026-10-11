@@ -1,5 +1,5 @@
 ---
-title: "03: Secondary analyses"
+title: "Secondary analyses"
 format:
   html:
     toc: true
@@ -663,5 +663,5 @@ if (exists("switch_by_condition")) {
   }
 }
 
-write_stats_tex(macros, stats_file("secondary"), source = "analysis/03_secondary_analysis.qmd")
+write_stats_tex(macros, stats_file("secondary"), source = "analysis/secondary.qmd")
 ```

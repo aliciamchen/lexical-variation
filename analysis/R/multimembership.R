@@ -25,7 +25,7 @@
 # exactly two members, fixed equal weights) is small enough to own outright.
 #
 # Tests: analysis/tests/test_multimembership.R
-# Design-matched simulations: analysis/simulate_mm_speaker.R
+# Design-matched simulations: analysis/simulations/simulate_mm_speaker.R
 
 suppressPackageStartupMessages({
   library(lme4)

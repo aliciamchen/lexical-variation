@@ -9,7 +9,7 @@
 # Usage:
 #   macros <- list()
 #   macros <- c(macros, list(primaryNGames = n_games, primaryHOneEst = sprintf("%.3f", b)))
-#   write_stats_tex(macros, stats_file("primary"), source = "analysis/02_primary_analysis.qmd")
+#   write_stats_tex(macros, stats_file("primary"), source = "analysis/primary.qmd")
 #
 # Tests: analysis/tests/test_stats_tex.R
 

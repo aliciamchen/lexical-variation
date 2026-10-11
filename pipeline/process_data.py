@@ -7,11 +7,11 @@ produced by extract_run.py + combine_runs.py), and the outputs go to
 data/<dataset>/ and analysis/derived/<dataset>/.
 
 Usage:
-    uv run python analysis/process_data.py                          # run full pipeline on $DATASET (default full)
-    uv run python analysis/process_data.py --dataset full           # another dataset
-    uv run python analysis/process_data.py --skip-filter            # skip Vertex AI step
-    uv run python analysis/process_data.py --skip-derived           # skip SBERT step
-    uv run python analysis/process_data.py --skip-frames            # skip the model-input frames
+    uv run python -m pipeline.process_data                          # run full pipeline on $DATASET (default full)
+    uv run python -m pipeline.process_data --dataset full           # another dataset
+    uv run python -m pipeline.process_data --skip-filter            # skip Vertex AI step
+    uv run python -m pipeline.process_data --skip-derived           # skip SBERT step
+    uv run python -m pipeline.process_data --skip-frames            # skip the model-input frames
 """
 
 import argparse
@@ -19,7 +19,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from dataset_paths import (
+from pipeline.dataset_paths import (
     FILTERED_UTTERANCES_FILE,
     PROJECT_ROOT,
     add_dataset_argument,
@@ -28,18 +28,15 @@ from dataset_paths import (
     stale_filtered_message,
 )
 
-ANALYSIS_DIR = PROJECT_ROOT / "analysis"
-
-
 def step_preprocess(raw_dir: Path, data_dir: Path) -> None:
     """Run preprocessing.py: raw CSVs → analysis-ready CSVs."""
     print(f"\n{'=' * 60}")
     print("Step 1: Preprocessing")
     print(f"{'=' * 60}")
-    script = ANALYSIS_DIR / "preprocessing.py"
     subprocess.run(
-        [sys.executable, str(script), str(raw_dir), "--output", str(data_dir)],
+        [sys.executable, "-m", "pipeline.preprocessing", str(raw_dir), "--output", str(data_dir)],
         check=True,
+        cwd=PROJECT_ROOT,
     )
 
 
@@ -48,15 +45,9 @@ def step_filter_messages(data_dir: Path) -> None:
     print(f"\n{'=' * 60}")
     print("Step 2: Filtering non-referential messages")
     print(f"{'=' * 60}")
-    script = ANALYSIS_DIR / "filter_nonreferential.py"
-    subprocess.run(
-        [sys.executable, str(script), "classify", "--data-dir", str(data_dir)],
-        check=True,
-    )
-    subprocess.run(
-        [sys.executable, str(script), "apply", "--data-dir", str(data_dir)],
-        check=True,
-    )
+    module = [sys.executable, "-m", "pipeline.filter_nonreferential"]
+    subprocess.run(module + ["classify", "--data-dir", str(data_dir)], check=True, cwd=PROJECT_ROOT)
+    subprocess.run(module + ["apply", "--data-dir", str(data_dir)], check=True, cwd=PROJECT_ROOT)
 
 
 def step_compute_derived(
@@ -67,11 +58,10 @@ def step_compute_derived(
     print("Step 3: Computing derived metrics")
     print(f"{'=' * 60}")
     output_dir.mkdir(parents=True, exist_ok=True)
-    script = ANALYSIS_DIR / "compute_derived.py"
-    command = [sys.executable, str(script), str(data_dir), "--output", str(output_dir)]
+    command = [sys.executable, "-m", "pipeline.compute_derived", str(data_dir), "--output", str(output_dir)]
     if utterances_file:
         command += ["--utterances-file", utterances_file]
-    subprocess.run(command, check=True)
+    subprocess.run(command, check=True, cwd=PROJECT_ROOT)
 
 
 def step_build_frames(dataset: str) -> None:
@@ -79,8 +69,7 @@ def step_build_frames(dataset: str) -> None:
     print(f"\n{'=' * 60}")
     print("Step 4: Building the model-input frames")
     print(f"{'=' * 60}")
-    script = ANALYSIS_DIR / "build_frames.py"
-    subprocess.run([sys.executable, str(script), "--dataset", dataset], check=True)
+    subprocess.run([sys.executable, "-m", "pipeline.build_frames", "--dataset", dataset], check=True, cwd=PROJECT_ROOT)
 
 
 def choose_utterances_file(data_dir: Path) -> str | None:
@@ -105,8 +94,8 @@ def choose_utterances_file(data_dir: Path) -> str | None:
     print(f"WARNING: {stale_filtered_message(status, detail)}")
     print("Falling back to speaker_utterances.csv (unfiltered) because --skip-filter was given.")
     print("The derived metrics therefore include non-referential messages; run")
-    print("  uv run python analysis/filter_nonreferential.py classify --data-dir <data_dir>")
-    print("  uv run python analysis/filter_nonreferential.py apply    --data-dir <data_dir>")
+    print("  uv run python -m pipeline.filter_nonreferential classify --data-dir <data_dir>")
+    print("  uv run python -m pipeline.filter_nonreferential apply    --data-dir <data_dir>")
     print("and recompute the derived metrics before analyzing them.")
     print(f"{banner}\n")
     return "speaker_utterances.csv"
@@ -134,8 +123,8 @@ def main():
     if not raw_dir.is_dir():
         print(f"Error: {raw_dir} does not exist.", file=sys.stderr)
         print("Either the raw data is not committed, or you need to run:", file=sys.stderr)
-        print("  uv run python analysis/extract_run.py <zip>", file=sys.stderr)
-        print(f"  uv run python analysis/combine_runs.py --dataset {dirs.name} <runs...>", file=sys.stderr)
+        print("  uv run python -m pipeline.extract_run <zip>", file=sys.stderr)
+        print(f"  uv run python -m pipeline.combine_runs --dataset {dirs.name} <runs...>", file=sys.stderr)
         sys.exit(1)
 
     step_preprocess(raw_dir, data_dir)

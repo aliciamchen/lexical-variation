@@ -1,7 +1,7 @@
 # Design-matched simulations for the shared multiple-membership speaker
 # intercept (analysis/R/multimembership.R).
 #
-#   Rscript analysis/simulate_mm_speaker.R [--reps N] [--out FILE]
+#   Rscript analysis/simulations/simulate_mm_speaker.R [--reps N] [--out FILE]
 #
 # The preregistration commits to checking, before submission, that the
 # multiple-membership structure converges, is invariant to pair ordering, and

@@ -6,11 +6,11 @@ notebooks wrote to analysis/results/<dataset>/, computes the descriptive
 summaries (counts, attrition, endpoint means, survey responses) and writes
 them with the Python macro writer to writing/manuscript/stats/overview.tex,
 exploratory.tex and survey.tex. Nothing here fits a model: the per-game
-group-specificity estimates come from the results table notebook 02 writes.
+group-specificity estimates come from the results table `primary.qmd` writes.
 The notebooks write the inferential files (checks, primary, secondary).
 
 Usage:
-    uv run python analysis/descriptives.py --dataset full
+    uv run python -m analysis.descriptives --dataset full
 
 Tests: analysis/test_descriptives.py
 """
@@ -23,21 +23,21 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from dataset_paths import (
+from pipeline.dataset_paths import (
     FILTERED_UTTERANCES_FILE,
     add_dataset_argument,
     dataset_dirs,
     filtered_utterances_status,
     stale_filtered_message,
 )
-from plot_style import CONDITION_ORDER
-from preprocessing import (
+from analysis.plot_style import CONDITION_ORDER
+from pipeline.preprocessing import (
     PARTICIPANT_EXCLUSIONS_FILE,
     TECHNICAL_EXCLUSIONS_FILE,
     read_participant_exclusions,
     read_technical_exclusions,
 )
-from stats_tex import condition_macro_name, fmt_count, fmt_stat, stats_file, write_stats_tex
+from analysis.stats_tex import condition_macro_name, fmt_count, fmt_stat, stats_file, write_stats_tex
 
 SOURCE = "analysis/descriptives.py"
 
@@ -366,7 +366,7 @@ def main():
         raise SystemExit(f"Error: no processed data for dataset '{dirs.name}' at {dirs.data}")
     t = load_tables(dirs)
     if t["gs_by_game"].empty:
-        print(f"  note: {dirs.results / 'gs_by_game.csv'} is missing; render 02_primary_analysis.qmd first "
+        print(f"  note: {dirs.results / 'gs_by_game.csv'} is missing; render primary.qmd first "
               "for the Phase 1 group-specificity macros")
     write_stats_tex(overview_macros(t), stats_file("overview"), source=SOURCE)
     write_stats_tex(exploratory_macros(t), stats_file("exploratory"), source=SOURCE)

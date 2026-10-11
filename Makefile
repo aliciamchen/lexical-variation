@@ -1,7 +1,7 @@
 # Makefile for the data pipeline.
 #
 # The pipeline is keyed by a dataset name; every dataset follows the same
-# layout (see analysis/dataset_paths.py and analysis/config.R):
+# layout (see pipeline/dataset_paths.py and analysis/config.R):
 #   data/<name>/              preprocessed CSVs, raw_anonymized/, runs.txt
 #   analysis/derived/<name>/  derived metrics and model caches
 #   figures/<name>/           figures
@@ -51,7 +51,7 @@ zip_for_run = $(or $(firstword $(wildcard experiment/data/$(1)/empirica-export-$
 ZIPS = $(foreach run,$(RUNS),$(call zip_for_run,$(run)))
 
 # The preregistered analysis notebooks, rendered on the active dataset
-NOTEBOOKS = $(wildcard analysis/0[0-9]_*.qmd)
+NOTEBOOKS = analysis/checks.qmd analysis/primary.qmd analysis/secondary.qmd
 
 .PHONY: all extract combine process process-no-filter frames payments sync-blocklist tally final-exports notebooks descriptives test test-ops smoke runs help
 
@@ -69,20 +69,20 @@ extract: ## Extract each Empirica export zip listed in runs.txt
 	@if [ -z "$(RUNS)" ]; then echo "Error: no runs listed in $(RUNS_FILE)"; exit 1; fi
 	@for zip in $(ZIPS); do \
 		echo "=== Extracting $$zip ==="; \
-		uv run python analysis/extract_run.py "$$zip"; \
+		uv run python -m pipeline.extract_run "$$zip"; \
 	done
 
 combine: ## Stack the registered runs into data/<name>/raw_anonymized/
-	uv run python analysis/combine_runs.py --dataset $(DATASET)
+	uv run python -m pipeline.combine_runs --dataset $(DATASET)
 
 process: ## Run full pipeline (preprocess → filter → derived → frames)
-	uv run python analysis/process_data.py --dataset $(DATASET)
+	uv run python -m pipeline.process_data --dataset $(DATASET)
 
 process-no-filter: ## Run pipeline skipping filter (no Vertex AI needed)
-	uv run python analysis/process_data.py --dataset $(DATASET) --skip-filter
+	uv run python -m pipeline.process_data --dataset $(DATASET) --skip-filter
 
 frames: ## Build the model-input frames from the processed and derived tables → analysis/derived/<name>/
-	uv run python analysis/build_frames.py --dataset $(DATASET)
+	uv run python -m pipeline.build_frames --dataset $(DATASET)
 
 payments: ## What each Prolific study still owes, from every zip in runs.txt → data/payments/<name>/ (read-only Prolific calls)
 	@if [ -z "$(RUNS)" ]; then echo "Error: no runs listed in $(RUNS_FILE)"; exit 1; fi
@@ -98,7 +98,7 @@ final-exports: ## Stage the final export of each server period, plus every serve
 	uv run python operations/final_exports.py --dataset $(DATASET)
 
 test: ## Validate processed data against the integrity suite and run the Python and R helper tests
-	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py analysis/test_build_frames.py analysis/test_stats_tex.py analysis/test_descriptives.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q
+	uv run pytest pipeline/test_data_integrity.py pipeline/test_compute_derived.py pipeline/test_preprocessing.py pipeline/test_build_frames.py analysis/test_stats_tex.py analysis/test_descriptives.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q
 	Rscript analysis/tests/run_all.R
 
 test-ops: ## Run only the operations tests: payments, blocklist sync, tally, Prolific client (no API calls, no data needed)
@@ -113,9 +113,9 @@ smoke: ## Smoke-test one export end to end in a throwaway dataset: make smoke ZI
 	fi
 	@if [ ! -f "$(ZIP)" ]; then echo "Error: $(ZIP) does not exist"; exit 1; fi
 	rm -rf data/smoke analysis/derived/smoke
-	uv run python analysis/extract_run.py "$(ZIP)" --dataset smoke
-	uv run python analysis/combine_runs.py --dataset smoke
-	uv run python analysis/process_data.py --dataset smoke --skip-filter
+	uv run python -m pipeline.extract_run "$(ZIP)" --dataset smoke
+	uv run python -m pipeline.combine_runs --dataset smoke
+	uv run python -m pipeline.process_data --dataset smoke --skip-filter
 	@echo
 	@echo "=== Integrity suite on the smoke dataset ==="
 	@echo "The block-count checks (blocks per phase, trials per block, speaker rotation)"
@@ -123,7 +123,7 @@ smoke: ## Smoke-test one export end to end in a throwaway dataset: make smoke ZI
 	@echo "to 3 + 2 blocks. The bonus checks apply the production pay rate, so an export"
 	@echo "from before it was set fails them too. Anything else"
 	@echo "that fails is a real problem with the export."
-	-DATASET=smoke uv run pytest analysis/test_data_integrity.py -q
+	-DATASET=smoke uv run pytest pipeline/test_data_integrity.py -q
 	@echo
 	@echo "Smoke test finished. Outputs: data/smoke/ and analysis/derived/smoke/ (throwaway;"
 	@echo "remove with: rm -rf data/smoke analysis/derived/smoke)"
@@ -139,7 +139,7 @@ notebooks: ## Render the analysis notebooks on the active dataset (models and in
 # ── Utilities ───────────────────────────────────────────────
 
 descriptives: ## Write the descriptive macros (overview, exploratory, survey) from the tables and analysis/results/<name>/
-	uv run python analysis/descriptives.py --dataset $(DATASET)
+	uv run python -m analysis.descriptives --dataset $(DATASET)
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'

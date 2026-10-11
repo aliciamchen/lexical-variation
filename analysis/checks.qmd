@@ -1,5 +1,5 @@
 ---
-title: "01: Convention-formation checks"
+title: "Checks: convention formation, dropout and survey"
 format:
   html:
     toc: true
@@ -430,5 +430,5 @@ macros <- c(
   htest_macros("checksSurveyGroupLanguage", survey_tests$groupLanguage)
 )
 
-write_stats_tex(macros, stats_file("checks"), source = "analysis/01_outcome_neutral.qmd")
+write_stats_tex(macros, stats_file("checks"), source = "analysis/checks.qmd")
 ```

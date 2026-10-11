@@ -16,7 +16,7 @@ suppressPackageStartupMessages({
 })
 
 # ── Paths ────────────────────────────────────────────────────
-# Every dataset follows the same layout (mirrored in analysis/dataset_paths.py):
+# Every dataset follows the same layout (mirrored in pipeline/dataset_paths.py):
 #   data/<name>/               preprocessed CSVs (+ raw_anonymized/, runs.txt)
 #   analysis/derived/<name>/   derived metrics, model-input frames and model caches
 #   analysis/results/<name>/   model estimates the notebooks write for the figures

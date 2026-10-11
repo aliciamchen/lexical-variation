@@ -1,5 +1,6 @@
 ---
 paths:
+  - "pipeline/**"
   - "analysis/**"
   - "data/**"
   - "experiment/data/**"
@@ -10,7 +11,7 @@ paths:
 
 ## Datasets
 
-The pipeline is keyed by a dataset name: `--dataset` on a script, else the `DATASET` environment variable, else `full`. `make` passes `DATASET` to every step (`make test DATASET=smoke`). The layout is defined in `analysis/dataset_paths.py` and mirrored in `analysis/config.R` (`use_dataset()`); change both together. `full` is local and stays so until the RefBank release; the pilot dataset and its SI notebook are at the git tag `pilot-archive`. Everything identifiable (`experiment/data/`, `experiment/pilot_data/`, `data/runs/`, `data/payments/`, `backups/`) is gitignored.
+The pipeline is keyed by a dataset name: `--dataset` on a script, else the `DATASET` environment variable, else `full`. `make` passes `DATASET` to every step (`make test DATASET=smoke`). The layout is defined in `pipeline/dataset_paths.py` and mirrored in `analysis/config.R` (`use_dataset()`); change both together. `full` is local and stays so until the RefBank release; the pilot dataset and its SI notebook are at the git tag `pilot-archive`. Everything identifiable (`experiment/data/`, `experiment/pilot_data/`, `data/runs/`, `data/payments/`, `backups/`) is gitignored.
 
 Inputs a dataset directory may hold, each read at the step named:
 
@@ -56,7 +57,7 @@ Every notebook sources `config.R`, which sets the dataset's paths and constants 
 
 | Writer | Dataset | Writes |
 |--------|---------|--------|
-| `01_outcome_neutral`, `02_primary_analysis`, `03_secondary_analysis` (`make notebooks`) | `full` (any other dataset gets a warning banner, and its macros are not results) | the inferential macros `writing/manuscript/stats/<checks,primary,secondary>.tex` (the dropout and survey checks are in `checks`); the model estimates in `analysis/results/<name>/` (`gs_by_game.csv` from 02, written with `write_result()` in `R/results.R`, with a manifest); rendered HTML in `_output/` |
+| `checks.qmd`, `primary.qmd`, `secondary.qmd` (`make notebooks`) | `full` (any other dataset gets a warning banner, and its macros are not results) | the inferential macros `writing/manuscript/stats/<checks,primary,secondary>.tex` (the dropout and survey checks are in `checks`); the model estimates in `analysis/results/<name>/` (`gs_by_game.csv` from 02, written with `write_result()` in `R/results.R`, with a manifest); rendered HTML in `_output/` |
 | `analysis/descriptives.py` (`make descriptives`, after the notebooks) | the same | the descriptive macros `<overview,exploratory,survey>.tex`, from the processed tables, the derived tables, the frames and `gs_by_game.csv` |
 
 The notebooks draw nothing. The article's figures are made in Python from the processed tables and the frames, with `analysis/plot_style.py` as the one description of their look: percentile-bootstrap 95% intervals over games with the games as thin lines or points behind the mean, no gridlines, one plot per figure, sentence-case labels, sample sizes written as "16 games" (never "n = 16", which readers take as participants), and never a line for a quantity a condition does not have (`refer_separated` has no out-group speakers). Its `save_fig()` writes into the dataset's figures directory; slide sets go in the gitignored `figures/meetings/<date>/`.

@@ -8,7 +8,7 @@
 # estimates the notebook reported rather than refitting anything.
 #
 # Usage:
-#   write_result(gs_table, "gs_by_game", source = "analysis/02_primary_analysis.qmd")
+#   write_result(gs_table, "gs_by_game", source = "analysis/primary.qmd")
 #
 # Tests: analysis/tests/test_results.R
 

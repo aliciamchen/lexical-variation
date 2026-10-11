@@ -8,9 +8,9 @@ provenance info. The runs default to the timestamps listed in
 data/<dataset>/runs.txt.
 
 Usage:
-    uv run python analysis/combine_runs.py                       # runs from data/full/runs.txt
-    uv run python analysis/combine_runs.py --dataset smoke       # runs from data/smoke/runs.txt
-    uv run python analysis/combine_runs.py --dataset smoke 20260301_132907 20260301_214147
+    uv run python -m pipeline.combine_runs                       # runs from data/full/runs.txt
+    uv run python -m pipeline.combine_runs --dataset smoke       # runs from data/smoke/runs.txt
+    uv run python -m pipeline.combine_runs --dataset smoke 20260301_132907 20260301_214147
 """
 
 import argparse
@@ -21,14 +21,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from dataset_paths import (
+from pipeline.dataset_paths import (
     RAW_CSV_FILES,
     RUNS_DIR,
     TIMESTAMP_DIR_PATTERN,
     add_dataset_argument,
     dataset_dirs,
 )
-from extract_run import SENSITIVE_COLUMNS
+from pipeline.extract_run import SENSITIVE_COLUMNS
 
 
 def validate_runs(run_ids: list[str]) -> list[Path]:

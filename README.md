@@ -8,8 +8,10 @@ The full sample, 120 started games collected in 31 Prolific sessions between 202
 
 ```
 experiment/        the Empirica game: React client, Node server, Playwright tests (see experiment/README.md)
-analysis/          the pipeline scripts, the R helpers the notebooks share (analysis/R/), the Quarto notebooks, and the tests
-analysis/derived/  derived metrics per dataset: embeddings, similarity tables, cached model fits
+pipeline/          the data pipeline: extraction, combination, preprocessing, the message filter, the derived metrics and the model-input frames, with their tests
+analysis/          the R helpers the notebooks share (analysis/R/) and their tests, the three Quarto notebooks, the Python descriptives and figure style, and the simulations behind the design
+analysis/derived/  derived metrics per dataset: embeddings, similarity tables, frames and cached model fits
+analysis/results/  the model estimates the notebooks write for the figures and the descriptive macros
 data/              one directory per dataset; data/README.md is the codebook
 operations/        the Prolific tooling (payments, blocklist, tally) and procedures.md, the record of how a session was run
 figures/           the figures, per dataset
@@ -41,7 +43,7 @@ This runs the data integrity suite on the processed tables of the active dataset
 
 ## The data
 
-Every dataset has the same layout, defined once in `analysis/dataset_paths.py` and mirrored in `analysis/config.R`:
+Every dataset has the same layout, defined once in `pipeline/dataset_paths.py` and mirrored in `analysis/config.R`:
 
 | Path | Contents |
 |---|---|
@@ -64,7 +66,7 @@ The raw exports under `experiment/data/` are not committed because they identify
 
 ## The full-sample analyses
 
-The notebooks `analysis/01_outcome_neutral.qmd`, `02_primary_analysis.qmd` and `03_secondary_analysis.qmd` are the preregistered analyses: the convention-formation, dropout and survey checks, the primary hypotheses and the secondary analyses. `make notebooks` renders them on the full sample; each writes its statistics to `writing/manuscript/stats/` as `\newcommand` macros for the article and its HTML to `_output/`, and notebook 02 writes its per-game estimates to `analysis/results/full/`. `make descriptives` then writes the descriptive macros, the data overview, the exploratory summaries and the exit survey, from the processed tables and those estimates with `analysis/descriptives.py`. A render on any other dataset is marked with a warning banner, because its numbers are not results. The Bayes factors in `02_primary_analysis.qmd` refit three models with brms, which took about twenty minutes on the full sample; `BAYES_FACTORS=never make notebooks` skips them, and the fits are cached so that a render on unchanged data reuses them.
+The notebooks `analysis/checks.qmd`, `primary.qmd` and `secondary.qmd` are the preregistered analyses: the convention-formation, dropout and survey checks, the primary hypotheses and the secondary analyses. `make notebooks` renders them on the full sample; each writes its statistics to `writing/manuscript/stats/` as `\newcommand` macros for the article and its HTML to `_output/`, and `primary.qmd` writes its per-game estimates to `analysis/results/full/`. `make descriptives` then writes the descriptive macros, the data overview, the exploratory summaries and the exit survey, from the processed tables and those estimates with `analysis/descriptives.py`. A render on any other dataset is marked with a warning banner, because its numbers are not results. The Bayes factors in `primary.qmd` refit three models with brms, which took about twenty minutes on the full sample; `BAYES_FACTORS=never make notebooks` skips them, and the fits are cached so that a render on unchanged data reuses them.
 
 ## Running the experiment
 
@@ -78,9 +80,9 @@ Create a batch in the admin panel, choose a treatment (two per condition, one pe
 
 ## Power analysis
 
-`analysis/power_analysis/` justifies the sample size with data simulated from Boyce et al. (2023):
+`analysis/simulations/power_analysis/` justifies the sample size with data simulated from Boyce et al. (2023):
 
 ```bash
-quarto render analysis/power_analysis/power_analysis_setup.Qmd   # simulate the data
-quarto render analysis/power_analysis/power_analysis_plots.Qmd   # plot the power curves
+quarto render analysis/simulations/power_analysis/power_analysis_setup.Qmd   # simulate the data
+quarto render analysis/simulations/power_analysis/power_analysis_plots.Qmd   # plot the power curves
 ```

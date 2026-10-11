@@ -49,7 +49,7 @@ function viewport() {
  * it writes only if nothing has been recorded yet.
  *
  * The raw user agent is recorded separately from the coarse fields because it
- * is a fingerprinting vector: `analysis/extract_run.py` strips it during
+ * is a fingerprinting vector: `pipeline/extract_run.py` strips it during
  * anonymization, so it exists only in the gitignored export and is available
  * for debugging a live session, never in committed data.
  */

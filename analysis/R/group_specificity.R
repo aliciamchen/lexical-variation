@@ -1,6 +1,6 @@
 # Group-specificity estimation and permutation testing.
 #
-# Shared by 01_outcome_neutral.qmd, 02_primary_analysis.qmd, and 03_secondary_analysis.qmd.
+# Shared by checks.qmd, primary.qmd, and secondary.qmd.
 # Results are cached as RDS files in data_dir to avoid re-running
 # the expensive permutation test on every notebook render.
 #

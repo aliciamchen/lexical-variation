@@ -1,5 +1,5 @@
 ---
-title: "02: Primary analyses -- H1 through H4"
+title: "Primary analyses: H1 through H4"
 format:
   html:
     toc: true
@@ -45,7 +45,7 @@ significant H3c result does not establish the other description-property
 predictions. Secondary and robustness analyses do not substitute for the
 prespecified primary tests.
 
-The convention-formation checks in `01_outcome_neutral.qmd` pool the three
+The convention-formation checks in `checks.qmd` pool the three
 conditions with the shared Phase 1 procedure for their trend models. They
 inform interpretation of H1/H2 as convergence or preservation of established
 group differences, but do not determine whether the contrasts are reported.
@@ -68,7 +68,7 @@ per-speaker term. Each observation is a pair of speakers describing the same
 tangram, and the `speakerPair` intercept captures resemblance that belongs to
 two particular people rather than to either of them, which is where a shared
 convention resides. The design-matched simulations in
-`analysis/simulate_mm_speaker.R` showed it to be the term that matters for
+`analysis/simulations/simulate_mm_speaker.R` showed it to be the term that matters for
 interval calibration, and it is retained even when its variance is estimated
 at the boundary, so the structure never depends on the data. Because the pair
 is unordered, the estimate cannot depend on which speaker is listed first. The
@@ -101,7 +101,7 @@ if (!has_pairwise) {
   gs_table <- game_specificity_table(pairwise_sim, games)
   gs_combined <- gs_wide(gs_table)
   # The per-game estimates the figures and the descriptive macros summarize
-  write_result(gs_table, "gs_by_game", source = "analysis/02_primary_analysis.qmd")
+  write_result(gs_table, "gs_by_game", source = "analysis/primary.qmd")
 
   cat("Endpoint coverage by window and condition:\n")
   print(knitr::kable(endpoint_coverage_summary(gs_table)))
@@ -1263,5 +1263,5 @@ if (exists("gs_table") && "singular" %in% names(gs_table)) {
   ))
 }
 
-write_stats_tex(macros, stats_file("primary"), source = "analysis/02_primary_analysis.qmd")
+write_stats_tex(macros, stats_file("primary"), source = "analysis/primary.qmd")
 ```

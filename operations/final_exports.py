@@ -45,8 +45,8 @@ from pathlib import Path
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "analysis"))
-from dataset_paths import RAW_CSV_FILES, TIMESTAMP_DIR_PATTERN, dataset_dirs  # noqa: E402
+sys.path.insert(0, str(PROJECT_ROOT))
+from pipeline.dataset_paths import RAW_CSV_FILES, TIMESTAMP_DIR_PATTERN, dataset_dirs  # noqa: E402
 
 DEFAULT_SOURCE = PROJECT_ROOT / "experiment" / "data"
 DEFAULT_DEST = PROJECT_ROOT / "backups" / "final_exports"
@@ -189,7 +189,7 @@ def write_readme(analysis: dict, staged: dict, dest: Path) -> None:
         "",
         "The zips hold identifiable participant data (Prolific ids, free text) and must",
         "stay private; the anonymized, analysis-ready data are produced from them by the",
-        "pipeline in the project repository (`analysis/extract_run.py` and onward).",
+        "pipeline in the project repository (`pipeline/extract_run.py` and onward).",
         "",
         "Built by `operations/final_exports.py` in the repository.",
         "",

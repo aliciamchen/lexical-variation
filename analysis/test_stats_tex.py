@@ -11,7 +11,7 @@ import math
 
 import pytest
 
-from stats_tex import (
+from analysis.stats_tex import (
     STATS_DIR,
     check_unique_names,
     condition_macro_name,

@@ -1,16 +1,16 @@
 """
-Unit tests for the model-input frames (analysis/build_frames.py) on small
+Unit tests for the model-input frames (pipeline/build_frames.py) on small
 hand-built tables: the within-group block means, the final-phase description
 properties and the per-listener in-group advantage.
 
 Run with:
-    uv run pytest analysis/test_build_frames.py -v
+    uv run pytest pipeline/test_build_frames.py -v
 """
 
 import numpy as np
 import pandas as pd
 
-from build_frames import final_phase_properties, ingroup_advantage, within_group_block_means
+from pipeline.build_frames import final_phase_properties, ingroup_advantage, within_group_block_means
 
 GAMES = pd.DataFrame({"gameId": ["g1", "g2"], "condition": ["social_mixed", "refer_separated"], "phase1Blocks": [6, 6]})
 

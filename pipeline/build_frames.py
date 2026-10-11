@@ -12,7 +12,7 @@ its own version. Every frame keeps every phase and every condition; a model
 restricts to the conditions it needs when it is fit.
 
 Usage:
-    uv run python analysis/build_frames.py --dataset full
+    uv run python -m pipeline.build_frames --dataset full
 
 Writes into analysis/derived/<dataset>/:
     within_group_block_means.csv          mean SBERT similarity of a group's
@@ -25,7 +25,7 @@ Writes into analysis/derived/<dataset>/:
                                           in-group speaker minus with an out-group
                                           speaker
 
-Tests: analysis/test_build_frames.py
+Tests: pipeline/test_build_frames.py
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from dataset_paths import add_dataset_argument, dataset_dirs
+from pipeline.dataset_paths import add_dataset_argument, dataset_dirs
 
 PROPERTY_KEYS = ["gameId", "playerId", "target", "blockNum", "phaseNum"]
 UNIQUENESS_COLUMNS = ["uniqueness", "n_unique_words"]

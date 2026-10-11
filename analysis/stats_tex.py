@@ -12,7 +12,7 @@ directory, whoever wrote it, and reports a name defined in more than one file,
 because main.tex reads all of them together.
 
 Usage:
-    from stats_tex import fmt_stat, stats_file, write_stats_tex
+    from analysis.stats_tex import fmt_stat, stats_file, write_stats_tex
     macros = {"descriptiveNGames": 120, "descriptiveAccuracy": fmt_stat(0.8123)}
     write_stats_tex(macros, stats_file("descriptive"), source="analysis/descriptives.py")
 
@@ -26,7 +26,7 @@ import re
 from collections.abc import Mapping
 from pathlib import Path
 
-from dataset_paths import PROJECT_ROOT
+from pipeline.dataset_paths import PROJECT_ROOT
 
 STATS_DIR = PROJECT_ROOT / "writing" / "manuscript" / "stats"
 

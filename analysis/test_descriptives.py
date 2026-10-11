@@ -10,7 +10,7 @@ Run with:
 import numpy as np
 import pandas as pd
 
-from descriptives import (
+from analysis.descriptives import (
     description_coverage,
     endpoint_macros,
     exit_survey_responses,

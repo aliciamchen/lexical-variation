@@ -20,7 +20,7 @@
 # In the rate model, both grouping factors carry a block slope: block is the
 # effect under test and varies within each. There is no game term -- in Phase 1 the
 # three groups of a game never interact, so the group is the conversing unit
-# (see the convention checks in 01_outcome_neutral.qmd for the same reasoning
+# (see the convention checks in checks.qmd for the same reasoning
 # and the simulation behind it).
 #
 # Block indexing. The exported `blockNum` is 0-indexed (the first block of a

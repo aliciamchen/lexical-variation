@@ -30,12 +30,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from dataset_paths import (
+from pipeline.dataset_paths import (
     FILTERED_UTTERANCES_FILE,
     MESSAGES_FILE,
     write_filtered_sidecar,
 )
-from preprocessing import UTTERANCE_KEY_COLUMNS, assemble_speaker_utterances
+from pipeline.preprocessing import UTTERANCE_KEY_COLUMNS, assemble_speaker_utterances
 
 # The Gemini model the classifier calls; `classify --model` overrides it for one
 # run. The labels carry no model name, so each dataset records its model in

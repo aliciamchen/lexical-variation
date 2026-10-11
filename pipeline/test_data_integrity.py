@@ -6,8 +6,8 @@ sample by default) against the preregistered specifications and the
 experiment's server-side logic.
 
 Run with:
-    uv run pytest analysis/test_data_integrity.py -v
-    DATASET=full uv run pytest analysis/test_data_integrity.py -v
+    uv run pytest pipeline/test_data_integrity.py -v
+    DATASET=full uv run pytest pipeline/test_data_integrity.py -v
 """
 
 import json
@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dataset_paths import (
+from pipeline.dataset_paths import (
     FILTERED_UTTERANCES_FILE,
     dataset_dirs,
     filtered_utterances_status,

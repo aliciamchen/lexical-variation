@@ -8,7 +8,7 @@ A stand-in for the sentence-transformer model gives identical texts a cosine
 similarity of 1 and different texts 0, so expected values are exact.
 
 Run with:
-    uv run pytest analysis/test_compute_derived.py -v
+    uv run pytest pipeline/test_compute_derived.py -v
 """
 
 import sys
@@ -17,8 +17,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import compute_derived
-from compute_derived import (
+from pipeline import compute_derived
+from pipeline.compute_derived import (
     compute_adjacent_similarities,
     compute_block_pairwise,
     compute_lexical_uniqueness,
@@ -253,7 +253,7 @@ def test_lexical_uniqueness_is_across_games():
 
 
 def test_social_guess_retention_uses_phase2_retention_and_speaker_attribution():
-    from compute_derived import compute_social_guess_retention
+    from pipeline.compute_derived import compute_social_guess_retention
 
     social_guesses = pd.DataFrame([
         {"gameId": "g", "playerId": "l1", "originalGroup": "A", "blockNum": 0, "phaseNum": 2,
@@ -295,7 +295,7 @@ def test_a_filtered_file_without_a_matching_sidecar_is_refused(tmp_path, monkeyp
 
 # ── Content-word overlap (Jaccard) robustness tables ────────────────────────
 
-from compute_derived import (  # noqa: E402
+from pipeline.compute_derived import (  # noqa: E402
     compute_block_pairwise_jaccard,
     compute_pairwise_similarities_jaccard,
     jaccard_similarity,

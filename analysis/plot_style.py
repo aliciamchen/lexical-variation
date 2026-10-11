@@ -7,7 +7,7 @@ figure. The R config keeps a ggplot theme and palette for the diagnostic plots
 the notebooks still draw; the article's figures come from Python and this file.
 
 Usage:
-    from plot_style import CONDITION_COLORS, SINGLE_COLUMN, apply_style, save_fig
+    from analysis.plot_style import CONDITION_COLORS, SINGLE_COLUMN, apply_style, save_fig
     apply_style()
     fig, ax = plt.subplots(figsize=SINGLE_COLUMN)
     ...
@@ -23,7 +23,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
-from dataset_paths import dataset_dirs
+from pipeline.dataset_paths import dataset_dirs
 
 # ── Conditions and groups ────────────────────────────────────
 
