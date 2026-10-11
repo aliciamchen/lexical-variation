@@ -15,7 +15,7 @@
 # 3. R helper tests, when staged files touch analysis/R/, analysis/tests/, or
 #    analysis/config.R.
 # 4. Data integrity and Python unit tests, when staged files touch
-#    analysis/*.py or data/<dataset>/.
+#    pipeline/, paper/, operations/ or data/<dataset>/.
 #
 # Playwright end-to-end tests are deliberately not run here; they take many
 # minutes. Pass STAGED_FILES (newline separated) to check a given list instead
@@ -78,7 +78,7 @@ $(tail -n 30 /tmp/precommit-r.log)"
 fi
 
 # ── 4. Data integrity and Python unit tests ─────────────────
-if printf '%s\n' "$staged" | grep -qE '^(pipeline/|analysis/[^/]+\.py|data/[^/]+/|operations/)'; then
+if printf '%s\n' "$staged" | grep -qE '^(pipeline/|paper/|data/[^/]+/|operations/)'; then
   if command -v uv >/dev/null 2>&1; then
     uv run pytest -q >/tmp/precommit-py.log 2>&1 \
       || fail "Commit blocked: Python tests failed (uv run pytest).

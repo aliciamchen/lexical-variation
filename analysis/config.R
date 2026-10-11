@@ -4,7 +4,7 @@
 # active dataset's paths, defines the constants, and sources every helper
 # file in analysis/R/ (data preparation, model fitting, group specificity,
 # contrasts, Bayes factors, stats-to-LaTeX). The notebooks draw nothing;
-# the article's figures are made in Python (analysis/plot_style.py).
+# the article's figures are made in Python (paper/plot_style.py).
 #
 # Usage (in each .qmd setup chunk):
 #   source(here::here("analysis", "config.R"))

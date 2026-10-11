@@ -20,10 +20,10 @@ theme_set(theme_classic(base_size = 20))
 # Load data
 
 ```{r}
-pairwise_mixed <- read.csv(here("analysis/simulations/power_analysis/pairwise_mixed.csv"))
-pairwise_separate <- read.csv(here("analysis/simulations/power_analysis/pairwise_separate.csv"))
-results_mixed <- read.csv(here("analysis/simulations/power_analysis/results_mixed.csv"))
-results_separate <- read.csv(here("analysis/simulations/power_analysis/results_separate.csv"))
+pairwise_mixed <- read.csv(here("simulations/power_analysis/pairwise_mixed.csv"))
+pairwise_separate <- read.csv(here("simulations/power_analysis/pairwise_separate.csv"))
+results_mixed <- read.csv(here("simulations/power_analysis/results_mixed.csv"))
+results_separate <- read.csv(here("simulations/power_analysis/results_separate.csv"))
 ```
 
 Stack the pairwise dataframes, and the results dataframes, and add columns for condition

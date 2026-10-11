@@ -12,11 +12,11 @@ directory, whoever wrote it, and reports a name defined in more than one file,
 because main.tex reads all of them together.
 
 Usage:
-    from analysis.stats_tex import fmt_stat, stats_file, write_stats_tex
+    from paper.stats_tex import fmt_stat, stats_file, write_stats_tex
     macros = {"descriptiveNGames": 120, "descriptiveAccuracy": fmt_stat(0.8123)}
-    write_stats_tex(macros, stats_file("descriptive"), source="analysis/descriptives.py")
+    write_stats_tex(macros, stats_file("descriptive"), source="paper/descriptives.py")
 
-Tests: analysis/test_stats_tex.py
+Tests: paper/test_stats_tex.py
 """
 
 from __future__ import annotations

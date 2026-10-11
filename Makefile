@@ -142,7 +142,7 @@ notebooks: ## Render the analysis notebooks on the active dataset (models and in
 # ── Utilities ───────────────────────────────────────────────
 
 descriptives: ## Write the descriptive macros (overview, exploratory, survey) from the tables and analysis/results/<name>/
-	uv run python -m analysis.descriptives --dataset $(DATASET)
+	uv run python -m paper.descriptives --dataset $(DATASET)
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'

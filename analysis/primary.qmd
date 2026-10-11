@@ -67,7 +67,7 @@ per-speaker term. Each observation is a pair of speakers describing the same
 tangram, and the `speakerPair` intercept captures resemblance that belongs to
 two particular people rather than to either of them, which is where a shared
 convention resides. The design-matched simulations in
-`analysis/simulations/simulate_mm_speaker.R` showed it to be the term that matters for
+`simulations/simulate_mm_speaker.R` showed it to be the term that matters for
 interval calibration, and it is retained even when its variance is estimated
 at the boundary, so the structure never depends on the data. Because the pair
 is unordered, the estimate cannot depend on which speaker is listed first. The

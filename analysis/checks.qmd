@@ -288,7 +288,7 @@ that stayed complete takes the game as the unit. Survey: the two 7-point
 group-identification items and whether participants noticed their group
 developing its own way of describing the pictures are manipulation checks,
 compared across conditions with Kruskal-Wallis and chi-square tests. The
-counts and means themselves are written by `analysis/descriptives.py`.
+counts and means themselves are written by `paper/descriptives.py`.
 
 ```{r dropout-and-survey-checks}
 pa <- player_attrition(players, games)

@@ -10,9 +10,9 @@ group-specificity estimates come from the results table `primary.qmd` writes.
 The notebooks write the inferential files (checks, primary, secondary).
 
 Usage:
-    uv run python -m analysis.descriptives --dataset full
+    uv run python -m paper.descriptives --dataset full
 
-Tests: analysis/test_descriptives.py
+Tests: paper/test_descriptives.py
 """
 
 from __future__ import annotations
@@ -30,16 +30,16 @@ from pipeline.dataset_paths import (
     filtered_utterances_status,
     stale_filtered_message,
 )
-from analysis.plot_style import CONDITION_ORDER
+from paper.plot_style import CONDITION_ORDER
 from pipeline.preprocessing import (
     PARTICIPANT_EXCLUSIONS_FILE,
     TECHNICAL_EXCLUSIONS_FILE,
     read_participant_exclusions,
     read_technical_exclusions,
 )
-from analysis.stats_tex import condition_macro_name, fmt_count, fmt_stat, stats_file, write_stats_tex
+from paper.stats_tex import condition_macro_name, fmt_count, fmt_stat, stats_file, write_stats_tex
 
-SOURCE = "analysis/descriptives.py"
+SOURCE = "paper/descriptives.py"
 
 # ── Attrition definitions ────────────────────────────────────
 # The server's exit reasons (EXIT_REASONS in experiment/shared/constants.js)

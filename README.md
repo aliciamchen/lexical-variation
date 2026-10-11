@@ -9,7 +9,9 @@ The full sample, 120 started games collected in 31 Prolific sessions between 202
 ```
 experiment/        the Empirica game: React client, Node server, Playwright tests (see experiment/README.md)
 pipeline/          the data pipeline: extraction, combination, preprocessing, the message filter, the derived metrics and the model-input frames, with their tests
-analysis/          the R helpers the notebooks share (analysis/R/) and their tests, the three Quarto notebooks, the Python descriptives and figure style, and the simulations behind the design
+analysis/          the R side: config.R, the helpers in analysis/R/ with their tests, and the three Quarto notebooks that fit the preregistered models
+paper/             the Python side of the article: the descriptive macros, the figure style and the macro writer
+simulations/       the design-matched simulation behind the speaker random effect, and the power analysis
 analysis/derived/  derived metrics per dataset: embeddings, similarity tables, frames and cached model fits
 analysis/results/  the model estimates the notebooks write for the figures and the descriptive macros
 data/              one directory per dataset; data/README.md is the codebook
@@ -64,7 +66,7 @@ The raw exports under `experiment/data/` are not committed because they identify
 
 ## The full-sample analyses
 
-The notebooks `analysis/checks.qmd`, `primary.qmd` and `secondary.qmd` are the preregistered analyses: the convention-formation, dropout and survey checks, the primary hypotheses and the secondary analyses. `make notebooks` renders them on the full sample; each writes its statistics to `writing/manuscript/stats/` as `\newcommand` macros for the article and its HTML to `_output/`, and `primary.qmd` writes its per-game estimates to `analysis/results/full/`. `make descriptives` then writes the descriptive macros, the data overview, the exploratory summaries and the exit survey, from the processed tables and those estimates with `analysis/descriptives.py`. A render on any other dataset is marked with a warning banner, because its numbers are not results. The Bayes factors in `primary.qmd` refit three models with brms, which took about twenty minutes on the full sample; `BAYES_FACTORS=never make notebooks` skips them, and the fits are cached so that a render on unchanged data reuses them.
+The notebooks `analysis/checks.qmd`, `primary.qmd` and `secondary.qmd` are the preregistered analyses: the convention-formation, dropout and survey checks, the primary hypotheses and the secondary analyses. `make notebooks` renders them on the full sample; each writes its statistics to `writing/manuscript/stats/` as `\newcommand` macros for the article and its HTML to `_output/`, and `primary.qmd` writes its per-game estimates to `analysis/results/full/`. `make descriptives` then writes the descriptive macros, the data overview, the exploratory summaries and the exit survey, from the processed tables and those estimates with `paper/descriptives.py`. A render on any other dataset is marked with a warning banner, because its numbers are not results. The Bayes factors in `primary.qmd` refit three models with brms, which took about twenty minutes on the full sample; `BAYES_FACTORS=never make notebooks` skips them, and the fits are cached so that a render on unchanged data reuses them.
 
 ## Running the experiment
 
@@ -78,9 +80,9 @@ Create a batch in the admin panel, choose a treatment (two per condition, one pe
 
 ## Power analysis
 
-`analysis/simulations/power_analysis/` justifies the sample size with data simulated from Boyce et al. (2023):
+`simulations/power_analysis/` justifies the sample size with data simulated from Boyce et al. (2023):
 
 ```bash
-quarto render analysis/simulations/power_analysis/power_analysis_setup.Qmd   # simulate the data
-quarto render analysis/simulations/power_analysis/power_analysis_plots.Qmd   # plot the power curves
+quarto render simulations/power_analysis/power_analysis_setup.Qmd   # simulate the data
+quarto render simulations/power_analysis/power_analysis_plots.Qmd   # plot the power curves
 ```

@@ -3,7 +3,7 @@
 #
 # The design-matched simulation study that checks convergence, ordering
 # invariance, and interval calibration at scale is
-# analysis/simulations/simulate_mm_speaker.R; these are the fast structural checks.
+# simulations/simulate_mm_speaker.R; these are the fast structural checks.
 
 if (!exists("lmer_multimember")) {
   source(here::here("analysis", "config.R"))
@@ -229,7 +229,7 @@ check("a speaker dropped entirely leaves the remaining speakers indexed", {
 # ── The optional pair-level intercept ───────────────────────────────────────
 #
 # Whether to adopt it is a preregistration decision, informed by
-# analysis/simulations/simulate_mm_speaker.R; these checks only pin its mechanics.
+# simulations/simulate_mm_speaker.R; these checks only pin its mechanics.
 
 gs_pair <- fit_group_specificity_mm(pw, pair_term = TRUE)
 check(

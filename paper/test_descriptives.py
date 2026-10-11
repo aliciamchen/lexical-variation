@@ -1,16 +1,16 @@
 """
-Unit tests for the descriptive statistics (analysis/descriptives.py) on
+Unit tests for the descriptive statistics (paper/descriptives.py) on
 small hand-built tables: the attrition definitions, the description
 coverage, the endpoint macros and the exit-survey recodes.
 
 Run with:
-    uv run pytest analysis/test_descriptives.py -v
+    uv run pytest paper/test_descriptives.py -v
 """
 
 import numpy as np
 import pandas as pd
 
-from analysis.descriptives import (
+from paper.descriptives import (
     description_coverage,
     endpoint_macros,
     exit_survey_responses,
