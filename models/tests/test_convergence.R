@@ -16,7 +16,7 @@ check(
 )
 
 # ── The H3b frame ────────────────────────────────────────────────────────────
-# pipeline/build_model_inputs.py aggregates the within-group pairs into one mean per
+# preprocessing/build_model_inputs.py aggregates the within-group pairs into one mean per
 # group, tangram and block, with the paper's 1-indexed `block`; here the frame
 # is restricted to Phase 1 and the social conditions.
 frame_h3b <- tibble(

@@ -9,7 +9,7 @@
 # beside them records, per table, the script that wrote it, its rows and
 # columns and the git commit of the working tree at the time, so a number in
 # the manuscript can be traced to the code that produced it. The Python
-# formatter (paper/inferential.py) turns these tables into the LaTeX macros,
+# formatter (report/inferential.py) turns these tables into the LaTeX macros,
 # the figure scripts draw from them, and a later script reads an earlier one's
 # estimates with read_estimates() instead of refitting (the game-level
 # regressions read the per-game group-specificity estimates this way).
@@ -21,7 +21,7 @@
 # Tests: models/tests/test_results.R
 
 # The short hash of HEAD, suffixed -dirty when tracked files have uncommitted
-# changes, or "unknown" without git. The same string pipeline/provenance.py
+# changes, or "unknown" without git. The same string preprocessing/provenance.py
 # writes on the Python side.
 git_commit <- function() {
   run <- function(...) {

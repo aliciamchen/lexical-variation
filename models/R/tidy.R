@@ -1,7 +1,7 @@
 # Tidy rows for the estimates tables.
 #
 # Every model script writes what it estimated in one shape, so that the
-# formatter (paper/inferential.py) and the figure scripts read every table the
+# formatter (report/inferential.py) and the figure scripts read every table the
 # same way. One row is one estimated quantity:
 #
 #   analysis        which model or comparison the row belongs to (a short id

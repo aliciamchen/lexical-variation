@@ -28,7 +28,7 @@
 # start at 0-indexed block 1 (the first block in which two speakers of a group
 # have described a target), so its Phase 1 rows are 0-indexed 1..5. The paper
 # counts blocks from 1, so those become 2..6. The conversion happens once, in
-# pipeline/build_model_inputs.py, which writes the within-group block means with a
+# preprocessing/build_model_inputs.py, which writes the within-group block means with a
 # 1-indexed `block` column (blockNum + 1); everything here works on that
 # column. The table averages every within-group pair: the `allGroupsPaired`
 # start rule of the specificity trajectory does not apply to H3b.

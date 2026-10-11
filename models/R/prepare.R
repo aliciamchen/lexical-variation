@@ -3,10 +3,10 @@
 # The pipeline writes the facts the models need. The coded accuracy outcome
 # (`correct`, `onTime`), the condition, the 1-indexed block numbers, the
 # speaker of each listener trial and the in-group flag are columns of the
-# processed tables (pipeline/preprocessing.py), and the model inputs (the
+# processed tables (preprocessing/preprocessing.py), and the model inputs (the
 # within-group block means, each speaker's final-phase description
 # properties, the per-listener in-group advantage) are tables in the
-# model_inputs directory (pipeline/build_model_inputs.py). What is left to do here is what a
+# model_inputs directory (preprocessing/build_model_inputs.py). What is left to do here is what a
 # model needs at fitting time: subsetting to a phase, a role or a set of
 # conditions, factor levels, centering, the game-qualified group id, and the
 # reporting flags beside the outcome. Column names the scripts use:
@@ -67,7 +67,7 @@ load_tables <- function() {
     phase_change = read_table("phase_change_similarities.csv", measures_dir),
     desc_props = read_table("description_properties.csv", measures_dir),
     lex_uniq = read_table("lexical_uniqueness.csv", measures_dir),
-    # The model inputs (pipeline/build_model_inputs.py)
+    # The model inputs (preprocessing/build_model_inputs.py)
     within_group_means = read_table(
       "within_group_block_means.csv",
       model_inputs_dir
@@ -120,7 +120,7 @@ add_condition <- function(df, games, levels = CONDITION_ORDER) {
 #
 # Both accuracy outcomes are proportions of *eligible listener response
 # opportunities*, not of submitted answers. The rule is applied once, in
-# pipeline/preprocessing.py: an active listener on a played trial whose speaker
+# preprocessing/preprocessing.py: an active listener on a played trial whose speaker
 # sent a message is an opportunity (`responseOpportunity`); a correct answer
 # received by the server's scoring cutoff is 1, an incorrect answer, a timeout
 # and a late arrival are 0 (`correct`), and an observation a post-hoc
@@ -428,7 +428,7 @@ drop_late_arrivals <- function(df, late = lateClick) {
 }
 
 # The speaker of each listener trial is on the row (`speakerId`, from the trio
-# membership of the round, computed in pipeline/preprocessing.py and checked
+# membership of the round, computed in preprocessing/preprocessing.py and checked
 # against the server's own record by the integrity suite); this turns the
 # in-group flag into the factor the models use, with out_group as the
 # reference level.
@@ -451,7 +451,7 @@ attach_speaker <- function(listener_df) {
 
 # Per-listener in-group advantage: mean referential accuracy when the speaker
 # came from the listener's own original group, minus mean accuracy when they
-# did not (pipeline/build_model_inputs.py computes it from the coded outcome).
+# did not (preprocessing/build_model_inputs.py computes it from the coded outcome).
 #
 # Why aggregate rather than model this at the trial level. `inGroupSpeaker` is
 # the only tested predictor in this design that varies WITHIN every grouping
@@ -572,7 +572,7 @@ specificity_eligible <- function(block_pairwise_sim) {
 
 # One mean per original group, tangram and 1-indexed block over the group's
 # within-group pairs, for one phase and a set of conditions: the H3b unit.
-# pipeline/build_model_inputs.py computes the means (overlapping speaker pairs are
+# preprocessing/build_model_inputs.py computes the means (overlapping speaker pairs are
 # not independent observations; a cell with no pair has no row and nothing is
 # filled from another block; every within-group pair enters, because the
 # `allGroupsPaired` start rule of the specificity trajectory does not apply to
@@ -614,7 +614,7 @@ within_group_block_means <- function(
 # The H3c measures (concreteness, word frequency, lexical uniqueness) for each
 # speaker's final description of each tangram in one phase, with the
 # game-qualified original group id the H3c models' group intercept uses
-# (`group`); pipeline/build_model_inputs.py keeps the last block per speaker and
+# (`group`); preprocessing/build_model_inputs.py keeps the last block per speaker and
 # tangram within the phase.
 final_phase_properties <- function(
   props,

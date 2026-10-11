@@ -27,4 +27,4 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["pipeline", "paper", "simulations", "operations"]
+testpaths = ["preprocessing", "report", "simulations", "operations"]

@@ -482,7 +482,7 @@ local({
 
 # ── ingroup_advantage: the frame, restricted to conditions and cell sizes ───
 # The paired form of the in-group contrast: one difference score per listener,
-# computed by pipeline/build_model_inputs.py; here the frame is restricted.
+# computed by preprocessing/build_model_inputs.py; here the frame is restricted.
 local({
   adv <- tibble(
     gameId = c("g1", "g1", "g3"),

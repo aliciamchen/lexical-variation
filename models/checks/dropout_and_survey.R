@@ -6,7 +6,7 @@
 # noticed their group developing its own way of describing the pictures,
 # compared across conditions with Kruskal-Wallis and chi-square tests. The
 # counts and means themselves are descriptive statistics written by
-# paper/descriptives.py.
+# report/descriptives.py.
 #
 # Writes results/<dataset>/estimates/checks/dropout_and_survey.csv: one row
 # per test with its statistic, degrees of freedom and p-value.

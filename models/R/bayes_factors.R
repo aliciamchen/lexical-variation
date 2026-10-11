@@ -380,7 +380,7 @@ bf_glmm_condition <- function(
 }
 
 # A Bayes factor to two significant digits and with no padding, for the
-# printed report (the manuscript's macros are formatted in paper/stats_tex.py
+# printed report (the manuscript's macros are formatted in report/stats_tex.py
 # by the same rule): 0.052, 0.18, 1.0, 3.2, 12.
 fmt_bf <- function(bf10) {
   if (is.null(bf10) || length(bf10) == 0 || is.na(bf10)) {

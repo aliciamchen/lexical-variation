@@ -2,8 +2,8 @@
 #
 # Everything is keyed by a dataset name (DATASET, default full). The data
 # tree holds what the pipeline makes from the exports and the results tree
-# what the models and the paper layer make from the data (the layout is
-# defined in pipeline/dataset_paths.py and mirrored in models/config.R):
+# what the models and the report layer make from the data (the layout is
+# defined in preprocessing/dataset_paths.py and mirrored in models/config.R):
 #   data/<name>/                 the hand-written inputs: runs.txt and the exclusion files
 #   data/<name>/raw/             the anonymized raw Empirica tables (combine)
 #   data/<name>/tables/          the analysis-ready tables (process)
@@ -20,13 +20,13 @@
 #                       # inputs: the raw exports and Vertex AI credit for the message filter)
 #   make test           # the integrity suite on the dataset, the Python unit tests and the R tests
 #   make models         # fit every model script in models/ whose estimates are out of date
-#   make paper          # the macros (inferential and descriptive) and the figures from the estimates
+#   make report          # the macros (inferential and descriptive) and the figures from the estimates
 #   make sync           # copy results/<name>/stats and figures into writing/manuscript/
-# `make all` runs data, test, models and paper in that order.
+# `make all` runs data, test, models and report in that order.
 #
 # Reproducing from the processed tables alone (no raw exports): with a
 # dataset's tables/, classifier/ and measures/ under data/full/,
-#   make model-inputs models paper
+#   make model-inputs models report
 # rebuilds everything downstream; `make measures` regenerates the measures first.
 #
 # The model scripts are real Make targets: results/<name>/estimates/<family>/<name>.csv
@@ -86,15 +86,15 @@ ZIPS = $(foreach run,$(RUNS),$(call zip_for_run,$(run)))
 PY = uv run python
 R_COMMON = models/config.R $(wildcard models/R/*.R)
 
-.PHONY: all data models paper sync extract combine process process-no-filter measures model-inputs bayes-factors stats inferential descriptives figures payments sync-blocklist tally final-exports test test-unit test-ops smoke runs help
+.PHONY: all data models report sync extract combine process process-no-filter measures model-inputs bayes-factors stats inferential descriptives figures payments sync-blocklist tally final-exports test test-unit test-ops smoke runs help
 
 # ── The verbs ───────────────────────────────────────────────
 
-all: data test models paper  ## Everything from the export zips to the article's macros and figures
+all: data test models report  ## Everything from the export zips to the article's macros and figures
 
 data: extract combine process  ## Build data/<name>/ from the exports listed in runs.txt (extract, combine, process)
 
-paper: stats figures  ## Write the macros and the figures from the estimates and the tables
+report: stats figures  ## Write the macros and the figures from the estimates and the tables
 
 sync: ## Copy results/<name>/stats/*.tex and figures/*.pdf into writing/manuscript/, where Overleaf reads them
 	@mkdir -p $(MANUSCRIPT_DIR)/stats $(MANUSCRIPT_DIR)/figures
@@ -111,23 +111,23 @@ extract: ## Extract each Empirica export zip listed in runs.txt
 	@if [ -z "$(RUNS)" ]; then echo "Error: no runs listed in $(RUNS_FILE)"; exit 1; fi
 	@for zip in $(ZIPS); do \
 		echo "=== Extracting $$zip ==="; \
-		$(PY) -m pipeline.extract_run "$$zip"; \
+		$(PY) -m preprocessing.extract_run "$$zip"; \
 	done
 
 combine: ## Stack the registered runs into data/<name>/raw/
-	$(PY) -m pipeline.combine_runs --dataset $(DATASET)
+	$(PY) -m preprocessing.combine_runs --dataset $(DATASET)
 
 process: ## Run the processing steps (preprocess → filter → measures → model inputs)
-	$(PY) -m pipeline.process_data --dataset $(DATASET)
+	$(PY) -m preprocessing.process_data --dataset $(DATASET)
 
 process-no-filter: ## The processing steps without the message filter (no Vertex AI needed)
-	$(PY) -m pipeline.process_data --dataset $(DATASET) --skip-filter
+	$(PY) -m preprocessing.process_data --dataset $(DATASET) --skip-filter
 
 measures: ## Compute the measures from the utterances → data/<name>/measures/ (SBERT; minutes)
-	$(PY) -m pipeline.compute_measures --dataset $(DATASET)
+	$(PY) -m preprocessing.compute_measures --dataset $(DATASET)
 
 model-inputs: ## Build the model inputs from the tables and the measures → data/<name>/model_inputs/
-	$(PY) -m pipeline.build_model_inputs --dataset $(DATASET)
+	$(PY) -m preprocessing.build_model_inputs --dataset $(DATASET)
 
 payments: ## What each Prolific study still owes, from every zip in runs.txt → data/payments/<name>/ (read-only Prolific calls)
 	@if [ -z "$(RUNS)" ]; then echo "Error: no runs listed in $(RUNS_FILE)"; exit 1; fi
@@ -205,18 +205,18 @@ $(TABLES_DIR)/%.csv $(MEASURES_DIR)/%.csv $(MODEL_INPUTS_DIR)/%.csv:
 
 bayes-factors: $(ESTIMATES_DIR)/primary/bayes_factors.csv  ## Only the Bayes factor script (BAYES_FACTORS=auto|always|never)
 
-# ── The paper layer ─────────────────────────────────────────
+# ── The report layer ─────────────────────────────────────────
 
 stats: inferential descriptives  ## Both macro writers
 
 inferential: ## The inferential macros (checks, primary, secondary) from results/<name>/estimates/
-	$(PY) -m paper.inferential --dataset $(DATASET)
+	$(PY) -m report.inferential --dataset $(DATASET)
 
 descriptives: ## The descriptive macros (overview, exploratory, survey) from the tables, the measures and the estimates
-	$(PY) -m paper.descriptives --dataset $(DATASET)
+	$(PY) -m report.descriptives --dataset $(DATASET)
 
 figures: ## The article's figures, each with its plotted table → results/<name>/figures/
-	$(PY) -m paper.figures --dataset $(DATASET)
+	$(PY) -m report.figures --dataset $(DATASET)
 
 # ── Tests ───────────────────────────────────────────────────
 
@@ -225,7 +225,7 @@ test: ## Every test: the integrity suite on the active dataset, the Python unit 
 	Rscript models/tests/run_all.R
 
 test-unit: ## The Python unit tests only (no processed data needed)
-	uv run pytest -q --ignore=pipeline/test_data_integrity.py
+	uv run pytest -q --ignore=preprocessing/test_data_integrity.py
 
 test-ops: ## Only the operations tests: payments, blocklist sync, tally, Prolific client (no API calls, no data needed)
 	uv run pytest operations -q
@@ -239,9 +239,9 @@ smoke: ## Smoke-test one export end to end in a throwaway dataset: make smoke ZI
 	fi
 	@if [ ! -f "$(ZIP)" ]; then echo "Error: $(ZIP) does not exist"; exit 1; fi
 	rm -rf data/smoke results/smoke
-	$(PY) -m pipeline.extract_run "$(ZIP)" --dataset smoke
-	$(PY) -m pipeline.combine_runs --dataset smoke
-	$(PY) -m pipeline.process_data --dataset smoke --skip-filter
+	$(PY) -m preprocessing.extract_run "$(ZIP)" --dataset smoke
+	$(PY) -m preprocessing.combine_runs --dataset smoke
+	$(PY) -m preprocessing.process_data --dataset smoke --skip-filter
 	@echo
 	@echo "=== Integrity suite on the smoke dataset ==="
 	@echo "The block-count checks (blocks per phase, trials per block, speaker rotation)"
@@ -249,7 +249,7 @@ smoke: ## Smoke-test one export end to end in a throwaway dataset: make smoke ZI
 	@echo "to 3 + 2 blocks. The bonus checks apply the production pay rate, so an export"
 	@echo "from before it was set fails them too. Anything else"
 	@echo "that fails is a real problem with the export."
-	-DATASET=smoke uv run pytest pipeline/test_data_integrity.py -q
+	-DATASET=smoke uv run pytest preprocessing/test_data_integrity.py -q
 	@echo
 	@echo "Smoke test finished. Output: data/smoke/ and results/smoke/ (throwaway)"
 

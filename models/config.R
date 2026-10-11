@@ -5,8 +5,8 @@
 # helper file in models/R/ (data preparation, model fitting, group
 # specificity, contrasts, Bayes factors, the estimates writer). The scripts
 # draw nothing and format no statistics: each fits its models and writes
-# tidy estimates tables with write_estimates(); paper/inferential.py turns
-# those into the manuscript's macros and paper/figures/ draws from them.
+# tidy estimates tables with write_estimates(); report/inferential.py turns
+# those into the manuscript's macros and report/figures/ draws from them.
 #
 # Usage (at the top of each models/<family>/<name>.R):
 #   source(here::here("models", "config.R"))
@@ -18,7 +18,7 @@ suppressPackageStartupMessages({
 })
 
 # ── Paths ────────────────────────────────────────────────────
-# Every dataset follows the same layout (defined in pipeline/dataset_paths.py):
+# Every dataset follows the same layout (defined in preprocessing/dataset_paths.py):
 # the hand-written inputs at the top of data/<name>/ and the generated files
 # one level down, in a directory per stage. The scripts read
 #   data/<name>/tables/         the analysis-ready tables

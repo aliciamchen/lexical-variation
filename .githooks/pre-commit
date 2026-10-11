@@ -8,13 +8,13 @@
 #    (anything under data/, or any .csv/.json under experiment/) contains a
 #    Prolific-ID-shaped token (exactly 24 hex characters) or a header column
 #    that the anonymization step is supposed to strip (SENSITIVE_COLUMNS in
-#    pipeline/extract_run.py). Non-anonymized participant data was once
+#    preprocessing/extract_run.py). Non-anonymized participant data was once
 #    committed by accident; this makes that a hard stop.
 # 2. Server unit tests, when staged files touch experiment/server/src/ or
 #    experiment/shared/ (vitest, seconds).
 # 3. R tests, when staged files touch models/.
 # 4. Data integrity and Python unit tests, when staged files touch
-#    pipeline/, paper/, operations/, data/<dataset>/ or results/.
+#    preprocessing/, report/, operations/, data/<dataset>/ or results/.
 #
 # Playwright end-to-end tests are deliberately not run here; they take many
 # minutes. Pass STAGED_FILES (newline separated) to check a given list instead
@@ -55,7 +55,7 @@ if [ -n "$violations" ]; then
   fail "Commit blocked: staged data files may contain participant identifiers.
 
 $violations
-Only anonymized data may be committed. Re-run pipeline/extract_run.py (which strips SENSITIVE_COLUMNS) or remove the file from the commit."
+Only anonymized data may be committed. Re-run preprocessing/extract_run.py (which strips SENSITIVE_COLUMNS) or remove the file from the commit."
 fi
 
 # ── 2. Server unit tests ────────────────────────────────────
@@ -77,7 +77,7 @@ $(tail -n 30 /tmp/precommit-r.log)"
 fi
 
 # ── 4. Data integrity and Python unit tests ─────────────────
-if printf '%s\n' "$staged" | grep -qE '^(pipeline/|paper/|data/[^/]+/|results/|operations/)'; then
+if printf '%s\n' "$staged" | grep -qE '^(preprocessing/|report/|data/[^/]+/|results/|operations/)'; then
   if command -v uv >/dev/null 2>&1; then
     uv run pytest -q >/tmp/precommit-py.log 2>&1 \
       || fail "Commit blocked: Python tests failed (uv run pytest).

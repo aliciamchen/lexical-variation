@@ -1,6 +1,6 @@
 # Tests for the response-opportunity frames shared by both accuracy outcomes
 # (models/R/prepare.R). The rule itself is applied in
-# pipeline/preprocessing.py and tested there; these tests check that the R
+# preprocessing/preprocessing.py and tested there; these tests check that the R
 # side keeps the opportunity rows, carries the coded outcome through, and
 # reports the two kinds of missing outcome apart.
 
