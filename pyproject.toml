@@ -8,9 +8,8 @@ dependencies = [
     "numpy>=2.0",
     "pandas>=2.0",
     "matplotlib>=3.8",
-    # Derived metrics: sentence embeddings, UMAP, word frequency and tokenization
+    # Derived metrics: sentence embeddings, word frequency and tokenization
     "sentence-transformers>=3.0",
-    "umap-learn>=0.5.11",
     "wordfreq>=3.0",
     "nltk>=3.8",
     # The message filter (Gemini on Vertex AI)

@@ -53,7 +53,7 @@ def step_filter_messages(data_dir: Path) -> None:
 def step_compute_derived(
     data_dir: Path, output_dir: Path, utterances_file: str | None = None
 ) -> None:
-    """Run compute_derived.py: embeddings, similarities, UMAP, etc."""
+    """Run compute_derived.py: embeddings, similarity tables and description properties."""
     print(f"\n{'=' * 60}")
     print("Step 3: Computing derived metrics")
     print(f"{'=' * 60}")
@@ -109,7 +109,7 @@ def main():
     parser.add_argument("--skip-filter", action="store_true",
                         help="Skip non-referential message filtering (requires Vertex AI)")
     parser.add_argument("--skip-derived", action="store_true",
-                        help="Skip computing derived metrics (SBERT, similarities, UMAP)")
+                        help="Skip computing derived metrics (SBERT embeddings, similarity tables, description properties)")
     parser.add_argument("--skip-frames", action="store_true",
                         help="Skip building the model-input frames (needs the derived tables)")
     args = parser.parse_args()

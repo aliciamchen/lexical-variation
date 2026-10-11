@@ -97,8 +97,7 @@ speakers takes up another group's label while the rest keep theirs, so the
 mean of this measure need not separate `refer_mixed` from `refer_separated`
 even when H1 holds. The quantiles and the share of speaker-tangram
 observations below 0.5 show how much of each condition's mass sits in the
-switched tail. Whose label the switchers adopted is recorded per speaker,
-tangram, and block in `cross_group_borrowing.csv`.
+switched tail.
 
 ```{r semantic-change-decomposition}
 if (has_phase_change && nrow(phase_change) > 0) {

@@ -94,8 +94,6 @@ def load_tables(dirs) -> dict:
         "technical_exclusions": read_technical_exclusions(d / TECHNICAL_EXCLUSIONS_FILE),
         "adjacent_sim": pd.read_csv(derived / "adjacent_similarities.csv")
         if (derived / "adjacent_similarities.csv").exists() else pd.DataFrame(),
-        "umap_rows": len(pd.read_csv(derived / "umap_projections.csv", usecols=[0]))
-        if (derived / "umap_projections.csv").exists() else None,
         "gs_by_game": pd.read_csv(results / "gs_by_game.csv")
         if (results / "gs_by_game.csv").exists() else pd.DataFrame(),
     }
@@ -263,8 +261,6 @@ def exploratory_macros(t: dict) -> dict:
     macros.update(endpoint_macros("exploratoryAccuracy", listeners, "correct"))
     if not t["adjacent_sim"].empty and "gameBlock" in t["adjacent_sim"].columns:
         macros.update(endpoint_macros("exploratorySimAdjacent", t["adjacent_sim"], "simAdjacent"))
-    if t["umap_rows"] is not None:
-        macros["exploratoryNUmapPoints"] = fmt_count(t["umap_rows"])
     for _, row in phase1_specificity_by_condition(t["gs_by_game"]).iterrows():
         cond = condition_macro_name(str(row["condition"]))
         macros[f"exploratoryPhaseOneGs{cond}N"] = int(row["games"])

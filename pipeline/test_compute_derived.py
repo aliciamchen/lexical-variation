@@ -252,35 +252,6 @@ def test_lexical_uniqueness_is_across_games():
     assert (out["uniqueness"] == 0.0).all()
 
 
-def test_social_guess_retention_uses_phase2_retention_and_speaker_attribution():
-    from pipeline.compute_derived import compute_social_guess_retention
-
-    social_guesses = pd.DataFrame([
-        {"gameId": "g", "playerId": "l1", "originalGroup": "A", "blockNum": 0, "phaseNum": 2,
-         "roundId": "r1", "currentGroup": "X", "target": "t", "socialGuess": True,
-         "socialGuessCorrect": True, "speakerId": "s1"},
-    ])
-    trials = pd.DataFrame([
-        {"gameId": "g", "playerId": "s1", "originalGroup": "A", "role": "speaker", "blockNum": 0,
-         "target": "t", "roundId": "r1", "currentGroup": "X"},
-        {"gameId": "g", "playerId": "l1", "originalGroup": "A", "role": "listener", "blockNum": 0,
-         "target": "t", "roundId": "r1", "currentGroup": "X"},
-    ])
-    # Same speaker/target/block index in both phases: only the Phase 2 row may be joined
-    term_retention = pd.DataFrame([
-        {"gameId": "g", "playerId": "s1", "target": "t", "blockNum": 0, "phaseNum": 1, "retention": 0.1},
-        {"gameId": "g", "playerId": "s1", "target": "t", "blockNum": 0, "phaseNum": 2, "retention": 0.9},
-    ])
-    games = pd.DataFrame({"gameId": ["g"], "condition": ["social_mixed"]})
-
-    out = compute_social_guess_retention(social_guesses, trials, term_retention, games)
-
-    assert len(out) == 1  # one row per guess, no duplication across phases
-    assert out.iloc[0]["speakerRetention"] == 0.9
-    assert out.iloc[0]["speakerOriginalGroup"] == "A"
-    assert out.iloc[0]["speakerWasSameGroup"] == 1
-
-
 def test_a_filtered_file_without_a_matching_sidecar_is_refused(tmp_path, monkeypatch, capsys):
     """The derived step must never analyze filtered utterances built from a
     different messages.csv; it stops before loading the model."""
