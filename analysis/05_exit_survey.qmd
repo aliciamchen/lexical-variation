@@ -14,9 +14,7 @@ their strategy, and, on a second page, whether they felt they were playing with
 other humans, plus age, gender, education, pay fairness, and open feedback.
 Players removed at the Phase 1 accuracy check complete the survey too.
 
-Items added in the 2026 revamp (the group items and the felt-human question)
-are reported as "not collected" on a dataset that predates it, such as the
-pilot, whose strategy question was called `strength`.
+An item nobody answered is reported as "not collected".
 
 ```{r setup, message=FALSE, warning=FALSE}
 source(here::here("analysis", "config.R"))
@@ -66,7 +64,7 @@ likert_items <- c(groupIdentification = "Sense of being part of the Phase 1 grou
                   groupCloseness = "Closeness to the Phase 1 group")
 present <- names(likert_items)[vapply(names(likert_items), function(f) has_field(survey, f), logical(1))]
 if (length(present) == 0) {
-  cat("Not collected in this dataset (the group items were added after the pilot).\n")
+  cat("Not collected in this dataset.\n")
 } else {
   for (item in present) {
     cat(sprintf("\n=== %s ===\n", likert_items[[item]]))
@@ -122,7 +120,7 @@ table splits the rate by Phase 2 structure.
 
 ```{r felt-human}
 if (!has_field(survey, "feltHuman")) {
-  cat("Not collected in this dataset (the item was added after the pilot).\n")
+  cat("Not collected in this dataset.\n")
 } else {
   fh <- survey |>
     filter(!is.na(feltHuman)) |>

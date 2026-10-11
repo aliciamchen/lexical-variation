@@ -4,15 +4,12 @@
 # layout (see analysis/dataset_paths.py and analysis/config.R):
 #   data/<name>/              preprocessed CSVs, raw_anonymized/, runs.txt
 #   analysis/derived/<name>/  derived metrics and model caches
-#   figures/<name>/           notebook figures
-# The default is the pilot sessions; pass DATASET=<name> for another one.
-#
-# For reviewers (raw data + filtered utterances already committed):
-#   make pilot
+#   figures/<name>/           figures
+# The default is the full sample; pass DATASET=<name> for another one.
 #
 # From scratch with raw Empirica export zips listed in data/<name>/runs.txt:
-#   make all                      # pilot sessions
-#   make all DATASET=full         # the full sample
+#   make all                      # the full sample
+#   make all DATASET=smoke        # another dataset
 #
 # Individual targets:
 #   make extract        # extract the dataset's zips → data/runs/<timestamp>/
@@ -21,9 +18,8 @@
 #   make test           # validate processed data (pytest integrity suite)
 #   make payments       # what each Prolific study still owes → data/payments/<name>/
 #   make tally          # games per condition and tangram set; stopping-rule progress
-#   make notebooks      # render the dataset's notebooks
-#   BAYES_FACTORS=never make notebooks DATASET=full   # render without the brms refits (a fast check)
-#   make llm-process    # process LLM simulation JSONs → CSVs
+#   make notebooks      # render the analysis notebooks 00-05
+#   BAYES_FACTORS=never make notebooks   # render without the brms refits (a fast check)
 #
 # Smoke-testing one export before it joins a dataset:
 #   make smoke ZIP=experiment/data/<run>/empirica-export-<run>.zip
@@ -36,7 +32,7 @@
 # or, failing that, as experiment/data/*/empirica-export-<run>.zip, because the
 # old backup loop wrote every zip of a session into the directory of the first.
 
-DATASET ?= pilots
+DATASET ?= full
 export DATASET
 
 # Directories
@@ -51,25 +47,15 @@ RUNS := $(shell [ -f $(RUNS_FILE) ] && sed -e 's/\#.*//' $(RUNS_FILE) | tr -s '[
 # name when neither exists, so a typo in runs.txt cannot start a partial extract.
 zip_for_run = $(or $(firstword $(wildcard experiment/data/$(1)/empirica-export-$(1).zip experiment/data/*/empirica-export-$(1).zip)),$(error No export zip for run $(1): expected experiment/data/$(1)/empirica-export-$(1).zip or experiment/data/*/empirica-export-$(1).zip))
 ZIPS = $(foreach run,$(RUNS),$(call zip_for_run,$(run)))
-LLM_SIM_DIR = analysis/llm_simulation
-LLM_RESULTS = $(shell ls -d $(LLM_SIM_DIR)/llm_results_*/ 2>/dev/null | sort | tail -1)
 
-# Notebooks per dataset: the pilot sessions feed the SI of the preregistration;
-# every other dataset runs the preregistered analysis notebooks.
-ifeq ($(DATASET),pilots)
-NOTEBOOKS = analysis/SI_pilot.qmd $(LLM_SIM_DIR)/SI_llm_simulation.qmd
-else
+# The preregistered analysis notebooks, rendered on the active dataset
 NOTEBOOKS = $(wildcard analysis/0[0-9]_*.qmd)
-endif
 
-.PHONY: all pilot extract combine process process-no-filter payments sync-blocklist tally final-exports notebooks llm-process test test-ops smoke runs help
+.PHONY: all extract combine process process-no-filter payments sync-blocklist tally final-exports notebooks test test-ops smoke runs help
 
 # ── Main targets ────────────────────────────────────────────
 
 all: extract combine process test notebooks  ## Full pipeline from zips to rendered notebooks
-
-pilot: ## For reviewers: derive pilot metrics + render the SI notebooks (data already committed)
-	$(MAKE) process-no-filter notebooks DATASET=pilots
 
 # ── Pipeline steps ──────────────────────────────────────────
 
@@ -130,30 +116,16 @@ smoke: ## Smoke-test one export end to end in a throwaway dataset: make smoke ZI
 	@echo "The block-count checks (blocks per phase, trials per block, speaker rotation)"
 	@echo "are expected to fail for games played in TEST_MODE, which shortens the phases"
 	@echo "to 3 + 2 blocks. The bonus checks apply the production pay rate, so an export"
-	@echo "from before it was set (such as a pilot zip) fails them too. Anything else"
+	@echo "from before it was set fails them too. Anything else"
 	@echo "that fails is a real problem with the export."
 	-DATASET=smoke uv run pytest analysis/test_data_integrity.py -q
 	@echo
 	@echo "Smoke test finished. Outputs: data/smoke/ and analysis/derived/smoke/ (throwaway;"
 	@echo "remove with: rm -rf data/smoke analysis/derived/smoke)"
 
-# ── LLM simulation ─────────────────────────────────────────
-
-llm-process: ## Process LLM simulation JSONs → CSVs
-	@if [ -z "$(LLM_RESULTS)" ]; then \
-		echo "Error: no llm_results_*/ directory found in $(LLM_SIM_DIR)/"; \
-		echo "Run the simulation first: bash $(LLM_SIM_DIR)/run_llm_simulation.sh"; \
-		exit 1; \
-	fi
-	uv run python $(LLM_SIM_DIR)/process_llm_results.py "$(LLM_RESULTS)"
-
 # ── Notebooks ───────────────────────────────────────────────
 
-ifeq ($(DATASET),pilots)
-notebooks: llm-process ## Render the dataset's notebooks (pilots: SI notebooks; otherwise 00–05)
-else
-notebooks: ## Render the dataset's notebooks (pilots: SI notebooks; otherwise 00–05)
-endif
+notebooks: ## Render the analysis notebooks 00–05 on the active dataset
 	@for nb in $(NOTEBOOKS); do \
 		echo "=== Rendering $$nb (DATASET=$(DATASET)) ==="; \
 		quarto render "$$nb" || exit 1; \

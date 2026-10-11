@@ -1,6 +1,6 @@
 # Group-specificity estimation and permutation testing.
 #
-# Shared by SI_pilot.qmd, 01_outcome_neutral.qmd, 02_primary_analysis.qmd, and 03_secondary_analysis.qmd.
+# Shared by 01_outcome_neutral.qmd, 02_primary_analysis.qmd, and 03_secondary_analysis.qmd.
 # Results are cached as RDS files in data_dir to avoid re-running
 # the expensive permutation test on every notebook render.
 #
@@ -30,15 +30,13 @@ suppressPackageStartupMessages({
 
 # The speaker random-effect structures.
 #
-# "pair", the default for every notebook including SI_pilot.qmd, is the
+# "pair", the default for every notebook, is the
 # preregistered structure as the manuscript states it: a
 # tangram intercept and an intercept for the unordered speaker-speaker pair,
 # with no speaker term. The pair intercept is the one the design-matched
 # simulations showed to matter (without it, 95% intervals cover about 86%;
 # with it, about 94%). Dropping the individual speaker effects costs a little
-# precision and errs conservative -- on the pilot the same_group coefficients
-# are unchanged to two decimals and the standard errors are slightly larger
-# than with speaker terms added -- and it sidesteps the pair-ordering problem
+# precision and errs conservative, and it sidesteps the pair-ordering problem
 # entirely, since there is no per-position effect to split. Point estimates
 # barely move with the structure, so the choice shows up mainly in the
 # inverse-variance weights of the game-level regression. The pair variance

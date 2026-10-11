@@ -75,8 +75,7 @@ interval calibration, and it is retained even when its variance is estimated
 at the boundary, so the structure never depends on the data. Because the pair
 is unordered, the estimate cannot depend on which speaker is listed first. The
 multiple-membership speaker structures remain in
-`analysis/R/group_specificity.R` (`speaker_structure`) for comparison only;
-`SI_pilot.qmd` uses the same pair model.
+`analysis/R/group_specificity.R` (`speaker_structure`) for comparison only.
 
 Each game's standard error is reported as within-game uncertainty and feeds
 the inverse-variance weights of the robustness reruns below; it does not

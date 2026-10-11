@@ -51,7 +51,7 @@ bf_cache_dir <- function() file.path(derived_dir, "bayes_factors")
 # The preregistered decision: compute a Bayes factor when a planned contrast
 # is non-significant (or always / never, per BAYES_FACTORS). `p_values` are the
 # contrast p-values, `fit` a function that returns the bf_* result. Undefined
-# p-values (a saturated model, as on pilot data) are reported and skipped.
+# p-values (a saturated model) are reported and skipped.
 maybe_bayes_factor <- function(p_values, label, fit) {
   if (BAYES_FACTORS == "never") {
     return(invisible(NULL))

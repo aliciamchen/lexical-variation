@@ -62,20 +62,6 @@ check(
   )
 )
 
-# Historical coding: every scored answer counts, nothing is excluded.
-hist_lt <- listener_trials(acc_trials, acc_games, phase = 2,
-                           denominator = "submitted", exclusions = no_exclusions)
-check(
-  "the historical coding keeps all listener rows and drops only unscored ones",
-  nrow(hist_lt) == 5 &&
-    sum(!is.na(hist_lt$correct)) == 4 &&
-    is.na(hist_lt$correct[hist_lt$playerId == "p4"])
-)
-check(
-  "the historical coding counts a timeout the server scored false as incorrect",
-  hist_lt$correct[hist_lt$playerId == "p3"] == 0
-)
-
 # ── Technical exclusions ────────────────────────────────────────────────────
 
 excl_dir <- file.path(tempdir(), "excl")
@@ -149,13 +135,6 @@ check(
 check(
   "a social opportunity with no speaker message is excluded",
   !("p5" %in% sg$playerId)
-)
-hist_sg <- social_guess_trials(acc_guesses, acc_games, denominator = "submitted",
-                               exclusions = no_exclusions)
-check(
-  "the historical social coding keeps only submitted guesses",
-  nrow(hist_sg) == 4 && !("p3" %in% hist_sg$playerId) &&
-    abs(mean(hist_sg$correct, na.rm = TRUE) - 2 / 3) < 1e-12
 )
 
 # ── Reporting ───────────────────────────────────────────────────────────────

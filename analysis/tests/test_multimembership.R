@@ -165,7 +165,7 @@ check(
     max(abs(getME(m_pw, "theta") - getME(m_swapped, "theta"))) < 1e-6
 )
 
-# The separate-intercepts model is not invariant, so the pilot's estimates
+# The separate-intercepts model is not invariant, so its estimates
 # depend on an arbitrary ordering. Kept as a test so the difference between
 # the two structures stays visible.
 sep <- function(d) {

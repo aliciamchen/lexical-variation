@@ -12,12 +12,10 @@ Usage:
     uv run python analysis/extract_run.py list                          # list extracted runs
 
 The options of the default (extract) form may come in any order around the zip
-path. The pilot dataset is frozen: without --dataset (or DATASET) the script
-refuses to extract, so a full-sample export is never registered into it.
+path.
 """
 
 import argparse
-import os
 import re
 import shutil
 import sys
@@ -28,7 +26,6 @@ from pathlib import Path
 import pandas as pd
 
 from dataset_paths import (
-    FROZEN_DATASET,
     PROJECT_ROOT,
     RAW_CSV_FILES,
     RUNS_DIR,
@@ -174,16 +171,6 @@ def cmd_extract(
     register: bool = True,
 ):
     """Extract a single zip and, unless `register` is false, add it to the dataset's runs.txt."""
-    # The pilot dataset is complete and committed. Registering a new export into
-    # it by default -- which is what happens when neither --dataset nor DATASET is
-    # given -- would fold full-sample games into the pilot on the next combine.
-    if not dataset and not os.environ.get("DATASET"):
-        print(
-            "Refusing to extract into the default dataset 'pilots', which is frozen.\n"
-            "Pass --dataset full (or export DATASET=full) for full-sample sessions.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
     if zip_path_arg:
         zip_path = Path(zip_path_arg).resolve()
         if not zip_path.exists():
@@ -197,14 +184,6 @@ def cmd_extract(
     raw_dir = output_dir / "raw"
 
     dirs = dataset_dirs(dataset)
-    if dirs.name == FROZEN_DATASET and datetime_str not in dirs.read_runs():
-        print(
-            f"Refusing to add run {datetime_str} to the pilot dataset, which is frozen: "
-            f"only the runs already in {dirs.runs_file} may be re-extracted.\n"
-            "Pass --dataset full for a full-sample session.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
 
     print(f"Zip: {zip_path}")
     print(f"Output: {output_dir}")

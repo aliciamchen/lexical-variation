@@ -20,11 +20,11 @@ cd experiment && npm run test:unit    # server unit tests; Playwright only throu
 ## Hard rules
 
 - Never read or print `.env` or `experiment/.empirica/empirica.toml`, never print a participant (Prolific) id, and never put a hostname, organization name or token in a committed file. `.env.example` documents the variables.
-- `experiment/data/<timestamp>/` holds the raw exports and is read-only input: never edit, move or delete anything there. `data/full/`, `analysis/derived/full/`, `figures/meetings/`, `backups/`, `data/runs/` and `data/payments/` stay local until the RefBank release; the pilot's outputs in `data/pilots/` are committed.
-- `writing/` is gitignored, one Overleaf project per directory, synced through Dropbox. The preregistration and `analysis/SI_pilot.qmd` are frozen: do not change their text, models or figures. Statistics reach a manuscript only through generated `\newcommand` macros, never typed in.
+- `experiment/data/<timestamp>/` holds the raw exports and is read-only input: never edit, move or delete anything there. `data/full/`, `analysis/derived/full/`, `figures/meetings/`, `backups/`, `data/runs/` and `data/payments/` stay local until the RefBank release. The pilot dataset, its SI notebook and the LLM Phase 1 benchmark were retired from the working tree and remain at the git tag `pilot-archive`.
+- `writing/` is gitignored, one Overleaf project per directory, synced through Dropbox. The preregistration is frozen: do not change its text, models or figures. Statistics reach a manuscript only through generated `\newcommand` macros, never typed in.
 - In an interactive session, commit only when asked, on `main`, and do not push: the repository is public and the author publishes. Work the author will not watch (a cloud or background session, a worktree, or a self-contained piece such as the RefBank converter) goes on a branch named `agent/<topic>`: commit freely there, push it, and open a draft pull request for the author to review and merge. Never push to `main`, force-push or merge a pull request; a hook blocks these. Before committing, say what is uncommitted and leave out hunks you did not make: the author edits by hand and runs parallel sessions, so re-read a file before editing it and never revert an edit that is not yours.
 - A worktree or a cloud clone has none of the gitignored inputs (`.env` and `empirica.toml` are copied in through `.worktreeinclude`; the raw exports, `data/full/` and `analysis/derived/full/` are not), so data processing, renders and manuscript work stay in the main checkout.
-- LLM steps (the message filter, the Phase 1 simulation) spend Vertex AI credit: state the number of calls and get a yes first.
+- The message filter spends Vertex AI credit: state the number of calls and get a yes first.
 - The experiment code is the record of what ran. Change it for tests, documentation or a future deployment only, and never edit a test to make it pass or without saying so.
 - Hooks enforce the sharp edges (`.claude/settings.json`, mirrored in `.codex/hooks.json`): recursive deletes are blocked, the pre-commit check scans for identifiers and runs the test suites, and pushes to main, force pushes and pull-request merges are denied 
 
@@ -49,7 +49,7 @@ cd experiment && npm run test:unit    # server unit tests; Playwright only throu
 ## Sources of truth
 
 - Game configuration is `experiment/shared/constants.js` (`tests/helpers/constants.ts` re-exports it and `operations/game_constants.py` parses it); treatments are in `experiment/.empirica/treatments.yaml`; game logic is `experiment/server/src/callbacks.js` with pure modules beside it, every callback wrapped in `guard()`.
-- Analysis code is `analysis/config.R` and `analysis/R/`, which every notebook sources (tests in `analysis/tests/`), and `analysis/dataset_paths.py` on the Python side. Notebooks `00` to `05` write `writing/manuscript/stats/`; `SI_pilot.qmd` writes `writing/preregistration/stats/`.
+- Analysis code is `analysis/config.R` and `analysis/R/`, which every notebook sources (tests in `analysis/tests/`), and `analysis/dataset_paths.py` on the Python side. Notebooks `00` to `05` write `writing/manuscript/stats/`; `writing/preregistration/stats/` is frozen with the preregistration.
 - The per-dataset inputs (`runs.txt`, `exclude_games.txt`, `participant_exclusions.csv`, `integrity_exceptions.csv`, `payment_adjustments.csv`) are defined in `.claude/rules/data-pipeline.md`.
 - Fetch current library documentation with Context7 for R packages, Python libraries, Empirica and Playwright instead of working from memory.
 
@@ -61,7 +61,7 @@ cd experiment && npm run test:unit    # server unit tests; Playwright only throu
 | `.claude/rules/testing.md` | the Playwright suite and server unit tests |
 | `.claude/rules/sentry.md` | error monitoring in the client |
 | `.claude/rules/data-pipeline.md` | datasets, pipeline steps, notebooks, the definitions that are easy to get wrong |
-| `.claude/rules/llm-simulation.md` | the LLM Phase 1 benchmark and the message filter |
+| `.claude/rules/message-filter.md` | the LLM message filter |
 | `.claude/rules/operations.md` | payments, blocklist and the other Prolific tooling |
 | `.claude/rules/python-env.md` | uv and the Python environment |
 

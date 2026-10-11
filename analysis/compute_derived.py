@@ -6,7 +6,7 @@ phase-change), term retention/dominance, description properties, lexical
 uniqueness, UMAP projections, and other derived CSVs.
 
 Usage:
-    uv run python analysis/compute_derived.py data/pilots/ --output analysis/derived/pilots/
+    uv run python analysis/compute_derived.py data/full/ --output analysis/derived/full/
 """
 
 import argparse
@@ -795,7 +795,7 @@ def compute_social_guess_retention(
     if "speakerId" in sg.columns and sg["speakerId"].notna().any():
         merged = sg.copy()
     else:
-        # Exports without speaker attribution (the pilot's predate it): recover
+        # Exports without speaker attribution (before September 2026): recover
         # the speaker via the guesser's listener trial (roundId, currentGroup).
         sg = sg.drop(columns=[c for c in ("roundId", "currentGroup", "speakerId") if c in sg.columns])
         listener_trials = tr[tr["role"] == "listener"][

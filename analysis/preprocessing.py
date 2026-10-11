@@ -21,6 +21,7 @@ import pandas as pd
 from dataset_paths import (
     FILTERED_UTTERANCES_FILE,
     FILTERED_UTTERANCES_SIDECAR,
+    dataset_dirs,
     filtered_utterances_status,
 )
 
@@ -738,7 +739,7 @@ def build_trials(
     trials["lateClick"] = _late_arrival(
         pr, "late_click", "clicked", "clicked_at_deadline"
     )
-    # Participant-side timing (September 2026 onward; empty for the pilot).
+    # Participant-side timing (September 2026 onward).
     #
     # `clickedAt` is when the selection was committed to the server, which is
     # what the late-arrival audit needs. `tangramSelectedAt` is when the
@@ -869,12 +870,12 @@ def add_network_columns(
     The speaker of each trial's group, each listener's in-group status, and the
     group size are *derived* here from the trio membership in the table itself
     (the rows sharing a game, round, and currentGroup), which is the same
-    definition the R helper `attach_speaker()` uses. That keeps every export,
-    including the pilot, on one definition. The server has recorded its own
+    definition the R helper `attach_speaker()` uses. That keeps every export on
+    one definition. The server has recorded its own
     `speaker_id`, `in_group_listener`, and `group_size` on each player-round
     since September 2026; those are carried separately as `serverSpeakerId`,
     `serverInGroupListener`, and `serverGroupSize` by
-    `add_server_network_columns()` (empty for the pilot), and the integrity
+    `add_server_network_columns()`, and the integrity
     suite (`TestReshuffleNetwork`) checks that the derived and recorded values
     agree wherever the recorded ones exist.
 
@@ -924,8 +925,7 @@ def add_network_columns(
 
 
 # Server-recorded network attributes (September 2026 onward): the player-round
-# keys and the round keys, each with the trials.csv column it becomes. All are
-# empty for the pilot, whose exports predate them.
+# keys and the round keys, each with the trials.csv column it becomes.
 SERVER_PLAYER_ROUND_COLUMNS = {
     "speaker_id": "serverSpeakerId",
     "in_group_listener": "serverInGroupListener",
@@ -1188,7 +1188,7 @@ def build_messages(
                     "text": msg.get("text", ""),
                     "timestamp": msg.get("timestamp"),
                     # How the message was produced (recorded from September
-                    # 2026; absent in earlier exports, including the pilot).
+                    # 2026; absent in earlier exports).
                     # Both come from the sender's own clock, so composeMs below
                     # is a within-client interval.
                     "composeStartedAt": msg.get("composeStartedAt"),
@@ -1207,9 +1207,7 @@ def build_messages(
         # merge: without it, one sender posting twice inside the same
         # millisecond would silently lose a line of the transcript, which is
         # the study's data. Adding it cannot keep a duplicate copy, because the
-        # copies are identical by construction. (Checked against the pilot and
-        # a rapid-burst export: no key holds two distinct texts, so this does
-        # not change either output.)
+        # copies are identical by construction.
         messages = messages.drop_duplicates(
             subset=["roundId", "senderId", "timestamp", "text"]
         )
@@ -1567,8 +1565,8 @@ def main():
     parser.add_argument(
         "--output",
         "-o",
-        default="data/pilots/",
-        help="Output directory for the analysis-ready CSVs (data/<dataset>/; default: the pilot)",
+        default=None,
+        help="Output directory for the analysis-ready CSVs (default: data/<dataset>/ of the active dataset)",
     )
     parser.add_argument(
         "--exclusions",
@@ -1581,7 +1579,7 @@ def main():
     args = parser.parse_args()
 
     input_dir = Path(args.input_dir)
-    output_dir = Path(args.output)
+    output_dir = Path(args.output) if args.output else dataset_dirs().data
     output_dir.mkdir(parents=True, exist_ok=True)
     exclusions_path = (
         Path(args.exclusions) if args.exclusions else output_dir / PARTICIPANT_EXCLUSIONS_FILE

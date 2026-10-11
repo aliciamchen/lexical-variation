@@ -426,8 +426,8 @@ def test_build_players_exports_the_rotation_index_as_a_nullable_integer():
 # --- Session instrumentation -------------------------------------------------
 #
 # Timing, device, and engagement records added in September 2026. Every one of
-# them has to survive an export that predates it, because the pilot has none of
-# them and still has to process unchanged.
+# them has to survive an export that predates it, because the earliest sessions
+# lack some of them and still have to process unchanged.
 
 
 def _minimal_player_df(**extra):
@@ -1502,7 +1502,6 @@ class TestDropouts:
 # ── Utterance assembly, malformed JSON, and the command-line guards ─────────
 
 import extract_run  # noqa: E402
-from combine_runs import frozen_dataset_error  # noqa: E402
 from filter_nonreferential import (  # noqa: E402
     cached_labels,
     classified_frame,
@@ -1587,20 +1586,6 @@ class TestMalformedJsonReport:
         out = capsys.readouterr().out
         assert out.count("exitSurvey") == 1 and "2 value(s)" in out
         assert report_malformed_json() == {}  # reported once, then reset
-
-
-class TestFrozenPilotGuard:
-    def test_positional_runs_equal_to_runs_txt_pass(self):
-        assert frozen_dataset_error("pilots", ["b", "a"], ["a", "b"], False) is None
-
-    def test_other_runs_are_refused_unless_allowed(self):
-        message = frozen_dataset_error("pilots", ["c"], ["a", "b"], False)
-        assert message and "frozen" in message and "--allow-pilot" in message
-        assert frozen_dataset_error("pilots", ["c"], ["a", "b"], True) is None
-
-    def test_other_datasets_and_the_default_form_are_never_blocked(self):
-        assert frozen_dataset_error("full", ["c"], [], False) is None
-        assert frozen_dataset_error("pilots", [], ["a"], False) is None
 
 
 class TestExtractRunCommandLine:

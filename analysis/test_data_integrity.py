@@ -1,8 +1,8 @@
 """
 Data integrity tests for preprocessed experiment data.
 
-Validates the preprocessed CSV files of one dataset (data/<dataset>/, the
-pilot sessions by default) against the preregistered specifications and the
+Validates the preprocessed CSV files of one dataset (data/<dataset>/, the full
+sample by default) against the preregistered specifications and the
 experiment's server-side logic.
 
 Run with:
@@ -46,15 +46,14 @@ LISTENER_CORRECT_POINTS = 2
 SPEAKER_MAX_POINTS_PER_ROUND = 2
 SOCIAL_GUESS_CORRECT_POINTS = 6
 SOCIAL_SPEAKER_POINTS_PER_CORRECT = 6
-# Data directory for the dataset under test ($DATASET, default pilots)
+# Data directory for the dataset under test ($DATASET, default full)
 DATASET = dataset_dirs()
 DATA_DIR = DATASET.data
 RAW_DIR = DATASET.raw
 DERIVED_DIR = DATASET.derived
 
-# The pilot runs were collected with BONUS_PER_POINT = 0.05; every later
-# dataset uses the production rate in experiment/shared/constants.js.
-BONUS_PER_POINT = 0.05 if DATASET.name == "pilots" else 0.0556
+# The production bonus rate in experiment/shared/constants.js
+BONUS_PER_POINT = 0.0556
 BONUS_PER_POINT_SOCIAL = 0.023
 
 # Names from constants.js
@@ -344,7 +343,7 @@ class TestGameStructure:
     def test_active_groups_min_is_the_smallest_phase2_roster(self, games, trials):
         """activeGroupsMin is the fewest groups any Phase 2 trial was played
         with. It is bounded by the design, and where the server recorded no
-        reshuffle count (the pilot) it must equal what the trials show."""
+        reshuffle count it must equal what the trials show."""
         assert "activeGroupsMin" in games.columns
         assert games["activeGroupsMin"].notna().all()
         assert games["activeGroupsMin"].between(1, NUM_GROUPS).all()
@@ -1030,14 +1029,14 @@ class TestReshuffleNetwork:
         name the same player the trio membership does."""
         recorded = trials[trials["serverSpeakerId"].notna()]
         if recorded.empty:
-            pytest.skip("serverSpeakerId is empty in this dataset (the pilot exports predate it)")
+            pytest.skip("serverSpeakerId is empty in this dataset")
         mismatch = recorded[recorded["serverSpeakerId"] != recorded["speakerId"]]
         assert mismatch.empty, f"{len(mismatch)} rows where the server's speaker_id is not the derived speakerId"
 
     def test_server_in_group_record_matches_the_derived_flag(self, trials):
         listeners = trials[(trials["role"] == "listener") & trials["serverInGroupListener"].notna()]
         if listeners.empty:
-            pytest.skip("serverInGroupListener is empty in this dataset (the pilot exports predate it)")
+            pytest.skip("serverInGroupListener is empty in this dataset")
         server = _truthy(listeners["serverInGroupListener"])
         derived = _truthy(listeners["inGroupSpeaker"])
         assert (server == derived).all(), (
@@ -1047,7 +1046,7 @@ class TestReshuffleNetwork:
     def test_server_group_size_matches_the_derived_size(self, trials):
         recorded = trials[trials["serverGroupSize"].notna()]
         if recorded.empty:
-            pytest.skip("serverGroupSize is empty in this dataset (the pilot exports predate it)")
+            pytest.skip("serverGroupSize is empty in this dataset")
         assert (recorded["serverGroupSize"].astype(int) == recorded["groupSize"].astype(int)).all(), (
             "the server's group_size disagrees with the number of players in the group"
         )
@@ -1057,7 +1056,7 @@ class TestReshuffleNetwork:
         listener, pairs) must describe the groups the trials show."""
         recorded = trials[trials["reshuffleGroups"].notna()]
         if recorded.empty:
-            pytest.skip("reshuffle counts were not recorded in this dataset (the pilot exports predate them)")
+            pytest.skip("reshuffle counts were not recorded in this dataset")
         for (gid, rid), r in recorded.groupby(["gameId", "roundId"]):
             groups = [g for _, g in r.groupby("currentGroup")]
             trios = [g for g in groups if len(g) == GROUP_SIZE]
@@ -1082,7 +1081,7 @@ class TestReshuffleNetwork:
         listener, and 'reduced' must mean at least one was not."""
         recorded = trials[trials["reshuffleMode"].notna()]
         if recorded.empty:
-            pytest.skip("reshuffleMode was not recorded in this dataset (pilot exports predate it)")
+            pytest.skip("reshuffleMode was not recorded in this dataset")
         for (gid, rid), r in recorded.groupby(["gameId", "roundId"]):
             all_ok = all(
                 len(g) == GROUP_SIZE

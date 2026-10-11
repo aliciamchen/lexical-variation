@@ -8,12 +8,9 @@ provenance info. The runs default to the timestamps listed in
 data/<dataset>/runs.txt.
 
 Usage:
-    uv run python analysis/combine_runs.py                       # runs from data/pilots/runs.txt
-    uv run python analysis/combine_runs.py --dataset full        # runs from data/full/runs.txt
-    uv run python analysis/combine_runs.py --dataset full 20260301_132907 20260301_214147
-
-Positional runs for the frozen pilot dataset must be exactly the runs in
-data/pilots/runs.txt; --allow-pilot overrides that guard deliberately.
+    uv run python analysis/combine_runs.py                       # runs from data/full/runs.txt
+    uv run python analysis/combine_runs.py --dataset smoke       # runs from data/smoke/runs.txt
+    uv run python analysis/combine_runs.py --dataset smoke 20260301_132907 20260301_214147
 """
 
 import argparse
@@ -25,7 +22,6 @@ from pathlib import Path
 import pandas as pd
 
 from dataset_paths import (
-    FROZEN_DATASET,
     RAW_CSV_FILES,
     RUNS_DIR,
     TIMESTAMP_DIR_PATTERN,
@@ -350,9 +346,9 @@ def split_dropouts(
 def enforce_anonymization(combined: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Strip sensitive Prolific columns if any slipped through extraction.
 
-    The output directory (data/<dataset>/raw_anonymized/) is committed for the
-    pilot and released for the full sample, so anonymization is guaranteed
-    here regardless of how the per-run raw/ files were produced.
+    The output directory (data/<dataset>/raw_anonymized/) is released with the
+    full sample, so anonymization is guaranteed here regardless of how the
+    per-run raw/ files were produced.
     """
     player_df = combined.get("player.csv")
     if player_df is None:
@@ -409,29 +405,6 @@ def write_manifest(
     print(f"  Manifest written to {manifest_path}")
 
 
-def frozen_dataset_error(
-    dataset: str, runs: list[str], registered: list[str], allow_pilot: bool
-) -> str | None:
-    """Why positional runs may not rebuild the frozen pilot dataset, or None.
-
-    The pilot is complete and committed; `combine_runs.py --dataset pilots
-    <runs>` with runs other than those in data/pilots/runs.txt would rewrite
-    its raw_anonymized/ from different exports. The default (no positional
-    runs) always reads runs.txt and is never blocked, and `--allow-pilot`
-    states the intent when the pilot really is to be rebuilt.
-    """
-    if dataset != FROZEN_DATASET or not runs or allow_pilot:
-        return None
-    if sorted(runs) == sorted(registered):
-        return None
-    return (
-        f"the '{FROZEN_DATASET}' dataset is frozen: the runs given "
-        f"({' '.join(sorted(runs))}) are not the runs in its runs.txt "
-        f"({' '.join(sorted(registered)) or 'none'}). Pass --allow-pilot to rebuild the "
-        "pilot from these exports anyway, or --dataset <name> for another dataset."
-    )
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Combine raw CSVs from extracted runs into data/<dataset>/raw_anonymized/"
@@ -441,20 +414,9 @@ def main():
         help="Run timestamps (default: the entries of data/<dataset>/runs.txt)"
     )
     add_dataset_argument(parser)
-    parser.add_argument(
-        "--allow-pilot", action="store_true",
-        help=(
-            f"Allow positional runs that differ from data/{FROZEN_DATASET}/runs.txt for the "
-            f"frozen '{FROZEN_DATASET}' dataset"
-        ),
-    )
     args = parser.parse_args()
 
     dirs = dataset_dirs(args.dataset)
-    error = frozen_dataset_error(dirs.name, args.runs, dirs.read_runs(), args.allow_pilot)
-    if error:
-        print(f"Error: {error}", file=sys.stderr)
-        sys.exit(1)
     if not args.runs:
         args.runs = dirs.read_runs()
         if not args.runs:

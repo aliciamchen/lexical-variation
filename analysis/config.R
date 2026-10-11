@@ -21,10 +21,9 @@ suppressPackageStartupMessages({
 #   analysis/derived/<name>/   derived metrics and model caches
 #   figures/<name>/            notebook figures
 # The active dataset comes from the DATASET environment variable (default
-# "pilots"); a notebook that is tied to one dataset, such as SI_pilot.qmd,
-# calls use_dataset("pilots") after sourcing this file.
+# "full").
 
-DEFAULT_DATASET <- "pilots"
+DEFAULT_DATASET <- "full"
 
 # Refuse a speaker_utterances_filtered.csv that was not built from the current
 # messages.csv. The filtered file is derived from messages.csv through the
@@ -105,11 +104,10 @@ use_dataset()
 
 # ── Writing projects ─────────────────────────────────────────
 # Each manuscript is its own Overleaf project under writing/ (gitignored,
-# mirrored to Overleaf through Dropbox). The SI notebooks write their stats
-# macros and figures into the preregistration; notebooks 00-05 write theirs
-# into writing/manuscript/stats/, the article's project, of which only that
-# directory exists until the author creates the Overleaf clone.
-prereg_dir <- here("writing", "preregistration")
+# mirrored to Overleaf through Dropbox). Notebooks 00-05 write their stats
+# macros into writing/manuscript/stats/, the article's project, of which only
+# that directory exists until the author creates the Overleaf clone;
+# writing/preregistration/ is frozen with the preregistration.
 manuscript_dir <- here("writing", "manuscript")
 
 # Where a full-sample notebook writes its statistics macros
@@ -126,11 +124,11 @@ stats_file <- function(notebook) {
 }
 
 # ── Dataset banner ───────────────────────────────────────────
-# Every full-sample notebook prints this right after its setup chunk, in a
-# chunk with results = "asis", so the rendered page says which dataset it was
-# built from. The pilot stands in for the full sample until that exists; a
-# render on the pilot gets a warning callout so its numbers are never read as
-# results. `games` (the loaded games table) adds the game count.
+# Every notebook prints this right after its setup chunk, in a chunk with
+# results = "asis", so the rendered page says which dataset it was built from.
+# A render on any dataset other than the full sample gets a warning callout,
+# because the statistics macros it writes to `writing/manuscript/stats/` are
+# then not results. `games` (the loaded games table) adds the game count.
 dataset_banner <- function(name = DATASET, games = NULL) {
   n_games <- if (is.data.frame(games) && "condition" %in% names(games)) {
     sum(!is.na(games$condition))
@@ -143,22 +141,18 @@ dataset_banner <- function(name = DATASET, games = NULL) {
     name,
     if (is.na(n_games)) "" else sprintf(" (%d games with a condition)", n_games)
   )
-  if (name == DEFAULT_DATASET) {
+  if (name == "full") {
+    kind <- "note"
+    title <- "Dataset: full"
+    body <- where
+  } else {
     kind <- "warning"
-    title <- "Pilot data, not the full sample"
+    title <- sprintf("Dataset: %s, not the full sample", name)
     body <- paste(
       where,
-      "The pilot has one game per condition, so the game-level contrasts,",
-      "Bayes factors, and between-game intervals below are not estimable or",
-      "not meaningful; this render exercises the preregistered code and its",
-      "numbers are not results. The statistics macros it writes to",
-      "`writing/manuscript/stats/` are placeholders; render with",
-      "`DATASET=full` for the full sample."
+      "The statistics macros this render writes to `writing/manuscript/stats/`",
+      "are not results; render with `DATASET=full` for the full sample."
     )
-  } else {
-    kind <- "note"
-    title <- sprintf("Dataset: %s", name)
-    body <- where
   }
   txt <- sprintf("\n::: {.callout-%s}\n## %s\n%s\n:::\n\n", kind, title, body)
   cat(txt)

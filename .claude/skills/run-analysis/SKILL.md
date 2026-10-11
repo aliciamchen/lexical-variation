@@ -1,12 +1,12 @@
 ---
 name: run-analysis
-description: Use when rendering the preregistered analysis notebooks (analysis/00_*.qmd to 05_*.qmd) against the full sample or the pilot, checking the statistics macros they write for the manuscript, or planning the long Bayes-factor render -- "render the notebooks", "run the confirmatory analyses", "rerun 02 on full", "regenerate the stats macros".
+description: Use when rendering the preregistered analysis notebooks (analysis/00_*.qmd to 05_*.qmd) against the full sample, checking the statistics macros they write for the manuscript, or planning the long Bayes-factor render -- "render the notebooks", "run the confirmatory analyses", "rerun 02 on full", "regenerate the stats macros".
 allowed-tools: Bash, Read, Edit, Grep, Glob
 ---
 
 # Render the analysis notebooks
 
-The notebooks `analysis/00_data_overview.qmd` to `05_exit_survey.qmd` are the preregistered analyses (`.claude/rules/data-pipeline.md` has the table and the stats-to-LaTeX flow). They read the dataset that `DATASET` names through `analysis/config.R`, which refuses a filtered-utterance file whose sidecar does not match `messages.csv`, and each writes its statistics as `\newcommand` macros to `writing/manuscript/stats/<notebook>.tex` (`overview`, `checks`, `primary`, `secondary`, `exploratory`, `survey`), with names prefixed by notebook and no digits in them. Rendered HTML goes to `_output/`. Without `DATASET` they run on the pilot, which exercises the code but gives no results and says so in a banner.
+The notebooks `analysis/00_data_overview.qmd` to `05_exit_survey.qmd` are the preregistered analyses (`.claude/rules/data-pipeline.md` has the table and the stats-to-LaTeX flow). They read the dataset that `DATASET` names through `analysis/config.R`, which refuses a filtered-utterance file whose sidecar does not match `messages.csv`, and each writes its statistics as `\newcommand` macros to `writing/manuscript/stats/<notebook>.tex` (`overview`, `checks`, `primary`, `secondary`, `exploratory`, `survey`), with names prefixed by notebook and no digits in them. Rendered HTML goes to `_output/`. `DATASET` defaults to `full`; a render on any other dataset, such as `smoke`, gets a warning banner and its macros are not results.
 
 1. **Check the data first.** `make test DATASET=full` must pass, and the dataset must be the one the render should report (`data/full/runs.txt`, the exclusion files, the classifier check). A render on data that are about to change is wasted hours.
 
@@ -20,8 +20,6 @@ The notebooks `analysis/00_data_overview.qmd` to `05_exit_survey.qmd` are the pr
 
    `auto` computes a Bayes factor for the non-significant planned contrasts, `always` for every one. The cache survives reruns on unchanged data.
 
-4. **Check the outputs.** Every stats file has a `% AUTO-GENERATED` header and must not be hand-edited; `grep -c newcommand writing/manuscript/stats/*.tex` shows how many macros each notebook wrote, and a macro that moved by more than rounding since the last render is worth a sentence in the report. The notebooks save no figures yet: figures for the article are a pending item (`figures/full/` is empty), and `bash figures/sync_figures.sh writing/manuscript` copies `SI_*.pdf` into the article's project once both exist. Never run the sync against `writing/preregistration/`, whose group-specificity figure was edited by hand.
+4. **Check the outputs.** Every stats file has a `% AUTO-GENERATED` header and must not be hand-edited; `grep -c newcommand writing/manuscript/stats/*.tex` shows how many macros each notebook wrote, and a macro that moved by more than rounding since the last render is worth a sentence in the report. The notebooks save no figures yet: figures for the article are a pending item (`figures/full/` is empty), and `bash figures/sync_figures.sh writing/manuscript` copies `figures/full/` into the article's project once figures exist. The script refuses `writing/preregistration/`, whose figures are frozen with the preregistration.
 
-5. **The pilot SI is frozen.** `SI_pilot.qmd` writes `writing/preregistration/stats/pilot.tex` for the preregistration and renders only on `pilots` (`make notebooks` with no `DATASET`, or `make pilot`); do not change what it reports.
-
-6. **Report**: the dataset and its game count, the Bayes-factor setting, the warnings and simplification steps worth knowing, and where the macros went. The `build-paper` skill takes it from there. Do not commit rendered HTML or stats files unless asked.
+5. **Report**: the dataset and its game count, the Bayes-factor setting, the warnings and simplification steps worth knowing, and where the macros went. The `build-paper` skill takes it from there. Do not commit rendered HTML or stats files unless asked.

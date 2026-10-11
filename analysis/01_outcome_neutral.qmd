@@ -24,8 +24,7 @@ The separate eligibility and robustness-analysis rules remain unchanged.
 
 Gray trajectories below show individual game means; bold trajectories show
 the arithmetic mean across available games in each condition and block.
-These descriptive plots have no inferential pass/fail threshold. Historical
-four-condition pilot models are preserved separately in `SI_pilot.qmd`.
+These descriptive plots have no inferential pass/fail threshold.
 
 ```{r setup, message=FALSE, warning=FALSE}
 library(lme4)

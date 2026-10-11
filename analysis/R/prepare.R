@@ -105,13 +105,8 @@ add_global_block <- function(df, games) {
 # denominator rather than counting as failures, and observations made
 # unanswerable by a documented technical failure become NA.
 #
-# `denominator = "submitted"` counts only scored answers, dropping
-# nonresponse, and is kept for comparison with that coding. It is not the
-# preregistered rule and must not be used for reported results. None of this
-# touches the live Phase 1 accuracy screening in
+# None of this touches the live Phase 1 accuracy screening in
 # experiment/server/src/accuracy.js.
-
-DENOMINATOR_RULES <- c("opportunity", "submitted")
 
 # A dataset without a responseOpportunity column cannot apply the rule; say so
 # rather than silently reporting the submitted-answers denominator.
@@ -255,7 +250,7 @@ apply_participant_exclusions <- function(df) {
 # submitted answer with no score did not arrive in time. The explicit late
 # flag says the same thing, and is what identifies these rows as late
 # arrivals rather than anomalies; it is checked as well because it is the
-# recorded reason, and because pilot exports predate it.
+# recorded reason.
 #
 # Rows flagged by a post-hoc participant exclusion (`excluded == TRUE`) keep
 # their place in the opportunity frame with an NA outcome, so they are counted
@@ -272,19 +267,6 @@ code_accuracy <- function(df, submitted, late, scored_correct) {
     apply_participant_exclusions()
 }
 
-# The pre-2026-09-16 coding, kept only so the pilot SI reports the numbers it
-# was written with: whatever the server scored, with unscored answers dropped
-# by the na.rm in each summary. Never use it for the full sample.
-code_accuracy_historical <- function(df, scored_correct) {
-  df |>
-    mutate(
-      scoredCorrect = as_correct({{ scored_correct }}),
-      onTime = !is.na(scoredCorrect),
-      lateArrival = FALSE,
-      correct = scoredCorrect
-    )
-}
-
 # ── Phase 1 tables for convention-formation checks ───────────────────────────
 
 phase1_utterances <- function(speaker_utts) {
@@ -297,18 +279,12 @@ phase1_utterances <- function(speaker_utts) {
 
 phase1_listener_trials <- function(
   trials,
-  denominator = "opportunity",
   exclusions = technical_exclusions()
 ) {
-  denominator <- match.arg(denominator, DENOMINATOR_RULES)
-  out <- trials |>
+  trials |>
     filter(phaseNum == 1, role == "listener") |>
     mutate(tangram = target) |>
-    add_group_id()
-  if (denominator == "submitted") {
-    return(code_accuracy_historical(out, clickedCorrect))
-  }
-  out |>
+    add_group_id() |>
     require_opportunity_columns(
       c("responseOpportunity", "lateClick", "clicked"),
       "trials"
@@ -321,10 +297,9 @@ phase1_listener_trials <- function(
 # Proportion of listeners correct per round (the unit of the accuracy model)
 phase1_round_accuracy <- function(
   trials,
-  denominator = "opportunity",
   exclusions = technical_exclusions()
 ) {
-  phase1_listener_trials(trials, denominator, exclusions) |>
+  phase1_listener_trials(trials, exclusions = exclusions) |>
     group_by(gameId, roundId, blockNum, tangram, group) |>
     summarise(
       ref_accuracy = mean(correct, na.rm = TRUE),
@@ -348,7 +323,7 @@ phase1_adjacent <- function(adjacent_sim) {
 
 # Keep all four conditions for descriptive reporting, but only the shared
 # Phase 1 procedure for the H1/H2 starting-state trend checks. No check outcome
-# determines eligibility here. Historical pilot preparation remains unchanged.
+# determines eligibility here.
 #
 # `accuracy` is the round-level proportion correct (for the descriptive
 # plots); `listener_trials` is the listener-trial frame with the 0/1 `correct`
@@ -412,27 +387,20 @@ listener_trials <- function(
   games,
   phase = 2,
   conditions = NULL,
-  denominator = "opportunity",
   exclusions = technical_exclusions()
 ) {
-  denominator <- match.arg(denominator, DENOMINATOR_RULES)
   levels <- if (is.null(conditions)) CONDITION_ORDER else conditions
   # `.env$phase`: the trials table has its own `phase` column ("refgame"), which
   # the data mask would otherwise pick over this argument
-  out <- trials |> filter(phaseNum == .env$phase, role == "listener")
-  out <- if (denominator == "submitted") {
-    code_accuracy_historical(out, clickedCorrect)
-  } else {
-    out |>
-      require_opportunity_columns(
-        c("responseOpportunity", "lateClick", "clicked"),
-        "trials"
-      ) |>
-      filter(responseOpportunity) |>
-      code_accuracy(!is.na(clicked), lateClick, clickedCorrect) |>
-      apply_technical_exclusions(exclusions, "referential")
-  }
-  out |>
+  trials |>
+    filter(phaseNum == .env$phase, role == "listener") |>
+    require_opportunity_columns(
+      c("responseOpportunity", "lateClick", "clicked"),
+      "trials"
+    ) |>
+    filter(responseOpportunity) |>
+    code_accuracy(!is.na(clicked), lateClick, clickedCorrect) |>
+    apply_technical_exclusions(exclusions, "referential") |>
     add_condition(games, levels) |>
     center_block()
 }
@@ -722,29 +690,20 @@ social_guess_trials <- function(
   social_guesses,
   games,
   conditions = SOCIAL_CONDITIONS,
-  denominator = "opportunity",
   exclusions = technical_exclusions()
 ) {
   if (!has_rows(social_guesses)) {
     return(tibble())
   }
-  denominator <- match.arg(denominator, DENOMINATOR_RULES)
   levels <- if (is.null(conditions)) CONDITION_ORDER else conditions
-  out <- if (denominator == "submitted") {
-    social_guesses |>
-      filter(!is.na(socialGuess)) |>
-      code_accuracy_historical(socialGuessCorrect)
-  } else {
-    social_guesses |>
-      require_opportunity_columns(
-        c("responseOpportunity", "socialTimeout", "lateSocialGuess"),
-        "social_guesses"
-      ) |>
-      filter(responseOpportunity) |>
-      code_accuracy(!socialTimeout, lateSocialGuess, socialGuessCorrect) |>
-      apply_technical_exclusions(exclusions, "social")
-  }
-  out |>
+  social_guesses |>
+    require_opportunity_columns(
+      c("responseOpportunity", "socialTimeout", "lateSocialGuess"),
+      "social_guesses"
+    ) |>
+    filter(responseOpportunity) |>
+    code_accuracy(!socialTimeout, lateSocialGuess, socialGuessCorrect) |>
+    apply_technical_exclusions(exclusions, "social") |>
     add_condition(games, levels) |>
     center_block()
 }

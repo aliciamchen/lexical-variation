@@ -7,7 +7,7 @@ produced by extract_run.py + combine_runs.py), and the outputs go to
 data/<dataset>/ and analysis/derived/<dataset>/.
 
 Usage:
-    uv run python analysis/process_data.py                          # run full pipeline on $DATASET (default pilots)
+    uv run python analysis/process_data.py                          # run full pipeline on $DATASET (default full)
     uv run python analysis/process_data.py --dataset full           # another dataset
     uv run python analysis/process_data.py --skip-filter            # skip Vertex AI step
     uv run python analysis/process_data.py --skip-derived           # skip SBERT step

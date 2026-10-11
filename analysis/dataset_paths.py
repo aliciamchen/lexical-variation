@@ -4,8 +4,8 @@ Dataset layout shared by the pipeline scripts.
 (The module is named dataset_paths rather than datasets so it cannot shadow the
 Hugging Face `datasets` package that sentence-transformers imports.)
 
-The pipeline is keyed by a dataset name (`pilots` for the pilot sessions,
-`full` for the full sample). Every dataset follows the same
+The pipeline is keyed by a dataset name (`full` for the full sample, `smoke`
+for the throwaway dataset `make smoke` writes). Every dataset follows the same
 layout, so switching datasets is a single environment variable or flag rather
 than a set of edited paths:
 
@@ -20,7 +20,7 @@ Per-run extracts are dataset-agnostic and go to data/runs/<timestamp>/.
 in sync.
 
 The active dataset is, in order of precedence, an explicit `--dataset`
-argument, the `DATASET` environment variable, or `pilots`.
+argument, the `DATASET` environment variable, or `full`.
 """
 
 from __future__ import annotations
@@ -32,11 +32,7 @@ import re
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DATASET = "pilots"
-# The pilot is complete and committed. extract_run.py and combine_runs.py refuse
-# to add exports to it or rebuild it from other exports without an explicit
-# override, so a full-sample session can never be folded into it by accident.
-FROZEN_DATASET = "pilots"
+DEFAULT_DATASET = "full"
 RUNS_DIR = PROJECT_ROOT / "data" / "runs"
 
 # Per-run extract directories under data/runs/ are named by export timestamp.

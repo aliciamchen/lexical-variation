@@ -1,14 +1,13 @@
 # Exit-survey responses.
 #
-# The survey was revamped in 2026: page 1 asks whether the instructions were
-# understood, two 7-point items on identification with and closeness to the
-# Phase 1 group, whether the group developed its own way of describing the
-# pictures, and the strategy; page 2 asks whether the participant felt they
-# were playing with humans, plus age, gender, education, pay fairness, and
-# feedback. Players removed at the Phase 1 accuracy check answer both pages
-# too. The pilot predates the revamp: it has the strategy under `strength`
-# and none of the group or felt-human items, so every consumer must check
-# `has_field()` before using an item.
+# Page 1 of the survey asks whether the instructions were understood, two
+# 7-point items on identification with and closeness to the Phase 1 group,
+# whether the group developed its own way of describing the pictures, and the
+# strategy; page 2 asks whether the participant felt they were playing with
+# humans, plus age, gender, education, pay fairness, and feedback. Players
+# removed at the Phase 1 accuracy check answer both pages too. `has_field()`
+# says whether an item has any answer in a survey table, so a consumer can
+# skip an item nobody answered.
 #
 # Tests: analysis/tests/test_survey.R
 
@@ -28,7 +27,7 @@ SURVEY_FIELDS <- c(
 
 # One row per respondent (any survey field answered) in a real game, with the
 # exitSurvey_ prefix removed, condition, and whether the player completed the
-# game or was removed. The pilot's `strength` is folded into `strategy`.
+# game or was removed.
 exit_survey_responses <- function(players, games) {
   survey_cols <- grep("^exitSurvey_", names(players), value = TRUE)
   if (length(survey_cols) == 0) {
@@ -50,17 +49,6 @@ exit_survey_responses <- function(players, games) {
         "removed"
       )
     )
-  if ("strength" %in% names(df)) {
-    df <- df |>
-      mutate(
-        strategy = if ("strategy" %in% names(df)) {
-          coalesce(as.character(strategy), as.character(strength))
-        } else {
-          as.character(strength)
-        }
-      ) |>
-      select(-strength)
-  }
   for (item in c("groupIdentification", "groupCloseness", "age")) {
     if (item %in% names(df)) {
       df[[item]] <- suppressWarnings(as.numeric(df[[item]]))

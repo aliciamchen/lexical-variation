@@ -46,7 +46,7 @@ INTACT_TARGET_PER_CONDITION = 20
 
 
 def active_dataset():
-    """DATASET, defaulting to `full`: never the frozen pilot."""
+    """The dataset named by DATASET, defaulting to `full`."""
     return os.environ.get("DATASET") or "full"
 
 

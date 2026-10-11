@@ -62,7 +62,7 @@ report_odds_ratios <- function(model, level = 0.95) {
 #        adjusted difference from the contrast, in group-specificity units.
 #
 # The OLS contrast remains the inferential test in both cases. Returns NA when
-# either condition has fewer than two games (e.g. the pilot).
+# either condition has fewer than two games.
 cohens_d_games <- function(df, value, condition, a, b) {
   x <- df[[value]][df[[condition]] == a]
   y <- df[[value]][df[[condition]] == b]

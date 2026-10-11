@@ -3,13 +3,13 @@
 # Notebooks pass their numbers to the manuscripts only as \newcommand macros in
 # a stats/*.tex file that main.tex \input's. `write_stats_tex()` writes such a
 # file from a named list, checks that every name is a legal LaTeX command name
-# (letters only, so \pilotNGames is fine and \pilotN2 is not), and refuses
+# (letters only, so \primaryNGames is fine and \primaryN2 is not), and refuses
 # duplicates.
 #
 # Usage:
 #   macros <- list()
-#   macros <- c(macros, list(pilotNGames = n_games, pilotBetaLen = sprintf("%.3f", b)))
-#   write_stats_tex(macros, file.path(prereg_dir, "stats", "pilot.tex"), source = "analysis/SI_pilot.qmd")
+#   macros <- c(macros, list(primaryNGames = n_games, primaryHOneEst = sprintf("%.3f", b)))
+#   write_stats_tex(macros, stats_file("primary"), source = "analysis/02_primary_analysis.qmd")
 #
 # Tests: analysis/tests/test_stats_tex.R
 

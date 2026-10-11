@@ -108,7 +108,7 @@ check(
     lk$ci_low[lk$condition == "social_mixed"] < 4.5
 )
 
-# Pilot-era survey: strategy under `strength`, no group or felt-human items
+# A survey table without the group or felt-human items
 players_old <- tibble(
   gameId = "g2",
   playerId = c("q1", "q2"),
@@ -121,23 +121,16 @@ players_old <- tibble(
   exitSurvey_education = "bachelor",
   exitSurvey_understood = "yes",
   exitSurvey_fair = "yes",
-  exitSurvey_strength = c("describe shapes", "copy others"),
+  exitSurvey_strategy = c("describe shapes", "copy others"),
   exitSurvey_feedback = c("", "great")
 )
 o <- exit_survey_responses(players_old, games)
 check(
-  "the pilot's strength field becomes strategy",
-  "strategy" %in%
-    names(o) &&
-    !"strength" %in% names(o) &&
-    o$strategy[1] == "describe shapes"
-)
-check(
-  "items the pilot never asked are absent",
+  "items without a column are absent",
   !has_field(o, "groupIdentification") && !has_field(o, "feltHuman")
 )
 check(
-  "felt_human_flags is empty when the item was not asked",
+  "felt_human_flags is empty when the item has no column",
   nrow(felt_human_flags(o)) == 0
 )
 check(
