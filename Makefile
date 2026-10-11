@@ -24,10 +24,10 @@
 #   make sync           # copy results/<name>/stats and figures into writing/manuscript/
 # `make all` runs data, test, models and paper in that order.
 #
-# Reproducing from the released tables (no raw exports): put the release's
-# tables/, classifier/ and measures/ under data/full/, then
+# Reproducing from the processed tables alone (no raw exports): with a
+# dataset's tables/, classifier/ and measures/ under data/full/,
 #   make model-inputs models paper
-# or regenerate the measures first with `make measures`.
+# rebuilds everything downstream; `make measures` regenerates the measures first.
 #
 # The model scripts are real Make targets: results/<name>/estimates/<family>/<name>.csv
 # is built by models/<family>/<name>.R and depends on the data it reads, the
@@ -201,7 +201,7 @@ models: $(ESTIMATES)  ## Fit the model scripts whose estimates are out of date (
 
 # A data file a model needs but the dataset does not have yet
 $(TABLES_DIR)/%.csv $(MEASURES_DIR)/%.csv $(MODEL_INPUTS_DIR)/%.csv:
-	$(error $@ is missing: build the dataset first (make data; or make measures model-inputs from released tables))
+	$(error $@ is missing: build the dataset first (make data; or make measures model-inputs from the processed tables))
 
 bayes-factors: $(ESTIMATES_DIR)/primary/bayes_factors.csv  ## Only the Bayes factor script (BAYES_FACTORS=auto|always|never)
 

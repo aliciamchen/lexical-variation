@@ -59,13 +59,13 @@ make test
 
 This runs the data integrity suite on the dataset (`full` unless `DATASET` names another), the Python unit tests for the preprocessing, the measures and the paper layer, and the R tests for the model helpers. The integrity suite checks the tables against the experiment's design and server logic, rebuilds the utterances from the chat log, recomputes the similarity tables from the saved embeddings, and reconciles the processed tables with the raw ones. It needs the dataset, so on a clone without `data/full/` it stops with a message that says so, while the unit tests run anywhere.
 
-Once the data are released, a reader puts the released `tables/`, `classifier/` and `measures/` directories under `data/full/` and runs
+The results reproduce from the processed tables alone. With a dataset's `tables/`, `classifier/` and `measures/` directories under `data/full/`,
 
 ```bash
 make model-inputs models paper
 ```
 
-which rebuilds the model inputs, fits every model and writes the macros and figures into `results/full/`, to be compared with the committed ones. `make measures` recomputes the similarity tables and description properties from the utterances first; it needs the sentence-transformer model and takes a few minutes. The steps before that, from the raw exports to the tables, need the exports themselves and Vertex AI credit for the message filter, and are the author's.
+rebuilds the model inputs, fits every model and writes the macros and figures into `results/full/`, to be compared with the committed ones. `make measures` recomputes the similarity tables and description properties from the utterances first; it needs the sentence-transformer model and takes a few minutes. The steps before that, from the raw exports to the tables, need the exports themselves and Vertex AI credit for the message filter.
 
 ## The data
 
