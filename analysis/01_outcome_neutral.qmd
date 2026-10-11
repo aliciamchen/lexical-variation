@@ -278,6 +278,55 @@ if (nrow(p1_pairwise) > 0) {
 } # end has_pairwise
 ```
 
+# 5. Dropout and survey checks
+
+Two further preregistered checks, neither of which gates anything. Dropout:
+the preregistration commits to testing whether removal differs across
+conditions (paper, "Dropout handling"). Players are clustered in games, so the
+chi-square on removed players is descriptive; Fisher's exact test on the games
+that stayed complete takes the game as the unit. Survey: the two 7-point
+group-identification items and whether participants noticed their group
+developing its own way of describing the pictures are manipulation checks,
+compared across conditions with Kruskal-Wallis and chi-square tests. The
+counts and means themselves are written by `analysis/descriptives.py`.
+
+```{r dropout-and-survey-checks}
+pa <- player_attrition(players, games)
+status <- game_status(players, games)
+dropout_tests <- differential_dropout_tests(pa, status)
+if (!is.null(dropout_tests$players)) {
+  cat("Players removed by condition (chi-square; players are clustered in games, so treat as descriptive):\n")
+  print(dropout_tests$players)
+}
+if (!is.null(dropout_tests$games)) {
+  cat("\nComplete nine-player games by condition (Fisher's exact test; the game is the unit):\n")
+  print(dropout_tests$games)
+}
+
+survey <- exit_survey_responses(players, games)
+survey_tests <- list()
+for (item in c("groupIdentification", "groupCloseness")) {
+  if (has_field(survey, item)) {
+    item_data <- survey |> filter(!is.na(.data[[item]]))
+    if (n_distinct(item_data$condition) >= 2) {
+      cat(sprintf("\n%s by condition (Kruskal-Wallis):\n", item))
+      survey_tests[[item]] <- kruskal.test(item_data[[item]] ~ item_data$condition)
+      print(survey_tests[[item]])
+    }
+  }
+}
+if (has_field(survey, "groupLanguage")) {
+  item_data <- survey |> filter(!is.na(groupLanguage))
+  if (n_distinct(item_data$condition) >= 2) {
+    cat("\nNoticed group-specific language, by condition (chi-square):\n")
+    survey_tests$groupLanguage <- suppressWarnings(
+      chisq.test(table(droplevels(item_data$condition), item_data$groupLanguage))
+    )
+    print(survey_tests$groupLanguage)
+  }
+}
+```
+
 # Summary of convention-formation checks
 
 ```{r summary-table}
@@ -360,6 +409,26 @@ if (exists("gs_results") && "singular" %in% names(gs_results)) {
     checksNGamesSingularGS = sum(gs_results$singular %in% TRUE)
   ))
 }
+
+# The dropout and survey checks: statistic, degrees of freedom and p-value of
+# each test (Fisher's exact test has only a p-value), so the paper can report
+# them as checks.
+htest_macros <- function(prefix, test) {
+  if (is.null(test)) return(list())
+  out <- list()
+  if (!is.null(test$statistic)) out[[paste0(prefix, "Stat")]] <- fmt_stat(unname(test$statistic), 2)
+  if (!is.null(test$parameter)) out[[paste0(prefix, "Df")]] <- unname(test$parameter)
+  out[[paste0(prefix, "P")]] <- fmt_pval(test$p.value)
+  out
+}
+macros <- c(
+  macros,
+  htest_macros("checksDropoutPlayers", dropout_tests$players),
+  htest_macros("checksDropoutGames", dropout_tests$games),
+  htest_macros("checksSurveyIdentification", survey_tests$groupIdentification),
+  htest_macros("checksSurveyCloseness", survey_tests$groupCloseness),
+  htest_macros("checksSurveyGroupLanguage", survey_tests$groupLanguage)
+)
 
 write_stats_tex(macros, stats_file("checks"), source = "analysis/01_outcome_neutral.qmd")
 ```
