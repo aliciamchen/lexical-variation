@@ -56,3 +56,14 @@ def test_run_figure_refuses_a_module_whose_data_is_not_a_table(tmp_path):
     module.plot = lambda df: plt.figure()
     with pytest.raises(TypeError, match="must return a DataFrame"):
         run_figure(module, types.SimpleNamespace(figures=tmp_path))
+
+
+def test_save_figure_is_byte_identical_from_run_to_run(tmp_path):
+    def make():
+        fig, ax = plt.subplots()
+        ax.plot([1, 2], [3, 4])
+        return fig
+
+    first, _ = save_figure(make(), pd.DataFrame({"x": [1]}), "same", tmp_path / "a")
+    second, _ = save_figure(make(), pd.DataFrame({"x": [1]}), "same", tmp_path / "b")
+    assert first.read_bytes() == second.read_bytes()

@@ -53,7 +53,8 @@ def save_figure(fig, data: pd.DataFrame, name: str, figures_dir: Path) -> tuple[
     figures_dir.mkdir(parents=True, exist_ok=True)
     pdf = figures_dir / f"{name}.pdf"
     csv = figures_dir / f"{name}.csv"
-    fig.savefig(pdf)
+    # No creation date in the PDF, so an unchanged figure is byte-identical from run to run.
+    fig.savefig(pdf, metadata={"CreationDate": None})
     plt.close(fig)
     data.to_csv(csv, index=False)
     return pdf, csv

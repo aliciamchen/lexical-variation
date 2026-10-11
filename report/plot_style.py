@@ -100,6 +100,7 @@ REFERENCE_LINE = dict(color=MUTED, linestyle="--", linewidth=0.8)  # chance, zer
 SINGLE_COLUMN = (3.5, 2.7)
 DOUBLE_COLUMN = (7.2, 3.0)
 DOUBLE_COLUMN_TALL = (7.2, 5.4)
+SLIDE = (10.0, 5.6)  # a 16:9 slide; pair it with apply_style(scale=2)
 
 FONT_FAMILY = ["Arial Nova", "Helvetica Neue", "Arial", "DejaVu Sans"]
 
@@ -111,22 +112,26 @@ def _register_local_fonts() -> None:
             font_manager.fontManager.addfont(path)
 
 
-def apply_style() -> None:
-    """Set the matplotlib defaults every figure shares."""
+def apply_style(scale: float = 1.0) -> None:
+    """Set the matplotlib defaults every figure shares.
+
+    `scale` multiplies the type sizes: 1 for the article's column widths, about 2
+    for a figure drawn at SLIDE size.
+    """
     _register_local_fonts()
     plt.rcParams.update(
         {
             "font.family": "sans-serif",
             "font.sans-serif": FONT_FAMILY,
-            "font.size": 8,
-            "axes.titlesize": 9,
+            "font.size": 8 * scale,
+            "axes.titlesize": 9 * scale,
             "axes.titleweight": "normal",
-            "axes.labelsize": 8,
-            "xtick.labelsize": 7,
-            "ytick.labelsize": 7,
-            "legend.fontsize": 7,
+            "axes.labelsize": 8 * scale,
+            "xtick.labelsize": 7 * scale,
+            "ytick.labelsize": 7 * scale,
+            "legend.fontsize": 7 * scale,
             "legend.frameon": False,
-            "legend.title_fontsize": 7,
+            "legend.title_fontsize": 7 * scale,
             "axes.grid": False,
             "axes.spines.top": False,
             "axes.spines.right": False,
