@@ -1,6 +1,6 @@
-/.quarto/
 **/*.quarto_ipynb
 _output/
+.quarto/
 .Rproj.user
 scaffolding.R
 .Rhistory
