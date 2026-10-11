@@ -1,37 +1,49 @@
 """
-Dataset layout shared by the pipeline scripts.
+Dataset and results layout shared by the pipeline, the models and the paper layer.
 
 (The module is named dataset_paths rather than datasets so it cannot shadow the
 Hugging Face `datasets` package that sentence-transformers imports.)
 
-The pipeline is keyed by a dataset name (`full` for the full sample, `smoke`
+Everything is keyed by a dataset name (`full` for the full sample, `smoke`
 for the throwaway dataset `make smoke` writes). Every dataset follows the same
 layout, so switching datasets is a single environment variable or flag rather
-than a set of edited paths:
+than a set of edited paths. The data tree holds what the pipeline makes from
+the exports, the results tree what the models and the paper layer make from
+the data:
 
-    data/<name>/              the hand-written inputs: runs.txt (the export
-                              timestamps combined into the dataset) and the
-                              exclusion and exception files
-    data/<name>/raw/          the anonymized raw Empirica tables and their
-                              manifest.json (combine_runs.py)
-    data/<name>/tables/       the analysis-ready tables (preprocessing.py;
-                              dropouts.csv from combine_runs.py; the filtered
-                              utterances and their sidecar from the filter)
-    data/<name>/classifier/   the message filter's label cache, model record
-                              and the author's annotation check
-    data/<name>/derived/      embeddings, similarity tables and description
-                              properties (compute_derived.py)
-    data/<name>/frames/       the model-input frames (build_frames.py)
-    data/<name>/estimates/    the model estimates the notebooks write for the
-                              figures and the descriptive macros
-    data/<name>/cache/        model caches the notebooks keep between renders
-    figures/<name>/           the article's figures
+    data/<name>/                 the hand-written inputs: runs.txt (the export
+                                 timestamps combined into the dataset) and the
+                                 exclusion and exception files
+    data/<name>/raw/             the anonymized raw Empirica tables and their
+                                 manifest.json (combine_runs.py)
+    data/<name>/tables/          the analysis-ready tables (preprocessing.py;
+                                 dropouts.csv from combine_runs.py; the filtered
+                                 utterances and their sidecar from the filter)
+    data/<name>/classifier/      the message filter's label cache, model record
+                                 and the author's annotation check
+    data/<name>/measures/        the measures computed from the descriptions:
+                                 embeddings, similarity tables and description
+                                 properties (compute_measures.py)
+    data/<name>/model_inputs/    the aggregated tables the models are fit to
+                                 (build_model_inputs.py)
+    data/<name>/cache/           fitted objects the model scripts keep between
+                                 runs (permutation results, brms fits, the H4
+                                 fits the robustness and Bayes-factor scripts
+                                 reuse); never committed
+    results/<name>/estimates/    the tidy estimates tables each model script
+                                 writes, with a manifest.json (models/)
+    results/<name>/stats/        the LaTeX macro files the manuscript reads
+                                 (paper/inferential.py, paper/descriptives.py)
+    results/<name>/figures/      the article's figures, each with the table it
+                                 plots beside it (paper/figures/)
 
-Everything generated sits one level down, so a file at the top of the dataset
-directory is one somebody wrote by hand.
+Everything generated sits one level down in the data tree, so a file at the
+top of the dataset directory is one somebody wrote by hand. The results tree
+is committed; `make sync` copies its stats and figures into the manuscript's
+Overleaf project.
 
 Per-run extracts are dataset-agnostic and go to data/runs/<timestamp>/.
-`analysis/config.R` mirrors this layout for the Quarto notebooks; keep the two
+`models/config.R` mirrors this layout for the R model scripts; keep the two
 in sync.
 
 The active dataset is, in order of precedence, an explicit `--dataset`
@@ -92,11 +104,13 @@ class DatasetDirs:
         self.raw = self.data / "raw"
         self.tables = self.data / "tables"
         self.classifier = self.data / "classifier"
-        self.derived = self.data / "derived"
-        self.frames = self.data / "frames"
-        self.estimates = self.data / "estimates"
+        self.measures = self.data / "measures"
+        self.model_inputs = self.data / "model_inputs"
         self.cache = self.data / "cache"
-        self.figures = PROJECT_ROOT / "figures" / name
+        self.results = PROJECT_ROOT / "results" / name
+        self.estimates = self.results / "estimates"
+        self.stats = self.results / "stats"
+        self.figures = self.results / "figures"
 
     def read_runs(self) -> list[str]:
         """Export timestamps listed in runs.txt (blank lines and # comments ignored)."""

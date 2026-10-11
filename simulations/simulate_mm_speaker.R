@@ -1,5 +1,5 @@
 # Design-matched simulations for the shared multiple-membership speaker
-# intercept (analysis/R/multimembership.R).
+# intercept (models/R/multimembership.R).
 #
 #   Rscript simulations/simulate_mm_speaker.R [--reps N] [--out FILE]
 #
@@ -31,7 +31,7 @@
 # sd_target 0.06-0.12, sigma 0.18-0.20, same_group 0.36-0.42).
 
 suppressPackageStartupMessages({
-  source(here::here("analysis", "config.R"))
+  source(here::here("models", "config.R"))
 })
 
 # ── Design and truth ────────────────────────────────────────────────────────

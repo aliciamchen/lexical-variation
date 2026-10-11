@@ -53,7 +53,7 @@ INPUTS_DIR = DATASET.data
 RAW_DIR = DATASET.raw
 TABLES_DIR = DATASET.tables
 CLASSIFIER_DIR = DATASET.classifier
-DERIVED_DIR = DATASET.derived
+MEASURES_DIR = DATASET.measures
 
 # The production bonus rate in experiment/shared/constants.js
 BONUS_PER_POINT = 0.0556
@@ -2809,13 +2809,13 @@ class TestUtteranceAssembly:
         assert (merged["utterance"].str.strip() != "").all(), "an empty utterance was kept"
 
 
-# The utterance table the derived step read (the filtered file when it is
+# The utterance table the measures step read (the filtered file when it is
 # current, else the unfiltered one), with the row position of every utterance,
 # which is its row in embeddings.npy.
 @pytest.fixture(scope="session")
 def derived_utterances():
-    if not (DERIVED_DIR / "embeddings.npy").exists():
-        pytest.skip(f"no derived tables for dataset '{DATASET.name}'")
+    if not (MEASURES_DIR / "embeddings.npy").exists():
+        pytest.skip(f"no measures for dataset '{DATASET.name}'")
     status, detail = filtered_utterances_status(TABLES_DIR)
     if status == "current":
         name = FILTERED_UTTERANCES_FILE
@@ -2832,7 +2832,7 @@ def derived_utterances():
 
 @pytest.fixture(scope="session")
 def unit_embeddings(derived_utterances):
-    embeddings = np.load(DERIVED_DIR / "embeddings.npy").astype("float64")
+    embeddings = np.load(MEASURES_DIR / "embeddings.npy").astype("float64")
     assert embeddings.shape[0] == len(derived_utterances), (
         f"embeddings.npy has {embeddings.shape[0]} rows for {len(derived_utterances)} utterances"
     )
@@ -2874,7 +2874,7 @@ def _latest_per_speaker(utterances, keys):
 
 
 def _window_utterances(utterances, games, window):
-    """compute_derived.get_window_utterances: the final three blocks of a
+    """compute_measures.get_window_utterances: the final three blocks of a
     phase, or the first three of Phase 2, per game."""
     blocks = games.set_index("gameId")[["phase1Blocks", "phase2Blocks"]]
     p1 = utterances["gameId"].map(blocks["phase1Blocks"]).fillna(6).astype(int)
@@ -2914,7 +2914,7 @@ def _canonical_pairs(frame, paired_columns):
 
 
 def _assert_pairs_agree(table, expected, keys, unit_embeddings, what):
-    """`table` (a derived similarity table) holds exactly the pairs in
+    """`table` (a similarity table from the measures step) holds exactly the pairs in
     `expected`, with the same groups and the cosine of the two embeddings."""
     assert len(table) == len(expected), f"{what}: {len(table)} rows, {len(expected)} pairs expected"
     table = _canonical_pairs(
@@ -2948,7 +2948,7 @@ class TestDerivedTables:
 
     def test_pairwise_windows_hold_every_pair_of_latest_descriptions(self, derived_utterances, unit_embeddings):
         games = pd.read_csv(TABLES_DIR / "games.csv", dtype={"gameId": str})
-        table = pd.read_csv(DERIVED_DIR / "pairwise_similarities.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
+        table = pd.read_csv(MEASURES_DIR / "pairwise_similarities.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
         expected = pd.concat(
             [
                 _pairs_of(_latest_per_speaker(_window_utterances(derived_utterances, games, window), ["gameId", "target"]), ["gameId", "target"]).assign(window=window)
@@ -2964,8 +2964,8 @@ class TestDerivedTables:
         assert (merged["participantPair"] == pairs).all(), "participantPair is not the sorted speaker pair"
 
     def test_jaccard_table_scores_the_same_pairs_by_content_word_overlap(self, derived_utterances, unit_embeddings, content_words):
-        sbert = pd.read_csv(DERIVED_DIR / "pairwise_similarities.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
-        jaccard = pd.read_csv(DERIVED_DIR / "pairwise_similarities_jaccard.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
+        sbert = pd.read_csv(MEASURES_DIR / "pairwise_similarities.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
+        jaccard = pd.read_csv(MEASURES_DIR / "pairwise_similarities_jaccard.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
         keys = ["gameId", "target", "window", "speaker1", "speaker2", "group1", "group2", "sameGroup"]
         assert sbert[keys].equals(jaccard[keys]), "the Jaccard table's rows are not the SBERT table's rows in order"
         games = pd.read_csv(TABLES_DIR / "games.csv", dtype={"gameId": str})
@@ -2986,7 +2986,7 @@ class TestDerivedTables:
         assert np.nanmax(np.abs(got - expected), initial=0) < 1e-9, "Jaccard similarity differs from the content-word overlap"
 
     def test_block_table_pairs_the_latest_descriptions_up_to_each_block(self, derived_utterances, unit_embeddings):
-        table = pd.read_csv(DERIVED_DIR / "block_pairwise_similarities.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
+        table = pd.read_csv(MEASURES_DIR / "block_pairwise_similarities.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
         blocks_present = derived_utterances[["gameId", "phaseNum", "blockNum"]].drop_duplicates()
         latest_by_block = []
         for block in sorted(derived_utterances["blockNum"].unique()):
@@ -3003,12 +3003,12 @@ class TestDerivedTables:
         flag = per_group.groupby(keys)["n"].agg(lambda n: int(len(n) >= 2 and (n >= 2).all())).rename("flag").reset_index()
         merged = merged.merge(flag, on=keys, how="left")
         assert (merged["allGroupsPaired"] == merged["flag"]).all(), "allGroupsPaired does not follow the start rule"
-        jaccard = pd.read_csv(DERIVED_DIR / "block_pairwise_similarities_jaccard.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
+        jaccard = pd.read_csv(MEASURES_DIR / "block_pairwise_similarities_jaccard.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
         same = keys + ["speaker1", "speaker2", "group1", "group2", "sameGroup", "allGroupsPaired"]
         assert table[same].equals(jaccard[same]), "the Jaccard block table's rows are not the SBERT block table's rows in order"
 
     def test_adjacent_similarity_compares_each_description_with_the_groups_previous_one(self, derived_utterances, unit_embeddings):
-        table = pd.read_csv(DERIVED_DIR / "adjacent_similarities.csv", dtype={"gameId": str, "playerId": str})
+        table = pd.read_csv(MEASURES_DIR / "adjacent_similarities.csv", dtype={"gameId": str, "playerId": str})
         ordered = derived_utterances.sort_values(
             ["gameId", "originalGroup", "target", "phaseNum", "blockNum", "trialNum", "playerId"], kind="stable"
         )

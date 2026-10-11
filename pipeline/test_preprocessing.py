@@ -1371,16 +1371,16 @@ class TestExclusionEndToEnd:
         assert "groupIdentification" in pd.read_csv(raw / "player.csv").set_index("id").loc["A0", "exitSurvey"]
 
     def test_the_derived_step_sees_only_the_remaining_speakers(self, tmp_path, monkeypatch):
-        """The derived measures are computed from the post-exclusion utterances.
+        """The measures are computed from the post-exclusion utterances.
 
-        Separate from the test above, and skipped where the derived stack is not
+        Separate from the test above, and skipped where the sentence-transformer stack is not
         installed, because CI deliberately runs this file without nltk and the
         sentence-transformer dependencies (see .github/workflows/ci.yml). Keeping
         it in the same test cost CI the preprocessing assertions too, which are
         the ones worth having there.
         """
         pytest.importorskip("nltk")
-        from pipeline.compute_derived import compute_lexical_uniqueness
+        from pipeline.compute_measures import compute_lexical_uniqueness
 
         raw = _raw_dataset(tmp_path)
         out = tmp_path / "data"
@@ -1740,7 +1740,7 @@ class TestAnalysisColumns:
 
 
 class TestCodedOutcomes:
-    """The same cases as analysis/tests/test_accuracy_denominator.R: one listener
+    """The same cases as models/tests/test_accuracy_denominator.R: one listener
     of each kind, so the Python column and the R helper agree by construction."""
 
     def trials(self):

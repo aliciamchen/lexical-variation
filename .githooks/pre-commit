@@ -12,10 +12,9 @@
 #    committed by accident; this makes that a hard stop.
 # 2. Server unit tests, when staged files touch experiment/server/src/ or
 #    experiment/shared/ (vitest, seconds).
-# 3. R helper tests, when staged files touch analysis/R/, analysis/tests/, or
-#    analysis/config.R.
+# 3. R tests, when staged files touch models/.
 # 4. Data integrity and Python unit tests, when staged files touch
-#    pipeline/, paper/, operations/ or data/<dataset>/.
+#    pipeline/, paper/, operations/, data/<dataset>/ or results/.
 #
 # Playwright end-to-end tests are deliberately not run here; they take many
 # minutes. Pass STAGED_FILES (newline separated) to check a given list instead
@@ -69,16 +68,16 @@ $(tail -n 60 /tmp/precommit-unit.log)"
 fi
 
 # ── 3. R helper tests ───────────────────────────────────────
-if printf '%s\n' "$staged" | grep -qE '^analysis/(R/|tests/|config\.R$)'; then
+if printf '%s\n' "$staged" | grep -qE '^models/'; then
   if command -v Rscript >/dev/null 2>&1; then
-    Rscript analysis/tests/run_all.R >/tmp/precommit-r.log 2>&1 \
-      || fail "Commit blocked: R helper tests failed (Rscript analysis/tests/run_all.R).
+    Rscript models/tests/run_all.R >/tmp/precommit-r.log 2>&1 \
+      || fail "Commit blocked: R helper tests failed (Rscript models/tests/run_all.R).
 $(tail -n 30 /tmp/precommit-r.log)"
   fi
 fi
 
 # ── 4. Data integrity and Python unit tests ─────────────────
-if printf '%s\n' "$staged" | grep -qE '^(pipeline/|paper/|data/[^/]+/|operations/)'; then
+if printf '%s\n' "$staged" | grep -qE '^(pipeline/|paper/|data/[^/]+/|results/|operations/)'; then
   if command -v uv >/dev/null 2>&1; then
     uv run pytest -q >/tmp/precommit-py.log 2>&1 \
       || fail "Commit blocked: Python tests failed (uv run pytest).

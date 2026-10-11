@@ -65,7 +65,7 @@ def read_player_removals(path):
     """{gameId: (players, removed)} from a players.csv; {} when it cannot say.
 
     A removed player is one whose `isActive` is false, which is how
-    analysis/R/attrition.R defines it, so the two agree on what an intact game
+    models/R/attrition.R defines it, so the two agree on what an intact game
     is.
     """
     if not path.exists():

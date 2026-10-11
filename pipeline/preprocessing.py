@@ -1541,7 +1541,7 @@ def build_social_guesses(
     for guesses that arrived by the Selection deadline, so it is empty both
     for a nonresponse and for a late guess. Which of those a row is comes from
     socialTimeout and lateSocialGuess, and the 0/1 outcome is built from them
-    in the analysis (analysis/R/prepare.R) rather than here.
+    in the analysis (models/R/prepare.R) rather than here.
     """
     pr = drop_last_changed_cols(player_round_df)
     pr = pr[pr["phase"] == "refgame"].copy()
@@ -1711,7 +1711,7 @@ def retire_stale_filtered_utterances(output_dir: Path) -> bool:
         print("  Rerun filter_nonreferential.py classify + apply to rebuild it.")
         return True
     if status == "unverified":
-        print(f"  Warning: {detail}; compute_derived.py will refuse it until the filter is rerun")
+        print(f"  Warning: {detail}; compute_measures.py will refuse it until the filter is rerun")
     elif status == "current":
         print(f"  {detail}")
     return False

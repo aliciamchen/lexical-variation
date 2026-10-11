@@ -1,17 +1,17 @@
 """
-Analysis pipeline: raw tables → processed tables → derived metrics → frames.
+The processing steps: raw tables → processed tables → measures → model inputs.
 
 Operates on one dataset (see dataset_paths.py for the layout): the anonymized
 raw tables in data/<dataset>/raw/ must already exist (written by extract_run.py
-and combine_runs.py), and the outputs go to data/<dataset>/tables/, derived/
-and frames/.
+and combine_runs.py), and the outputs go to data/<dataset>/tables/, measures/
+and model_inputs/.
 
 Usage:
     uv run python -m pipeline.process_data                          # run full pipeline on $DATASET (default full)
     uv run python -m pipeline.process_data --dataset full           # another dataset
     uv run python -m pipeline.process_data --skip-filter            # skip Vertex AI step
-    uv run python -m pipeline.process_data --skip-derived           # skip SBERT step
-    uv run python -m pipeline.process_data --skip-frames            # skip the model-input frames
+    uv run python -m pipeline.process_data --skip-measures          # skip the SBERT step
+    uv run python -m pipeline.process_data --skip-model-inputs      # skip the model inputs
 """
 
 import argparse
@@ -57,29 +57,29 @@ def step_filter_messages(dataset: str) -> None:
     run_step("filter_nonreferential", "apply", "--dataset", dataset)
 
 
-def step_compute_derived(dataset: str, utterances_file: str | None = None) -> None:
-    """Run compute_derived.py: embeddings, similarity tables and description properties."""
-    banner("Step 3: Computing derived metrics")
+def step_compute_measures(dataset: str, utterances_file: str | None = None) -> None:
+    """Run compute_measures.py: embeddings, similarity tables and description properties."""
+    banner("Step 3: Computing the measures")
     args = ["--dataset", dataset]
     if utterances_file:
         args += ["--utterances-file", utterances_file]
-    run_step("compute_derived", *args)
+    run_step("compute_measures", *args)
 
 
-def step_build_frames(dataset: str) -> None:
-    """Run build_frames.py: the model-input frames from the processed and derived tables."""
-    banner("Step 4: Building the model-input frames")
-    run_step("build_frames", "--dataset", dataset)
+def step_build_model_inputs(dataset: str) -> None:
+    """Run build_model_inputs.py: the model inputs from the tables and the measures."""
+    banner("Step 4: Building the model inputs")
+    run_step("build_model_inputs", "--dataset", dataset)
 
 
 def choose_utterances_file(tables_dir: Path) -> str | None:
-    """Which utterance file the derived step should read when the filter was skipped.
+    """Which utterance file the measures step should read when the filter was skipped.
 
     Preprocessing has already deleted a filtered file that no longer matches
-    messages.csv; what can remain is a current one (use it), none (the derived
+    messages.csv; what can remain is a current one (use it), none (the measures
     step falls back to the unfiltered file on its own), or one whose sidecar is
     missing. That last case is refused downstream, so the fallback is chosen
-    here and announced: the derived metrics will include non-referential
+    here and announced: the measures will include non-referential
     messages until the filter is rerun.
     """
     status, detail = filtered_utterances_status(tables_dir)
@@ -87,16 +87,16 @@ def choose_utterances_file(tables_dir: Path) -> str | None:
         print(f"  Using {FILTERED_UTTERANCES_FILE}: {detail}")
         return None
     if status == "absent":
-        print("  No filtered utterances; the derived metrics use speaker_utterances.csv")
+        print("  No filtered utterances; the measures use speaker_utterances.csv")
         return None
     warn = "!" * 60
     print(f"\n{warn}")
     print(f"WARNING: {stale_filtered_message(status, detail)}")
     print("Falling back to speaker_utterances.csv (unfiltered) because --skip-filter was given.")
-    print("The derived metrics therefore include non-referential messages; run")
+    print("The measures therefore include non-referential messages; run")
     print("  uv run python -m pipeline.filter_nonreferential classify --dataset <name>")
     print("  uv run python -m pipeline.filter_nonreferential apply    --dataset <name>")
-    print("and recompute the derived metrics before analyzing them.")
+    print("and recompute the measures before analyzing them.")
     print(f"{warn}\n")
     return "speaker_utterances.csv"
 
@@ -108,10 +108,10 @@ def main():
     add_dataset_argument(parser)
     parser.add_argument("--skip-filter", action="store_true",
                         help="Skip non-referential message filtering (requires Vertex AI)")
-    parser.add_argument("--skip-derived", action="store_true",
-                        help="Skip computing derived metrics (SBERT embeddings, similarity tables, description properties)")
-    parser.add_argument("--skip-frames", action="store_true",
-                        help="Skip building the model-input frames (needs the derived tables)")
+    parser.add_argument("--skip-measures", action="store_true",
+                        help="Skip computing the measures (SBERT embeddings, similarity tables, description properties)")
+    parser.add_argument("--skip-model-inputs", action="store_true",
+                        help="Skip building the model inputs (needs the measures)")
     args = parser.parse_args()
 
     dirs = dataset_dirs(args.dataset)
@@ -133,20 +133,20 @@ def main():
     else:
         step_filter_messages(dirs.name)
 
-    if args.skip_derived:
-        banner("Skipping derived metrics (--skip-derived)")
+    if args.skip_measures:
+        banner("Skipping the measures (--skip-measures)")
     else:
-        step_compute_derived(dirs.name, utterances_file)
+        step_compute_measures(dirs.name, utterances_file)
 
-    if args.skip_frames:
-        banner("Skipping the model-input frames (--skip-frames)")
+    if args.skip_model_inputs:
+        banner("Skipping the model inputs (--skip-model-inputs)")
     else:
-        step_build_frames(dirs.name)
+        step_build_model_inputs(dirs.name)
 
     banner("Pipeline complete!")
-    print(f"  Tables:  {dirs.tables}")
-    print(f"  Derived: {dirs.derived}")
-    print(f"  Frames:  {dirs.frames}")
+    print(f"  Tables:       {dirs.tables}")
+    print(f"  Measures:     {dirs.measures}")
+    print(f"  Model inputs: {dirs.model_inputs}")
 
 
 if __name__ == "__main__":
