@@ -1,17 +1,16 @@
 """
 The one description of how the article's figures look.
 
-Every figure script imports its palette, labels, markers, sizes and matplotlib
-settings from here and defines none of its own, so a change here changes every
-figure. The R config keeps a ggplot theme and palette for the diagnostic plots
-the notebooks still draw; the article's figures come from Python and this file.
+Every figure module in paper/figures/ imports its palette, labels, markers,
+sizes and matplotlib settings from here and defines none of its own, so a
+change here changes every figure. The R model scripts draw nothing.
 
 Usage:
-    from paper.plot_style import CONDITION_COLORS, SINGLE_COLUMN, apply_style, save_fig
+    from paper.plot_style import CONDITION_COLORS, SINGLE_COLUMN, apply_style
     apply_style()
     fig, ax = plt.subplots(figsize=SINGLE_COLUMN)
     ...
-    save_fig(fig, "group_specificity")   # figures/<dataset>/group_specificity.pdf
+    # paper.figures saves the figure beside the table it plots
 """
 
 from __future__ import annotations
@@ -23,7 +22,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
-from pipeline.dataset_paths import dataset_dirs
 
 # ── Conditions and groups ────────────────────────────────────
 
@@ -182,23 +180,6 @@ def add_reference_line(ax, y: float, label: str | None = None) -> None:
         )
 
 
-def save_fig(fig, name: str, dataset: str | None = None, formats=("pdf",)) -> list[Path]:
-    """Save a figure as figures/<dataset>/<name>.<format> and close it.
-
-    The dataset is the active one unless given, so the figures of a smoke
-    dataset never land beside the article's.
-    """
-    out_dir = dataset_dirs(dataset).figures
-    out_dir.mkdir(parents=True, exist_ok=True)
-    paths = []
-    for fmt in formats:
-        path = out_dir / f"{name}.{fmt}"
-        fig.savefig(path)
-        paths.append(path)
-    plt.close(fig)
-    return paths
-
-
 __all__ = [
     "CONDITION_ORDER",
     "SOCIAL_CONDITIONS",
@@ -229,7 +210,6 @@ __all__ = [
     "format_condition",
     "add_phase_boundary",
     "add_reference_line",
-    "save_fig",
 ]
 
 matplotlib.use(matplotlib.get_backend())  # keep the caller's backend
