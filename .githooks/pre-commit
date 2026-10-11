@@ -80,8 +80,8 @@ fi
 # ── 4. Data integrity and Python unit tests ─────────────────
 if printf '%s\n' "$staged" | grep -qE '^(pipeline/|analysis/[^/]+\.py|data/[^/]+/|operations/)'; then
   if command -v uv >/dev/null 2>&1; then
-    uv run pytest pipeline/test_data_integrity.py pipeline/test_compute_derived.py pipeline/test_preprocessing.py pipeline/test_build_frames.py analysis/test_stats_tex.py analysis/test_descriptives.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q >/tmp/precommit-py.log 2>&1 \
-      || fail "Commit blocked: Python tests failed (uv run pytest analysis/test_*.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py).
+    uv run pytest -q >/tmp/precommit-py.log 2>&1 \
+      || fail "Commit blocked: Python tests failed (uv run pytest).
 $(tail -n 60 /tmp/precommit-py.log)"
   fi
 fi

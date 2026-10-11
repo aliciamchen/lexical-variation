@@ -14,7 +14,7 @@ analysis/derived/  derived metrics per dataset: embeddings, similarity tables, f
 analysis/results/  the model estimates the notebooks write for the figures and the descriptive macros
 data/              one directory per dataset; data/README.md is the codebook
 operations/        the Prolific tooling (payments, blocklist, tally) and procedures.md, the record of how a session was run
-figures/           the figures, per dataset
+figures/           the article's figures per dataset, and figures/manual/ for the hand-made ones (the Illustrator source, the schematic and condition diagrams, the avatar designs)
 writing/           Overleaf projects, one per manuscript (not committed; synced through Overleaf)
 ```
 
@@ -28,8 +28,6 @@ cd experiment && npm install && cd ..          # the game and its Playwright tes
 uv sync                                        # Python
 Rscript -e 'renv::restore()'                   # R
 ```
-
-The `rpy2` package needs R installed first, and the Cairo-based packages may need `brew install cairo pango` on macOS.
 
 The analyses need no credentials. Running or deploying the experiment and the Prolific tooling read a `.env` file at the repository root, created with `cp .env.example .env` and filled in (the variables are documented in the example), and running the game locally needs `experiment/.empirica/empirica.toml`, created from `empirica.toml.example` with fresh random values. Both files are gitignored because they hold a hostname, an organization name and tokens. Contributors should also run `git config core.hooksPath .githooks`: the pre-commit hook refuses a commit that stages a participant identifier and runs the tests for whatever the commit touches. GitHub Actions runs the server unit tests and the preprocessing unit tests on every push.
 

@@ -16,7 +16,7 @@
 #   make combine        # stack runs → data/<name>/raw_anonymized/
 #   make process        # preprocess → filter → derived metrics → model-input frames
 #   make frames         # only the model-input frames (fast; needs processed and derived tables)
-#   make test           # validate processed data (pytest integrity suite)
+#   make test           # every test; make test-unit for the Python unit tests alone
 #   make payments       # what each Prolific study still owes → data/payments/<name>/
 #   make tally          # games per condition and tangram set; stopping-rule progress
 #   make notebooks      # render the analysis notebooks (models and inferential macros)
@@ -53,7 +53,7 @@ ZIPS = $(foreach run,$(RUNS),$(call zip_for_run,$(run)))
 # The preregistered analysis notebooks, rendered on the active dataset
 NOTEBOOKS = analysis/checks.qmd analysis/primary.qmd analysis/secondary.qmd
 
-.PHONY: all extract combine process process-no-filter frames payments sync-blocklist tally final-exports notebooks descriptives test test-ops smoke runs help
+.PHONY: all extract combine process process-no-filter frames payments sync-blocklist tally final-exports notebooks descriptives test test-unit test-ops smoke runs help
 
 # ── Main targets ────────────────────────────────────────────
 
@@ -97,12 +97,15 @@ tally: ## Games per (condition, tangram set) cell and progress against the stopp
 final-exports: ## Stage the final export of each server period, plus every server log, in backups/final_exports/ for the off-site backup
 	uv run python operations/final_exports.py --dataset $(DATASET)
 
-test: ## Validate processed data against the integrity suite and run the Python and R helper tests
-	uv run pytest pipeline/test_data_integrity.py pipeline/test_compute_derived.py pipeline/test_preprocessing.py pipeline/test_build_frames.py analysis/test_stats_tex.py analysis/test_descriptives.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q
+test: ## Every test: the integrity suite on the active dataset, the Python unit tests and the R helper tests
+	uv run pytest -q
 	Rscript analysis/tests/run_all.R
 
-test-ops: ## Run only the operations tests: payments, blocklist sync, tally, Prolific client (no API calls, no data needed)
-	uv run pytest operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q
+test-unit: ## The Python unit tests only (no processed data needed)
+	uv run pytest -q --ignore=pipeline/test_data_integrity.py
+
+test-ops: ## Only the operations tests: payments, blocklist sync, tally, Prolific client (no API calls, no data needed)
+	uv run pytest operations -q
 
 # The zip is extracted into data/runs/<run>/ like any other and registered in
 # data/smoke/runs.txt, so the combine step reads the same file it always does.
