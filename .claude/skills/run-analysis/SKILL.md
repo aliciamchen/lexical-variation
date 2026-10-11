@@ -12,13 +12,13 @@ The notebooks `analysis/checks.qmd`, `primary.qmd` and `secondary.qmd` are the p
 
 2. **A fast render** catches notebook errors before the long one: `BAYES_FACTORS=never make notebooks DATASET=full` renders all three without the brms refits (the group-specificity permutation test is cached by a hash of the pairwise data and recomputed only when it changes). Read each rendered notebook's warnings and the `fit_progressively()` steps it prints; a chunk that errors stops Quarto, so fix the notebook and rerun that one with `DATASET=full quarto render analysis/<notebook>.qmd`.
 
-3. **The confirmatory render.** `primary.qmd` computes Bayes factors for the planned contrasts with brms and bridge sampling. The fits are cached by a hash of their data in `data/full/cache/bayes_factors/` and took about 13 hours on 57 games, so run it detached and read the log rather than waiting in the session:
+3. **The confirmatory render.** `primary.qmd` computes Bayes factors for the planned contrasts with brms and bridge sampling. The fits are cached by a hash of their data in `data/full/cache/bayes_factors/` and refit when the data change; on the 120 games the three refits and their bridge sampling took about 20 minutes, which is still long enough to run detached and read from the log rather than wait for in the session:
 
    ```bash
    nohup env DATASET=full BAYES_FACTORS=auto make notebooks > /tmp/render-full.log 2>&1 &
    ```
 
-   `auto` computes a Bayes factor for the non-significant planned contrasts, `always` for every one. The cache survives reruns on unchanged data.
+   `auto` computes a Bayes factor for the non-significant planned contrasts, `always` for every one. The cache survives reruns on unchanged data. Read the Bayes-factor lines in the rendered notebook for bridgesampling warnings (`logml could not be estimated within maxiter`): a Bayes factor printed after that warning is not reliable and must not be reported, whatever its size.
 
 4. **Check the outputs.** Run `make descriptives` after the notebooks so the three descriptive files are current. Every stats file has a `% AUTO-GENERATED` header and must not be hand-edited; `grep -c newcommand writing/manuscript/stats/*.tex` shows how many macros each writer wrote, and a macro that moved by more than rounding since the last render is worth a sentence in the report. The notebooks draw nothing; the article's figures are made in Python (`paper/plot_style.py` holds their style) and `bash figures/sync_figures.sh writing/manuscript` copies `figures/full/` into the article's project once they exist. The script refuses `writing/preregistration/`, whose figures are frozen with the preregistration.
 
