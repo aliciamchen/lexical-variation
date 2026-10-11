@@ -12,17 +12,17 @@ A nine-player Empirica reference game for studying lexical variation and social 
 uv sync && uv run python <script>     # Python; never bare python or pip
 Rscript -e 'renv::restore()'          # R
 cd experiment && npm install          # Empirica app and Playwright
-make help                             # data, test, models, paper, sync, and the finer steps underneath (extract, combine, process, measures, model-inputs, bayes-factors, stats, figures, smoke, payments)
+make help                             # data, test, models, report, sync, and the finer steps underneath (extract, combine, process, measures, model-inputs, bayes-factors, stats, figures, smoke, payments)
 make test DATASET=full                # integrity suite plus the Python and R unit tests
-make models && make paper             # fit the model scripts that are out of date, then write the macros and figures into results/full/
+make models && make report             # fit the model scripts that are out of date, then write the macros and figures into results/
 cd experiment && npm run test:unit    # server unit tests; Playwright only through the npm scripts
 ```
 
 ## Hard rules
 
 - Never read or print `.env` or `experiment/.empirica/empirica.toml`, never print a participant (Prolific) id, and never put a hostname, organization name or token in a committed file. `.env.example` documents the variables.
-- `experiment/data/<timestamp>/` holds the raw exports and is read-only input: never edit, move or delete anything there. `data/full/`, `figures/meetings/`, `backups/`, `data/runs/` and `data/payments/` stay local until the RefBank release; `results/full/` (estimates, macros, figures) is committed and is the regression check for any analysis change. The pilot dataset, its SI notebook and the LLM Phase 1 benchmark were retired from the working tree and remain at the git tag `pilot-archive`.
-- `writing/` is gitignored, one Overleaf project per directory, synced through Dropbox. The preregistration is frozen: do not change its text, models or figures. Statistics reach a manuscript only through the generated `\newcommand` macros in `results/<dataset>/stats/`, copied in by `make sync`, never typed in.
+- `experiment/data/<timestamp>/` holds the raw exports and is read-only input: never edit, move or delete anything there. `data/full/`, `backups/`, `data/runs/` and `data/payments/` stay local until the RefBank release; `results/` (estimates, macros, figures) is committed and is the regression check for any analysis change. The pilot dataset, its SI notebook and the LLM Phase 1 benchmark were retired from the working tree and remain at the git tag `pilot-archive`.
+- `writing/` is gitignored, one Overleaf project per directory, synced through Dropbox. The preregistration is frozen: do not change its text, models or figures. Statistics reach a manuscript only through the generated `\newcommand` macros in `results/stats/`, copied in by `make sync`, never typed in.
 - In an interactive session, commit only when asked, on `main`, and do not push: the repository is public and the author publishes. Work the author will not watch (a cloud or background session, a worktree, or a self-contained piece such as the RefBank converter) goes on a branch named `agent/<topic>`: commit freely there, push it, and open a draft pull request for the author to review and merge. Never push to `main`, force-push or merge a pull request; a hook blocks these. Before committing, say what is uncommitted and leave out hunks you did not make: the author edits by hand and runs parallel sessions, so re-read a file before editing it and never revert an edit that is not yours.
 - A worktree or a cloud clone has none of the gitignored inputs (`.env` and `empirica.toml` are copied in through `.worktreeinclude`; the raw exports and `data/full/` are not), so data processing, renders and manuscript work stay in the main checkout.
 - The message filter spends Vertex AI credit: state the number of calls and get a yes first.
@@ -51,7 +51,7 @@ cd experiment && npm run test:unit    # server unit tests; Playwright only throu
 ## Sources of truth
 
 - Game configuration is `experiment/shared/constants.js` (`experiment/tests/helpers/constants.ts` re-exports it and `operations/game_constants.py` parses it); treatments are in `experiment/.empirica/treatments.yaml`; game logic is `experiment/server/src/callbacks.js` with pure modules beside it, every callback wrapped in `guard()`.
-- The data pipeline is `pipeline/`: `dataset_paths.py` defines the dataset and results layout (mirrored in `models/config.R`) and `process_data.py` runs the steps, each a module run with `python -m pipeline.<name>`. The models are R scripts in `models/<family>/<name>.R`, one per analysis, each sourcing `models/config.R` and the helpers in `models/R/` (tests in `models/tests/`) and writing a tidy estimates table to `results/<dataset>/estimates/<family>/<name>.csv`; the Makefile lists each table's dependencies. `paper/inferential.py` formats the estimates into the inferential macros, `paper/descriptives.py` writes the descriptive ones, `paper/figures/` holds one module per figure, `paper/plot_style.py` is the one description of how the figures look and `paper/stats_tex.py` the one macro writer and formatting rules; `writing/preregistration/stats/` is frozen with the preregistration.
+- The data pipeline is `preprocessing/`: `dataset_paths.py` defines the dataset and results layout (mirrored in `models/config.R`) and `process_data.py` runs the steps, each a module run with `python -m preprocessing.<name>`. The models are R scripts in `models/<family>/<name>.R`, one per analysis, each sourcing `models/config.R` and the helpers in `models/R/` (tests in `models/tests/`) and writing a tidy estimates table to `results/estimates/<family>/<name>.csv`; the Makefile lists each table's dependencies. `report/inferential.py` formats the estimates into the inferential macros, `report/descriptives.py` writes the descriptive ones, `report/figures/` holds one module per figure, `report/plot_style.py` is the one description of how the figures look and `report/stats_tex.py` the one macro writer and formatting rules; `writing/preregistration/stats/` is frozen with the preregistration.
 - The per-dataset inputs (`runs.txt`, `exclude_games.txt`, `participant_exclusions.csv`, `integrity_exceptions.csv`, `payment_adjustments.csv`) are defined in `.claude/rules/data-pipeline.md`.
 - Fetch current library documentation with Context7 for R packages, Python libraries, Empirica and Playwright instead of working from memory.
 
@@ -62,9 +62,9 @@ cd experiment && npm run test:unit    # server unit tests; Playwright only throu
 | `.claude/rules/architecture.md` | the experiment: server callbacks, client, identity masking, exit routing |
 | `.claude/rules/testing.md` | the Playwright suite and server unit tests |
 | `.claude/rules/sentry.md` | error monitoring in the client |
-| `.claude/rules/data-pipeline.md` | datasets, pipeline steps, the model scripts and the paper layer, the definitions that are easy to get wrong |
+| `.claude/rules/data-pipeline.md` | datasets, pipeline steps, the model scripts and the report layer, the definitions that are easy to get wrong |
 | `.claude/rules/message-filter.md` | the LLM message filter |
 | `.claude/rules/operations.md` | payments, blocklist and the other Prolific tooling |
 | `.claude/rules/python-env.md` | uv and the Python environment |
 
-Skills are in `.claude/skills/<name>/SKILL.md`, with a symlink per skill in `.agents/skills/` for Codex: `run-playwright-tests`, `rebuild-dataset`, `run-analysis` (the model scripts and the results) and `build-paper`. An agent whose harness does not load rules by path should read the rule before changing files in its area.
+Skills are in `.claude/skills/<name>/SKILL.md`, with a symlink per skill in `.agents/skills/` for Codex: `run-playwright-tests`, `rebuild-dataset`, `run-analysis` (the model scripts and the results) and `build-report`. An agent whose harness does not load rules by path should read the rule before changing files in its area.

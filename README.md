@@ -2,7 +2,7 @@
 
 This repository holds the experiment, the data pipeline and the analyses for a preregistered study of how linguistic conventions diverge between groups. Nine participants play a tangram reference game in three groups of three. In Phase 1 each group describes and identifies the same tangrams among themselves. In Phase 2 the groups are either kept apart (`refer_separated`), mixed so that listeners hear speakers from other groups (`refer_mixed`), mixed and rewarded for identifying whether a speaker came from their own group (`social_mixed`), or told about that reward before the game begins (`social_first`). The preregistration is a Stage 1 manuscript and is frozen.
 
-The full sample, 120 started games collected in 31 Prolific sessions between 2026-09-22 and 2026-10-08, is not in the repository: the processed data exist only in the author's checkout, so the analyses can be read here but not run from a clone. The results themselves are in the repository: every estimates table, macro file and figure under `results/full/` is committed, so the numbers the article quotes can be read and traced to the commit that produced them. The pilot the preregistration reports on, four games from March 2026, and the LLM benchmark behind its check for AI-assisted play are at the git tag `pilot-archive`, from which the preregistration's supplementary analyses reproduce.
+The full sample, 120 started games collected in 31 Prolific sessions between 2026-09-22 and 2026-10-08, is not in the repository: the processed data exist only in the author's checkout, so the analyses can be read here but not run from a clone. The results themselves are in the repository: every estimates table, macro file and figure under `results/` is committed, so the numbers the article quotes can be read and traced to the commit that produced them. The pilot the preregistration reports on, four games from March 2026, and the LLM benchmark behind its check for AI-assisted play are at the git tag `pilot-archive`, from which the preregistration's supplementary analyses reproduce.
 
 ## How the pieces fit together
 
@@ -10,14 +10,14 @@ The work runs in one direction, from the game to the article, and each step has 
 
 ```
 experiment/   the Empirica game, which writes an export zip per session
-     │   make data        pipeline/ (Python) turns the exports into one dataset
+     │   make data        preprocessing/ (Python) turns the exports into one dataset
      ▼
 data/full/    the dataset: hand-written inputs at the top, generated files one level down
      │   make test        the integrity suite checks the dataset against the design and the raw tables
      │   make models      models/ (R) fits one script per analysis and writes its estimates
      ▼
-results/full/ the estimates tables, and from them
-     │   make paper       paper/ (Python) writes the macros and draws the figures
+results/      the estimates tables, and from them
+     │   make report      report/ (Python) writes the macros and draws the figures
      │   make sync        copies the macros and figures into the Overleaf project
      ▼
 writing/manuscript/   the article reads the macros and the figures
@@ -25,18 +25,17 @@ writing/manuscript/   the article reads the macros and the figures
 
 ```
 experiment/        the Empirica game: React client, Node server, Playwright tests (see experiment/README.md)
-pipeline/          the data pipeline: extraction, combination, preprocessing, the message filter, the measures and the model inputs, with their tests
+preprocessing/     the data pipeline: extraction, combination, preprocessing, the message filter, the measures and the model inputs, with their tests
 data/              one directory per dataset: the hand-written inputs at the top and the generated files one level down, in a directory per stage (raw, tables, classifier, measures, model_inputs, cache); data/README.md is the codebook
 models/            the R models: config.R, the helpers in models/R/ with their tests, and one script per analysis in checks/, primary/ and secondary/
-results/           one directory per dataset: the estimates tables the model scripts write, the macro files and the figures
-paper/             the Python side of the article: the two macro writers, the figure modules, the figure style and the bootstrap
-figures/manual/    the hand-made figures (the Illustrator source, the schematic and condition diagrams, the avatar designs)
+results/           the estimates tables the model scripts write, the macro files and the figures, with the hand-made figures (the Illustrator source, the schematic and condition diagrams, the avatar designs) in figures/manual/
+report/            the Python side of the article: the two macro writers, the figure modules, the figure style and the bootstrap
 writing/           Overleaf projects, one per manuscript (not committed; synced through Overleaf)
 simulations/       the design-matched simulation behind the speaker random effect, and the power analysis
 operations/        the Prolific tooling (payments, blocklist, tally) and procedures.md, the record of how a session was run
 ```
 
-`make help` lists every target. The verbs are groups of finer steps: `make data` is `extract`, `combine` and `process`; `make models` builds whichever estimates tables are out of date; `make paper` is `stats` (both macro writers) and `figures`. `make all` runs data, test, models and paper in order.
+`make help` lists every target. The verbs are groups of finer steps: `make data` is `extract`, `combine` and `process`; `make models` builds whichever estimates tables are out of date; `make report` is `stats` (both macro writers) and `figures`. `make all` runs data, test, models and report in order.
 
 ## Setup
 
@@ -57,19 +56,19 @@ The analyses need no credentials. Running or deploying the experiment and the Pr
 make test
 ```
 
-This runs the data integrity suite on the dataset (`full` unless `DATASET` names another), the Python unit tests for the preprocessing, the measures and the paper layer, and the R tests for the model helpers. The integrity suite checks the tables against the experiment's design and server logic, rebuilds the utterances from the chat log, recomputes the similarity tables from the saved embeddings, and reconciles the processed tables with the raw ones. It needs the dataset, so on a clone without `data/full/` it stops with a message that says so, while the unit tests run anywhere.
+This runs the data integrity suite on the dataset (`full` unless `DATASET` names another), the Python unit tests for the preprocessing, the measures and the report layer, and the R tests for the model helpers. The integrity suite checks the tables against the experiment's design and server logic, rebuilds the utterances from the chat log, recomputes the similarity tables from the saved embeddings, and reconciles the processed tables with the raw ones. It needs the dataset, so on a clone without `data/full/` it stops with a message that says so, while the unit tests run anywhere.
 
 The results reproduce from the processed tables alone. With a dataset's `tables/`, `classifier/` and `measures/` directories under `data/full/`,
 
 ```bash
-make model-inputs models paper
+make model-inputs models report
 ```
 
-rebuilds the model inputs, fits every model and writes the macros and figures into `results/full/`, to be compared with the committed ones. `make measures` recomputes the similarity tables and description properties from the utterances first; it needs the sentence-transformer model and takes a few minutes. The steps before that, from the raw exports to the tables, need the exports themselves and Vertex AI credit for the message filter.
+rebuilds the model inputs, fits every model and writes the macros and figures into `results/`, to be compared with the committed ones. `make measures` recomputes the similarity tables and description properties from the utterances first; it needs the sentence-transformer model and takes a few minutes. The steps before that, from the raw exports to the tables, need the exports themselves and Vertex AI credit for the message filter.
 
 ## The data
 
-Every dataset has the same layout, defined once in `pipeline/dataset_paths.py` and mirrored in `models/config.R`. The files at the top of the dataset directory are the ones somebody wrote by hand; everything the pipeline generates sits one level down, in a directory named for the step that writes it, and everything the models and the paper layer generate goes to the matching directory under `results/`:
+Every dataset has the same layout, defined once in `preprocessing/dataset_paths.py` and mirrored in `models/config.R`. The files at the top of the dataset directory are the ones somebody wrote by hand; everything the pipeline generates sits one level down, in a directory named for the step that writes it, and everything the models and the report layer generate goes to `results/`:
 
 | Path | Written by | Contents |
 |---|---|---|
@@ -80,11 +79,11 @@ Every dataset has the same layout, defined once in `pipeline/dataset_paths.py` a
 | `data/<name>/measures/` | `make data` | The measures computed from the descriptions: the SBERT embeddings, the pairwise and block-by-block similarity tables in sentence-embedding and content-word (Jaccard) versions, each speaker's Phase 1 to Phase 2 similarity, and the per-description properties |
 | `data/<name>/model_inputs/` | `make data` | The aggregated tables the models are fit to |
 | `data/<name>/cache/` | `make models` | Fitted objects kept between runs: the permutation results, the brms fits and the H4 models that later scripts reuse; never committed |
-| `results/<name>/estimates/` | `make models` | One tidy estimates table per model script, with a `manifest.json` naming the script, the columns and the git commit that wrote each |
-| `results/<name>/stats/` | `make paper` | The six macro files the manuscript reads |
-| `results/<name>/figures/` | `make paper` | The figures, each with the table it plots beside it |
+| `results/estimates/` | `make models` | One tidy estimates table per model script, with a `manifest.json` naming the script, the columns and the git commit that wrote each |
+| `results/stats/` | `make report` | The six macro files the manuscript reads |
+| `results/figures/` | `make report` | The figures, each with the table it plots beside it, and the hand-made figures in `manual/` |
 
-The scripts take `--dataset <name>` and `make` takes `DATASET=<name>`; both default to `full`. The columns, and the optional input files that record exclusions and documented anomalies, are described in [`data/README.md`](data/README.md). Timestamps taken in a participant's browser are comparable only within that participant, because browser clocks are not synchronized; the codebook says which columns are on the server's clock.
+The scripts take `--dataset <name>` and `make` takes `DATASET=<name>`; both default to `full`. A dataset other than `full` keeps its results inside its own directory, `data/<name>/results/`, so a trial run never touches the committed ones. The columns, and the optional input files that record exclusions and documented anomalies, are described in [`data/README.md`](data/README.md). Timestamps taken in a participant's browser are comparable only within that participant, because browser clocks are not synchronized; the codebook says which columns are on the server's clock.
 
 `make data` runs three steps:
 
@@ -96,9 +95,9 @@ The raw exports under `experiment/data/` are not committed because they identify
 
 ## The analyses
 
-The preregistered analyses are R scripts in `models/`, one per analysis, grouped as the preregistration groups them: `checks/` holds the convention-formation, dropout and survey checks, `primary/` the hypotheses H1 through H4 with their robustness reruns and Bayes factors, and `secondary/` the secondary analyses. Each script fits its models, prints their summaries, and writes what it estimated as a tidy table to `results/<dataset>/estimates/<family>/<name>.csv`, named after the script. A script that builds on another's estimates reads them from there rather than refitting: the game-level regressions of H1, H2 and H3a all read the per-game group-specificity estimates that `primary/group_specificity.R` writes. `make models` treats every estimates table as a Make target that depends on the data it reads, the shared R code in `models/R/` and the estimates it builds on, so it reruns only what changed. The Bayes factors are the slow step: `primary/bayes_factors.R` refits the models in brms and caches the fits, and `BAYES_FACTORS=never make models` skips it while leaving its previous estimates in place.
+The preregistered analyses are R scripts in `models/`, one per analysis, grouped as the preregistration groups them: `checks/` holds the convention-formation, dropout and survey checks, `primary/` the hypotheses H1 through H4 with their robustness reruns and Bayes factors, and `secondary/` the secondary analyses. Each script fits its models, prints their summaries, and writes what it estimated as a tidy table to `results/estimates/<family>/<name>.csv`, named after the script. A script that builds on another's estimates reads them from there rather than refitting: the game-level regressions of H1, H2 and H3a all read the per-game group-specificity estimates that `primary/group_specificity.R` writes. `make models` treats every estimates table as a Make target that depends on the data it reads, the shared R code in `models/R/` and the estimates it builds on, so it reruns only what changed. The Bayes factors are the slow step: `primary/bayes_factors.R` refits the models in brms and caches the fits, and `BAYES_FACTORS=never make models` skips it while leaving its previous estimates in place.
 
-`make paper` then formats the results. `paper/inferential.py` turns the estimates tables into the macro files `checks.tex`, `primary.tex` and `secondary.tex`, and `paper/descriptives.py` writes `overview.tex`, `exploratory.tex` and `survey.tex` from the processed tables and the per-game estimates. Every macro file carries the writer and the git commit in its header. `paper/figures/` holds one module per figure, each writing its PDF and the table it plots side by side; `paper/plot_style.py` is the one description of how the figures look, and `paper/bootstrap.py` the one bootstrap, which resamples games. `make sync` copies the macro files and the figures into the article's Overleaf project. A run on any dataset other than `full` is marked in every output as not being results.
+`make report` then formats the results. `report/inferential.py` turns the estimates tables into the macro files `checks.tex`, `primary.tex` and `secondary.tex`, and `report/descriptives.py` writes `overview.tex`, `exploratory.tex` and `survey.tex` from the processed tables and the per-game estimates. Every macro file carries the writer and the git commit in its header. `report/figures/` holds one module per figure, each writing its PDF and the table it plots side by side; `report/plot_style.py` is the one description of how the figures look, and `report/bootstrap.py` the one bootstrap, which resamples games. `make sync` copies the macro files and the figures, the hand-made ones included, into the article's Overleaf project. A run on any dataset other than `full` is marked in every output as not being results.
 
 ## Running the experiment
 
