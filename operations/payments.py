@@ -116,7 +116,8 @@ assert SOCIAL_FIRST in prolific.CONDITIONS, "SOCIAL_FIRST must name a condition 
 # The raw exports of the pilot sessions (March 2025 to September 2026), which ran
 # before the full sample on servers of their own. Everyone who took part in one is
 # blocked too (pilot_participants).
-PILOT_EXPORTS = PROJECT_ROOT / "experiment" / "pilot_data"
+PILOT_EXPORTS_DIR = Path("experiment") / "pilot_data"  # relative to the repository root
+PILOT_EXPORTS = PROJECT_ROOT / PILOT_EXPORTS_DIR
 PROLIFIC_ID = re.compile(r"[0-9a-f]{24}")
 # The paste files, in the order they are pasted, and the kinds each one holds.
 PASTE_FILES = (("1_main.csv", ("bonus", "partial", "lobby", "unsubmitted")), ("2_overtime.csv", ("overtime",)))
@@ -1111,7 +1112,7 @@ def main(argv=None) -> None:
         write_unexplained(unexplained, out_dir)
     pilot = pilot_participants() if PILOT_EXPORTS.is_dir() else set()
     if not pilot:
-        print(f"\nWARNING: no pilot participants found in {PILOT_EXPORTS.relative_to(PROJECT_ROOT)}/, so they are "
+        print(f"\nWARNING: no pilot participants found in {PILOT_EXPORTS_DIR}/, so they are "
               "neither repeat-checked nor blocklisted.")
     write_repeats(repeat_participants(payees, visits, pilot), out_dir)
     if not args.offline:

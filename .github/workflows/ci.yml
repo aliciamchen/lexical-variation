@@ -1,5 +1,5 @@
 # Fast checks on every push: server unit tests (vitest) and the Python unit
-# tests that need no data. The data integrity suite needs a processed dataset, which is not
+# tests that need no data or credentials. The data integrity suite needs a processed dataset, which is not
 # in the repository; it, the Playwright end-to-end suite and the measure
 # tests (which import the sentence-transformer stack) run locally, not here.
 name: ci
@@ -28,5 +28,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v7
-      - name: Run the Python unit tests that need no data
-        run: uv run --no-project --with pytest --with pandas --with numpy --with matplotlib pytest preprocessing report simulations -q --ignore=preprocessing/test_data_integrity.py --ignore=preprocessing/test_compute_measures.py
+      - name: Run the Python unit tests that need no data or credentials
+        run: uv run --no-project --with pytest --with pandas --with numpy --with matplotlib --with requests --with python-dotenv pytest preprocessing report simulations operations -q --ignore=preprocessing/test_data_integrity.py --ignore=preprocessing/test_compute_measures.py
