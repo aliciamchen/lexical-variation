@@ -1,12 +1,12 @@
 # Group-specificity estimation and permutation testing.
 #
 # Shared by checks.qmd, primary.qmd, and secondary.qmd.
-# Results are cached as RDS files in data_dir to avoid re-running
+# Results are cached as RDS files in cache_dir to avoid re-running
 # the expensive permutation test on every notebook render.
 #
 # Usage:
 #   (sourced by config.R together with the other helpers in analysis/R/)
-#   results <- compute_group_specificity(pairwise_df, derived_dir, n_perm = 1000)
+#   results <- compute_group_specificity(pairwise_df, cache_dir, n_perm = 1000)
 #   # returns list(gs_results, perm_results) — loaded from cache if available;
 #   # gs_results carries a logical `singular` flag per game (a tangram or
 #   # speaker-pair variance estimated at zero) and the fits print no lme4

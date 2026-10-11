@@ -38,8 +38,8 @@ PLAYERS_CSV = (
 
 def test_tally_counts_games_per_cell_and_marks_the_next(tmp_path, monkeypatch):
     monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
-    (tmp_path / "data" / "full").mkdir(parents=True)
-    (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
+    (tmp_path / "data" / "full" / "tables").mkdir(parents=True)
+    (tmp_path / "data" / "full" / "tables" / "games.csv").write_text(GAMES_CSV)
     counts, next_cell = tally.print_tally("full")
     assert counts[("refer_separated", "0")]["intact"] == 1
     assert counts[("refer_separated", "1")]["intact"] == 1
@@ -58,9 +58,9 @@ def test_a_game_that_lost_a_player_is_partial_not_intact(tmp_path, monkeypatch, 
     # cell: counting it did, and recruitment for that cell would have stopped
     # early.
     monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
-    (tmp_path / "data" / "full").mkdir(parents=True)
-    (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
-    (tmp_path / "data" / "full" / "players.csv").write_text(PLAYERS_CSV)
+    (tmp_path / "data" / "full" / "tables").mkdir(parents=True)
+    (tmp_path / "data" / "full" / "tables" / "games.csv").write_text(GAMES_CSV)
+    (tmp_path / "data" / "full" / "tables" / "players.csv").write_text(PLAYERS_CSV)
     counts, _ = tally.print_tally("full")
     assert counts[("refer_mixed", "0")] == {
         "intact": 1, "partial": 0, "incomplete": 0
@@ -75,8 +75,8 @@ def test_a_game_that_lost_a_player_is_partial_not_intact(tmp_path, monkeypatch, 
 
 def test_tally_warns_when_it_cannot_see_removals(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
-    (tmp_path / "data" / "full").mkdir(parents=True)
-    (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
+    (tmp_path / "data" / "full" / "tables").mkdir(parents=True)
+    (tmp_path / "data" / "full" / "tables" / "games.csv").write_text(GAMES_CSV)
     tally.print_tally("full")
     assert "cannot be told from an intact one" in capsys.readouterr().out
 
@@ -110,10 +110,10 @@ def test_read_player_removals_ignores_a_file_it_cannot_use(tmp_path):
 
 def test_tally_lines_mark_exactly_one_cell(tmp_path, monkeypatch):
     monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
-    (tmp_path / "data" / "full").mkdir(parents=True)
-    (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
+    (tmp_path / "data" / "full" / "tables").mkdir(parents=True)
+    (tmp_path / "data" / "full" / "tables" / "games.csv").write_text(GAMES_CSV)
     counts, next_cell = tally.cell_counts(
-        tally.read_games_table(tmp_path / "data" / "full" / "games.csv")
+        tally.read_games_table(tmp_path / "data" / "full" / "tables" / "games.csv")
     )
     lines = tally.tally_lines(counts, next_cell)
     assert len(lines) == 9
@@ -128,11 +128,11 @@ def test_the_cap_counts_every_started_game_not_only_the_intact_ones(tmp_path, mo
     # player or never finished still spends one of the 120. Counting only the
     # intact ones would run recruitment past the registered limit.
     monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
-    (tmp_path / "data" / "full").mkdir(parents=True)
-    (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
-    (tmp_path / "data" / "full" / "players.csv").write_text(PLAYERS_CSV)
+    (tmp_path / "data" / "full" / "tables").mkdir(parents=True)
+    (tmp_path / "data" / "full" / "tables" / "games.csv").write_text(GAMES_CSV)
+    (tmp_path / "data" / "full" / "tables" / "players.csv").write_text(PLAYERS_CSV)
     counts, _ = tally.cell_counts(
-        tally.read_games_table(tmp_path / "data" / "full" / "games.csv")
+        tally.read_games_table(tmp_path / "data" / "full" / "tables" / "games.csv")
     )
     progress = tally.stopping_rule_progress(counts)
     # g1 and g3 intact, g2 a player short, g4 never finished: four started.
@@ -175,9 +175,9 @@ def test_tally_says_stop_only_at_the_cap():
 
 def test_the_tally_prints_the_cap_and_the_intact_counts(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(tally, "PROJECT_ROOT", tmp_path)
-    (tmp_path / "data" / "full").mkdir(parents=True)
-    (tmp_path / "data" / "full" / "games.csv").write_text(GAMES_CSV)
-    (tmp_path / "data" / "full" / "players.csv").write_text(PLAYERS_CSV)
+    (tmp_path / "data" / "full" / "tables").mkdir(parents=True)
+    (tmp_path / "data" / "full" / "tables" / "games.csv").write_text(GAMES_CSV)
+    (tmp_path / "data" / "full" / "tables" / "players.csv").write_text(PLAYERS_CSV)
     tally.print_tally("full")
     out = capsys.readouterr().out
     assert f"Started: 4 of {tally.STARTED_GAMES_CAP}" in out

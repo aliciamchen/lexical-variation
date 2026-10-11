@@ -1006,7 +1006,7 @@ beside the primary SBERT results.
 ```{r robustness-jaccard-coverage}
 if (!has_rows(pairwise_sim_jaccard)) {
   cat(sprintf(
-    "Skipping: %s not found in analysis/derived/%s/ (regenerate with compute_derived.py).\n",
+    "Skipping: %s not found in data/%s/derived/ (regenerate with compute_derived.py).\n",
     pairwise_file("jaccard"), DATASET
   ))
 } else {

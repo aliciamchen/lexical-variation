@@ -28,7 +28,7 @@ backups/
 .zed
 reviews/
 analysis/outputs
-# Old raw-export layout; the anonymized raw tables in data/<dataset>/raw_anonymized/ are committed
+# Old raw-export layout
 /data/raw/
 # Writing projects (each an Overleaf project mirrored through Dropbox)
 writing/
@@ -42,9 +42,6 @@ data/payments/
 data/old_pilots/
 full-sample-todos.md
 
-# brms fit caches for the Bayes factors (76 MB per dataset, reproducible from the notebooks)
-analysis/derived/*/bayes_factors/
-
 # Local session state written by the retired operations/session.py
 operations/.sessions/
 
@@ -54,14 +51,10 @@ experiment/.empirica/empirica.toml
 # The full sample stays local until its public release, which will be in the
 # RefBank format rather than this layout
 data/full/
-analysis/derived/full/
-analysis/results/full/
 figures/meetings/
 
 # Throwaway dataset written by `make smoke`
 data/smoke/
-analysis/derived/smoke/
-analysis/results/smoke/
 figures/smoke/
 
 # Worktrees that Claude Code creates for parallel sessions

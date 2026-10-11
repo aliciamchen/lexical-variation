@@ -1,5 +1,5 @@
 """
-Combine raw CSVs from extracted runs into data/<dataset>/raw_anonymized/.
+Combine raw CSVs from extracted runs into data/<dataset>/raw/.
 
 Stacks the raw Empirica CSVs, filters out failed games (lobby timeouts) and
 any game listed in data/<dataset>/exclude_games.txt (test and rehearsal games
@@ -282,7 +282,7 @@ def split_dropouts(
 
     Every participant who reached the experiment has a player record, whether
     they finished a game, failed the quiz, waited in a lobby that timed out, or
-    arrived after the games were full. `raw_anonymized/player.csv` keeps only
+    arrived after the games were full. `raw/player.csv` keeps only
     the players of real games, so those other records vanish at this step --
     and with them the attrition the manuscript has to report. They are written
     to `dropouts.csv` instead: one row per player record with no real game,
@@ -346,7 +346,7 @@ def split_dropouts(
 def enforce_anonymization(combined: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Strip sensitive Prolific columns if any slipped through extraction.
 
-    The output directory (data/<dataset>/raw_anonymized/) is released with the
+    The output directory (data/<dataset>/raw/) is released with the
     full sample, so anonymization is guaranteed here regardless of how the
     per-run raw/ files were produced.
     """
@@ -407,7 +407,7 @@ def write_manifest(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Combine raw CSVs from extracted runs into data/<dataset>/raw_anonymized/"
+        description="Combine raw CSVs from extracted runs into data/<dataset>/raw/"
     )
     parser.add_argument(
         "runs", nargs="*",
@@ -477,8 +477,8 @@ def main():
     combined, dropouts = split_dropouts(
         players_all, games_all, combined, excluded_game_ids, batches_all
     )
-    dropouts_path = dirs.data / DROPOUTS_FILE
-    dirs.data.mkdir(parents=True, exist_ok=True)
+    dropouts_path = dirs.tables / DROPOUTS_FILE
+    dirs.tables.mkdir(parents=True, exist_ok=True)
     dropouts.to_csv(dropouts_path, index=False)
     if dropouts.empty:
         print(f"  None; wrote an empty {DROPOUTS_FILE} (header only)")
@@ -494,7 +494,7 @@ def main():
     write_combined_raw(combined, output_raw)
 
     write_manifest(
-        dirs.data, args.runs, combined, input_counts, failed_game_ids, collapsed,
+        output_raw, args.runs, combined, input_counts, failed_game_ids, collapsed,
         excluded_game_ids, len(dropouts),
     )
 

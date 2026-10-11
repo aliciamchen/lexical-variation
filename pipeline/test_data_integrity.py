@@ -46,10 +46,13 @@ LISTENER_CORRECT_POINTS = 2
 SPEAKER_MAX_POINTS_PER_ROUND = 2
 SOCIAL_GUESS_CORRECT_POINTS = 6
 SOCIAL_SPEAKER_POINTS_PER_CORRECT = 6
-# Data directory for the dataset under test ($DATASET, default full)
+# The dataset under test ($DATASET, default full): its hand-written inputs at
+# the top of the dataset directory and its generated files one level down
 DATASET = dataset_dirs()
-DATA_DIR = DATASET.data
+INPUTS_DIR = DATASET.data
 RAW_DIR = DATASET.raw
+TABLES_DIR = DATASET.tables
+CLASSIFIER_DIR = DATASET.classifier
 DERIVED_DIR = DATASET.derived
 
 # The production bonus rate in experiment/shared/constants.js
@@ -65,9 +68,9 @@ VALID_NAMES = {"Repi", "Minu", "Laju", "Hera", "Zuda", "Bavi", "Lika", "Felu", "
 
 @pytest.fixture(scope="session", autouse=True)
 def _dataset_present():
-    if not (DATA_DIR / "games.csv").exists():
+    if not (TABLES_DIR / "games.csv").exists():
         pytest.exit(
-            f"No processed data for dataset '{DATASET.name}' at {DATA_DIR}; "
+            f"No processed data for dataset '{DATASET.name}' at {TABLES_DIR}; "
             "run the pipeline first (make process DATASET=<name>).",
             returncode=1,
         )
@@ -76,15 +79,15 @@ def _dataset_present():
 @pytest.fixture(scope="session")
 def games():
     """Load games.csv, filtered to real (non-test) games."""
-    df = pd.read_csv(DATA_DIR / "games.csv")
+    df = pd.read_csv(TABLES_DIR / "games.csv")
     return df[df["condition"].notna()].copy()
 
 
 @pytest.fixture(scope="session")
 def players():
     """Load players.csv, filtered to players in real games."""
-    df = pd.read_csv(DATA_DIR / "players.csv")
-    games = pd.read_csv(DATA_DIR / "games.csv")
+    df = pd.read_csv(TABLES_DIR / "players.csv")
+    games = pd.read_csv(TABLES_DIR / "games.csv")
     real_game_ids = games[games["condition"].notna()]["gameId"].tolist()
     return df[df["gameId"].isin(real_game_ids)].copy()
 
@@ -92,8 +95,8 @@ def players():
 @pytest.fixture(scope="session")
 def trials():
     """Load trials.csv, filtered to real games."""
-    df = pd.read_csv(DATA_DIR / "trials.csv")
-    games = pd.read_csv(DATA_DIR / "games.csv")
+    df = pd.read_csv(TABLES_DIR / "trials.csv")
+    games = pd.read_csv(TABLES_DIR / "games.csv")
     real_game_ids = games[games["condition"].notna()]["gameId"].tolist()
     return df[df["gameId"].isin(real_game_ids)].copy()
 
@@ -101,8 +104,8 @@ def trials():
 @pytest.fixture(scope="session")
 def messages():
     """Load messages.csv, filtered to real games."""
-    df = pd.read_csv(DATA_DIR / "messages.csv")
-    games = pd.read_csv(DATA_DIR / "games.csv")
+    df = pd.read_csv(TABLES_DIR / "messages.csv")
+    games = pd.read_csv(TABLES_DIR / "games.csv")
     real_game_ids = games[games["condition"].notna()]["gameId"].tolist()
     return df[df["gameId"].isin(real_game_ids)].copy()
 
@@ -110,8 +113,8 @@ def messages():
 @pytest.fixture(scope="session")
 def speaker_utterances():
     """Load speaker_utterances.csv, filtered to real games."""
-    df = pd.read_csv(DATA_DIR / "speaker_utterances.csv")
-    games = pd.read_csv(DATA_DIR / "games.csv")
+    df = pd.read_csv(TABLES_DIR / "speaker_utterances.csv")
+    games = pd.read_csv(TABLES_DIR / "games.csv")
     real_game_ids = games[games["condition"].notna()]["gameId"].tolist()
     return df[df["gameId"].isin(real_game_ids)].copy()
 
@@ -119,8 +122,8 @@ def speaker_utterances():
 @pytest.fixture(scope="session")
 def social_guesses():
     """Load social_guesses.csv, filtered to real games."""
-    df = pd.read_csv(DATA_DIR / "social_guesses.csv")
-    games = pd.read_csv(DATA_DIR / "games.csv")
+    df = pd.read_csv(TABLES_DIR / "social_guesses.csv")
+    games = pd.read_csv(TABLES_DIR / "games.csv")
     real_game_ids = games[games["condition"].notna()]["gameId"].tolist()
     return df[df["gameId"].isin(real_game_ids)].copy()
 
@@ -162,7 +165,7 @@ INTEGRITY_EXCEPTION_COLUMNS = ["invariant", "gameId", "playerId", "roundId", "re
 
 @pytest.fixture(scope="session")
 def integrity_exceptions():
-    path = DATA_DIR / INTEGRITY_EXCEPTIONS_FILE
+    path = INPUTS_DIR / INTEGRITY_EXCEPTIONS_FILE
     if not path.exists():
         return pd.DataFrame(columns=INTEGRITY_EXCEPTION_COLUMNS)
     exceptions = pd.read_csv(path, dtype=str).fillna("")
@@ -1684,7 +1687,7 @@ class TestSpeakerUtterances:
         must contain no empty utterances and no rounds absent from the
         unfiltered file.
         """
-        path = DATA_DIR / "speaker_utterances_filtered.csv"
+        path = TABLES_DIR / "speaker_utterances_filtered.csv"
         if not path.exists():
             pytest.skip("speaker_utterances_filtered.csv not present")
         filtered = pd.read_csv(path)
@@ -2155,7 +2158,7 @@ class TestCrossFileConsistency:
 
 def get_real_game_ids():
     """Get game IDs for parametrize decorator."""
-    games_path = DATA_DIR / "games.csv"
+    games_path = TABLES_DIR / "games.csv"
     if not games_path.exists():
         return []
     games = pd.read_csv(games_path)
@@ -2419,7 +2422,7 @@ class TestDataCompleteness:
         with no real game -- quiz failures, lobby timeouts, arrivals after the
         games were full -- so attrition can be reported. It always exists, at
         least as a header, and never overlaps players.csv."""
-        path = DATA_DIR / "dropouts.csv"
+        path = TABLES_DIR / "dropouts.csv"
         assert path.exists(), "dropouts.csv is missing; rerun combine_runs.py"
         dropouts = pd.read_csv(path)
         # The pilot's committed file has the first five columns only; the full
@@ -2438,12 +2441,12 @@ class TestDataCompleteness:
         batch_treatments): a record with no batch, or a batch of several
         treatments, must be blank, and every other record must carry its
         batch's factors."""
-        dropouts = pd.read_csv(DATA_DIR / "dropouts.csv", dtype=str, keep_default_na=False)
+        dropouts = pd.read_csv(TABLES_DIR / "dropouts.csv", dtype=str, keep_default_na=False)
         if "condition" not in dropouts.columns:
             pytest.skip("dropouts.csv predates the treatment columns")
         batches = _raw_table("batch.csv", ["id", "config"])
         if batches is None:
-            pytest.skip("raw_anonymized/batch.csv is not present")
+            pytest.skip("raw/batch.csv is not present")
         treatments = {}
         for batch_id, config in zip(batches["id"], batches["config"]):
             try:
@@ -2707,7 +2710,7 @@ class TestSessionInstrumentation:
 
 
 def _raw_table(name, columns):
-    """One raw_anonymized table as strings, or None when the file is absent."""
+    """One raw table as strings, or None when the file is absent."""
     path = RAW_DIR / name
     if not path.exists():
         return None
@@ -2746,13 +2749,13 @@ def _assemble(speaker_messages):
 @pytest.fixture(scope="session")
 def messages_text():
     """messages.csv with every column as text, so message texts compare exactly."""
-    return _as_text_table(DATA_DIR / "messages.csv")
+    return _as_text_table(TABLES_DIR / "messages.csv")
 
 
 @pytest.fixture(scope="session")
 def message_labels():
     """The classifier's labels, keyed by message; None when the dataset has none."""
-    path = DATA_DIR / "messages_classified.csv"
+    path = CLASSIFIER_DIR / "messages_classified.csv"
     if not path.exists():
         return None
     labels = _as_text_table(path)
@@ -2763,7 +2766,7 @@ def message_labels():
 
 class TestUtteranceAssembly:
     def test_speaker_utterances_are_the_speakers_messages_of_the_round(self, messages_text):
-        utterances = _as_text_table(DATA_DIR / "speaker_utterances.csv")
+        utterances = _as_text_table(TABLES_DIR / "speaker_utterances.csv")
         rebuilt = _assemble(messages_text[messages_text["senderRole"] == "speaker"])
         merged = utterances.merge(rebuilt, on=["gameId", "trialNum", "playerId"], how="outer", indicator=True)
         assert (merged["_merge"] == "both").all(), (
@@ -2779,12 +2782,12 @@ class TestUtteranceAssembly:
         """speaker_utterances_filtered.csv is the same assembly over the
         messages the classifier labeled referential, and a round in which
         every speaker message was non-referential has no row at all."""
-        path = DATA_DIR / FILTERED_UTTERANCES_FILE
+        path = TABLES_DIR / FILTERED_UTTERANCES_FILE
         if not path.exists():
             pytest.skip("no filtered utterances")
         if message_labels is None:
             pytest.fail("speaker_utterances_filtered.csv exists but messages_classified.csv does not")
-        status, detail = filtered_utterances_status(DATA_DIR)
+        status, detail = filtered_utterances_status(TABLES_DIR)
         assert status == "current", detail
         speaker = messages_text[messages_text["senderRole"] == "speaker"]
         keyed = _message_key(speaker).merge(
@@ -2813,14 +2816,14 @@ class TestUtteranceAssembly:
 def derived_utterances():
     if not (DERIVED_DIR / "embeddings.npy").exists():
         pytest.skip(f"no derived tables for dataset '{DATASET.name}'")
-    status, detail = filtered_utterances_status(DATA_DIR)
+    status, detail = filtered_utterances_status(TABLES_DIR)
     if status == "current":
         name = FILTERED_UTTERANCES_FILE
     elif status == "absent":
         name = "speaker_utterances.csv"
     else:
         pytest.fail(detail)
-    utterances = pd.read_csv(DATA_DIR / name, dtype={"playerId": str, "gameId": str})
+    utterances = pd.read_csv(TABLES_DIR / name, dtype={"playerId": str, "gameId": str})
     text = utterances["utterance"].fillna("").astype(str).str.strip()
     utterances = utterances[text != ""].reset_index(drop=True)
     utterances["row"] = range(len(utterances))
@@ -2944,7 +2947,7 @@ class TestDerivedTables:
     """The similarity tables follow from the utterance file and embeddings.npy."""
 
     def test_pairwise_windows_hold_every_pair_of_latest_descriptions(self, derived_utterances, unit_embeddings):
-        games = pd.read_csv(DATA_DIR / "games.csv", dtype={"gameId": str})
+        games = pd.read_csv(TABLES_DIR / "games.csv", dtype={"gameId": str})
         table = pd.read_csv(DERIVED_DIR / "pairwise_similarities.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
         expected = pd.concat(
             [
@@ -2965,7 +2968,7 @@ class TestDerivedTables:
         jaccard = pd.read_csv(DERIVED_DIR / "pairwise_similarities_jaccard.csv", dtype={"gameId": str, "speaker1": str, "speaker2": str})
         keys = ["gameId", "target", "window", "speaker1", "speaker2", "group1", "group2", "sameGroup"]
         assert sbert[keys].equals(jaccard[keys]), "the Jaccard table's rows are not the SBERT table's rows in order"
-        games = pd.read_csv(DATA_DIR / "games.csv", dtype={"gameId": str})
+        games = pd.read_csv(TABLES_DIR / "games.csv", dtype={"gameId": str})
         latest = pd.concat(
             [
                 _latest_per_speaker(_window_utterances(derived_utterances, games, window), ["gameId", "target"]).assign(window=window)
@@ -3035,9 +3038,9 @@ class TestDerivedTables:
 
 @pytest.fixture(scope="session")
 def manifest():
-    path = DATA_DIR / "manifest.json"
+    path = RAW_DIR / "manifest.json"
     if not path.exists() or not RAW_DIR.is_dir():
-        pytest.skip("no manifest or raw_anonymized tables for this dataset")
+        pytest.skip("no manifest or raw tables for this dataset")
     return json.loads(path.read_text())
 
 
@@ -3045,20 +3048,20 @@ class TestRawReconciliation:
     def test_the_manifest_describes_the_raw_tables_and_the_runs(self, manifest):
         for name, count in manifest["row_counts"].items():
             table = _raw_table(name, ["id"])
-            assert table is not None, f"raw_anonymized/{name} named in the manifest is missing"
-            assert len(table) == count, f"raw_anonymized/{name} has {len(table)} rows, the manifest says {count}"
+            assert table is not None, f"raw/{name} named in the manifest is missing"
+            assert len(table) == count, f"raw/{name} has {len(table)} rows, the manifest says {count}"
         assert manifest["source_runs"] == DATASET.read_runs(), "manifest source_runs differ from runs.txt"
         raw_games = _raw_table("game.csv", ["id", "condition"])
         assert manifest["games"] == len(raw_games)
         assert manifest["conditions"] == raw_games["condition"].value_counts().to_dict()
 
     def test_every_kept_game_and_player_is_processed_once(self, manifest, players):
-        all_games = pd.read_csv(DATA_DIR / "games.csv", dtype=str, keep_default_na=False)
+        all_games = pd.read_csv(TABLES_DIR / "games.csv", dtype=str, keep_default_na=False)
         raw_games = _raw_table("game.csv", ["id"])
         assert set(all_games["gameId"]) == set(raw_games["id"]) and all_games["gameId"].is_unique
         raw_players = _raw_table("player.csv", ["id", "gameID"])
         player_games = _raw_table("playerGame.csv", ["playerID", "gameID"])
-        all_players = pd.read_csv(DATA_DIR / "players.csv", dtype=str, keep_default_na=False)
+        all_players = pd.read_csv(TABLES_DIR / "players.csv", dtype=str, keep_default_na=False)
         assert set(all_players["playerId"]) == set(raw_players["id"]) == set(player_games["playerID"])
         assert all_players["playerId"].is_unique
         game_of = raw_players.set_index("id")["gameID"]
@@ -3071,7 +3074,7 @@ class TestRawReconciliation:
     def test_trials_are_the_player_rounds_with_a_role(self, manifest, trials):
         player_rounds = _raw_table("playerRound.csv", ["playerID", "roundID", "role", "phase"])
         with_role = player_rounds[(player_rounds["phase"] == "refgame") & (player_rounds["role"] != "")]
-        all_trials = pd.read_csv(DATA_DIR / "trials.csv", dtype=str, keep_default_na=False)
+        all_trials = pd.read_csv(TABLES_DIR / "trials.csv", dtype=str, keep_default_na=False)
         assert len(all_trials) == len(with_role), f"{len(all_trials)} trial rows for {len(with_role)} player rounds with a role"
         assert set(zip(all_trials["playerId"], all_trials["roundId"])) == set(zip(with_role["playerID"], with_role["roundID"]))
 
@@ -3087,7 +3090,7 @@ class TestRawReconciliation:
             for entry in json.loads(chat):
                 sender = entry.get("sender") or {}
                 raw.add((round_id, sender.get("id"), int(round(float(entry.get("timestamp")))), entry.get("text", "")))
-        all_players = pd.read_csv(DATA_DIR / "players.csv", dtype=str, keep_default_na=False)
+        all_players = pd.read_csv(TABLES_DIR / "players.csv", dtype=str, keep_default_na=False)
         excluded = set(all_players.loc[_truthy(all_players["excluded"]), "playerId"]) if "excluded" in all_players else set()
         raw = {entry for entry in raw if entry[1] not in excluded}
         key = _message_key(messages_text)
@@ -3098,7 +3101,7 @@ class TestRawReconciliation:
         )
 
     def test_dropouts_are_the_records_the_manifest_counts(self, manifest):
-        dropouts = pd.read_csv(DATA_DIR / "dropouts.csv", dtype=str, keep_default_na=False)
+        dropouts = pd.read_csv(TABLES_DIR / "dropouts.csv", dtype=str, keep_default_na=False)
         assert len(dropouts) == manifest["dropouts"], f"{len(dropouts)} dropout rows, the manifest counts {manifest['dropouts']}"
         raw_players = _raw_table("player.csv", ["id"])
         assert not dropouts["playerId"].isin(set(raw_players["id"])).any(), "a dropout record is also a raw player record"
@@ -3117,7 +3120,7 @@ class TestAnalysisColumns:
         tables = {"trials": trials, "messages": messages, "speaker_utterances": speaker_utterances}
         if not social_guesses.empty:
             tables["social_guesses"] = social_guesses
-        filtered = DATA_DIR / FILTERED_UTTERANCES_FILE
+        filtered = TABLES_DIR / FILTERED_UTTERANCES_FILE
         if filtered.exists():
             tables["speaker_utterances_filtered"] = pd.read_csv(filtered)
         return tables
@@ -3147,7 +3150,7 @@ class TestAnalysisColumns:
 
 
 def _technical_exclusions():
-    path = DATA_DIR / "technical_exclusions.csv"
+    path = INPUTS_DIR / "technical_exclusions.csv"
     if not path.exists():
         return pd.DataFrame(columns=["gameId", "playerId", "roundId", "outcome", "reason"])
     return pd.read_csv(path, dtype=str)

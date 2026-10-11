@@ -200,7 +200,7 @@ p1_pairwise <- pairwise_sim |> filter(window == "phase1_final")
 
 if (nrow(p1_pairwise) > 0) {
   # Uses cached RDS if available; pass force = TRUE to recompute
-  gs_cached <- compute_group_specificity(p1_pairwise, derived_dir)
+  gs_cached <- compute_group_specificity(p1_pairwise, cache_dir)
   gs_results <- gs_cached$gs_results
   perm_results <- gs_cached$perm_results
 

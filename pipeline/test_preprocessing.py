@@ -1316,7 +1316,9 @@ class TestEpochConversion:
 
 
 def _run_preprocessing(raw, out, monkeypatch, *extra):
-    monkeypatch.setattr(sys, "argv", ["preprocessing.py", str(raw), "--output", str(out), *extra])
+    monkeypatch.setattr(
+        sys, "argv", ["preprocessing.py", str(raw), "--output", str(out), "--inputs", str(out), *extra]
+    )
     preprocessing.main()
 
 

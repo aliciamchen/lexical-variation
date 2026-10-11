@@ -5,7 +5,7 @@
 # speaker of each listener trial and the in-group flag are columns of the
 # processed tables (pipeline/preprocessing.py), and the model-input frames
 # (the within-group block means, each speaker's final-phase description
-# properties, the per-listener in-group advantage) are tables in the derived
+# properties, the per-listener in-group advantage) are tables in the frames
 # directory (pipeline/build_frames.py). What is left to do here is what a
 # model needs at fitting time: subsetting to a phase, a role or a set of
 # conditions, factor levels, centering, the game-qualified group id, and the
@@ -27,7 +27,7 @@
 
 # ── Loading ──────────────────────────────────────────────────────────────────
 
-read_table <- function(name, dir = data_dir) {
+read_table <- function(name, dir = tables_dir) {
   path <- file.path(dir, name)
   if (!file.exists(path)) {
     return(tibble())
@@ -70,14 +70,14 @@ load_tables <- function() {
     # The model-input frames (pipeline/build_frames.py)
     within_group_means = read_table(
       "within_group_block_means.csv",
-      derived_dir
+      frames_dir
     ),
     within_group_means_jaccard = read_table(
       "within_group_block_means_jaccard.csv",
-      derived_dir
+      frames_dir
     ),
-    final_props = read_table("final_phase_properties.csv", derived_dir),
-    ingroup_adv = read_table("ingroup_advantage.csv", derived_dir)
+    final_props = read_table("final_phase_properties.csv", frames_dir),
+    ingroup_adv = read_table("ingroup_advantage.csv", frames_dir)
   )
 }
 
@@ -135,7 +135,7 @@ add_condition <- function(df, games, levels = CONDITION_ORDER) {
 # examined and applied by the pipeline. Columns: gameId, playerId, roundId,
 # outcome ("referential", "social", or "both"), reason. Read here to report
 # them; a missing file means none.
-technical_exclusions <- function(dir = data_dir) {
+technical_exclusions <- function(dir = dataset_dir) {
   ex <- read_table("technical_exclusions.csv", dir)
   if (!has_rows(ex)) {
     return(tibble(

@@ -46,7 +46,7 @@
   })
 }
 
-bf_cache_dir <- function() file.path(derived_dir, "bayes_factors")
+bf_cache_dir <- function() file.path(cache_dir, "bayes_factors")
 
 # The preregistered decision: compute a Bayes factor when a planned contrast
 # is non-significant (or always / never, per BAYES_FACTORS). `p_values` are the

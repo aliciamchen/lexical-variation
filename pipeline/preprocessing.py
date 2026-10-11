@@ -4,7 +4,7 @@ Preprocessing script for Empirica experiment data.
 Parses raw Empirica export CSVs and produces clean analysis-ready CSVs.
 
 Usage:
-    uv run python -m pipeline.preprocessing data/<dataset>/raw_anonymized/ --output data/<dataset>/
+    uv run python -m pipeline.preprocessing --dataset <name>
 
 process_data.py runs this as its first step with those two paths for the
 active dataset.
@@ -21,6 +21,7 @@ import pandas as pd
 from pipeline.dataset_paths import (
     FILTERED_UTTERANCES_FILE,
     FILTERED_UTTERANCES_SIDECAR,
+    add_dataset_argument,
     dataset_dirs,
     filtered_utterances_status,
 )
@@ -1118,7 +1119,7 @@ def exclude_survey_answers(players: pd.DataFrame, exclusions: pd.DataFrame) -> p
     here, as the messages are dropped from messages.csv, so that no consumer of
     players.csv has to filter them out; the row itself stays, because the
     roster, attrition and pay records still need the player. The answers
-    remain in raw_anonymized/player.csv.
+    remain in raw/player.csv.
     """
     players = players.copy()
     reasons = dict(zip(exclusions["playerId"], exclusions["reason"]))
@@ -1720,31 +1721,44 @@ def main():
     parser = argparse.ArgumentParser(
         description="Preprocess Empirica export data for analysis"
     )
+    add_dataset_argument(parser)
     parser.add_argument(
         "input_dir",
-        help="Directory of raw Empirica CSVs (data/<dataset>/raw_anonymized/ from combine_runs.py)",
+        nargs="?",
+        default=None,
+        help="Directory of raw Empirica CSVs (default: the dataset's raw/, from combine_runs.py)",
     )
     parser.add_argument(
         "--output",
         "-o",
         default=None,
-        help="Output directory for the analysis-ready CSVs (default: data/<dataset>/ of the active dataset)",
+        help="Output directory for the analysis-ready tables (default: the dataset's tables/)",
+    )
+    parser.add_argument(
+        "--inputs",
+        default=None,
+        help=(
+            "Directory holding participant_exclusions.csv and technical_exclusions.csv "
+            "(default: the dataset directory, data/<name>/)"
+        ),
     )
     parser.add_argument(
         "--exclusions",
         default=None,
         help=(
             "participant_exclusions.csv (playerId,reason); default: the file of that "
-            "name in the output directory, if present"
+            "name in the inputs directory, if present"
         ),
     )
     args = parser.parse_args()
 
-    input_dir = Path(args.input_dir)
-    output_dir = Path(args.output) if args.output else dataset_dirs().data
+    dirs = dataset_dirs(args.dataset)
+    input_dir = Path(args.input_dir) if args.input_dir else dirs.raw
+    output_dir = Path(args.output) if args.output else dirs.tables
+    inputs_dir = Path(args.inputs) if args.inputs else dirs.data
     output_dir.mkdir(parents=True, exist_ok=True)
     exclusions_path = (
-        Path(args.exclusions) if args.exclusions else output_dir / PARTICIPANT_EXCLUSIONS_FILE
+        Path(args.exclusions) if args.exclusions else inputs_dir / PARTICIPANT_EXCLUSIONS_FILE
     )
     if args.exclusions and not exclusions_path.exists():
         parser.error(f"--exclusions file not found: {exclusions_path}")
@@ -1777,7 +1791,7 @@ def main():
                 f"player.csv: {unknown}"
             )
         print(f"Excluding {len(exclusions)} participant(s) listed in {exclusions_path}")
-    technical = read_technical_exclusions(output_dir / TECHNICAL_EXCLUSIONS_FILE)
+    technical = read_technical_exclusions(inputs_dir / TECHNICAL_EXCLUSIONS_FILE)
     if not technical.empty:
         print(f"Applying {len(technical)} documented technical exclusion(s) from {TECHNICAL_EXCLUSIONS_FILE}")
 

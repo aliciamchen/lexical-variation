@@ -12,9 +12,7 @@ pipeline/          the data pipeline: extraction, combination, preprocessing, th
 analysis/          the R side: config.R, the helpers in analysis/R/ with their tests, and the three Quarto notebooks that fit the preregistered models
 paper/             the Python side of the article: the descriptive macros, the figure style and the macro writer
 simulations/       the design-matched simulation behind the speaker random effect, and the power analysis
-analysis/derived/  derived metrics per dataset: embeddings, similarity tables, frames and cached model fits
-analysis/results/  the model estimates the notebooks write for the figures and the descriptive macros
-data/              one directory per dataset; data/README.md is the codebook
+data/              one directory per dataset: the hand-written inputs at the top and the generated files one level down, in a directory per stage (raw, tables, classifier, derived, frames, estimates, cache); data/README.md is the codebook
 operations/        the Prolific tooling (payments, blocklist, tally) and procedures.md, the record of how a session was run
 figures/           the article's figures per dataset, and figures/manual/ for the hand-made ones (the Illustrator source, the schematic and condition diagrams, the avatar designs)
 writing/           Overleaf projects, one per manuscript (not committed; synced through Overleaf)
@@ -47,10 +45,14 @@ Every dataset has the same layout, defined once in `pipeline/dataset_paths.py` a
 
 | Path | Contents |
 |---|---|
-| `data/<name>/runs.txt` | The Empirica export timestamps the dataset is built from |
-| `data/<name>/raw_anonymized/` | The raw Empirica tables, stacked across those exports, with identifying columns removed |
-| `data/<name>/*.csv` | The analysis-ready tables: `games`, `players`, `trials`, `messages`, `speaker_utterances`, `speaker_utterances_filtered`, `social_guesses` and `dropouts` |
-| `analysis/derived/<name>/` | The SBERT embeddings, the pairwise and block-by-block similarity tables in sentence-embedding and content-word (Jaccard) versions, and cached model fits |
+| `data/<name>/` | The hand-written inputs: `runs.txt`, the Empirica export timestamps the dataset is built from, and the exclusion and exception files described in the codebook |
+| `data/<name>/raw/` | The raw Empirica tables, stacked across those exports, with identifying columns removed, and the `manifest.json` that records what went into them |
+| `data/<name>/tables/` | The analysis-ready tables: `games`, `players`, `trials`, `messages`, `speaker_utterances`, `speaker_utterances_filtered`, `social_guesses` and `dropouts` |
+| `data/<name>/classifier/` | The message filter's label cache, the record of the model that wrote it, and the author's annotation check |
+| `data/<name>/derived/` | The SBERT embeddings, the pairwise and block-by-block similarity tables in sentence-embedding and content-word (Jaccard) versions, and the per-description properties |
+| `data/<name>/frames/` | The model-input frames the notebooks fit to |
+| `data/<name>/estimates/` | The model estimates the notebooks write for the figures and the descriptive macros |
+| `data/<name>/cache/` | Cached model fits, keyed to the data they were fit on |
 | `figures/<name>/` | The figures |
 
 The scripts take `--dataset <name>` and `make` takes `DATASET=<name>`; both default to `full`. The columns, and the optional input files that record exclusions and documented anomalies, are described in [`data/README.md`](data/README.md). Timestamps taken in a participant's browser are comparable only within that participant, because browser clocks are not synchronized; the codebook says which columns are on the server's clock.
@@ -58,7 +60,7 @@ The scripts take `--dataset <name>` and `make` takes `DATASET=<name>`; both defa
 The pipeline from an Empirica export to the processed tables is `make extract combine process test`, or `make all`, which also renders the notebooks:
 
 1. `extract_run.py <zip>` unzips an export into `data/runs/<timestamp>/raw/`, removes the identifying columns, redacts Prolific-id-shaped tokens from every text field, and registers the export in `runs.txt`.
-2. `combine_runs.py` stacks the registered exports, keeping the newest version of each record, drops the games listed in `exclude_games.txt`, and writes `raw_anonymized/`, `dropouts.csv` and `manifest.json`.
+2. `combine_runs.py` stacks the registered exports, keeping the newest version of each record, drops the games listed in `exclude_games.txt`, and writes `raw/` with its `manifest.json` and `tables/dropouts.csv`.
 3. `process_data.py` runs `preprocessing.py`, which writes the analysis-ready tables; `filter_nonreferential.py`, which labels each speaker message as referential or not with Gemini on Vertex AI and rebuilds the utterances from the referential messages (labels are cached, so only unlabeled messages are sent, and `--skip-filter` uses the unfiltered utterances); `compute_derived.py`, which writes the embeddings and similarity tables; and `build_frames.py`, which aggregates them into the tables the models are fit to.
 4. `make test` checks the result.
 
@@ -66,7 +68,7 @@ The raw exports under `experiment/data/` are not committed because they identify
 
 ## The full-sample analyses
 
-The notebooks `analysis/checks.qmd`, `primary.qmd` and `secondary.qmd` are the preregistered analyses: the convention-formation, dropout and survey checks, the primary hypotheses and the secondary analyses. `make notebooks` renders them on the full sample; each writes its statistics to `writing/manuscript/stats/` as `\newcommand` macros for the article and its HTML to `_output/`, and `primary.qmd` writes its per-game estimates to `analysis/results/full/`. `make descriptives` then writes the descriptive macros, the data overview, the exploratory summaries and the exit survey, from the processed tables and those estimates with `paper/descriptives.py`. A render on any other dataset is marked with a warning banner, because its numbers are not results. The Bayes factors in `primary.qmd` refit three models with brms, which took about twenty minutes on the full sample; `BAYES_FACTORS=never make notebooks` skips them, and the fits are cached so that a render on unchanged data reuses them.
+The notebooks `analysis/checks.qmd`, `primary.qmd` and `secondary.qmd` are the preregistered analyses: the convention-formation, dropout and survey checks, the primary hypotheses and the secondary analyses. `make notebooks` renders them on the full sample; each writes its statistics to `writing/manuscript/stats/` as `\newcommand` macros for the article and its HTML to `_output/`, and `primary.qmd` writes its per-game estimates to `data/full/estimates/`. `make descriptives` then writes the descriptive macros, the data overview, the exploratory summaries and the exit survey, from the processed tables and those estimates with `paper/descriptives.py`. A render on any other dataset is marked with a warning banner, because its numbers are not results. The Bayes factors in `primary.qmd` refit three models with brms, which took about twenty minutes on the full sample; `BAYES_FACTORS=never make notebooks` skips them, and the fits are cached so that a render on unchanged data reuses them.
 
 ## Running the experiment
 

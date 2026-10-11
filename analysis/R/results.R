@@ -3,7 +3,7 @@
 # The notebooks fit the models; the article's figures and descriptive
 # statistics are made in Python. What they need from a model -- per-game
 # estimates, contrasts, fitted values -- is written here as a tidy CSV in
-# analysis/results/<dataset>/ with an entry in that directory's manifest.json
+# data/<dataset>/estimates/ with an entry in that directory's manifest.json
 # (source notebook, rows, columns, time), so the Python side reads the
 # estimates the notebook reported rather than refitting anything.
 #
@@ -16,7 +16,7 @@ write_result <- function(
   df,
   name,
   source = "an analysis notebook",
-  dir = results_dir
+  dir = estimates_dir
 ) {
   stopifnot(
     is.data.frame(df),

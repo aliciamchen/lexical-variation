@@ -7,7 +7,7 @@ also scored by content-word Jaccard overlap in the same row order; and the
 per-description properties (concreteness, word frequency, lexical uniqueness).
 
 Usage:
-    uv run python -m pipeline.compute_derived data/full/ --output analysis/derived/full/
+    uv run python -m pipeline.compute_derived --dataset full
 """
 
 import argparse
@@ -28,6 +28,8 @@ from sentence_transformers import SentenceTransformer
 
 from pipeline.dataset_paths import (
     FILTERED_UTTERANCES_FILE,
+    add_dataset_argument,
+    dataset_dirs,
     filtered_utterances_status,
     stale_filtered_message,
 )
@@ -662,14 +664,17 @@ def main():
     parser = argparse.ArgumentParser(
         description="Compute SBERT embeddings and similarity metrics"
     )
+    add_dataset_argument(parser)
     parser.add_argument(
-        "data_dir",
-        help="Path to analysis/processed_data/ directory with preprocessed CSVs"
+        "tables_dir",
+        nargs="?",
+        default=None,
+        help="Directory of the processed tables (default: the dataset's tables/)",
     )
     parser.add_argument(
         "--output", "-o",
         default=None,
-        help="Output directory (defaults to data_dir)"
+        help="Output directory (default: the dataset's derived/)",
     )
     parser.add_argument(
         "--utterances-file",
@@ -678,15 +683,15 @@ def main():
     )
     args = parser.parse_args()
 
-    data_dir = Path(args.data_dir)
-    output_dir = Path(args.output) if args.output else data_dir
-    output_dir.mkdir(parents=True, exist_ok=True)
+    dirs = dataset_dirs(args.dataset)
+    tables_dir = Path(args.tables_dir) if args.tables_dir else dirs.tables
+    output_dir = Path(args.output) if args.output else dirs.derived
 
     # Default to the filtered utterances when they exist and were built from the
     # current messages.csv. A filtered file whose sidecar is missing or names a
     # different messages.csv is refused, even when asked for by name: using it
     # would silently analyze descriptions from a previous version of the data.
-    status, detail = filtered_utterances_status(data_dir)
+    status, detail = filtered_utterances_status(tables_dir)
     if args.utterances_file is None:
         args.utterances_file = (
             FILTERED_UTTERANCES_FILE if status != "absent" else "speaker_utterances.csv"
@@ -695,9 +700,10 @@ def main():
         print(f"Error: {stale_filtered_message(status, detail)}", file=sys.stderr)
         sys.exit(1)
 
+    output_dir.mkdir(parents=True, exist_ok=True)
     print(f"Loading preprocessed data ({args.utterances_file})...")
-    utterances = pd.read_csv(data_dir / args.utterances_file)
-    games = pd.read_csv(data_dir / "games.csv")
+    utterances = pd.read_csv(tables_dir / args.utterances_file)
+    games = pd.read_csv(tables_dir / "games.csv")
     print(f"  {len(utterances)} utterances across {len(games)} games")
     utterances = drop_empty_utterances(utterances)
 

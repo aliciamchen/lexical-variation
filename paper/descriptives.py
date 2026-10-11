@@ -2,7 +2,7 @@
 The descriptive statistics the article quotes, written as LaTeX macros.
 
 Reads the processed tables, the derived tables and the model estimates the
-notebooks wrote to analysis/results/<dataset>/, computes the descriptive
+notebooks wrote to data/<dataset>/estimates/, computes the descriptive
 summaries (counts, attrition, endpoint means, survey responses) and writes
 them with the Python macro writer to writing/manuscript/stats/overview.tex,
 exploratory.tex and survey.tex. Nothing here fits a model: the per-game
@@ -69,9 +69,9 @@ def in_conditions(df: pd.DataFrame) -> pd.DataFrame:
     return df[df["condition"].isin(CONDITION_ORDER)]
 
 
-def utterances_file(data_dir: Path) -> str:
+def utterances_file(tables_dir: Path) -> str:
     """The utterance file the analyses read: the filtered one when current, as config.R chooses."""
-    status, detail = filtered_utterances_status(data_dir)
+    status, detail = filtered_utterances_status(tables_dir)
     if status == "current":
         return FILTERED_UTTERANCES_FILE
     if status == "absent":
@@ -81,21 +81,21 @@ def utterances_file(data_dir: Path) -> str:
 
 def load_tables(dirs) -> dict:
     """Every table the descriptives read, as the R notebooks read them."""
-    d, derived, results = dirs.data, dirs.derived, dirs.results
+    inputs, t, derived, estimates = dirs.data, dirs.tables, dirs.derived, dirs.estimates
     tables = {
-        "games": pd.read_csv(d / "games.csv"),
-        "players": pd.read_csv(d / "players.csv", low_memory=False),
-        "trials": pd.read_csv(d / "trials.csv", low_memory=False),
-        "messages": pd.read_csv(d / "messages.csv", low_memory=False),
-        "speaker_utts": pd.read_csv(d / utterances_file(d)),
-        "social_guesses": pd.read_csv(d / "social_guesses.csv", low_memory=False),
-        "dropouts": pd.read_csv(d / "dropouts.csv") if (d / "dropouts.csv").exists() else pd.DataFrame(),
-        "participant_exclusions": read_participant_exclusions(d / PARTICIPANT_EXCLUSIONS_FILE),
-        "technical_exclusions": read_technical_exclusions(d / TECHNICAL_EXCLUSIONS_FILE),
+        "games": pd.read_csv(t / "games.csv"),
+        "players": pd.read_csv(t / "players.csv", low_memory=False),
+        "trials": pd.read_csv(t / "trials.csv", low_memory=False),
+        "messages": pd.read_csv(t / "messages.csv", low_memory=False),
+        "speaker_utts": pd.read_csv(t / utterances_file(t)),
+        "social_guesses": pd.read_csv(t / "social_guesses.csv", low_memory=False),
+        "dropouts": pd.read_csv(t / "dropouts.csv") if (t / "dropouts.csv").exists() else pd.DataFrame(),
+        "participant_exclusions": read_participant_exclusions(inputs / PARTICIPANT_EXCLUSIONS_FILE),
+        "technical_exclusions": read_technical_exclusions(inputs / TECHNICAL_EXCLUSIONS_FILE),
         "adjacent_sim": pd.read_csv(derived / "adjacent_similarities.csv")
         if (derived / "adjacent_similarities.csv").exists() else pd.DataFrame(),
-        "gs_by_game": pd.read_csv(results / "gs_by_game.csv")
-        if (results / "gs_by_game.csv").exists() else pd.DataFrame(),
+        "gs_by_game": pd.read_csv(estimates / "gs_by_game.csv")
+        if (estimates / "gs_by_game.csv").exists() else pd.DataFrame(),
     }
     return tables
 
@@ -358,11 +358,11 @@ def main():
     add_dataset_argument(parser)
     args = parser.parse_args()
     dirs = dataset_dirs(args.dataset)
-    if not (dirs.data / "trials.csv").exists():
-        raise SystemExit(f"Error: no processed data for dataset '{dirs.name}' at {dirs.data}")
+    if not (dirs.tables / "trials.csv").exists():
+        raise SystemExit(f"Error: no processed data for dataset '{dirs.name}' at {dirs.tables}")
     t = load_tables(dirs)
     if t["gs_by_game"].empty:
-        print(f"  note: {dirs.results / 'gs_by_game.csv'} is missing; render primary.qmd first "
+        print(f"  note: {dirs.estimates / 'gs_by_game.csv'} is missing; render primary.qmd first "
               "for the Phase 1 group-specificity macros")
     write_stats_tex(overview_macros(t), stats_file("overview"), source=SOURCE)
     write_stats_tex(exploratory_macros(t), stats_file("exploratory"), source=SOURCE)

@@ -16,11 +16,15 @@ suppressPackageStartupMessages({
 })
 
 # ── Paths ────────────────────────────────────────────────────
-# Every dataset follows the same layout (mirrored in pipeline/dataset_paths.py):
-#   data/<name>/               preprocessed CSVs (+ raw_anonymized/, runs.txt)
-#   analysis/derived/<name>/   derived metrics, model-input frames and model caches
-#   analysis/results/<name>/   model estimates the notebooks write for the figures
-#   figures/<name>/            the article's figures
+# Every dataset follows the same layout (defined in pipeline/dataset_paths.py):
+# the hand-written inputs at the top of data/<name>/ and the generated files
+# one level down, in a directory per stage. The notebooks read
+#   data/<name>/tables/     the analysis-ready tables
+#   data/<name>/derived/    similarity tables and description properties
+#   data/<name>/frames/     the model-input frames
+# and write
+#   data/<name>/estimates/  model estimates for the figures and the macros
+#   data/<name>/cache/      group-specificity and brms caches between renders
 # The active dataset comes from the DATASET environment variable (default
 # "full").
 
@@ -77,26 +81,27 @@ use_dataset <- function(name = Sys.getenv("DATASET", unset = DEFAULT_DATASET)) {
     !grepl("/", name)
   )
   DATASET <<- name
-  data_dir <<- here("data", name)
-  derived_dir <<- here("analysis", "derived", name)
-  figures_dir <<- here("figures", name)
-  results_dir <<- here("analysis", "results", name)
-  dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
-  dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
-  dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
+  dataset_dir <<- here("data", name)
+  tables_dir <<- file.path(dataset_dir, "tables")
+  derived_dir <<- file.path(dataset_dir, "derived")
+  frames_dir <<- file.path(dataset_dir, "frames")
+  estimates_dir <<- file.path(dataset_dir, "estimates")
+  cache_dir <<- file.path(dataset_dir, "cache")
+  dir.create(estimates_dir, showWarnings = FALSE, recursive = TRUE)
+  dir.create(cache_dir, showWarnings = FALSE, recursive = TRUE)
   # Prefer filtered utterances when available, but only when their sidecar
   # shows they were built from the messages.csv beside them.
   utterances_file <<- if (
-    file.exists(file.path(data_dir, "speaker_utterances_filtered.csv"))
+    file.exists(file.path(tables_dir, "speaker_utterances_filtered.csv"))
   ) {
-    check_filtered_utterances(data_dir)
+    check_filtered_utterances(tables_dir)
     "speaker_utterances_filtered.csv"
   } else {
     "speaker_utterances.csv"
   }
-  if (!file.exists(file.path(data_dir, "games.csv"))) {
+  if (!file.exists(file.path(tables_dir, "games.csv"))) {
     warning(
-      sprintf("No processed data for dataset '%s' at %s", name, data_dir),
+      sprintf("No processed data for dataset '%s' at %s", name, tables_dir),
       call. = FALSE
     )
   }
@@ -139,8 +144,7 @@ dataset_banner <- function(name = DATASET, games = NULL) {
     NA_integer_
   }
   where <- sprintf(
-    "This render uses `data/%s/` and `analysis/derived/%s/`%s.",
-    name,
+    "This render uses `data/%s/`%s.",
     name,
     if (is.na(n_games)) "" else sprintf(" (%d games with a condition)", n_games)
   )

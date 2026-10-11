@@ -9,12 +9,26 @@ for the throwaway dataset `make smoke` writes). Every dataset follows the same
 layout, so switching datasets is a single environment variable or flag rather
 than a set of edited paths:
 
-    data/<name>/raw_anonymized/   anonymized raw Empirica CSVs (combine_runs.py)
-    data/<name>/*.csv             preprocessed analysis-ready CSVs (preprocessing.py)
-    data/<name>/runs.txt          the export timestamps combined into the dataset
-    analysis/derived/<name>/      derived metrics and model caches (compute_derived.py)
-    analysis/results/<name>/      model estimates the notebooks write for the figures
-    figures/<name>/               the article's figures
+    data/<name>/              the hand-written inputs: runs.txt (the export
+                              timestamps combined into the dataset) and the
+                              exclusion and exception files
+    data/<name>/raw/          the anonymized raw Empirica tables and their
+                              manifest.json (combine_runs.py)
+    data/<name>/tables/       the analysis-ready tables (preprocessing.py;
+                              dropouts.csv from combine_runs.py; the filtered
+                              utterances and their sidecar from the filter)
+    data/<name>/classifier/   the message filter's label cache, model record
+                              and the author's annotation check
+    data/<name>/derived/      embeddings, similarity tables and description
+                              properties (compute_derived.py)
+    data/<name>/frames/       the model-input frames (build_frames.py)
+    data/<name>/estimates/    the model estimates the notebooks write for the
+                              figures and the descriptive macros
+    data/<name>/cache/        model caches the notebooks keep between renders
+    figures/<name>/           the article's figures
+
+Everything generated sits one level down, so a file at the top of the dataset
+directory is one somebody wrote by hand.
 
 Per-run extracts are dataset-agnostic and go to data/runs/<timestamp>/.
 `analysis/config.R` mirrors this layout for the Quarto notebooks; keep the two
@@ -74,11 +88,15 @@ class DatasetDirs:
     def __init__(self, name: str):
         self.name = name
         self.data = PROJECT_ROOT / "data" / name
-        self.raw = self.data / "raw_anonymized"
         self.runs_file = self.data / "runs.txt"
-        self.derived = PROJECT_ROOT / "analysis" / "derived" / name
+        self.raw = self.data / "raw"
+        self.tables = self.data / "tables"
+        self.classifier = self.data / "classifier"
+        self.derived = self.data / "derived"
+        self.frames = self.data / "frames"
+        self.estimates = self.data / "estimates"
+        self.cache = self.data / "cache"
         self.figures = PROJECT_ROOT / "figures" / name
-        self.results = PROJECT_ROOT / "analysis" / "results" / name
 
     def read_runs(self) -> list[str]:
         """Export timestamps listed in runs.txt (blank lines and # comments ignored)."""
@@ -146,16 +164,16 @@ def messages_fingerprint(messages_path: Path) -> dict:
     }
 
 
-def write_filtered_sidecar(data_dir: Path) -> Path:
-    """Record which messages.csv the filtered utterances in data_dir came from."""
-    record = {"source": MESSAGES_FILE, **messages_fingerprint(data_dir / MESSAGES_FILE)}
-    path = data_dir / FILTERED_UTTERANCES_SIDECAR
+def write_filtered_sidecar(tables_dir: Path) -> Path:
+    """Record which messages.csv the filtered utterances in tables_dir came from."""
+    record = {"source": MESSAGES_FILE, **messages_fingerprint(tables_dir / MESSAGES_FILE)}
+    path = tables_dir / FILTERED_UTTERANCES_SIDECAR
     path.write_text(json.dumps(record, indent=2) + "\n")
     return path
 
 
-def read_filtered_sidecar(data_dir: Path) -> dict | None:
-    path = data_dir / FILTERED_UTTERANCES_SIDECAR
+def read_filtered_sidecar(tables_dir: Path) -> dict | None:
+    path = tables_dir / FILTERED_UTTERANCES_SIDECAR
     if not path.exists():
         return None
     try:
@@ -165,8 +183,8 @@ def read_filtered_sidecar(data_dir: Path) -> dict | None:
     return record if isinstance(record, dict) else None
 
 
-def filtered_utterances_status(data_dir: Path) -> tuple[str, str]:
-    """Whether speaker_utterances_filtered.csv in data_dir may be used.
+def filtered_utterances_status(tables_dir: Path) -> tuple[str, str]:
+    """Whether speaker_utterances_filtered.csv in tables_dir may be used.
 
     Returns (status, detail), where status is one of
       "absent"      no filtered file;
@@ -175,18 +193,18 @@ def filtered_utterances_status(data_dir: Path) -> tuple[str, str]:
       "stale"       the sidecar names a different messages.csv.
     The detail is a one-line explanation suitable for a warning or error.
     """
-    data_dir = Path(data_dir)
-    filtered = data_dir / FILTERED_UTTERANCES_FILE
+    tables_dir = Path(tables_dir)
+    filtered = tables_dir / FILTERED_UTTERANCES_FILE
     if not filtered.exists():
         return "absent", f"{FILTERED_UTTERANCES_FILE} not present"
-    record = read_filtered_sidecar(data_dir)
+    record = read_filtered_sidecar(tables_dir)
     if record is None:
         return (
             "unverified",
             f"{FILTERED_UTTERANCES_FILE} has no {FILTERED_UTTERANCES_SIDECAR} beside it, "
             "so which messages.csv it was built from is unknown",
         )
-    messages = data_dir / MESSAGES_FILE
+    messages = tables_dir / MESSAGES_FILE
     if not messages.exists():
         return "stale", f"{MESSAGES_FILE} is missing, so the filtered file cannot be checked"
     current = messages_fingerprint(messages)
@@ -217,7 +235,7 @@ def add_dataset_argument(parser) -> None:
         "--dataset",
         default=None,
         help=(
-            "Dataset name (data/<name>/, analysis/derived/<name>/); "
+            "Dataset name (data/<name>/); "
             f"default: $DATASET or '{DEFAULT_DATASET}'"
         ),
     )

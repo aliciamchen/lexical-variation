@@ -1,6 +1,6 @@
 # Gitignored files copied into every worktree Claude Code creates, so a worktree
 # session can build the client and run the experiment locally. The data
-# directories (data/full/, analysis/derived/full/, experiment/data/) are not
+# directories (data/full/, experiment/data/) are not
 # copied: data processing and renders stay in the main checkout.
 .env
 experiment/.empirica/empirica.toml

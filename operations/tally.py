@@ -3,7 +3,7 @@
     uv run python operations/tally.py              # the full sample (DATASET or `full`)
     uv run python operations/tally.py --dataset full
 
-Reads data/<dataset>/games.csv and players.csv (run the pipeline first) and
+Reads data/<dataset>/tables/games.csv and players.csv (run the pipeline first) and
 needs no Prolific token. Collection runs to the preregistered cap of 120
 started games, balanced by started games: 30 per condition, 15 per treatment.
 The intact games (finished with all nine players) are shown alongside, with the
@@ -211,7 +211,7 @@ def stopping_rule_lines(counts):
 def print_tally(dataset=None):
     """Print games per treatment cell; returns (counts, next_cell), or None with no games yet."""
     dataset = dataset or active_dataset()
-    games_path = PROJECT_ROOT / "data" / dataset / "games.csv"
+    games_path = PROJECT_ROOT / "data" / dataset / "tables" / "games.csv"
     if not games_path.exists():
         print(f"no games yet (no {games_path.relative_to(PROJECT_ROOT)})")
         return None
@@ -220,7 +220,7 @@ def print_tally(dataset=None):
     games = read_games_table(games_path, removals)
     intact = sum(1 for g in games if g[2] == "intact")
     others = len(games) - intact
-    print(f"{intact} intact nine-player game(s) in data/{dataset}/games.csv"
+    print(f"{intact} intact nine-player game(s) in data/{dataset}/tables/games.csv"
           + (f", {others} that lost a player or did not finish" if others else "") + ":")
     if not removals:
         print(f"  WARNING: no usable {players_path.name} beside games.csv, so a game that lost a "

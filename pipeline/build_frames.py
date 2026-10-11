@@ -14,7 +14,7 @@ restricts to the conditions it needs when it is fit.
 Usage:
     uv run python -m pipeline.build_frames --dataset full
 
-Writes into analysis/derived/<dataset>/:
+Writes into data/<dataset>/frames/:
     within_group_block_means.csv          mean SBERT similarity of a group's
                                           descriptions of a tangram, per block
     within_group_block_means_jaccard.csv  the same with content-word Jaccard
@@ -151,10 +151,11 @@ def ingroup_advantage(trials: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def build_all(data_dir: Path, derived_dir: Path) -> dict[str, int]:
-    """Build every frame from the tables in data_dir and derived_dir; returns row counts."""
-    games = pd.read_csv(data_dir / "games.csv")
-    trials = pd.read_csv(data_dir / "trials.csv", low_memory=False)
+def build_all(tables_dir: Path, derived_dir: Path, frames_dir: Path) -> dict[str, int]:
+    """Build every frame from the tables in tables_dir and derived_dir into frames_dir; returns row counts."""
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    games = pd.read_csv(tables_dir / "games.csv")
+    trials = pd.read_csv(tables_dir / "trials.csv", low_memory=False)
     desc_props = pd.read_csv(derived_dir / "description_properties.csv")
     lex_uniq = pd.read_csv(derived_dir / "lexical_uniqueness.csv")
     counts = {}
@@ -166,15 +167,15 @@ def build_all(data_dir: Path, derived_dir: Path) -> dict[str, int]:
             continue
         frame = within_group_block_means(pd.read_csv(path), games)
         name = f"within_group_block_means{suffix}.csv"
-        frame.to_csv(derived_dir / name, index=False)
+        frame.to_csv(frames_dir / name, index=False)
         counts[name] = len(frame)
 
     frame = final_phase_properties(desc_props, lex_uniq, games)
-    frame.to_csv(derived_dir / "final_phase_properties.csv", index=False)
+    frame.to_csv(frames_dir / "final_phase_properties.csv", index=False)
     counts["final_phase_properties.csv"] = len(frame)
 
     frame = ingroup_advantage(trials)
-    frame.to_csv(derived_dir / "ingroup_advantage.csv", index=False)
+    frame.to_csv(frames_dir / "ingroup_advantage.csv", index=False)
     counts["ingroup_advantage.csv"] = len(frame)
     return counts
 
@@ -184,12 +185,12 @@ def main():
     add_dataset_argument(parser)
     args = parser.parse_args()
     dirs = dataset_dirs(args.dataset)
-    if not (dirs.data / "trials.csv").exists():
-        raise SystemExit(f"Error: no processed data for dataset '{dirs.name}' at {dirs.data}")
+    if not (dirs.tables / "trials.csv").exists():
+        raise SystemExit(f"Error: no processed data for dataset '{dirs.name}' at {dirs.tables}")
     if not (dirs.derived / "description_properties.csv").exists():
         raise SystemExit(f"Error: no derived tables for dataset '{dirs.name}' at {dirs.derived}")
-    print(f"Building the model-input frames for dataset '{dirs.name}' into {dirs.derived}")
-    for name, rows in build_all(dirs.data, dirs.derived).items():
+    print(f"Building the model-input frames for dataset '{dirs.name}' into {dirs.frames}")
+    for name, rows in build_all(dirs.tables, dirs.derived, dirs.frames).items():
         print(f"  {name}: {rows} rows")
 
 

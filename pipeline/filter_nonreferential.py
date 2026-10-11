@@ -7,7 +7,7 @@ using a Gemini-based classifier. Non-referential messages (e.g., "thanks",
 "good job") are filtered before SBERT embedding analysis.
 
 Subcommands:
-  sample    - Sample messages for human annotation (annotation_sample.csv)
+  sample    - Sample messages for human annotation (classifier/annotation_sample.csv)
   classify  - Label the speaker messages that messages_classified.csv does not
               already hold (that file is the label cache); prints the number of
               messages and the estimated API calls first and asks before
@@ -33,6 +33,8 @@ import pandas as pd
 from pipeline.dataset_paths import (
     FILTERED_UTTERANCES_FILE,
     MESSAGES_FILE,
+    add_dataset_argument,
+    dataset_dirs,
     write_filtered_sidecar,
 )
 from pipeline.preprocessing import UTTERANCE_KEY_COLUMNS, assemble_speaker_utterances
@@ -201,8 +203,8 @@ def classify_batch(
 
 def cmd_sample(args):
     """Sample messages for human annotation."""
-    data_dir = Path(args.data_dir)
-    messages = pd.read_csv(data_dir / "messages.csv")
+    dirs = dataset_dirs(args.dataset)
+    messages = pd.read_csv(dirs.tables / MESSAGES_FILE)
 
     # Only speaker messages (these are what get filtered)
     speaker_msgs = messages[messages["senderRole"] == "speaker"].copy()
@@ -221,10 +223,11 @@ def cmd_sample(args):
     # Output annotation CSV
     output = sampled[["gameId", "roundId", "senderId", "text", "target", "blockNum"]].copy()
     output["human_label"] = ""  # to be filled manually
-    output_path = data_dir / "annotation_sample.csv"
+    dirs.classifier.mkdir(parents=True, exist_ok=True)
+    output_path = dirs.classifier / "annotation_sample.csv"
     output.to_csv(output_path, index=False)
     print(f"Saved {len(output)} messages for annotation to {output_path}")
-    print("Fill the 'human_label' column with 'R' or 'NR' and save as human_labels.csv")
+    print("Fill the 'human_label' column with 'R' or 'NR' and save it beside this file as human_labels.csv")
 
 
 def cached_labels(messages: pd.DataFrame, classified: pd.DataFrame | None) -> pd.Series:
@@ -283,9 +286,10 @@ def cmd_classify(args):
     back even if a later batch fails, so an interrupted run resumes from
     where it stopped.
     """
-    data_dir = Path(args.data_dir)
-    messages = pd.read_csv(data_dir / MESSAGES_FILE)
-    classified_path = data_dir / CLASSIFIED_FILE
+    dirs = dataset_dirs(args.dataset)
+    messages = pd.read_csv(dirs.tables / MESSAGES_FILE)
+    dirs.classifier.mkdir(parents=True, exist_ok=True)
+    classified_path = dirs.classifier / CLASSIFIED_FILE
     classified = pd.read_csv(classified_path) if classified_path.exists() else None
 
     labels = cached_labels(messages, classified)
@@ -374,15 +378,15 @@ def read_human_labels(path: Path) -> pd.DataFrame:
 
 def cmd_validate(args):
     """Validate LLM classifications against human labels."""
-    data_dir = Path(args.data_dir)
-    labels_path = Path(args.labels) if args.labels else data_dir / "human_labels.csv"
+    dirs = dataset_dirs(args.dataset)
+    labels_path = Path(args.labels) if args.labels else dirs.classifier / "human_labels.csv"
     try:
         human_labels = read_human_labels(labels_path)
     except (FileNotFoundError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    classified_path = data_dir / CLASSIFIED_FILE
+    classified_path = dirs.classifier / CLASSIFIED_FILE
     if not classified_path.exists():
         print(f"Error: {classified_path} not found. Run `classify` first.", file=sys.stderr)
         sys.exit(1)
@@ -529,31 +533,31 @@ def attach_labels(messages: pd.DataFrame, classified: pd.DataFrame) -> pd.DataFr
 
 def cmd_apply(args):
     """Apply filter and produce speaker_utterances_filtered.csv (plus its sidecar)."""
-    data_dir = Path(args.data_dir)
+    dirs = dataset_dirs(args.dataset)
 
-    classified_path = data_dir / "messages_classified.csv"
+    classified_path = dirs.classifier / CLASSIFIED_FILE
     if not classified_path.exists():
-        print("No messages_classified.csv found. Run 'classify' first.")
+        print(f"{classified_path} not found. Run 'classify' first.")
         sys.exit(1)
 
     # The labels are joined onto the *current* messages.csv, so the filtered
     # utterances are always a function of the file the sidecar fingerprints.
-    messages = pd.read_csv(data_dir / MESSAGES_FILE)
+    messages = pd.read_csv(dirs.tables / MESSAGES_FILE)
     classified = pd.read_csv(classified_path)
     try:
         messages = attach_labels(messages, classified)
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-    trials = pd.read_csv(data_dir / "trials.csv")
+    trials = pd.read_csv(dirs.tables / "trials.csv")
     utterances, n_dropped = build_filtered_utterances(messages, trials)
 
-    output_path = data_dir / FILTERED_UTTERANCES_FILE
+    output_path = dirs.tables / FILTERED_UTTERANCES_FILE
     utterances.to_csv(output_path, index=False)
-    sidecar = write_filtered_sidecar(data_dir)
+    sidecar = write_filtered_sidecar(dirs.tables)
 
     # Stats
-    original = pd.read_csv(data_dir / "speaker_utterances.csv")
+    original = pd.read_csv(dirs.tables / "speaker_utterances.csv")
     orig_words = original["uttLength"].sum()
     filt_words = utterances["uttLength"].sum()
     print(f"Original: {orig_words} total words across {len(original)} utterances")
@@ -579,7 +583,7 @@ def main():
 
     # sample
     p_sample = subparsers.add_parser("sample", help="Sample messages for annotation")
-    p_sample.add_argument("--data-dir", required=True, help="Path to data directory")
+    add_dataset_argument(p_sample)
     p_sample.add_argument("--n", type=int, default=200, help="Number of messages to sample")
 
     # classify
@@ -593,7 +597,7 @@ def main():
             "before anything is sent, and the run needs --yes or an interactive confirmation."
         ),
     )
-    p_classify.add_argument("--data-dir", required=True, help="Path to data directory")
+    add_dataset_argument(p_classify)
     p_classify.add_argument(
         "--model", default=MODEL_ID,
         help=f"Gemini model (default: {MODEL_ID}, which produced the full-sample labels)",
@@ -617,19 +621,19 @@ def main():
             "Agreement, confusion matrix, and Cohen's kappa between the classifier's labels "
             "and the author's. The author annotates annotation_sample.csv (written by "
             "`sample`) by filling its human_label column with R or NR for every row and "
-            "saves it as human_labels.csv in the data directory; a file with empty labels "
+            "saves it as human_labels.csv in the dataset's classifier/ directory; a file with empty labels "
             "is refused."
         ),
     )
-    p_validate.add_argument("--data-dir", required=True, help="Path to data directory")
+    add_dataset_argument(p_validate)
     p_validate.add_argument(
         "--labels", default=None,
-        help="Path to the annotated file (default: <data-dir>/human_labels.csv)",
+        help="Path to the annotated file (default: the dataset's classifier/human_labels.csv)",
     )
 
     # apply
     p_apply = subparsers.add_parser("apply", help="Apply filter and rebuild utterances")
-    p_apply.add_argument("--data-dir", required=True, help="Path to data directory")
+    add_dataset_argument(p_apply)
 
     args = parser.parse_args()
 
