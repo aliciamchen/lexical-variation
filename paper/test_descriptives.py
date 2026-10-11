@@ -101,6 +101,21 @@ def test_endpoint_macros_report_the_first_and_last_observed_block():
     assert endpoint_macros("x", df.iloc[0:0], "value") == {}
 
 
+def test_semantic_drift_macros_describe_refer_separated_with_a_game_level_interval():
+    from paper.descriptives import semantic_drift_macros
+
+    rows = []
+    for g, m in [("a", 0.6), ("b", 0.8), ("c", 0.9)]:
+        rows += [{"gameId": g, "condition": "refer_separated", "simPhase1Phase2": m + d} for d in (-0.05, 0.0, 0.05)]
+    rows += [{"gameId": "z", "condition": "refer_mixed", "simPhase1Phase2": 0.1}] * 3
+    out = semantic_drift_macros(pd.DataFrame(rows))
+    assert set(out) == {"exploratoryDriftMean", "exploratoryDriftLo", "exploratoryDriftHi", "exploratoryDriftGames"}
+    assert out["exploratoryDriftMean"] == "0.767"  # refer_separated rows only
+    assert float(out["exploratoryDriftLo"]) <= 0.767 <= float(out["exploratoryDriftHi"])
+    assert out["exploratoryDriftGames"] == "3"
+    assert semantic_drift_macros(pd.DataFrame()) == {}
+
+
 def test_phase1_specificity_and_words_by_condition_follow_the_condition_order():
     gs = pd.DataFrame(
         {

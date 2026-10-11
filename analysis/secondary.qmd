@@ -9,7 +9,6 @@ format:
 ```{r setup, message=FALSE, warning=FALSE}
 library(lme4)
 library(lmerTest)
-library(tidyboot)
 library(emmeans)
 source(here::here("analysis", "config.R"))
 list2env(load_tables(), envir = globalenv())
@@ -68,14 +67,6 @@ if (n_conditions >= 2) {
     print(summary(contrasts_semantic, infer = c(TRUE, TRUE)))
   } else {
     cat("\nPlanned contrasts need refer_separated, refer_mixed, and social_mixed.\n")
-  }
-
-  # Baseline drift: refer_separated should be near ceiling
-  drift <- phase_change |> filter(condition == "refer_separated", !is.na(simPhase1Phase2))
-  if (nrow(drift) > 1) {
-    drift_ci <- tidyboot_mean(drift, simPhase1Phase2, nboot = 1000)
-    cat(sprintf("\nrefer_separated Phase 1 to Phase 2 similarity: M = %.3f, 95%% CI [%.3f, %.3f] (ceiling = 1)\n",
-                drift_ci$empirical_stat, drift_ci$ci_lower, drift_ci$ci_upper))
   }
 } else {
   # With only 1 condition, fit without condition predictor
@@ -575,13 +566,6 @@ if (exists("contrasts_semantic")) {
     contrast_macros("secondarySemanticSepVsMixed", contrasts_semantic, row = 1),
     contrast_macros("secondarySemanticSocialVsMixed", contrasts_semantic, row = 2)
   )
-}
-if (exists("drift_ci")) {
-  macros <- c(macros, list(
-    secondaryDriftMean = fmt_stat(drift_ci$empirical_stat),
-    secondaryDriftLo = fmt_stat(drift_ci$ci_lower),
-    secondaryDriftHi = fmt_stat(drift_ci$ci_upper)
-  ))
 }
 
 if (exists("ordering_contrasts")) {

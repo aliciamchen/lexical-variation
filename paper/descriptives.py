@@ -30,6 +30,7 @@ from pipeline.dataset_paths import (
     filtered_utterances_status,
     stale_filtered_message,
 )
+from paper.bootstrap import bootstrap_mean
 from paper.plot_style import CONDITION_ORDER
 from pipeline.preprocessing import (
     PARTICIPANT_EXCLUSIONS_FILE,
@@ -94,6 +95,8 @@ def load_tables(dirs) -> dict:
         "technical_exclusions": read_technical_exclusions(inputs / TECHNICAL_EXCLUSIONS_FILE),
         "adjacent_sim": pd.read_csv(derived / "adjacent_similarities.csv")
         if (derived / "adjacent_similarities.csv").exists() else pd.DataFrame(),
+        "phase_change": pd.read_csv(derived / "phase_change_similarities.csv")
+        if (derived / "phase_change_similarities.csv").exists() else pd.DataFrame(),
         "gs_by_game": pd.read_csv(estimates / "gs_by_game.csv")
         if (estimates / "gs_by_game.csv").exists() else pd.DataFrame(),
     }
@@ -253,6 +256,26 @@ def phase1_final_words_by_condition(speaker_utts: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values("condition").reset_index(drop=True)
 
 
+def semantic_drift_macros(phase_change: pd.DataFrame) -> dict:
+    """The baseline drift: how similar a refer_separated speaker's final Phase 2
+    description of a tangram is to their final Phase 1 description, where no
+    other group was ever heard, as a mean over speaker-tangram observations
+    with a game-level bootstrap interval (ceiling 1). The secondary notebook
+    models the condition differences; this is the descriptive anchor."""
+    if phase_change.empty or "simPhase1Phase2" not in phase_change:
+        return {}
+    drift = phase_change[phase_change["condition"] == "refer_separated"]
+    if drift["simPhase1Phase2"].notna().sum() < 2:
+        return {}
+    est = bootstrap_mean(drift, "simPhase1Phase2")
+    return {
+        "exploratoryDriftMean": fmt_stat(est.mean),
+        "exploratoryDriftLo": fmt_stat(est.lower),
+        "exploratoryDriftHi": fmt_stat(est.upper),
+        "exploratoryDriftGames": fmt_count(est.n_games),
+    }
+
+
 def exploratory_macros(t: dict) -> dict:
     trials, utts = t["trials"], t["speaker_utts"]
     listeners = trials[(trials["role"] == "listener") & pd.to_numeric(trials["correct"], errors="coerce").notna()]
@@ -268,6 +291,7 @@ def exploratory_macros(t: dict) -> dict:
         macros[f"exploratoryPhaseOneGs{cond}SD"] = fmt_stat(row["sd"])
     for _, row in phase1_final_words_by_condition(utts).iterrows():
         macros[f"exploratoryPhaseOneWords{condition_macro_name(str(row['condition']))}"] = fmt_stat(row["mean_words"], 2)
+    macros.update(semantic_drift_macros(t["phase_change"]))
     return macros
 
 
