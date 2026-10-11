@@ -27,15 +27,14 @@ backups/
 *.tar.zst
 .zed
 reviews/
-analysis/outputs
 # Old raw-export layout
 /data/raw/
 # Writing projects (each an Overleaf project mirrored through Dropbox)
 writing/
 *.ai
 
-# Analysis pipeline outputs
-analysis/*_files/
+# Quarto render directories of the power analysis
+simulations/**/*_files/
 data/runs/
 # What each Prolific study still owes (make payments): holds Prolific ids
 data/payments/
@@ -55,7 +54,10 @@ figures/meetings/
 
 # Throwaway dataset written by `make smoke`
 data/smoke/
-figures/smoke/
+results/smoke/
+
+# Manifest lock a model script holds while it updates results/<name>/estimates/manifest.json
+results/**/.manifest.lock
 
 # Worktrees that Claude Code creates for parallel sessions
 .claude/worktrees/

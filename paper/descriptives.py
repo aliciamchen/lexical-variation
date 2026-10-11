@@ -1,13 +1,12 @@
 """
 The descriptive statistics the article quotes, written as LaTeX macros.
 
-Reads the processed tables, the derived tables and the model estimates the
-notebooks wrote to data/<dataset>/estimates/, computes the descriptive
+Reads the processed tables, the measures and the per-game group-specificity
+estimates models/primary/group_specificity.R wrote, computes the descriptive
 summaries (counts, attrition, endpoint means, survey responses) and writes
-them with the Python macro writer to writing/manuscript/stats/overview.tex,
-exploratory.tex and survey.tex. Nothing here fits a model: the per-game
-group-specificity estimates come from the results table `primary.qmd` writes.
-The notebooks write the inferential files (checks, primary, secondary).
+them as macros to results/<dataset>/stats/overview.tex, exploratory.tex and
+survey.tex. Nothing here fits a model; paper/inferential.py writes the
+inferential files (checks, primary, secondary) from the estimates tables.
 
 Usage:
     uv run python -m paper.descriptives --dataset full
@@ -81,8 +80,9 @@ def utterances_file(tables_dir: Path) -> str:
 
 
 def load_tables(dirs) -> dict:
-    """Every table the descriptives read, as the R notebooks read them."""
-    inputs, t, derived, estimates = dirs.data, dirs.tables, dirs.derived, dirs.estimates
+    """Every table the descriptives read, as the R model scripts read them."""
+    inputs, t, measures, estimates = dirs.data, dirs.tables, dirs.measures, dirs.estimates
+    gs_path = estimates / "primary" / "group_specificity.csv"
     tables = {
         "games": pd.read_csv(t / "games.csv"),
         "players": pd.read_csv(t / "players.csv", low_memory=False),
@@ -93,12 +93,11 @@ def load_tables(dirs) -> dict:
         "dropouts": pd.read_csv(t / "dropouts.csv") if (t / "dropouts.csv").exists() else pd.DataFrame(),
         "participant_exclusions": read_participant_exclusions(inputs / PARTICIPANT_EXCLUSIONS_FILE),
         "technical_exclusions": read_technical_exclusions(inputs / TECHNICAL_EXCLUSIONS_FILE),
-        "adjacent_sim": pd.read_csv(derived / "adjacent_similarities.csv")
-        if (derived / "adjacent_similarities.csv").exists() else pd.DataFrame(),
-        "phase_change": pd.read_csv(derived / "phase_change_similarities.csv")
-        if (derived / "phase_change_similarities.csv").exists() else pd.DataFrame(),
-        "gs_by_game": pd.read_csv(estimates / "gs_by_game.csv")
-        if (estimates / "gs_by_game.csv").exists() else pd.DataFrame(),
+        "adjacent_sim": pd.read_csv(measures / "adjacent_similarities.csv")
+        if (measures / "adjacent_similarities.csv").exists() else pd.DataFrame(),
+        "phase_change": pd.read_csv(measures / "phase_change_similarities.csv")
+        if (measures / "phase_change_similarities.csv").exists() else pd.DataFrame(),
+        "gs_by_game": pd.read_csv(gs_path) if gs_path.exists() else pd.DataFrame(),
     }
     return tables
 
@@ -260,8 +259,8 @@ def semantic_drift_macros(phase_change: pd.DataFrame) -> dict:
     """The baseline drift: how similar a refer_separated speaker's final Phase 2
     description of a tangram is to their final Phase 1 description, where no
     other group was ever heard, as a mean over speaker-tangram observations
-    with a game-level bootstrap interval (ceiling 1). The secondary notebook
-    models the condition differences; this is the descriptive anchor."""
+    with a game-level bootstrap interval (ceiling 1). The secondary semantic-
+    change model estimates the condition differences; this is the descriptive anchor."""
     if phase_change.empty or "simPhase1Phase2" not in phase_change:
         return {}
     drift = phase_change[phase_change["condition"] == "refer_separated"]
@@ -384,13 +383,16 @@ def main():
     dirs = dataset_dirs(args.dataset)
     if not (dirs.tables / "trials.csv").exists():
         raise SystemExit(f"Error: no processed data for dataset '{dirs.name}' at {dirs.tables}")
+    if dirs.name != "full":
+        print(f"Dataset '{dirs.name}' is not the full sample: the macros written to {dirs.stats} are not results.")
     t = load_tables(dirs)
     if t["gs_by_game"].empty:
-        print(f"  note: {dirs.estimates / 'gs_by_game.csv'} is missing; render primary.qmd first "
-              "for the Phase 1 group-specificity macros")
-    write_stats_tex(overview_macros(t), stats_file("overview"), source=SOURCE)
-    write_stats_tex(exploratory_macros(t), stats_file("exploratory"), source=SOURCE)
-    write_stats_tex(survey_macros(t), stats_file("survey"), source=SOURCE)
+        print(f"  note: {dirs.estimates / 'primary' / 'group_specificity.csv'} is missing; run "
+              "`Rscript models/primary/group_specificity.R` (or `make models`) first for the "
+              "Phase 1 group-specificity macros")
+    write_stats_tex(overview_macros(t), stats_file("overview", dirs), source=SOURCE, dataset=dirs.name)
+    write_stats_tex(exploratory_macros(t), stats_file("exploratory", dirs), source=SOURCE, dataset=dirs.name)
+    write_stats_tex(survey_macros(t), stats_file("survey", dirs), source=SOURCE, dataset=dirs.name)
 
 
 if __name__ == "__main__":

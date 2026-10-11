@@ -1,0 +1,3 @@
+analysis,kind,term,estimate,std_error,statistic,df,lower,upper,p_value,odds_ratio,or_lower,or_upper,n_obs,random_effects,n_games
+specificity_vs_social_accuracy,coefficient,social_accuracy,0.350364163941429,0.12928677571094913,2.7099768094205565,,0.09137163042870372,0.6093566974541542,0.008913538749866542,,,,59,,59
+specificity_vs_social_accuracy_wls,coefficient,social_accuracy,0.18354494798118454,0.13465441065490927,1.3630815885531693,,-0.08620025041519236,0.45329014637756143,0.17831258239123163,,,,59,,59

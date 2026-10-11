@@ -1,0 +1,3 @@
+analysis,kind,term,estimate,std_error,statistic,df,lower,upper,p_value,n_obs,n_games,random_effects
+semantic_change,contrast,sep_gt_mixed,0.0074907440800908885,0.013941427975340157,0.5373010636600962,Inf,-0.019833952644634972,0.03481544080481675,0.5910596708391428,5580,116,random intercepts only; singular fit
+semantic_change,contrast,social_gt_mixed,0.08093316314243718,0.013829533875535,5.852197468897429,Inf,0.05382777482341195,0.1080385514614624,4.851201482853873e-9,5580,116,random intercepts only; singular fit

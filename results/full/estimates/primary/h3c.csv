@@ -1,0 +1,4 @@
+analysis,kind,term,estimate,std_error,statistic,df,lower,upper,p_value,odds_ratio,or_lower,or_upper,n_obs,random_effects,n_descriptions,n_games
+h3c_concreteness,coefficient,conditionsocial_first,0.09997653257125333,0.07246469399907052,1.3796585213281338,,,,0.16769180971801909,1.1051449828601925,0.9588202487315831,1.2738002089096103,13622,random intercepts only; singular fit,3111,60
+h3c_uniqueness,coefficient,conditionsocial_first,-0.07909321419544743,0.12624404335079378,-0.6265104641465852,,,,0.5309801755097003,0.9239537948212825,0.7214249017777272,1.1833395449214377,13622,random intercepts only; singular fit,3111,60
+h3c_word_frequency,coefficient,conditionsocial_first,0.05695426717080762,0.04194922676397933,1.357695279849895,57.03579837070923,,,0.1799079366548204,,,,3111,maximal,3111,60

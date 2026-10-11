@@ -1,0 +1,3 @@
+analysis,kind,term,estimate,std_error,statistic,df,lower,upper,p_value,scale,n_obs,n_games,random_effects
+h4a,contrast,H4a_socialfirst_gt_socialmixed,1.2215261372440294,0.147242616238283,1.6600398648745762,Inf,0.9644928904008565,1.5470576494868418,0.09690643307287446,odds_ratio,10885,59,maximal
+h4b,contrast,H4b_socialmixed_gt_socialfirst,1.0715389335793952,0.11895689584057237,0.6224012088502503,Inf,0.8620090298124699,1.3319996037933126,0.5336780857580741,odds_ratio,10885,59,maximal

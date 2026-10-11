@@ -1,0 +1,5 @@
+condition,listener_type,listeners,accuracy
+social_mixed,in_group,239,0.9197144775535128
+social_mixed,out_group,239,0.6762909909665936
+social_first,in_group,232,0.9246850711430487
+social_first,out_group,232,0.6624936706821581

@@ -1,0 +1,13 @@
+window,condition,pairs,with_similarity,omitted,prop_omitted
+phase1_final,refer_separated,5761,5716,45,0.00781114389862871
+phase1_final,refer_mixed,6106,6083,23,0.0037667867671143137
+phase1_final,social_mixed,6128,6092,36,0.00587467362924282
+phase1_final,social_first,5717,5701,16,0.002798670631450061
+phase2_early,refer_separated,4845,4788,57,0.011764705882352941
+phase2_early,refer_mixed,5128,5116,12,0.00234009360374415
+phase2_early,social_mixed,5035,5006,29,0.005759682224428997
+phase2_early,social_first,5002,5002,0,0
+phase2_final,refer_separated,4717,4599,118,0.025015899936400254
+phase2_final,refer_mixed,5177,5168,9,0.0017384585667374927
+phase2_final,social_mixed,4868,4839,29,0.005957271980279375
+phase2_final,social_first,4893,4893,0,0

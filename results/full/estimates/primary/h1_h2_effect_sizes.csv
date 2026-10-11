@@ -1,0 +1,3 @@
+analysis,quantity,contrast,d,CI_low,CI_high,note
+h1_h2,unadjusted two-sample d (power-analysis scale),refer_separated - refer_mixed,4.562987146424161,3.5511890897442266,5.562116481924829,
+h1_h2,unadjusted two-sample d (power-analysis scale),social_mixed - refer_mixed,1.575848104491432,0.9788272865576497,2.1620896948217134,

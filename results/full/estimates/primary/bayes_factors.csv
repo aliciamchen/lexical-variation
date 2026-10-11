@@ -1,0 +1,8 @@
+hypothesis,contrast,p_value,computed,reason,bf10,interpretation,method,warnings
+H1,H1 refer_separated vs refer_mixed,9.892217814481925e-33,FALSE,contrast significant; not required under the preregistered rule,,,bridge sampling,
+H2,H2 social_mixed vs refer_mixed,5.259298664851884e-12,FALSE,contrast significant; not required under the preregistered rule,,,bridge sampling,
+H3a,H3a social_first vs social_mixed,0.3747846045488412,TRUE,,0.36861588917242555,inconclusive,bridge sampling,
+H4a,H4a social_first vs social_mixed,0.09690643307287446,TRUE,,7.007994759597598e-7,strong evidence for the null,bridge sampling,"logml could not be estimated within maxiter, rerunning with adjusted starting value. 
+Estimate might be more variable than usual."
+H4b,H4b social_mixed vs social_first,0.5336780857580741,TRUE,,1.920677070989044e-4,strong evidence for the null,bridge sampling,"logml could not be estimated within maxiter, rerunning with adjusted starting value. 
+Estimate might be more variable than usual."

@@ -1,0 +1,7 @@
+restriction,games_kept,games_excluded,identical
+length_adjusted,86,34,FALSE
+complete_games,63,57,FALSE
+three_groups,88,32,FALSE
+active_groups,120,0,FALSE
+tangram_set,120,0,FALSE
+late_arrivals,120,0,FALSE

@@ -1,0 +1,6 @@
+analysis,kind,term,estimate,std_error,statistic,df,lower,upper,p_value,n
+dropout_players,test,Pearson's Chi-squared test,,,2.333830642733373,3,,,0.5060708526964302,1080
+dropout_games,test,Fisher's Exact Test for Count Data,,,,,,,0.6205128260955984,120
+survey_identification,test,Kruskal-Wallis rank sum test,,,4.924555364173127,3,,,0.17740566570340502,1012
+survey_closeness,test,Kruskal-Wallis rank sum test,,,2.664745647356153,3,,,0.44625168564238393,1012
+survey_group_language,test,Pearson's Chi-squared test,,,8.258055071121646,3,,,0.04096894443526527,1012

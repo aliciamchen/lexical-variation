@@ -1,0 +1,5 @@
+analysis,kind,term,estimate,std_error,statistic,df,lower,upper,p_value,odds_ratio,or_lower,or_upper,n_obs,random_effects,n_games
+semantic_change,coefficient,(Intercept),0.7282407449885877,0.01180643189150103,61.681696187382286,66.7951663079802,,,1.2807453787858744e-60,,,,5580,random intercepts only; singular fit,116
+semantic_change,coefficient,conditionrefer_mixed,-0.0074907440800908885,0.013941427975340157,-0.5373010636600962,308.4997216354121,,,0.5914469974821224,,,,5580,random intercepts only; singular fit,116
+semantic_change,coefficient,conditionsocial_mixed,0.07344241906234629,0.013882163667046619,5.290415876358192,309.1324287360143,,,2.3153711213580614e-7,,,,5580,random intercepts only; singular fit,116
+semantic_change,coefficient,conditionsocial_first,0.0806647048597914,0.013923713500684099,5.793332709397402,310.4589557455281,,,1.6925787605608245e-8,,,,5580,random intercepts only; singular fit,116

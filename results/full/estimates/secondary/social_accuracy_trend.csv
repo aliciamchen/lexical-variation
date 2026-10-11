@@ -1,0 +1,2 @@
+analysis,kind,term,estimate,std_error,statistic,df,lower,upper,p_value,odds_ratio,or_lower,or_upper,n_obs,random_effects,n_games,outcome_mean,n_scored
+social_accuracy_trend,coefficient,blockNum_c,0.08175149210090854,0.014730512234619762,5.549806469647102,,,,2.859860037362332e-8,1.0851860990007154,1.0543033516740106,1.1169734665023734,10885,maximal,59,0.8093706936150673,10885
