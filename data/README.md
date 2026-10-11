@@ -12,7 +12,7 @@ Timestamps come from two clocks. The columns recorded in the participant's brows
 | `manifest.json` | `combine_runs.py` | The provenance of `raw_anonymized/`: the source runs, per-table row counts, the lobby-timeout games that were filtered out (`filtered_failed_games`), the games dropped through `exclude_games.txt` (`excluded_games`), the number of dropout records, and the records seen in more than one export |
 | `exclude_games.txt` | by hand, optional | Game ids that ran on the production server but are not data: rehearsals, deploy checks, and games with a participant who had already played a full game in an earlier session. One id per line, with its reason as a `#` comment. `combine_runs.py` drops them with every dependent row and records the ids in the manifest |
 | `participant_exclusions.csv` | by hand, optional | `playerId,reason`, both required. `preprocessing.py` drops the player's messages from `messages.csv` and both utterance files, so every derived measure excludes them; flags `excluded` and `exclusionReason` on their rows and on the rows of the listeners they spoke to in `trials.csv` and `social_guesses.csv`; and blanks their `exitSurvey_*` answers in `players.csv` (the answers stay in `raw_anonymized/`). `responseOpportunity` is left as computed |
-| `technical_exclusions.csv` | by hand, optional | `gameId,playerId,roundId,outcome,reason`: listener failures documented as technical, which the analysis treats as missing rather than unsuccessful |
+| `technical_exclusions.csv` | by hand, optional | `gameId,playerId,roundId,outcome,reason`: listener failures documented as technical. `outcome` is `referential`, `social` or `both` and a reason is required; `preprocessing.py` empties the affected `correct`, so the observation is missing rather than unsuccessful |
 | `dropouts.csv` | `combine_runs.py` | One row per player record that never played a real game: quiz failures (`exitReason` = `quiz failed`, with the number of attempts), lobby timeouts (`ended` = `game failed`) and arrivals after the games were full (`ended` = `no more games`). `batchId` is the batch the record was attached to; `condition` and `tangramSet` come from that batch's treatment when the batch had exactly one, and are empty when the batch listed several or the participant never reached one. These records are removed from `raw_anonymized/player.csv`, so this file is what the attrition report counts |
 | `integrity_exceptions.csv` | by hand, optional | `invariant,gameId,playerId,roundId,reason`: documented cases where an invariant checked by `analysis/test_data_integrity.py` does not hold (`roundId` is empty for a player-level case). The tests require the cases they find to be exactly the documented ones, so an undocumented case fails and so does a documented case that has disappeared. It records data loss and instrumentation races, never analytic choices. In the full sample: exit surveys lost to the server crash of 2026-09-23 (`exit_survey_missing`, and `exit_survey_page_two_missing` where only the second page was lost) and commit times written before the choice time by a double click (`commit_before_choice`) |
 | `messages_classified.csv` | `filter_nonreferential.py classify` | `messages.csv` plus the classifier's verdict on each speaker message: `llm_label` (`R` or `NR`) and `is_referential`; listener messages are `True` with no label. It is also the label cache, keyed on game, round, sender, timestamp and text, so `classify` sends only the speaker messages that have no label here |
@@ -125,6 +125,11 @@ One row per player per reference-game round. Grouping rows by `gameId`, `roundId
 | `serverSpeakerId`, `serverInGroupListener`, `serverGroupSize` | The server's own record of the speaker, the listener's in-group status and the group size, written at role assignment from September 2026. The three columns above them are derived from the trio membership in this table, and the integrity suite checks that the two agree |
 | `reshuffleGroups`, `reshuffleTrios`, `reshuffleTriosOk`, `reshufflePairs` | The reshuffle's tally for a mixed Phase 2 trial: how many groups it formed, how many were trios, how many trios had exactly one in-group listener, and how many were pairs. The same for every player in the round; empty in Phase 1 and in `refer_separated` |
 | `excluded`, `exclusionReason` | Whether the row is excluded through `participant_exclusions.csv` and why: the participant's own reason on their rows, `speaker excluded: <reason>` on the rows of listeners they described to |
+| `condition` | The game's condition, as in `games.csv`, so no consumer joins it in |
+| `block` | The block within the phase counted from 1, the paper's numbering (`blockNum` + 1) |
+| `gameBlock` | The block counted across the game with this game's own Phase 1 length, so Phase 2 of a 6 + 6 game starts at 7 |
+| `correct` | The referential accuracy outcome under the preregistered response-opportunity rule: 1 for a correct selection that reached the server by its scoring cutoff, 0 for an incorrect one, a timeout or a late arrival. Empty where the row is not a response opportunity, and where a participant exclusion or a documented technical failure (`technical_exclusions.csv`) made the observation missing |
+| `onTime` | Whether a scored selection reached the server by the cutoff; empty where the row is not a response opportunity |
 
 ## messages.csv
 
@@ -140,6 +145,7 @@ One row per chat message. The server copies each message onto every group member
 | `composeStartedAt` | When the sender typed the first character of this message, on their clock; reset whenever the box is emptied |
 | `composeMs` | `timestamp` minus `composeStartedAt`: how long the message took to compose. A production-effort measure beside word count, and near zero for pasted text |
 | `pasted` | Whether any part of the message was pasted rather than typed |
+| `condition`, `block`, `gameBlock` | The game's condition and the round's block numbers, as in `trials.csv` |
 
 ## speaker_utterances.csv and speaker_utterances_filtered.csv
 
@@ -152,6 +158,7 @@ One row per speaker per round: the speaker's messages of that round joined in ti
 | `tangramSet`, `blockNum`, `trialNum`, `phase`, `phaseNum`, `target`, `repNum` | As in `trials.csv` |
 | `utterance` | The joined messages |
 | `uttLength` | Word count of the utterance |
+| `condition`, `block`, `gameBlock` | The game's condition and the round's block numbers, as in `trials.csv` |
 
 ## social_guesses.csv
 
@@ -171,3 +178,6 @@ One row per eligible listener per Phase 2 trial in the two social conditions: ea
 | `hasSpeakerMessage`, `responseOpportunity` | Whether the speaker sent a message, and whether the row counts in the social-guess accuracy denominator |
 | `socialGuessSelectedAt`, `socialGuessRt` | When the listener chose the answer, on their clock, and how long after the Selection stage rendered; comparable with `selectionRt` in `trials.csv`, which shows which of the two decisions came first |
 | `excluded`, `exclusionReason` | As in `trials.csv`: the guesser's own exclusion or their speaker's |
+| `condition`, `block`, `gameBlock` | The game's condition and the round's block numbers, as in `trials.csv` |
+| `correct` | The social-identification outcome under the response-opportunity rule: 1 for a correct guess that reached the server by its scoring cutoff, 0 for an incorrect one, no guess or a late one. Empty where the row is not an opportunity, and where an exclusion or a documented technical failure made the observation missing |
+| `onTime` | Whether a scored guess reached the server by the cutoff; empty where the row is not an opportunity |

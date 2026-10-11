@@ -1,88 +1,235 @@
 """
-Shared plot style for analysis figures.
+The one description of how the article's figures look.
 
-Style: seaborn ticks with despine, larger fonts, no bold titles,
-matplotlib default font.
+Every figure script imports its palette, labels, markers, sizes and matplotlib
+settings from here and defines none of its own, so a change here changes every
+figure. The R config keeps a ggplot theme and palette for the diagnostic plots
+the notebooks still draw; the article's figures come from Python and this file.
 
 Usage:
-    from plot_style import apply_style, CONDITION_COLORS, GROUP_COLORS
+    from plot_style import CONDITION_COLORS, SINGLE_COLUMN, apply_style, save_fig
     apply_style()
+    fig, ax = plt.subplots(figsize=SINGLE_COLUMN)
+    ...
+    save_fig(fig, "group_specificity")   # figures/<dataset>/group_specificity.pdf
 """
 
+from __future__ import annotations
+
+import glob
+from pathlib import Path
+
+import matplotlib
 import matplotlib.pyplot as plt
-import seaborn as sns
+from matplotlib import font_manager
 
+from dataset_paths import dataset_dirs
 
-# ── Color palettes ────────────────────────────────────────────
-
-CONDITION_COLORS = {
-    "refer_separated": "#027A5E",
-    "refer_mixed": "#5EC2A0",
-    "social_mixed": "#F5B74A",
-    "social_first": "#C47A00",
-}
+# ── Conditions and groups ────────────────────────────────────
 
 CONDITION_ORDER = ["refer_separated", "refer_mixed", "social_mixed", "social_first"]
 
-GROUP_COLORS = {"A": "#F8766D", "B": "#00BA38", "C": "#619CFF"}
-GROUP_ORDER = ["A", "B", "C"]
+# The two conditions with a social-identification task (H3, H4)
+SOCIAL_CONDITIONS = ["social_mixed", "social_first"]
 
-# Qualitative palette (Pastel1) for categorical comparisons (e.g. within vs between)
-QUALITATIVE_COLORS = ["#fbb4ae", "#b3cde3", "#ccebc5", "#decbe4", "#fed9a6",
-                      "#ffffcc", "#e5d8bd", "#fddaec", "#f2f2f2"]
+# The conditions that share the same Phase 1 procedure (H1, H2); in
+# social_first the manipulation precedes Phase 1
+H12_CONDITIONS = ["refer_separated", "refer_mixed", "social_mixed"]
 
-PHASE_BOUNDARY = 5.5  # x position between Phase 1 (blocks 0-5) and Phase 2 (blocks 6-11)
-PHASE2_OFFSET = 6
-
-
-# ── Apply global style ───────────────────────────────────────
-
-def apply_style():
-    """Set seaborn ticks theme with despine, larger fonts, no bold titles."""
-    sns.set_theme(style="ticks", font_scale=1.3)
-    plt.rcParams.update({
-        "axes.titleweight": "normal",
-        "figure.titleweight": "normal",
-    })
-
-
-# ── Helper functions ─────────────────────────────────────────
-
-def continuous_block(df):
-    """Return a copy with a `block` column: Phase 2 blockNum shifted by +6."""
-    df = df.copy()
-    df["block"] = df["blockNum"] + (df["phaseNum"] == 2).astype(int) * PHASE2_OFFSET
-    return df
-
-
-def add_phase_boundary(ax):
-    """Add dashed vertical line at Phase 1/2 boundary and set x-axis."""
-    ax.axvline(PHASE_BOUNDARY, color="gray", linestyle=":", alpha=0.6)
-    ax.set_xticks(range(12))
-    ax.set_xlim(-0.3, 11.3)
-    sns.despine(ax=ax)
-
-
-def add_chance_line(ax, y, label="Chance"):
-    """Add a dashed horizontal reference line."""
-    ax.axhline(y=y, color="gray", linestyle="--", alpha=0.5, label=label)
-
-
-def save_fig(fig, path, dpi=150):
-    """Tight layout, save, and close."""
-    fig.tight_layout()
-    fig.savefig(path, dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
-
-
-_CONDITION_LABELS = {
+CONDITION_LABELS = {
     "refer_separated": "Refer separated",
     "refer_mixed": "Refer mixed",
     "social_mixed": "Social mixed",
     "social_first": "Social-first",
 }
 
+# Blues for the referential conditions and oranges for the social ones, the
+# darker member for the condition with less contact between groups. Chosen in
+# OKLCH so that every pair of the four passes the colorblind separation,
+# lightness, chroma and 3:1 contrast checks of the dataviz palette validator
+# (worst pair 20 OKLab units apart under protan, deutan and tritan vision).
+CONDITION_COLORS = {
+    "refer_separated": "#085491",
+    "refer_mixed": "#5194D5",
+    "social_mixed": "#CF7347",
+    "social_first": "#8A3400",
+}
 
-def format_condition(name):
-    """Format condition name for display: 'refer_mixed' → 'Refer mixed'."""
-    return _CONDITION_LABELS.get(name, name.replace("_", " ").capitalize())
+# A marker per condition, so identity never rests on color alone
+CONDITION_MARKERS = {
+    "refer_separated": "o",
+    "refer_mixed": "s",
+    "social_mixed": "^",
+    "social_first": "D",
+}
+
+GROUP_ORDER = ["A", "B", "C"]
+GROUP_COLORS = {"A": "#F8766D", "B": "#00BA38", "C": "#619CFF"}
+
+# Within-group versus between-group pairs of descriptions
+GROUP_TYPE_COLORS = {"within": "#233029", "between": "#98A29D"}
+GROUP_TYPE_LABELS = {"within": "Within group", "between": "Between group"}
+
+# The analysis windows on the pairwise similarities
+WINDOW_LABELS = {
+    "phase1_final": "Phase 1 final",
+    "phase2_early": "Phase 2 early",
+    "phase2_final": "Phase 2 final",
+}
+
+# ── Blocks ───────────────────────────────────────────────────
+# Blocks are 1-indexed in every figure, as in the paper and in the `block` and
+# `gameBlock` columns of the processed tables: Phase 1 is blocks 1 to 6 and
+# Phase 2 is 7 to 12 on the game-block axis. Nothing here re-indexes.
+
+PHASE1_BLOCKS = 6
+PHASE2_BLOCKS = 6
+GAME_BLOCKS = PHASE1_BLOCKS + PHASE2_BLOCKS
+PHASE_BOUNDARY = PHASE1_BLOCKS + 0.5
+
+# ── Marks ────────────────────────────────────────────────────
+
+INK = "#2A3531"
+MUTED = "#6B7571"
+GAME_LINE = dict(color="#B6BDB9", alpha=0.6, linewidth=0.6)  # one game behind the mean
+MEAN_LINE = dict(linewidth=1.8)
+MARKER_SIZE = 4.5
+CI_ALPHA = 0.18
+REFERENCE_LINE = dict(color=MUTED, linestyle="--", linewidth=0.8)  # chance, zero
+
+# ── Sizes, in inches ─────────────────────────────────────────
+
+SINGLE_COLUMN = (3.5, 2.7)
+DOUBLE_COLUMN = (7.2, 3.0)
+DOUBLE_COLUMN_TALL = (7.2, 5.4)
+
+FONT_FAMILY = ["Arial Nova", "Helvetica Neue", "Arial", "DejaVu Sans"]
+
+
+def _register_local_fonts() -> None:
+    """Make the fonts in the user's font directory known to matplotlib."""
+    for pattern in ("~/Library/Fonts/ArialNova*.ttf", "~/Library/Fonts/Arial Nova*.ttf"):
+        for path in glob.glob(str(Path(pattern).expanduser())):
+            font_manager.fontManager.addfont(path)
+
+
+def apply_style() -> None:
+    """Set the matplotlib defaults every figure shares."""
+    _register_local_fonts()
+    plt.rcParams.update(
+        {
+            "font.family": "sans-serif",
+            "font.sans-serif": FONT_FAMILY,
+            "font.size": 8,
+            "axes.titlesize": 9,
+            "axes.titleweight": "normal",
+            "axes.labelsize": 8,
+            "xtick.labelsize": 7,
+            "ytick.labelsize": 7,
+            "legend.fontsize": 7,
+            "legend.frameon": False,
+            "legend.title_fontsize": 7,
+            "axes.grid": False,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "axes.edgecolor": MUTED,
+            "axes.labelcolor": INK,
+            "xtick.color": MUTED,
+            "ytick.color": MUTED,
+            "xtick.labelcolor": INK,
+            "ytick.labelcolor": INK,
+            "text.color": INK,
+            "axes.linewidth": 0.8,
+            "lines.linewidth": MEAN_LINE["linewidth"],
+            "lines.markersize": MARKER_SIZE,
+            "figure.dpi": 110,
+            "savefig.dpi": 300,
+            "savefig.bbox": "tight",
+            "savefig.facecolor": "white",
+            "pdf.fonttype": 42,  # editable text in the PDF
+            "ps.fonttype": 42,
+            "axes.unicode_minus": False,
+        }
+    )
+
+
+def format_condition(name: str) -> str:
+    """The display label of a condition: 'refer_mixed' -> 'Refer mixed'."""
+    return CONDITION_LABELS.get(name, name.replace("_", " ").capitalize())
+
+
+def add_phase_boundary(ax, blocks: int = GAME_BLOCKS) -> None:
+    """Mark the Phase 1 to Phase 2 boundary on a game-block axis and tick every block."""
+    ax.axvline(PHASE_BOUNDARY, color=MUTED, linestyle=":", linewidth=0.8)
+    ax.set_xticks(range(1, blocks + 1))
+    ax.set_xlim(0.6, blocks + 0.4)
+
+
+def add_reference_line(ax, y: float, label: str | None = None) -> None:
+    """A dashed horizontal reference such as chance or zero, labeled at the right edge."""
+    ax.axhline(y, **REFERENCE_LINE)
+    if label:
+        ax.annotate(
+            label,
+            xy=(1.0, y),
+            xycoords=("axes fraction", "data"),
+            xytext=(-2, 2),
+            textcoords="offset points",
+            ha="right",
+            va="bottom",
+            fontsize=plt.rcParams["legend.fontsize"],
+            color=MUTED,
+        )
+
+
+def save_fig(fig, name: str, dataset: str | None = None, formats=("pdf",)) -> list[Path]:
+    """Save a figure as figures/<dataset>/<name>.<format> and close it.
+
+    The dataset is the active one unless given, so the figures of a smoke
+    dataset never land beside the article's.
+    """
+    out_dir = dataset_dirs(dataset).figures
+    out_dir.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for fmt in formats:
+        path = out_dir / f"{name}.{fmt}"
+        fig.savefig(path)
+        paths.append(path)
+    plt.close(fig)
+    return paths
+
+
+__all__ = [
+    "CONDITION_ORDER",
+    "SOCIAL_CONDITIONS",
+    "H12_CONDITIONS",
+    "CONDITION_LABELS",
+    "CONDITION_COLORS",
+    "CONDITION_MARKERS",
+    "GROUP_ORDER",
+    "GROUP_COLORS",
+    "GROUP_TYPE_COLORS",
+    "GROUP_TYPE_LABELS",
+    "WINDOW_LABELS",
+    "PHASE1_BLOCKS",
+    "PHASE2_BLOCKS",
+    "GAME_BLOCKS",
+    "PHASE_BOUNDARY",
+    "INK",
+    "MUTED",
+    "GAME_LINE",
+    "MEAN_LINE",
+    "MARKER_SIZE",
+    "CI_ALPHA",
+    "REFERENCE_LINE",
+    "SINGLE_COLUMN",
+    "DOUBLE_COLUMN",
+    "DOUBLE_COLUMN_TALL",
+    "apply_style",
+    "format_condition",
+    "add_phase_boundary",
+    "add_reference_line",
+    "save_fig",
+]
+
+matplotlib.use(matplotlib.get_backend())  # keep the caller's backend

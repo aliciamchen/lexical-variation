@@ -57,7 +57,7 @@ The pipeline from an Empirica export to the processed tables is `make extract co
 
 1. `extract_run.py <zip>` unzips an export into `data/runs/<timestamp>/raw/`, removes the identifying columns, redacts Prolific-id-shaped tokens from every text field, and registers the export in `runs.txt`.
 2. `combine_runs.py` stacks the registered exports, keeping the newest version of each record, drops the games listed in `exclude_games.txt`, and writes `raw_anonymized/`, `dropouts.csv` and `manifest.json`.
-3. `process_data.py` runs `preprocessing.py`, which writes the analysis-ready tables; `filter_nonreferential.py`, which labels each speaker message as referential or not with Gemini on Vertex AI and rebuilds the utterances from the referential messages (labels are cached, so only unlabeled messages are sent, and `--skip-filter` uses the unfiltered utterances); and `compute_derived.py`, which writes the embeddings and similarity tables.
+3. `process_data.py` runs `preprocessing.py`, which writes the analysis-ready tables; `filter_nonreferential.py`, which labels each speaker message as referential or not with Gemini on Vertex AI and rebuilds the utterances from the referential messages (labels are cached, so only unlabeled messages are sent, and `--skip-filter` uses the unfiltered utterances); `compute_derived.py`, which writes the embeddings and similarity tables; and `build_frames.py`, which aggregates them into the tables the models are fit to.
 4. `make test` checks the result.
 
 The raw exports under `experiment/data/` are not committed because they identify participants. `make smoke ZIP=<export>` runs the whole pipeline on one export in a throwaway dataset, so a bad export is caught before it is added to a real one.

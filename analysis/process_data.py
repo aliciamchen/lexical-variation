@@ -11,6 +11,7 @@ Usage:
     uv run python analysis/process_data.py --dataset full           # another dataset
     uv run python analysis/process_data.py --skip-filter            # skip Vertex AI step
     uv run python analysis/process_data.py --skip-derived           # skip SBERT step
+    uv run python analysis/process_data.py --skip-frames            # skip the model-input frames
 """
 
 import argparse
@@ -73,6 +74,15 @@ def step_compute_derived(
     subprocess.run(command, check=True)
 
 
+def step_build_frames(dataset: str) -> None:
+    """Run build_frames.py: the model-input frames from the processed and derived tables."""
+    print(f"\n{'=' * 60}")
+    print("Step 4: Building the model-input frames")
+    print(f"{'=' * 60}")
+    script = ANALYSIS_DIR / "build_frames.py"
+    subprocess.run([sys.executable, str(script), "--dataset", dataset], check=True)
+
+
 def choose_utterances_file(data_dir: Path) -> str | None:
     """Which utterance file the derived step should read when the filter was skipped.
 
@@ -111,6 +121,8 @@ def main():
                         help="Skip non-referential message filtering (requires Vertex AI)")
     parser.add_argument("--skip-derived", action="store_true",
                         help="Skip computing derived metrics (SBERT, similarities, UMAP)")
+    parser.add_argument("--skip-frames", action="store_true",
+                        help="Skip building the model-input frames (needs the derived tables)")
     args = parser.parse_args()
 
     dirs = dataset_dirs(args.dataset)
@@ -143,6 +155,13 @@ def main():
         print(f"{'=' * 60}")
     else:
         step_compute_derived(data_dir, derived_dir, utterances_file)
+
+    if args.skip_frames:
+        print(f"\n{'=' * 60}")
+        print("Skipping the model-input frames (--skip-frames)")
+        print(f"{'=' * 60}")
+    else:
+        step_build_frames(dirs.name)
 
     print(f"\n{'=' * 60}")
     print("Pipeline complete!")

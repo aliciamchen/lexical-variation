@@ -14,7 +14,8 @@
 # Individual targets:
 #   make extract        # extract the dataset's zips → data/runs/<timestamp>/
 #   make combine        # stack runs → data/<name>/raw_anonymized/
-#   make process        # preprocess → filter → derived metrics
+#   make process        # preprocess → filter → derived metrics → model-input frames
+#   make frames         # only the model-input frames (fast; needs processed and derived tables)
 #   make test           # validate processed data (pytest integrity suite)
 #   make payments       # what each Prolific study still owes → data/payments/<name>/
 #   make tally          # games per condition and tangram set; stopping-rule progress
@@ -51,7 +52,7 @@ ZIPS = $(foreach run,$(RUNS),$(call zip_for_run,$(run)))
 # The preregistered analysis notebooks, rendered on the active dataset
 NOTEBOOKS = $(wildcard analysis/0[0-9]_*.qmd)
 
-.PHONY: all extract combine process process-no-filter payments sync-blocklist tally final-exports notebooks test test-ops smoke runs help
+.PHONY: all extract combine process process-no-filter frames payments sync-blocklist tally final-exports notebooks test test-ops smoke runs help
 
 # ── Main targets ────────────────────────────────────────────
 
@@ -73,11 +74,14 @@ extract: ## Extract each Empirica export zip listed in runs.txt
 combine: ## Stack the registered runs into data/<name>/raw_anonymized/
 	uv run python analysis/combine_runs.py --dataset $(DATASET)
 
-process: ## Run full pipeline (preprocess → filter → derived)
+process: ## Run full pipeline (preprocess → filter → derived → frames)
 	uv run python analysis/process_data.py --dataset $(DATASET)
 
 process-no-filter: ## Run pipeline skipping filter (no Vertex AI needed)
 	uv run python analysis/process_data.py --dataset $(DATASET) --skip-filter
+
+frames: ## Build the model-input frames from the processed and derived tables → analysis/derived/<name>/
+	uv run python analysis/build_frames.py --dataset $(DATASET)
 
 payments: ## What each Prolific study still owes, from every zip in runs.txt → data/payments/<name>/ (read-only Prolific calls)
 	@if [ -z "$(RUNS)" ]; then echo "Error: no runs listed in $(RUNS_FILE)"; exit 1; fi
@@ -93,7 +97,7 @@ final-exports: ## Stage the final export of each server period, plus every serve
 	uv run python operations/final_exports.py --dataset $(DATASET)
 
 test: ## Validate processed data against the integrity suite and run the Python and R helper tests
-	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q
+	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py analysis/test_build_frames.py analysis/test_stats_tex.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q
 	Rscript analysis/tests/run_all.R
 
 test-ops: ## Run only the operations tests: payments, blocklist sync, tally, Prolific client (no API calls, no data needed)

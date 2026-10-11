@@ -3102,3 +3102,116 @@ class TestRawReconciliation:
         assert len(dropouts) == manifest["dropouts"], f"{len(dropouts)} dropout rows, the manifest counts {manifest['dropouts']}"
         raw_players = _raw_table("player.csv", ["id"])
         assert not dropouts["playerId"].isin(set(raw_players["id"])).any(), "a dropout record is also a raw player record"
+
+
+# ============ ANALYSIS COLUMNS AND CODED OUTCOMES ============
+
+
+class TestAnalysisColumns:
+    """`condition`, `block` and `gameBlock` on every observation table: the
+    condition of the row's game, the 1-indexed block within the phase, and the
+    block counted across the game with each game's own Phase 1 length, so no
+    consumer joins or re-indexes."""
+
+    def _tables(self, trials, messages, speaker_utterances, social_guesses):
+        tables = {"trials": trials, "messages": messages, "speaker_utterances": speaker_utterances}
+        if not social_guesses.empty:
+            tables["social_guesses"] = social_guesses
+        filtered = DATA_DIR / FILTERED_UTTERANCES_FILE
+        if filtered.exists():
+            tables["speaker_utterances_filtered"] = pd.read_csv(filtered)
+        return tables
+
+    def test_condition_matches_the_games_table(self, games, trials, messages, speaker_utterances, social_guesses):
+        expected = games.set_index("gameId")["condition"]
+        for name, table in self._tables(trials, messages, speaker_utterances, social_guesses).items():
+            assert "condition" in table.columns, f"{name} has no condition column"
+            table = table[table["gameId"].isin(expected.index)]
+            mismatch = table["condition"] != table["gameId"].map(expected)
+            assert not mismatch.any(), f"{name}: {int(mismatch.sum())} rows carry another condition than their game"
+
+    def test_block_is_the_one_indexed_block_number(self, trials, messages, speaker_utterances, social_guesses):
+        for name, table in self._tables(trials, messages, speaker_utterances, social_guesses).items():
+            assert "block" in table.columns, f"{name} has no block column"
+            assert (pd.to_numeric(table["block"]) == pd.to_numeric(table["blockNum"]) + 1).all(), (
+                f"{name}: block is not blockNum + 1"
+            )
+
+    def test_game_block_runs_across_the_game(self, games, trials, messages, speaker_utterances, social_guesses):
+        phase1 = games.set_index("gameId")["phase1Blocks"]
+        for name, table in self._tables(trials, messages, speaker_utterances, social_guesses).items():
+            table = table[table["gameId"].isin(phase1.index)]
+            offset = (pd.to_numeric(table["phaseNum"]) == 2) * table["gameId"].map(phase1)
+            expected = pd.to_numeric(table["blockNum"]) + 1 + offset
+            assert (pd.to_numeric(table["gameBlock"]) == expected).all(), f"{name}: gameBlock is off"
+
+
+def _technical_exclusions():
+    path = DATA_DIR / "technical_exclusions.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=["gameId", "playerId", "roundId", "outcome", "reason"])
+    return pd.read_csv(path, dtype=str)
+
+
+def _is_true(series):
+    return series.map(lambda v: v in (True, "True", "true", "TRUE")).astype(bool)
+
+
+def _technical_hit(table, outcome):
+    ex = _technical_exclusions()
+    ex = ex[ex["outcome"].isin({outcome, "both"})]
+    if ex.empty:
+        return pd.Series(False, index=table.index)
+    keys = ["gameId", "playerId", "roundId"]
+    return pd.Series(
+        pd.MultiIndex.from_frame(table[keys].astype(str)).isin(pd.MultiIndex.from_frame(ex[keys].astype(str))),
+        index=table.index,
+    )
+
+
+class TestCodedOutcomes:
+    """`correct` and `onTime` follow the preregistered response-opportunity
+    rule, recomputed here from the flags: a correct answer that was submitted,
+    not late and scored is 1; an incorrect answer, a timeout and a late arrival
+    are 0; a row that is not an opportunity, a row a participant exclusion
+    flagged and a documented technical failure have no outcome."""
+
+    def _check(self, table, submitted, late, scored, outcome):
+        opportunity = _is_true(table["responseOpportunity"])
+        excluded = _is_true(table["excluded"]) if "excluded" in table.columns else pd.Series(False, index=table.index)
+        scored_bool = table[scored].map(lambda v: True if v in (True, "True", "true") else False if v in (False, "False", "false") else None)
+        on_time = submitted & ~late & scored_bool.notna()
+        expected = (on_time & (scored_bool == True)).astype(float)  # noqa: E712
+        expected[~opportunity | excluded | _technical_hit(table, outcome)] = np.nan
+        actual = pd.to_numeric(table["correct"], errors="coerce")
+        assert actual.isna().equals(expected.isna()), "correct is missing on the wrong rows"
+        assert (actual.dropna() == expected.dropna()).all(), "correct disagrees with the flags"
+        on_time_actual = table["onTime"].map(lambda v: True if v in (True, "True") else False if v in (False, "False") else None)
+        assert on_time_actual[opportunity].notna().all() and on_time_actual[~opportunity].isna().all()
+        assert (on_time_actual[opportunity].astype(bool) == on_time[opportunity]).all(), "onTime disagrees with the flags"
+
+    def test_referential_outcome_follows_the_opportunity_rule(self, trials):
+        assert "correct" in trials.columns and "onTime" in trials.columns
+        self._check(
+            trials,
+            submitted=trials["clicked"].notna(),
+            late=_is_true(trials["lateClick"]),
+            scored="clickedCorrect",
+            outcome="referential",
+        )
+
+    def test_social_outcome_follows_the_opportunity_rule(self, social_guesses):
+        if social_guesses.empty:
+            pytest.skip("no social-guessing games in this dataset")
+        assert "correct" in social_guesses.columns and "onTime" in social_guesses.columns
+        self._check(
+            social_guesses,
+            submitted=~_is_true(social_guesses["socialTimeout"]),
+            late=_is_true(social_guesses["lateSocialGuess"]),
+            scored="socialGuessCorrect",
+            outcome="social",
+        )
+
+    def test_speakers_never_have_an_outcome(self, trials):
+        speakers = trials[trials["role"] == "speaker"]
+        assert pd.to_numeric(speakers["correct"], errors="coerce").isna().all()

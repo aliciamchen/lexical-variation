@@ -1698,3 +1698,128 @@ def test_redact_prolific_ids_scrubs_text_cells_only():
     assert PROLIFIC_ID_PLACEHOLDER in out.loc[0, "exitSurvey"]
     assert out.loc[0, "id"] == "01M3FFPN0QSN20E5F66T9TXKZF"
     assert out.loc[0, "score"] == 12.5
+
+
+# --- Analysis columns and the coded outcomes ----------------------------------
+#
+# The columns every observation table carries so no consumer joins the condition
+# in or re-indexes blocks, and the 0/1 accuracy outcomes under the preregistered
+# response-opportunity rule, coded once here for both accuracy measures.
+
+
+def _games_for_columns():
+    return pd.DataFrame(
+        {"gameId": ["g1", "g2"], "condition": ["social_mixed", "refer_separated"], "phase1Blocks": [6, 4]}
+    )
+
+
+class TestAnalysisColumns:
+    def test_block_is_one_indexed_and_game_block_runs_across_the_game(self):
+        df = pd.DataFrame(
+            {
+                "gameId": ["g1", "g1", "g2", "g2", "g9"],
+                "blockNum": [0, 2, 3, 0, 1],
+                "phaseNum": [1, 2, 1, 2, 1],
+            }
+        )
+        out = preprocessing.add_analysis_columns(df, _games_for_columns())
+        assert out["block"].tolist() == [1, 3, 4, 1, 2]
+        assert out["gameBlock"].tolist()[:4] == [1, 9, 4, 5]
+        assert pd.isna(out["gameBlock"].iloc[4]) and pd.isna(out["condition"].iloc[4])
+        assert out["condition"].tolist()[:4] == ["social_mixed", "social_mixed", "refer_separated", "refer_separated"]
+        assert str(out["block"].dtype) == "Int64" and str(out["gameBlock"].dtype) == "Int64"
+        assert list(out.index) == list(df.index), "rows keep their order and index"
+
+    def test_existing_analysis_columns_are_replaced_not_duplicated(self):
+        df = pd.DataFrame({"gameId": ["g1"], "blockNum": [5], "phaseNum": [1], "condition": ["stale"], "block": [99]})
+        out = preprocessing.add_analysis_columns(df, _games_for_columns())
+        assert out["condition"].tolist() == ["social_mixed"] and out["block"].tolist() == [6]
+        assert list(out.columns).count("condition") == 1
+
+
+class TestCodedOutcomes:
+    """The same cases as analysis/tests/test_accuracy_denominator.R: one listener
+    of each kind, so the Python column and the R helper agree by construction."""
+
+    def trials(self):
+        return pd.DataFrame(
+            {
+                "gameId": "g1",
+                "playerId": ["p1", "p2", "p3", "p4", "p5", "p6"],
+                "roundId": ["r1", "r1", "r1", "r1", "r2", "r1"],
+                "role": ["listener"] * 5 + ["speaker"],
+                "clicked": ["t1", "t2", None, "t1", "t1", None],
+                "clickedCorrect": [True, False, False, None, True, None],
+                "lateClick": [False, False, False, True, False, False],
+                # r2's speaker said nothing, so p5 had no response opportunity
+                "responseOpportunity": [True, True, True, True, False, False],
+                "excluded": [False] * 6,
+            }
+        )
+
+    def test_correct_on_time_is_one_and_incorrect_timeout_and_late_are_zero(self):
+        out = preprocessing.code_trial_outcomes(self.trials())
+        by = out.set_index("playerId")
+        assert by.loc["p1", "correct"] == 1
+        assert [by.loc[p, "correct"] for p in ("p2", "p3", "p4")] == [0, 0, 0]
+        assert by.loc["p1", "onTime"] and not by.loc["p3", "onTime"] and not by.loc["p4", "onTime"]
+        assert str(out["correct"].dtype) == "Int64" and str(out["onTime"].dtype) == "boolean"
+
+    def test_rows_without_an_opportunity_have_no_outcome(self):
+        by = preprocessing.code_trial_outcomes(self.trials()).set_index("playerId")
+        assert pd.isna(by.loc["p5", "correct"]) and pd.isna(by.loc["p5", "onTime"])
+        assert pd.isna(by.loc["p6", "correct"]) and pd.isna(by.loc["p6", "onTime"])
+
+    def test_an_excluded_row_is_missing_not_unsuccessful_but_keeps_its_on_time_flag(self):
+        trials = self.trials()
+        trials.loc[trials["playerId"] == "p2", "excluded"] = True
+        by = preprocessing.code_trial_outcomes(trials).set_index("playerId")
+        assert pd.isna(by.loc["p2", "correct"]) and by.loc["p2", "onTime"]
+        assert by.loc["p1", "correct"] == 1
+
+    def test_a_documented_technical_failure_is_missing_for_its_outcome_only(self, tmp_path):
+        path = tmp_path / "technical_exclusions.csv"
+        path.write_text(
+            "gameId,playerId,roundId,outcome,reason\n"
+            "g1,p2,r1,referential,listener browser crashed mid-trial\n"
+            "g1,p3,r1,social,social widget failed to render\n"
+        )
+        technical = preprocessing.read_technical_exclusions(path)
+        by = preprocessing.code_trial_outcomes(self.trials(), technical).set_index("playerId")
+        assert pd.isna(by.loc["p2", "correct"]) and by.loc["p3", "correct"] == 0
+
+    def test_technical_exclusions_file_is_validated(self, tmp_path):
+        assert preprocessing.read_technical_exclusions(tmp_path / "none.csv").empty
+        bad = tmp_path / "technical_exclusions.csv"
+        bad.write_text("gameId,playerId,roundId,outcome,reason\ng1,p2,r1,referential,  \n")
+        with pytest.raises(ValueError, match="reason"):
+            preprocessing.read_technical_exclusions(bad)
+        bad.write_text("gameId,playerId,roundId,outcome,reason\ng1,p2,r1,other,x\n")
+        with pytest.raises(ValueError, match="unknown outcome"):
+            preprocessing.read_technical_exclusions(bad)
+
+    def test_social_outcome_counts_an_unanswered_guess_as_unsuccessful(self):
+        guesses = pd.DataFrame(
+            {
+                "gameId": "g1",
+                "playerId": ["p1", "p2", "p3", "p4", "p5"],
+                "roundId": "r1",
+                "socialGuess": ["same_group", "different_group", None, "same_group", "same_group"],
+                "socialGuessCorrect": [True, False, None, None, True],
+                "socialTimeout": [False, False, True, False, False],
+                "lateSocialGuess": [False, False, False, True, False],
+                "responseOpportunity": [True, True, True, True, False],
+                "excluded": [False] * 5,
+            }
+        )
+        by = preprocessing.code_social_outcomes(guesses).set_index("playerId")
+        assert by.loc["p1", "correct"] == 1 and by.loc["p2", "correct"] == 0
+        assert by.loc["p3", "correct"] == 0 and not by.loc["p3", "onTime"]
+        assert by.loc["p4", "correct"] == 0 and not by.loc["p4", "onTime"]
+        assert pd.isna(by.loc["p5", "correct"])
+
+    def test_boolean_text_from_a_csv_round_trip_is_read(self):
+        trials = self.trials().astype({"lateClick": str, "responseOpportunity": str, "excluded": str})
+        trials["clickedCorrect"] = trials["clickedCorrect"].map(lambda v: None if v is None else str(v))
+        by = preprocessing.code_trial_outcomes(trials).set_index("playerId")
+        assert by.loc["p1", "correct"] == 1 and by.loc["p4", "correct"] == 0 and pd.isna(by.loc["p5", "correct"])

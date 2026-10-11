@@ -1130,6 +1130,163 @@ def exclude_survey_answers(players: pd.DataFrame, exclusions: pd.DataFrame) -> p
     return players
 
 
+# ── Analysis columns shared by every observation table ───────────────────────
+
+# The columns every observation table carries so that no consumer joins the
+# condition in or re-indexes blocks: trials.csv, messages.csv, both utterance
+# files and social_guesses.csv.
+ANALYSIS_COLUMNS = ["condition", "block", "gameBlock"]
+
+
+def add_analysis_columns(df: pd.DataFrame, games: pd.DataFrame) -> pd.DataFrame:
+    """Add `condition`, `block` and `gameBlock` to a table with gameId, blockNum and phaseNum.
+
+    `block` is the 1-indexed block within the phase, the paper's numbering (the
+    export's `blockNum` counts from 0). `gameBlock` runs across the game using
+    each game's own Phase 1 length, so in a 6 + 6 game Phase 2 starts at 7.
+    `condition` comes from the games table. Rows keep their order and index.
+    """
+    out = df.drop(columns=[c for c in ANALYSIS_COLUMNS if c in df.columns]).copy()
+    by_game = games.drop_duplicates("gameId").set_index("gameId")
+    out["condition"] = out["gameId"].map(by_game["condition"])
+    block_num = pd.to_numeric(out["blockNum"], errors="coerce")
+    phase_num = pd.to_numeric(out["phaseNum"], errors="coerce")
+    phase1_blocks = pd.to_numeric(out["gameId"].map(by_game["phase1Blocks"]), errors="coerce")
+    out["block"] = (block_num + 1).round().astype("Int64")
+    out["gameBlock"] = (block_num + 1 + (phase_num == 2) * phase1_blocks).round().astype("Int64")
+    return out
+
+
+# ── The coded accuracy outcomes ──────────────────────────────────────────────
+#
+# Both accuracy outcomes are proportions of eligible listener response
+# opportunities, not of submitted answers (preregistration, "Analysis plan").
+# `correct` is coded here, once, for every row of trials.csv and
+# social_guesses.csv: a correct answer that reached the server by its scoring
+# cutoff is 1; an incorrect answer, a timeout and a late arrival are 0; a row
+# that is not a response opportunity has no outcome, and neither has a row a
+# post-hoc participant exclusion or a documented technical failure flagged,
+# because that observation is missing rather than unsuccessful. `onTime` says
+# whether a scored answer arrived by the cutoff, for the nonresponse reporting.
+
+TECHNICAL_EXCLUSIONS_FILE = "technical_exclusions.csv"
+TECHNICAL_OUTCOMES = {"referential", "social", "both"}
+
+
+def read_technical_exclusions(path: Path) -> pd.DataFrame:
+    """Read data/<dataset>/technical_exclusions.csv: gameId, playerId, roundId, outcome, reason.
+
+    Documented technical failures (a listener's browser crashed mid-trial, a
+    widget failed to render), recorded before the primary contrasts are
+    examined. `outcome` is `referential`, `social` or `both`, and every row
+    needs a reason. The file is optional; an absent file means none.
+    """
+    columns = ["gameId", "playerId", "roundId", "outcome", "reason"]
+    if not path.exists():
+        return pd.DataFrame(columns=columns)
+    exclusions = pd.read_csv(path, dtype=str)
+    missing = [c for c in columns if c not in exclusions.columns]
+    if missing:
+        raise ValueError(f"{path.name} must have columns {','.join(columns)}; missing {missing}")
+    exclusions = exclusions[columns].copy()
+    for column in columns:
+        exclusions[column] = exclusions[column].fillna("").str.strip()
+    bad = sorted(set(exclusions["outcome"]) - TECHNICAL_OUTCOMES)
+    if bad:
+        raise ValueError(f"{path.name} has unknown outcome(s): {bad}")
+    if (exclusions["reason"] == "").any():
+        raise ValueError(f"every row of {path.name} needs a recorded reason")
+    return exclusions.reset_index(drop=True)
+
+
+def _as_bool_na(series: pd.Series) -> pd.Series:
+    """True/False/NA from a column holding booleans, their text, or nothing."""
+    truthy = {True, "True", "true", "TRUE"}
+    falsy = {False, "False", "false", "FALSE"}
+    values = [True if v in truthy else False if v in falsy else pd.NA for v in series]
+    return pd.Series(values, index=series.index, dtype="boolean")
+
+
+def code_accuracy(
+    opportunity: pd.Series,
+    submitted: pd.Series,
+    late: pd.Series,
+    scored_correct: pd.Series,
+    excluded: pd.Series | None = None,
+) -> tuple[pd.Series, pd.Series]:
+    """The 0/1 outcome and the on-time flag of one accuracy measure.
+
+    An answer is on time when it was submitted, not flagged late, and scored:
+    the server scores at the deadline, so a submitted answer with no score did
+    not arrive in time, and the late flag is the recorded reason. `correct` is
+    1 for an on-time answer the server scored correct and 0 otherwise, and
+    missing where the row is not an opportunity or is excluded; `onTime` is
+    missing only where the row is not an opportunity.
+    """
+    opportunity = _as_bool_na(opportunity).fillna(False).astype(bool)
+    submitted = _as_bool_na(submitted).fillna(False).astype(bool)
+    late = _as_bool_na(late).fillna(False).astype(bool)
+    scored = _as_bool_na(scored_correct)
+    on_time = submitted & ~late & scored.notna()
+    correct = (on_time & (scored == True)).astype(int)  # noqa: E712 (NA-safe comparison)
+    missing = ~opportunity
+    if excluded is not None:
+        missing = missing | _as_bool_na(excluded).fillna(False).astype(bool)
+    correct = pd.Series(correct, index=opportunity.index).astype("Int64").where(~missing, pd.NA)
+    on_time = pd.Series(on_time, index=opportunity.index).astype("boolean").where(opportunity, pd.NA)
+    return correct, on_time
+
+
+def apply_technical_exclusions(
+    df: pd.DataFrame, exclusions: pd.DataFrame, outcome: str, column: str = "correct"
+) -> pd.DataFrame:
+    """Set `column` to missing on the rows a documented technical failure made unanswerable."""
+    if exclusions.empty:
+        return df
+    affected = exclusions[exclusions["outcome"].isin({outcome, "both"})]
+    if affected.empty:
+        return df
+    keys = ["gameId", "playerId", "roundId"]
+    hit = pd.MultiIndex.from_frame(df[keys].astype(str)).isin(
+        pd.MultiIndex.from_frame(affected[keys].astype(str))
+    )
+    df = df.copy()
+    df.loc[hit, column] = pd.NA
+    return df
+
+
+def code_trial_outcomes(trials: pd.DataFrame, technical: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Add `correct` and `onTime`, the referential accuracy outcome, to trials.csv."""
+    trials = trials.copy()
+    excluded = trials["excluded"] if "excluded" in trials.columns else None
+    trials["correct"], trials["onTime"] = code_accuracy(
+        trials["responseOpportunity"],
+        trials["clicked"].notna(),
+        trials["lateClick"],
+        trials["clickedCorrect"],
+        excluded,
+    )
+    if technical is not None:
+        trials = apply_technical_exclusions(trials, technical, "referential")
+    return trials
+
+
+def code_social_outcomes(guesses: pd.DataFrame, technical: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Add `correct` and `onTime`, the social-identification outcome, to social_guesses.csv."""
+    guesses = guesses.copy()
+    excluded = guesses["excluded"] if "excluded" in guesses.columns else None
+    guesses["correct"], guesses["onTime"] = code_accuracy(
+        guesses["responseOpportunity"],
+        ~_as_bool_na(guesses["socialTimeout"]).fillna(True),
+        guesses["lateSocialGuess"],
+        guesses["socialGuessCorrect"],
+        excluded,
+    )
+    if technical is not None:
+        guesses = apply_technical_exclusions(guesses, technical, "social")
+    return guesses
+
+
 def build_messages(
     player_round_df: pd.DataFrame, game_df: pd.DataFrame, round_df: pd.DataFrame
 ) -> pd.DataFrame:
@@ -1260,6 +1417,9 @@ SPEAKER_UTTERANCE_COLUMNS = [
     "repNum",
     "utterance",
     "uttLength",
+    "condition",
+    "block",
+    "gameBlock",
 ]
 
 
@@ -1294,10 +1454,12 @@ def assemble_speaker_utterances(
     )
     utterances["uttLength"] = utterances["utterance"].apply(lambda x: len(x.split()))
 
-    # The speaker's own trial row (senderId == playerId) supplies their group
-    # and the repetition number of the target.
+    # The speaker's own trial row (senderId == playerId) supplies their group,
+    # the repetition number of the target and, when the trial frame carries
+    # them, the analysis columns (condition, block, gameBlock).
+    carried = [c for c in ANALYSIS_COLUMNS if c in trials.columns]
     speaker_trials = trials[trials["role"] == "speaker"][
-        ["gameId", "playerId", "originalGroup", "currentGroup", "roundId", "repNum"]
+        ["gameId", "playerId", "originalGroup", "currentGroup", "roundId", "repNum"] + carried
     ].drop_duplicates()
     utterances = utterances.merge(
         speaker_trials,
@@ -1615,6 +1777,9 @@ def main():
                 f"player.csv: {unknown}"
             )
         print(f"Excluding {len(exclusions)} participant(s) listed in {exclusions_path}")
+    technical = read_technical_exclusions(output_dir / TECHNICAL_EXCLUSIONS_FILE)
+    if not technical.empty:
+        print(f"Applying {len(technical)} documented technical exclusion(s) from {TECHNICAL_EXCLUSIONS_FILE}")
 
     # Messages are built before trials because a trial's response opportunity
     # depends on whether that group's speaker said anything. Response
@@ -1622,7 +1787,7 @@ def main():
     # messages are dropped: whether a listener could have answered does not
     # change because their speaker was excluded later.
     print("Building messages.csv...")
-    messages = build_messages(player_round_df, game_df, round_df)
+    messages = add_analysis_columns(build_messages(player_round_df, game_df, round_df), games)
     all_messages = messages
 
     print("Building trials.csv...")
@@ -1632,6 +1797,7 @@ def main():
     )
     trials = add_server_network_columns(trials, player_round_df, round_df)
     trials = apply_participant_exclusions(trials, exclusions)
+    trials = code_trial_outcomes(add_analysis_columns(trials, games), technical)
     if not exclusions.empty:
         excluded_ids = set(exclusions["playerId"])
         own_rows = int(trials["playerId"].isin(excluded_ids).sum())
@@ -1652,6 +1818,10 @@ def main():
         f"  {len(trials)} trial rows; {opportunities} of {listener_rows} listener "
         f"rows are response opportunities "
         f"({listener_rows - opportunities} had no speaker message)"
+    )
+    print(
+        f"  {int(trials['correct'].notna().sum())} of them have a coded outcome "
+        f"({int(trials['correct'].isna().sum() - (len(trials) - opportunities))} excluded)"
     )
 
     games = add_active_groups_min(games, round_df, trials)
@@ -1678,6 +1848,8 @@ def main():
 
     print("Building social_guesses.csv...")
     social_guesses = build_social_guesses(player_round_df, game_df, trials)
+    if not social_guesses.empty:
+        social_guesses = code_social_outcomes(add_analysis_columns(social_guesses, games), technical)
     social_guesses.to_csv(output_dir / "social_guesses.csv", index=False)
     if social_guesses.empty:
         print("  no social-guessing games")
