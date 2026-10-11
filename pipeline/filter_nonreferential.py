@@ -427,13 +427,10 @@ def cmd_validate(args):
     kappa = (p_o - p_e) / (1 - p_e) if p_e < 1 else 1.0
     print(f"\nCohen's kappa: {kappa:.3f}")
 
-    if accuracy >= 0.95:
-        print("\nTarget met (>= 95% agreement).")
-    else:
-        print(f"\nBelow target. Review disagreements:")
-        disagree = merged[merged["human_label"] != merged["llm_label"]]
-        for _, row in disagree.iterrows():
-            print(f'  "{row["text"]}" — human={row["human_label"]}, llm={row["llm_label"]}')
+    disagree = merged[merged["human_label"] != merged["llm_label"]]
+    print(f"\nDisagreements: {len(disagree)}")
+    for _, row in disagree.iterrows():
+        print(f'  "{row["text"]}" — human={row["human_label"]}, llm={row["llm_label"]}')
 
 
 def build_filtered_utterances(
@@ -618,8 +615,8 @@ def main():
         "validate",
         help="Compare the LLM labels with the author's annotations (human_labels.csv)",
         description=(
-            "Agreement, confusion matrix, and Cohen's kappa between the classifier's labels "
-            "and the author's. The author annotates annotation_sample.csv (written by "
+            "Agreement, confusion matrix, Cohen's kappa, and every disagreement between the "
+            "classifier's labels and the author's. The author annotates annotation_sample.csv (written by "
             "`sample`) by filling its human_label column with R or NR for every row and "
             "saves it as human_labels.csv in the dataset's classifier/ directory; a file with empty labels "
             "is refused."
