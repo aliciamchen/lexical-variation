@@ -19,7 +19,8 @@
 #   make test           # validate processed data (pytest integrity suite)
 #   make payments       # what each Prolific study still owes → data/payments/<name>/
 #   make tally          # games per condition and tangram set; stopping-rule progress
-#   make notebooks      # render the analysis notebooks 00-05
+#   make notebooks      # render the analysis notebooks (models and inferential macros)
+#   make descriptives   # the descriptive macros, from the tables and the notebooks' results
 #   BAYES_FACTORS=never make notebooks   # render without the brms refits (a fast check)
 #
 # Smoke-testing one export before it joins a dataset:
@@ -52,11 +53,11 @@ ZIPS = $(foreach run,$(RUNS),$(call zip_for_run,$(run)))
 # The preregistered analysis notebooks, rendered on the active dataset
 NOTEBOOKS = $(wildcard analysis/0[0-9]_*.qmd)
 
-.PHONY: all extract combine process process-no-filter frames payments sync-blocklist tally final-exports notebooks test test-ops smoke runs help
+.PHONY: all extract combine process process-no-filter frames payments sync-blocklist tally final-exports notebooks descriptives test test-ops smoke runs help
 
 # ── Main targets ────────────────────────────────────────────
 
-all: extract combine process test notebooks  ## Full pipeline from zips to rendered notebooks
+all: extract combine process test notebooks descriptives  ## Full pipeline from zips to rendered notebooks and macros
 
 # ── Pipeline steps ──────────────────────────────────────────
 
@@ -97,7 +98,7 @@ final-exports: ## Stage the final export of each server period, plus every serve
 	uv run python operations/final_exports.py --dataset $(DATASET)
 
 test: ## Validate processed data against the integrity suite and run the Python and R helper tests
-	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py analysis/test_build_frames.py analysis/test_stats_tex.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q
+	uv run pytest analysis/test_data_integrity.py analysis/test_compute_derived.py analysis/test_preprocessing.py analysis/test_build_frames.py analysis/test_stats_tex.py analysis/test_descriptives.py operations/test_payments.py operations/test_tally.py operations/test_prolific.py operations/test_sync_blocklist.py -q
 	Rscript analysis/tests/run_all.R
 
 test-ops: ## Run only the operations tests: payments, blocklist sync, tally, Prolific client (no API calls, no data needed)
@@ -129,13 +130,16 @@ smoke: ## Smoke-test one export end to end in a throwaway dataset: make smoke ZI
 
 # ── Notebooks ───────────────────────────────────────────────
 
-notebooks: ## Render the analysis notebooks 00–05 on the active dataset
+notebooks: ## Render the analysis notebooks on the active dataset (models and inferential macros)
 	@for nb in $(NOTEBOOKS); do \
 		echo "=== Rendering $$nb (DATASET=$(DATASET)) ==="; \
 		quarto render "$$nb" || exit 1; \
 	done
 
 # ── Utilities ───────────────────────────────────────────────
+
+descriptives: ## Write the descriptive macros (overview, exploratory, survey) from the tables and analysis/results/<name>/
+	uv run python analysis/descriptives.py --dataset $(DATASET)
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'

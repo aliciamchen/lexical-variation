@@ -55,11 +55,13 @@ experiment/.empirica/empirica.toml
 # RefBank format rather than this layout
 data/full/
 analysis/derived/full/
+analysis/results/full/
 figures/meetings/
 
 # Throwaway dataset written by `make smoke`
 data/smoke/
 analysis/derived/smoke/
+analysis/results/smoke/
 figures/smoke/
 
 # Worktrees that Claude Code creates for parallel sessions

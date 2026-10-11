@@ -13,7 +13,8 @@ than a set of edited paths:
     data/<name>/*.csv             preprocessed analysis-ready CSVs (preprocessing.py)
     data/<name>/runs.txt          the export timestamps combined into the dataset
     analysis/derived/<name>/      derived metrics and model caches (compute_derived.py)
-    figures/<name>/               notebook figures
+    analysis/results/<name>/      model estimates the notebooks write for the figures
+    figures/<name>/               the article's figures
 
 Per-run extracts are dataset-agnostic and go to data/runs/<timestamp>/.
 `analysis/config.R` mirrors this layout for the Quarto notebooks; keep the two
@@ -77,6 +78,7 @@ class DatasetDirs:
         self.runs_file = self.data / "runs.txt"
         self.derived = PROJECT_ROOT / "analysis" / "derived" / name
         self.figures = PROJECT_ROOT / "figures" / name
+        self.results = PROJECT_ROOT / "analysis" / "results" / name
 
     def read_runs(self) -> list[str]:
         """Export timestamps listed in runs.txt (blank lines and # comments ignored)."""

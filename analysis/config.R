@@ -18,8 +18,9 @@ suppressPackageStartupMessages({
 # ── Paths ────────────────────────────────────────────────────
 # Every dataset follows the same layout (mirrored in analysis/dataset_paths.py):
 #   data/<name>/               preprocessed CSVs (+ raw_anonymized/, runs.txt)
-#   analysis/derived/<name>/   derived metrics and model caches
-#   figures/<name>/            notebook figures
+#   analysis/derived/<name>/   derived metrics, model-input frames and model caches
+#   analysis/results/<name>/   model estimates the notebooks write for the figures
+#   figures/<name>/            the article's figures
 # The active dataset comes from the DATASET environment variable (default
 # "full").
 
@@ -79,8 +80,10 @@ use_dataset <- function(name = Sys.getenv("DATASET", unset = DEFAULT_DATASET)) {
   data_dir <<- here("data", name)
   derived_dir <<- here("analysis", "derived", name)
   figures_dir <<- here("figures", name)
+  results_dir <<- here("analysis", "results", name)
   dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
   dir.create(figures_dir, showWarnings = FALSE, recursive = TRUE)
+  dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
   # Prefer filtered utterances when available, but only when their sidecar
   # shows they were built from the messages.csv beside them.
   utterances_file <<- if (

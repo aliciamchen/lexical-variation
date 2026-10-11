@@ -24,7 +24,10 @@ read_table <- function(name, dir = data_dir) {
   if (!file.exists(path)) {
     return(tibble())
   }
-  read_csv(path, show_col_types = FALSE)
+  # Every row is read before a column's type is guessed: a column that is
+  # empty for its first thousand rows (exclusionReason) would otherwise be
+  # read as logical and lose its text.
+  read_csv(path, show_col_types = FALSE, guess_max = Inf)
 }
 
 has_rows <- function(df) is.data.frame(df) && nrow(df) > 0

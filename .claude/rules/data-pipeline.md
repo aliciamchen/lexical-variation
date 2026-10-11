@@ -54,9 +54,10 @@ Outputs worth knowing: `manifest.json` (runs combined, games filtered and exclud
 
 Every notebook sources `config.R`, which sets the dataset's paths and constants and sources every helper in `analysis/R/`; `list2env(load_tables(), envir = globalenv())` loads the tables. Data preparation goes through the `R/prepare.R` functions, not inline recodes, and per-game group-specificity estimates come from `game_specificity_table()`, so every notebook reports the same numbers. The R helpers have `stopifnot` tests in `analysis/tests/`, one file per helper.
 
-| Notebooks | Dataset | Writes |
-|-----------|---------|--------|
-| `00_data_overview` to `05_exit_survey` | `full` (any other dataset gets a warning banner, and its macros are not results) | `writing/manuscript/stats/<overview,checks,primary,secondary,exploratory,survey>.tex`; rendered HTML in `_output/` |
+| Writer | Dataset | Writes |
+|--------|---------|--------|
+| `00_data_overview`, `01_outcome_neutral`, `02_primary_analysis`, `03_secondary_analysis`, `05_exit_survey` (`make notebooks`) | `full` (any other dataset gets a warning banner, and its macros are not results) | the inferential macros `writing/manuscript/stats/<checks,primary,secondary>.tex`; the model estimates in `analysis/results/<name>/` (`gs_by_game.csv` from 02, written with `write_result()` in `R/results.R`, with a manifest); rendered HTML in `_output/`. 00 and 05 tabulate and test but write no macros |
+| `analysis/descriptives.py` (`make descriptives`, after the notebooks) | the same | the descriptive macros `<overview,exploratory,survey>.tex`, from the processed tables, the derived tables, the frames and `gs_by_game.csv` |
 
 The notebooks draw nothing. The article's figures are made in Python from the processed tables and the frames, with `analysis/plot_style.py` as the one description of their look: percentile-bootstrap 95% intervals over games with the games as thin lines or points behind the mean, no gridlines, one plot per figure, sentence-case labels, sample sizes written as "16 games" (never "n = 16", which readers take as participants), and never a line for a quantity a condition does not have (`refer_separated` has no out-group speakers). Its `save_fig()` writes into the dataset's figures directory; slide sets go in the gitignored `figures/meetings/<date>/`.
 

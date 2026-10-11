@@ -100,6 +100,8 @@ if (!has_pairwise) {
   # the inverse-variance weights for the robustness reruns.
   gs_table <- game_specificity_table(pairwise_sim, games)
   gs_combined <- gs_wide(gs_table)
+  # The per-game estimates the figures and the descriptive macros summarize
+  write_result(gs_table, "gs_by_game", source = "analysis/02_primary_analysis.qmd")
 
   cat("Endpoint coverage by window and condition:\n")
   print(knitr::kable(endpoint_coverage_summary(gs_table)))

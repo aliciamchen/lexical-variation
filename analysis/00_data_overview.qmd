@@ -9,9 +9,6 @@ format:
 ```{r setup, message=FALSE, warning=FALSE}
 library(jsonlite)
 source(here::here("analysis", "config.R"))
-# Statistics this notebook reports, written as LaTeX macros at the end
-# (writing/manuscript/stats/overview.tex)
-macros <- list()
 ```
 
 # Load data
@@ -148,13 +145,11 @@ if (nrow(excl_file) == 0) {
 }
 
 is_flagged <- function(x) (x == TRUE | x == "true") %in% TRUE
-n_excluded_trial_rows <- 0L
 if (!exclusion_columns_present(trials)) {
   cat("NOTE: trials.csv has no excluded/exclusionReason columns (regenerate with the current pipeline);",
       "no post-hoc exclusions are applied in this render.\n")
 } else {
   flagged <- trials |> add_condition(games) |> filter(is_flagged(excluded))
-  n_excluded_trial_rows <- nrow(flagged)
   if (nrow(flagged) == 0) {
     cat("No trial rows are flagged excluded.\n")
   } else {
@@ -176,11 +171,6 @@ if (nrow(tech) > 0) {
   print(knitr::kable(tech |> count(outcome, reason, name = "observations")))
 }
 
-macros <- c(macros, list(
-  overviewNExcludedParticipants = nrow(excl_file),
-  overviewNExcludedTrialRows = n_excluded_trial_rows,
-  overviewNTechnicalExclusions = nrow(tech)
-))
 ```
 
 # Message summary
@@ -235,11 +225,6 @@ knitr::kable(
   digits = 3,
   caption = "Speaker trials without an analyzable description, by condition and phase"
 )
-macros <- c(macros, list(
-  overviewPropNoDescription = fmt_stat(
-    sum(desc_cov$without_description) / sum(desc_cov$speaker_trials), 3
-  )
-))
 ```
 
 # Social guesses summary
@@ -472,21 +457,6 @@ print(knitr::kable(
 
 # Statistics for the manuscript
 
-```{r write-stats}
-macros <- c(macros, list(
-  overviewNGames = sum(!is.na(games$condition)),
-  overviewNPlayers = nrow(pa),
-  overviewNTrials = fmt_count(nrow(trials)),
-  overviewNMessages = fmt_count(nrow(messages)),
-  overviewNSpeakerUtts = fmt_count(nrow(speaker_utts)),
-  overviewNRemoved = sum(pa$removed),
-  overviewNRemovedNoFault = sum(pa$no_fault),
-  overviewNGroupsLost = sum(ga$lost),
-  overviewNGamesComplete = sum(status$complete_nine),
-  overviewNGamesRanToCompletion = sum(status$ran_to_completion),
-  overviewNDropouts = nrow(dropouts),
-  overviewNQuizFailed = quiz_failures(dropouts),
-  overviewNNoOpportunity = no_opportunity
-))
-write_stats_tex(macros, stats_file("overview"), source = "analysis/00_data_overview.qmd")
-```
+The counts this notebook tabulates reach the manuscript through
+`analysis/descriptives.py`, which writes `writing/manuscript/stats/overview.tex`
+from the same tables; this notebook writes no macros.

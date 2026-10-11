@@ -18,6 +18,11 @@ from pathlib import Path
 import nltk
 import numpy as np
 import pandas as pd
+
+# The analysis columns the processed tables carry (preprocessing.ANALYSIS_COLUMNS),
+# carried through to the per-description derived tables when present so that
+# no consumer joins the condition or re-indexes blocks.
+ANALYSIS_COLUMNS = ["condition", "block", "gameBlock"]
 from sentence_transformers import SentenceTransformer
 
 from dataset_paths import (
@@ -85,9 +90,10 @@ def compute_adjacent_similarities(
 
     df["simAdjacent"] = df.apply(get_similarity, axis=1)
 
-    result = df[["gameId", "playerId", "originalGroup", "target",
-                  "blockNum", "phase", "phaseNum", "repNum", "simAdjacent"]].copy()
-    return result
+    columns = ["gameId", "playerId", "originalGroup", "target",
+               "blockNum", "phase", "phaseNum", "repNum", "simAdjacent"]
+    columns += [c for c in ANALYSIS_COLUMNS if c in df.columns]
+    return df[columns].copy()
 
 
 def _word_count(row) -> int:
@@ -567,6 +573,7 @@ def compute_description_properties(
             "concreteness",
             "mean_zipf_freq",
         ]
+        + [c for c in ANALYSIS_COLUMNS if c in result.columns]
     ]
 
 

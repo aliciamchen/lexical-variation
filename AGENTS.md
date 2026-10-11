@@ -12,7 +12,7 @@ A nine-player Empirica reference game for studying lexical variation and social 
 uv sync && uv run python <script>     # Python; never bare python or pip
 Rscript -e 'renv::restore()'          # R
 cd experiment && npm install          # Empirica app and Playwright
-make help                             # extract, combine, process, test, notebooks, smoke, payments, final-exports
+make help                             # extract, combine, process, frames, test, notebooks, descriptives, smoke, payments, final-exports
 make test DATASET=full                # integrity suite plus the Python and R unit tests
 cd experiment && npm run test:unit    # server unit tests; Playwright only through the npm scripts
 ```
@@ -49,7 +49,7 @@ cd experiment && npm run test:unit    # server unit tests; Playwright only throu
 ## Sources of truth
 
 - Game configuration is `experiment/shared/constants.js` (`tests/helpers/constants.ts` re-exports it and `operations/game_constants.py` parses it); treatments are in `experiment/.empirica/treatments.yaml`; game logic is `experiment/server/src/callbacks.js` with pure modules beside it, every callback wrapped in `guard()`.
-- Analysis code is `analysis/config.R` and `analysis/R/`, which every notebook sources (tests in `analysis/tests/`), and `analysis/dataset_paths.py` on the Python side. Notebooks `00` to `05` write `writing/manuscript/stats/`; `writing/preregistration/stats/` is frozen with the preregistration. `analysis/plot_style.py` is the one description of how the article's figures look, and `analysis/stats_tex.py` is the Python twin of `R/stats_tex.R` for the macros Python writes.
+- Analysis code is `analysis/config.R` and `analysis/R/`, which every notebook sources (tests in `analysis/tests/`), and `analysis/dataset_paths.py` on the Python side. Notebooks `01` to `03` write the inferential macros in `writing/manuscript/stats/`, notebook `02` its per-game estimates in `analysis/results/<dataset>/`, and `analysis/descriptives.py` the descriptive macros; `writing/preregistration/stats/` is frozen with the preregistration. `analysis/plot_style.py` is the one description of how the article's figures look, and `analysis/stats_tex.py` is the Python twin of `R/stats_tex.R`.
 - The per-dataset inputs (`runs.txt`, `exclude_games.txt`, `participant_exclusions.csv`, `integrity_exceptions.csv`, `payment_adjustments.csv`) are defined in `.claude/rules/data-pipeline.md`.
 - Fetch current library documentation with Context7 for R packages, Python libraries, Empirica and Playwright instead of working from memory.
 
