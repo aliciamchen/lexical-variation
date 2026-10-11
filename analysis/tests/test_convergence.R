@@ -15,35 +15,35 @@ check(
   identical(H3B_BLOCKS, 2:6)
 )
 
-# ── Aggregation and block indexing ──────────────────────────────────────────
-# The exported blockNum is 0-indexed; the paper counts from 1.
-games_h3b <- tibble(
-  gameId = c("g1", "g2", "g3"),
-  condition = c("social_mixed", "social_first", "refer_mixed")
-)
-pairs_h3b <- tibble(
-  gameId = c("g1", "g1", "g1", "g1", "g1", "g2", "g3", "g1", "g1"),
-  group1 = "A",
-  group2 = c("A", "A", "A", "A", "B", "A", "A", "A", "A"),
+# ── The H3b frame ────────────────────────────────────────────────────────────
+# pipeline/build_frames.py aggregates the within-group pairs into one mean per
+# group, tangram and block, with the paper's 1-indexed `block`; here the frame
+# is restricted to Phase 1 and the social conditions.
+frame_h3b <- tibble(
+  gameId = c("g1", "g1", "g1", "g2", "g3", "g1"),
+  condition = c("social_mixed", "social_mixed", "social_mixed", "social_first", "refer_mixed", "social_mixed"),
+  group = c("g1_A", "g1_A", "g1_A", "g2_A", "g3_A", "g1_A"),
   target = "t1",
-  blockNum = c(1, 2, 2, 2, 2, 2, 2, 2, 3),
-  phaseNum = c(1, 1, 1, 1, 1, 1, 1, 2, 1),
-  sameGroup = c(1, 1, 1, 1, 0, 1, 1, 1, 1),
-  similarity = c(0.2, 0.4, 0.8, NA, 0.1, 0.9, 0.6, 0.7, 0.95)
+  phaseNum = c(1, 1, 1, 1, 1, 2),
+  blockNum = c(1, 2, 3, 2, 2, 2),
+  block = blockNum + 1,
+  similarity = c(0.2, 0.6, 0.95, 0.9, 0.6, 0.7),
+  n_pairs = c(1, 2, 1, 1, 1, 1)
 )
-means_h3b <- within_group_block_means(pairs_h3b, games_h3b)
+means_h3b <- within_group_block_means(frame_h3b)
 check(
-  "H3b aggregates only Phase 1 within-group pairs in the two social conditions",
-  nrow(means_h3b) == 4L && all(means_h3b$gameId %in% c("g1", "g2"))
+  "H3b keeps only Phase 1 within-group means in the two social conditions",
+  nrow(means_h3b) == 4L && all(means_h3b$gameId %in% c("g1", "g2")) &&
+    identical(levels(means_h3b$condition), SOCIAL_CONDITIONS)
 )
 check(
-  "the 1-indexed block is the exported blockNum plus one",
-  all(means_h3b$block == means_h3b$blockNum + 1L) &&
+  "the 1-indexed block is the paper's numbering and is integer",
+  all(means_h3b$block == means_h3b$blockNum + 1L) && is.integer(means_h3b$block) &&
     setequal(means_h3b$block[means_h3b$gameId == "g1"], c(2L, 3L, 4L))
 )
-check("overlapping within-group pairs give one finite mean per group-tangram-block", {
+check("each group-tangram-block cell is one row with its mean and pair count", {
   g1b3 <- means_h3b |> filter(gameId == "g1", block == 3L)
-  nrow(g1b3) == 1L && abs(g1b3$similarity - 0.6) < 1e-12
+  nrow(g1b3) == 1L && abs(g1b3$similarity - 0.6) < 1e-12 && g1b3$n_pairs == 2
 })
 check(
   "fit_h3b refuses a frame without the 1-indexed block column",
@@ -53,38 +53,18 @@ check(
   )
 )
 
-# compute_derived.py flags the cells the specificity start rule excludes
-# (`allGroupsPaired = 0`: another group has a single describer of the tangram).
-# That rule is for within-minus-between; H3b averages each group's own pairs
-# and must keep those cells.
-flagged_h3b <- pairs_h3b |>
-  mutate(allGroupsPaired = if_else(blockNum == 2, 0, 1))
-check(
-  "within-group block means keep the cells the specificity start rule excludes",
-  identical(
-    within_group_block_means(flagged_h3b, games_h3b) |> select(-any_of("allGroupsPaired")),
-    within_group_block_means(pairs_h3b, games_h3b) |> select(-any_of("allGroupsPaired"))
-  )
+exported_means <- within_group_block_means(
+  expand_grid(gameId = c("g1", "g2"), blockNum = 1:5) |>
+    mutate(
+      condition = ifelse(gameId == "g1", "social_mixed", "social_first"),
+      group = paste0(gameId, "_A"),
+      target = "t1",
+      phaseNum = 1,
+      block = blockNum + 1,
+      similarity = 0.5,
+      n_pairs = 2
+    )
 )
-check(
-  "a table without the flag gives the same means",
-  nrow(within_group_block_means(pairs_h3b, games_h3b)) == nrow(means_h3b)
-)
-
-exported_scale <- expand_grid(
-  gameId = c("g1", "g2"),
-  blockNum = 1:5,
-  pair = 1:2
-) |>
-  mutate(
-    group1 = "A",
-    group2 = "A",
-    target = "t1",
-    phaseNum = 1,
-    sameGroup = 1,
-    similarity = 0.5
-  )
-exported_means <- within_group_block_means(exported_scale, games_h3b)
 check(
   "exported 0-indexed blockNum 1..5 maps onto the paper's blocks 2..6",
   setequal(unique(exported_means$block), 2:6)

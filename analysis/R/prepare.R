@@ -1,21 +1,29 @@
 # Data loading and preparation shared by the notebooks.
 #
-# The recodes every notebook needs, in one place: booleans exported as
-# TRUE/"true", group labels that repeat across games, block centering, the join
-# from a listener's trial to its speaker. All functions
-# take tables and return tables with the column names the notebooks use:
+# The pipeline writes the facts the models need. The coded accuracy outcome
+# (`correct`, `onTime`), the condition, the 1-indexed block numbers, the
+# speaker of each listener trial and the in-group flag are columns of the
+# processed tables (pipeline/preprocessing.py), and the model-input frames
+# (the within-group block means, each speaker's final-phase description
+# properties, the per-listener in-group advantage) are tables in the derived
+# directory (pipeline/build_frames.py). What is left to do here is what a
+# model needs at fitting time: subsetting to a phase, a role or a set of
+# conditions, factor levels, centering, the game-qualified group id, and the
+# reporting flags beside the outcome. Column names the notebooks use:
 #
-#   correct        0/1 numeric from the exported TRUE/"true" booleans (NA kept)
+#   correct        0/1 outcome under the response-opportunity rule, NA where
+#                  an exclusion made the observation missing (from the table)
+#   onTime         whether a scored answer reached the server by the cutoff
 #   group          game-qualified original group id ("<gameId> <A|B|C>")
 #   blockNum_c     block number centered within the returned table
 #   condition      factor with levels CONDITION_ORDER, or the subset asked for
-#   speakerId, speakerGroup, inGroupSpeaker   from attach_speaker()
+#   inGroupSpeaker factor out_group/in_group, from attach_speaker()
 #
-# `load_tables()` reads every data and derived table for the active dataset
-# (see use_dataset() in config.R); missing derived files come back as empty
-# tibbles so a notebook can test `has_rows(x)` instead of file paths.
+# `load_tables()` reads every processed, derived and frame table for the
+# active dataset (see use_dataset() in config.R); missing files come back as
+# empty tibbles so a notebook can test `has_rows(x)` instead of file paths.
 #
-# Tests: analysis/tests/test_prepare.R
+# Tests: analysis/tests/test_prepare.R, analysis/tests/test_accuracy_denominator.R
 
 # ── Loading ──────────────────────────────────────────────────────────────────
 
@@ -41,9 +49,9 @@ load_tables <- function() {
     speaker_utts = read_table(utterances_file),
     social_guesses = read_table("social_guesses.csv"),
     # Player records that never played a real game (quiz failures, lobby
-    # timeouts, late arrivals), written by combine_runs.py since September
-    # 2026; empty for datasets processed before that
+    # timeouts, late arrivals), written by combine_runs.py
     dropouts = read_table("dropouts.csv"),
+    # Derived measures: similarities and description properties
     adjacent_sim = read_table("adjacent_similarities.csv", derived_dir),
     pairwise_sim = read_table(pairwise_file("sbert"), derived_dir),
     block_pairwise_sim = read_table(block_pairwise_file("sbert"), derived_dir),
@@ -58,13 +66,38 @@ load_tables <- function() {
     ),
     phase_change = read_table("phase_change_similarities.csv", derived_dir),
     desc_props = read_table("description_properties.csv", derived_dir),
-    lex_uniq = read_table("lexical_uniqueness.csv", derived_dir)
+    lex_uniq = read_table("lexical_uniqueness.csv", derived_dir),
+    # The model-input frames (pipeline/build_frames.py)
+    within_group_means = read_table(
+      "within_group_block_means.csv",
+      derived_dir
+    ),
+    within_group_means_jaccard = read_table(
+      "within_group_block_means_jaccard.csv",
+      derived_dir
+    ),
+    final_props = read_table("final_phase_properties.csv", derived_dir),
+    ingroup_adv = read_table("ingroup_advantage.csv", derived_dir)
   )
 }
 
-# ── Column recodes ───────────────────────────────────────────────────────────
+# A table processed before a column existed cannot be analyzed; say so rather
+# than silently fitting on something else.
+require_columns <- function(df, needed, table_name) {
+  missing <- setdiff(needed, names(df))
+  if (length(missing)) {
+    stop(
+      table_name,
+      " is missing ",
+      paste(missing, collapse = ", "),
+      ". Re-run the pipeline (make process) so the current columns are written.",
+      call. = FALSE
+    )
+  }
+  df
+}
 
-as_correct <- function(x) as.numeric(x == TRUE | x == "true")
+# ── Column recodes ───────────────────────────────────────────────────────────
 
 add_group_id <- function(df) mutate(df, group = paste(gameId, originalGroup))
 
@@ -83,55 +116,25 @@ add_condition <- function(df, games, levels = CONDITION_ORDER) {
     mutate(condition = factor(as.character(condition), levels = levels))
 }
 
-# Block number continuous across phases using each game's own Phase 1 length.
-# One-indexed, like every block number in the manuscript: the exported blockNum
-# counts from 0 within its phase, so a 6 + 6 game runs 1 to 12 here and Phase 2
-# starts at 7. The only consumer is 04_exploratory.qmd, whose axes and reported
-# block numbers therefore read the same way as the paper's.
-add_global_block <- function(df, games) {
-  df |>
-    left_join(games |> select(gameId, phase1Blocks), by = "gameId") |>
-    mutate(
-      globalBlock = ifelse(phaseNum == 1, blockNum + 1, blockNum + 1 + phase1Blocks)
-    )
-}
-
 # ── Accuracy outcomes: the response-opportunity denominator ──────────────────
 #
 # Both accuracy outcomes are proportions of *eligible listener response
-# opportunities*, not of submitted answers. An opportunity is an active
-# listener assigned to the task on a played trial with a speaker message
-# available during the response period; `responseOpportunity` is computed once
-# in the pipeline (pipeline/preprocessing.py). A correct answer received by
-# the server's scoring cutoff is 1; an incorrect answer, an ordinary timeout,
-# and a late arrival are all 0. Trials with no response opportunity leave the
-# denominator rather than counting as failures, and observations made
-# unanswerable by a documented technical failure become NA.
-#
-# None of this touches the live Phase 1 accuracy screening in
+# opportunities*, not of submitted answers. The rule is applied once, in
+# pipeline/preprocessing.py: an active listener on a played trial whose speaker
+# sent a message is an opportunity (`responseOpportunity`); a correct answer
+# received by the server's scoring cutoff is 1, an incorrect answer, a timeout
+# and a late arrival are 0 (`correct`), and an observation a post-hoc
+# participant exclusion or a documented technical failure made unanswerable is
+# missing. `onTime` says whether a scored answer arrived by the cutoff. The
+# helpers here keep the opportunity rows and add the reporting flags the
+# summaries use. None of this touches the live Phase 1 accuracy screening in
 # experiment/server/src/accuracy.js.
-
-# A dataset without a responseOpportunity column cannot apply the rule; say so
-# rather than silently reporting the submitted-answers denominator.
-require_opportunity_columns <- function(df, needed, table_name) {
-  missing <- setdiff(needed, names(df))
-  if (length(missing)) {
-    stop(
-      table_name,
-      " is missing ",
-      paste(missing, collapse = ", "),
-      ". Re-run the pipeline (make process) so the response-opportunity ",
-      "columns are written.",
-      call. = FALSE
-    )
-  }
-  df
-}
 
 # Documented technical failures, one row per affected observation, recorded in
 # data/<dataset>/technical_exclusions.csv before the primary contrasts are
-# examined. Columns: gameId, playerId, roundId, outcome
-# ("referential", "social", or "both"), reason. Missing file means none.
+# examined and applied by the pipeline. Columns: gameId, playerId, roundId,
+# outcome ("referential", "social", or "both"), reason. Read here to report
+# them; a missing file means none.
 technical_exclusions <- function(dir = data_dir) {
   ex <- read_table("technical_exclusions.csv", dir)
   if (!has_rows(ex)) {
@@ -143,7 +146,7 @@ technical_exclusions <- function(dir = data_dir) {
       reason = character()
     ))
   }
-  require_opportunity_columns(
+  require_columns(
     ex,
     c("gameId", "playerId", "roundId", "outcome", "reason"),
     "technical_exclusions.csv"
@@ -163,111 +166,40 @@ technical_exclusions <- function(dir = data_dir) {
   ex
 }
 
-# Set `correct` to NA for the observations a documented technical failure made
-# unanswerable or unrecoverable. Missing or late responses alone never qualify.
-apply_technical_exclusions <- function(df, exclusions, outcome) {
-  if (!has_rows(df) || !has_rows(exclusions)) {
-    return(df)
+# The reporting flags beside the coded outcome: whether an answer was
+# submitted and whether it arrived late (from the table's own columns), and
+# the two kinds of missing outcome, a post-hoc participant exclusion (flagged
+# on the row, with its reason) and a documented technical failure (the only
+# other reason an opportunity has no outcome).
+coded_outcome <- function(df, submitted, late) {
+  excluded <- if ("excluded" %in% names(df)) {
+    df$excluded %in% c(TRUE, "true", "True")
+  } else {
+    rep(FALSE, nrow(df))
   }
-  affected <- exclusions |>
-    filter(outcome %in% c(.env$outcome, "both")) |>
-    select(gameId, playerId, roundId) |>
-    distinct() |>
-    mutate(technicalFailure = TRUE)
-  df |>
-    left_join(affected, by = c("gameId", "playerId", "roundId")) |>
-    mutate(
-      technicalFailure = !is.na(technicalFailure),
-      correct = ifelse(technicalFailure, NA_real_, correct)
-    )
-}
-
-# Post-hoc participant exclusions (preregistration, "Exclusion criteria").
-# `data/<dataset>/participant_exclusions.csv` (playerId, reason) names the
-# participants excluded after the fact; preprocessing.py drops their messages
-# and flags `excluded` / `exclusionReason` on their own rows of trials.csv and
-# social_guesses.csv and on the rows of the listeners they spoke to (reason
-# "speaker excluded: <reason>"). Those observations are missing, not
-# unsuccessful: code_accuracy() sets their outcome to NA, the same treatment a
-# documented technical failure gets, and the reasons are reported beside the
-# technical exclusions. The file is optional; an absent file means nobody was
-# excluded.
-participant_exclusions <- function(dir = data_dir) {
-  ex <- read_table("participant_exclusions.csv", dir)
-  if (!has_rows(ex)) {
-    return(tibble(playerId = character(), reason = character()))
+  reason <- if ("exclusionReason" %in% names(df)) {
+    as.character(df$exclusionReason)
+  } else {
+    rep(NA_character_, nrow(df))
   }
-  require_opportunity_columns(
-    ex,
-    c("playerId", "reason"),
-    "participant_exclusions.csv"
-  )
-  ex |> mutate(playerId = as.character(playerId), reason = as.character(reason))
-}
-
-# A frame processed before the exclusion columns existed has no `excluded`
-# column; treat it as "nobody excluded" and let the notebooks say so once
-# (see exclusion_columns_present()).
-exclusion_columns_present <- function(df) {
-  all(c("excluded", "exclusionReason") %in% names(df))
-}
-
-# Set `correct` to NA on the rows a post-hoc participant exclusion flagged, and
-# carry the flag as `participantExcluded` with its `exclusionReason`.
-apply_participant_exclusions <- function(df) {
-  if (!has_rows(df)) {
-    return(df)
-  }
-  if (!"excluded" %in% names(df)) {
-    return(
-      df |>
-        mutate(participantExcluded = FALSE, exclusionReason = NA_character_)
-    )
-  }
-  if (!"exclusionReason" %in% names(df)) {
-    df$exclusionReason <- NA_character_
-  }
-  df |>
-    mutate(
-      participantExcluded = excluded == TRUE | excluded == "true",
-      participantExcluded = participantExcluded %in% TRUE,
-      exclusionReason = ifelse(
-        participantExcluded & !is.na(exclusionReason) & nzchar(exclusionReason),
-        as.character(exclusionReason),
-        ifelse(
-          participantExcluded,
-          "excluded (no reason recorded)",
-          NA_character_
-        )
-      ),
-      correct = ifelse(participantExcluded, NA_real_, correct)
-    )
-}
-
-# Code one accuracy outcome from its three facts: whether an answer was
-# submitted at all, whether it was flagged as arriving after the deadline, and
-# how the server scored it.
-#
-# "On time" means received by the server's scoring cutoff, and the decisive
-# evidence for that is a score: the server scores at the deadline, so a
-# submitted answer with no score did not arrive in time. The explicit late
-# flag says the same thing, and is what identifies these rows as late
-# arrivals rather than anomalies; it is checked as well because it is the
-# recorded reason.
-#
-# Rows flagged by a post-hoc participant exclusion (`excluded == TRUE`) keep
-# their place in the opportunity frame with an NA outcome, so they are counted
-# and reported but never scored.
-code_accuracy <- function(df, submitted, late, scored_correct) {
   df |>
     mutate(
       submitted = {{ submitted }},
-      lateArrival = {{ late }} %in% TRUE,
-      scoredCorrect = as_correct({{ scored_correct }}),
-      onTime = submitted & !lateArrival & !is.na(scoredCorrect),
-      correct = as.numeric(onTime & scoredCorrect == 1)
-    ) |>
-    apply_participant_exclusions()
+      lateArrival = {{ late }} %in% c(TRUE, "true", "True"),
+      onTime = onTime %in% c(TRUE, "true", "True"),
+      correct = suppressWarnings(as.numeric(correct)),
+      participantExcluded = excluded,
+      exclusionReason = ifelse(
+        participantExcluded,
+        ifelse(
+          !is.na(reason) & nzchar(reason),
+          reason,
+          "excluded (no reason recorded)"
+        ),
+        NA_character_
+      ),
+      technicalFailure = is.na(correct) & !participantExcluded
+    )
 }
 
 # ── Phase 1 tables for convention-formation checks ───────────────────────────
@@ -280,29 +212,21 @@ phase1_utterances <- function(speaker_utts) {
     mutate(participant = playerId, tangram = target)
 }
 
-phase1_listener_trials <- function(
-  trials,
-  exclusions = technical_exclusions()
-) {
+phase1_listener_trials <- function(trials) {
   trials |>
-    filter(phaseNum == 1, role == "listener") |>
-    mutate(tangram = target) |>
-    add_group_id() |>
-    require_opportunity_columns(
-      c("responseOpportunity", "lateClick", "clicked"),
+    require_columns(
+      c("responseOpportunity", "correct", "onTime", "lateClick", "clicked"),
       "trials"
     ) |>
-    filter(responseOpportunity) |>
-    code_accuracy(!is.na(clicked), lateClick, clickedCorrect) |>
-    apply_technical_exclusions(exclusions, "referential")
+    filter(phaseNum == 1, role == "listener", responseOpportunity %in% TRUE) |>
+    mutate(tangram = target) |>
+    add_group_id() |>
+    coded_outcome(!is.na(clicked), lateClick)
 }
 
 # Proportion of listeners correct per round (the unit of the accuracy model)
-phase1_round_accuracy <- function(
-  trials,
-  exclusions = technical_exclusions()
-) {
-  phase1_listener_trials(trials, exclusions = exclusions) |>
+phase1_round_accuracy <- function(trials) {
+  phase1_listener_trials(trials) |>
     group_by(gameId, roundId, blockNum, tangram, group) |>
     summarise(
       ref_accuracy = mean(correct, na.rm = TRUE),
@@ -329,7 +253,7 @@ phase1_adjacent <- function(adjacent_sim) {
 # determines eligibility here.
 #
 # `accuracy` is the round-level proportion correct (for the descriptive
-# plots); `listener_trials` is the listener-trial frame with the 0/1 `correct`
+# tables); `listener_trials` is the listener-trial frame with the 0/1 `correct`
 # outcome under the response-opportunity rule, which the logistic accuracy
 # trend model is fit to (the paper fits binary outcomes with glmer).
 convention_check_data <- function(speaker_utts, trials, adjacent_sim, games) {
@@ -382,28 +306,30 @@ label_window <- function(df, windows = names(WINDOW_LABELS)) {
 
 # ── Trial-level tables with condition ────────────────────────────────────────
 
-# Listener trials of one phase with correct, condition, and centered block.
-# `conditions` restricts to a subset (e.g. SOCIAL_CONDITIONS) and sets the
-# factor levels; block is centered after that restriction.
+# Listener response opportunities of one phase with the coded outcome,
+# condition, and centered block. `conditions` restricts to a subset (e.g.
+# SOCIAL_CONDITIONS) and sets the factor levels; block is centered after that
+# restriction.
 listener_trials <- function(
   trials,
   games,
   phase = 2,
-  conditions = NULL,
-  exclusions = technical_exclusions()
+  conditions = NULL
 ) {
   levels <- if (is.null(conditions)) CONDITION_ORDER else conditions
   # `.env$phase`: the trials table has its own `phase` column ("refgame"), which
   # the data mask would otherwise pick over this argument
   trials |>
-    filter(phaseNum == .env$phase, role == "listener") |>
-    require_opportunity_columns(
-      c("responseOpportunity", "lateClick", "clicked"),
+    require_columns(
+      c("responseOpportunity", "correct", "onTime", "lateClick", "clicked"),
       "trials"
     ) |>
-    filter(responseOpportunity) |>
-    code_accuracy(!is.na(clicked), lateClick, clickedCorrect) |>
-    apply_technical_exclusions(exclusions, "referential") |>
+    filter(
+      phaseNum == .env$phase,
+      role == "listener",
+      responseOpportunity %in% TRUE
+    ) |>
+    coded_outcome(!is.na(clicked), lateClick) |>
     add_condition(games, levels) |>
     center_block()
 }
@@ -421,9 +347,9 @@ response_opportunity_summary <- function(df, by = c("condition", "phaseNum")) {
   }
   by <- intersect(by, names(df))
   # The two kinds of missing outcome, reported separately: a documented
-  # technical failure (technicalFailure, from apply_technical_exclusions())
-  # and a post-hoc participant exclusion (participantExcluded). Either column
-  # is absent when there were none.
+  # technical failure (technicalFailure, from coded_outcome()) and a post-hoc
+  # participant exclusion (participantExcluded). Either column is absent when
+  # there were none.
   df <- df |>
     mutate(
       .participant = if ("participantExcluded" %in% names(df)) {
@@ -472,63 +398,6 @@ participant_exclusion_summary <- function(df, by = "condition") {
     count(across(all_of(by)), kind, exclusionReason, name = "observations")
 }
 
-# Speaker trials with and without an analyzable description, by condition and
-# phase. A description is analyzable when the speaker's trial has a row in the
-# (filtered) speaker-utterance table: a speaker who said nothing is `silent`,
-# an excluded participant's descriptions were dropped at preprocessing
-# (`excluded`), and a speaker whose messages were all classified as
-# non-referential has `non_referential_only`. The proportion is what the
-# preregistration's coverage reporting refers to when it counts analyzable
-# descriptions.
-speaker_description_coverage <- function(
-  trials,
-  speaker_utts,
-  games,
-  by = c("condition", "phaseNum")
-) {
-  speakers <- trials |>
-    filter(role == "speaker") |>
-    add_condition(games)
-  if (!has_rows(speakers)) {
-    return(tibble())
-  }
-  keys <- c("gameId", "playerId", "phaseNum", "blockNum", "target")
-  described <- speaker_utts |>
-    select(all_of(keys)) |>
-    distinct() |>
-    mutate(has_description = TRUE)
-  speakers <- speakers |>
-    left_join(described, by = keys) |>
-    mutate(
-      has_description = has_description %in% TRUE,
-      is_silent = if ("hasSpeakerMessage" %in% names(speakers)) {
-        !(hasSpeakerMessage == TRUE | hasSpeakerMessage == "true") %in% TRUE
-      } else {
-        FALSE
-      },
-      is_excluded = if ("excluded" %in% names(speakers)) {
-        (excluded == TRUE | excluded == "true") %in% TRUE
-      } else {
-        FALSE
-      }
-    )
-  by <- intersect(by, names(speakers))
-  # The flags keep their own names so the counts below can be named after
-  # them without shadowing them mid-summarise
-  speakers |>
-    group_by(across(all_of(by))) |>
-    summarise(
-      speaker_trials = n(),
-      with_description = sum(has_description),
-      without_description = sum(!has_description),
-      prop_without = without_description / speaker_trials,
-      silent = sum(!has_description & is_silent),
-      excluded = sum(!has_description & !is_silent & is_excluded),
-      non_referential_only = sum(!has_description & !is_silent & !is_excluded),
-      .groups = "drop"
-    )
-}
-
 # Late arrivals, reported by condition when any are found. A late answer
 # counts as unsuccessful in the primary coding; this is what the sensitivity
 # analysis below removes. Lateness is outcome-specific, so `late` names the
@@ -558,42 +427,31 @@ drop_late_arrivals <- function(df, late = lateClick) {
   df |> mutate(.late = {{ late }}) |> filter(!.late %in% TRUE) |> select(-.late)
 }
 
-# Attach the speaker of each listener trial. A roundId is shared by all groups
-# in a game, so the join needs the listener's current group as well; joining on
-# (gameId, roundId) alone would match three speakers, and (gameId, blockNum,
-# target) would also match Phase 1 speakers because blockNum resets per phase.
-# trials.csv carries speakerId and inGroupSpeaker itself since September 2026
-# (same definition, computed in preprocessing.py); any such columns are dropped
-# first so this join stays the single definition the notebooks use, and the
-# data integrity suite checks the exported copies against it.
-attach_speaker <- function(listener_df, trials) {
-  listener_df <- listener_df |>
-    select(-any_of(c("speakerId", "speakerGroup", "inGroupSpeaker")))
-  speakers <- trials |>
-    filter(role == "speaker") |>
-    select(
-      gameId,
-      roundId,
-      currentGroup,
-      speakerId = playerId,
-      speakerGroup = originalGroup
-    ) |>
-    distinct()
+# The speaker of each listener trial is on the row (`speakerId`, from the trio
+# membership of the round, computed in pipeline/preprocessing.py and checked
+# against the server's own record by the integrity suite); this turns the
+# in-group flag into the factor the models use, with out_group as the
+# reference level.
+attach_speaker <- function(listener_df) {
+  require_columns(listener_df, c("speakerId", "inGroupSpeaker"), "trials")
+  in_group <- listener_df$inGroupSpeaker %in% c(TRUE, "true", "True")
+  out_group <- listener_df$inGroupSpeaker %in% c(FALSE, "false", "False")
   listener_df |>
-    left_join(speakers, by = c("gameId", "roundId", "currentGroup")) |>
     mutate(
       inGroupSpeaker = factor(
-        ifelse(originalGroup == speakerGroup, "in_group", "out_group"),
+        ifelse(
+          in_group,
+          "in_group",
+          ifelse(out_group, "out_group", NA_character_)
+        ),
         levels = c("out_group", "in_group")
       )
     )
 }
 
-# Social guesses (Phase 2 of the social conditions) with correct, condition,
-# and centered block
 # Per-listener in-group advantage: mean referential accuracy when the speaker
 # came from the listener's own original group, minus mean accuracy when they
-# did not.
+# did not (pipeline/build_frames.py computes it from the coded outcome).
 #
 # Why aggregate rather than model this at the trial level. `inGroupSpeaker` is
 # the only tested predictor in this design that varies WITHIN every grouping
@@ -614,99 +472,70 @@ attach_speaker <- function(listener_df, trials) {
 # this device for their within- versus across-speaker comparison, analysing a
 # per-speaker difference score with speaker-level intercepts.
 #
-# Returns one row per listener with both cells observed: `advantage`, the two
-# cell means, and the two cell sizes so coverage and precision can be
-# reported. `min_trials` drops listeners with a thin cell, for the sensitivity
-# check; the default keeps everyone who has both.
-ingroup_advantage <- function(social_listener, min_trials = 1L) {
-  if (!has_rows(social_listener)) {
+# Returns one row per listener of the requested conditions with both cells
+# observed: `advantage`, the two cell means, and the two cell sizes so
+# coverage and precision can be reported. `min_trials` drops listeners with a
+# thin cell, for the sensitivity check; the default keeps everyone who has
+# both.
+ingroup_advantage <- function(
+  advantage,
+  conditions = SOCIAL_CONDITIONS,
+  min_trials = 1L
+) {
+  if (!has_rows(advantage)) {
     return(tibble())
   }
-  needed <- c("gameId", "playerId", "condition", "inGroupSpeaker", "correct")
-  missing <- setdiff(needed, names(social_listener))
-  if (length(missing)) {
-    stop(
-      "ingroup_advantage needs ",
-      paste(missing, collapse = ", "),
-      "; use listener_trials(phase = 2) |> attach_speaker().",
-      call. = FALSE
-    )
-  }
-  cells <- social_listener |>
-    filter(!is.na(correct), !is.na(inGroupSpeaker)) |>
-    mutate(
-      .cell = ifelse(as.character(inGroupSpeaker) == "in_group", "in", "out")
-    ) |>
-    group_by(gameId, condition, playerId, .cell) |>
-    summarise(acc = mean(correct), n = dplyr::n(), .groups = "drop")
-  wide <- cells |>
-    tidyr::pivot_wider(
-      names_from = .cell,
-      values_from = c(acc, n),
-      names_sep = "_"
-    )
-  for (col in c("acc_in", "acc_out", "n_in", "n_out")) {
-    if (!col %in% names(wide)) {
-      wide[[col]] <- NA_real_
-    }
-  }
-  wide |>
+  require_columns(
+    advantage,
+    c(
+      "gameId",
+      "condition",
+      "playerId",
+      "acc_in",
+      "acc_out",
+      "n_in",
+      "n_out",
+      "advantage"
+    ),
+    "ingroup_advantage.csv"
+  )
+  advantage |>
     filter(
-      !is.na(acc_in),
-      !is.na(acc_out),
+      condition %in% conditions,
       n_in >= min_trials,
       n_out >= min_trials
     ) |>
-    mutate(advantage = acc_in - acc_out) |>
+    mutate(condition = factor(as.character(condition), levels = conditions)) |>
     select(gameId, condition, playerId, acc_in, acc_out, n_in, n_out, advantage)
 }
 
-# One row per content word, for the H3c models.
-#
-# `binomial_measure()` above gives k successes out of n per description;
-# this expands that to the n individual binary observations, so the model is
-# literally "is this content word concrete?" rather than a count. The two are
-# the same likelihood -- a binomial on (k, n-k) with a per-description
-# intercept is exactly n Bernoulli draws with a by-description random effect,
-# and they return identical estimates and standard errors (verified in
-# analysis/tests/test_prepare.R). The word-level form is the one we fit
-# because it states the outcome plainly; the aggregated form remains
-# available and is much faster if the expanded frame ever becomes unwieldy.
-#
-# Which words are 1 and which are 0 is not recorded, only how many of each,
-# because nothing in the model distinguishes them. An analysis that needs the
-# tokens themselves should recompute from the utterances.
-word_level_measure <- function(props, numerator, outcome = "is_target") {
-  counts <- binomial_measure(props, numerator)
-  if (!has_rows(counts)) {
-    return(tibble())
-  }
-  hits <- counts |> filter(k > 0) |> tidyr::uncount(k)
-  hits[[outcome]] <- 1L
-  misses <- counts |> filter(n_minus_k > 0) |> tidyr::uncount(n_minus_k)
-  misses[[outcome]] <- 0L
-  bind_rows(hits, misses) |>
-    select(-any_of(c("k", "n_minus_k")))
-}
-
+# Social-guess response opportunities (Phase 2 of the social conditions) with
+# the coded outcome, condition, and centered block
 social_guess_trials <- function(
   social_guesses,
   games,
-  conditions = SOCIAL_CONDITIONS,
-  exclusions = technical_exclusions()
+  conditions = SOCIAL_CONDITIONS
 ) {
   if (!has_rows(social_guesses)) {
     return(tibble())
   }
   levels <- if (is.null(conditions)) CONDITION_ORDER else conditions
   social_guesses |>
-    require_opportunity_columns(
-      c("responseOpportunity", "socialTimeout", "lateSocialGuess"),
+    require_columns(
+      c(
+        "responseOpportunity",
+        "correct",
+        "onTime",
+        "socialTimeout",
+        "lateSocialGuess"
+      ),
       "social_guesses"
     ) |>
-    filter(responseOpportunity) |>
-    code_accuracy(!socialTimeout, lateSocialGuess, socialGuessCorrect) |>
-    apply_technical_exclusions(exclusions, "social") |>
+    filter(responseOpportunity %in% TRUE) |>
+    coded_outcome(
+      !(socialTimeout %in% c(TRUE, "true", "True")),
+      lateSocialGuess
+    ) |>
     add_condition(games, levels) |>
     center_block()
 }
@@ -726,9 +555,9 @@ phase2_utterances <- function(speaker_utts, games, conditions = NULL) {
 # defined: the cells where every original group has at least two participants
 # who have described the tangram, so every group contributes a within-group
 # pair. compute_derived.py marks them `allGroupsPaired`; it keeps the rest in
-# the table because the descriptive within-vs-between panel can still plot
-# them (the first block of each phase holds between-group pairs alone). A
-# table without the column is taken as eligible throughout.
+# the table because a descriptive within-vs-between panel can still plot them
+# (the first block of each phase holds between-group pairs alone). A table
+# without the column is taken as eligible throughout.
 specificity_eligible <- function(block_pairwise_sim) {
   if (
     !has_rows(block_pairwise_sim) ||
@@ -739,107 +568,84 @@ specificity_eligible <- function(block_pairwise_sim) {
   block_pairwise_sim |> filter(allGroupsPaired == 1)
 }
 
-# Within-group pairs of the block-by-block similarities for one phase, with a
-# game-qualified group id (group1 == group2 for within-group pairs).
-#
-# Every within-group pair enters. The `allGroupsPaired` start rule is not
-# applied here: it exists so that within-minus-between (the specificity
-# trajectory) compares groups with each other, whereas H3b averages each
-# group's own pairs, which the preregistration defines without reference to
-# the other groups.
-#
-# The exported `blockNum` is 0-indexed, and the within-group rows of
-# block_pairwise_similarities.csv start at Phase 1 blockNum 1 (the first block
-# in which two speakers of a group have described a target). The paper counts
-# blocks from 1 (H3b uses blocks 2-6 with the milestone at block 3), so this
-# is the one place the 1-indexed `block` column (blockNum + 1) is created; H3b
-# and its plots work on `block`, and `blockNum` is kept only for traceability.
-within_group_block_pairs <- function(
-  block_pairwise_sim,
-  games,
-  phase = 1,
-  conditions = SOCIAL_CONDITIONS
-) {
-  if (!has_rows(block_pairwise_sim)) {
-    return(tibble())
-  }
-  block_pairwise_sim |>
-    filter(phaseNum == .env$phase, sameGroup == 1) |>
-    add_condition(games, conditions) |>
-    mutate(
-      block = as.integer(blockNum) + 1L,
-      group = paste0(gameId, "_", group1)
-    )
-}
+# ── Model-input frames ───────────────────────────────────────────────────────
 
-# One mean per group, tangram, and 1-indexed block, rather than treating
-# overlapping speaker pairs as independent observations. Missing means are
-# omitted, never filled from another block.
+# One mean per original group, tangram and 1-indexed block over the group's
+# within-group pairs, for one phase and a set of conditions: the H3b unit.
+# pipeline/build_frames.py computes the means (overlapping speaker pairs are
+# not independent observations; a cell with no pair has no row and nothing is
+# filled from another block; every within-group pair enters, because the
+# `allGroupsPaired` start rule of the specificity trajectory does not apply to
+# a group's own convergence). The paper counts blocks from 1, so `block` is
+# the column the H3b models use and `blockNum` is kept for traceability.
 within_group_block_means <- function(
-  block_pairwise_sim,
-  games,
+  means,
   phase = 1,
   conditions = SOCIAL_CONDITIONS
 ) {
-  pairs <- within_group_block_pairs(
-    block_pairwise_sim,
-    games,
-    phase,
-    conditions
-  )
-  if (!has_rows(pairs)) {
+  if (!has_rows(means)) {
     return(tibble())
   }
-  pairs |>
-    filter(is.finite(similarity)) |>
-    group_by(gameId, condition, group, target, block) |>
-    summarise(similarity = mean(similarity), n_pairs = n(), .groups = "drop") |>
+  require_columns(
+    means,
+    c(
+      "gameId",
+      "condition",
+      "group",
+      "target",
+      "phaseNum",
+      "blockNum",
+      "block",
+      "similarity",
+      "n_pairs"
+    ),
+    "within_group_block_means.csv"
+  )
+  means |>
+    filter(phaseNum == .env$phase, condition %in% conditions) |>
     mutate(
-      blockNum = block - 1L,
+      condition = factor(as.character(condition), levels = conditions),
+      block = as.integer(block),
+      blockNum = as.integer(blockNum),
       group_target = interaction(group, target, drop = TRUE)
     )
 }
 
 # The H3c measures (concreteness, word frequency, lexical uniqueness) for each
-# speaker's final Phase 1 description of each tangram, with the game-qualified
-# original group id the H3c models' group intercept uses
+# speaker's final description of each tangram in one phase, with the
+# game-qualified original group id the H3c models' group intercept uses
+# (`group`); pipeline/build_frames.py keeps the last block per speaker and
+# tangram within the phase.
 final_phase_properties <- function(
-  desc_props,
-  lex_uniq,
-  games,
+  props,
   phase = 1,
   conditions = CONDITION_ORDER
 ) {
-  if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
+  if (!has_rows(props)) {
     return(tibble())
   }
-  # `n_unique_words` rides along beside `uniqueness` so the binomial H3c
-  # model has its numerator; the denominator `n_content_words` is the same in
-  # both tables and comes in with desc_props. The counts are selected only
-  # when present.
-  uniq_cols <- intersect(
-    c("uniqueness", "n_unique_words"),
-    names(lex_uniq)
+  require_columns(
+    props,
+    c(
+      "gameId",
+      "playerId",
+      "target",
+      "phaseNum",
+      "blockNum",
+      "condition",
+      "group",
+      "n_content_words"
+    ),
+    "final_phase_properties.csv"
   )
-  desc_props |>
-    left_join(
-      lex_uniq |>
-        select(
-          gameId,
-          playerId,
-          target,
-          blockNum,
-          phaseNum,
-          all_of(uniq_cols)
-        ),
-      by = c("gameId", "playerId", "target", "blockNum", "phaseNum")
-    ) |>
-    filter(phaseNum == .env$phase) |>
-    add_condition(games, conditions) |>
-    add_group_id() |>
-    group_by(gameId, playerId, target) |>
-    filter(blockNum == max(blockNum)) |>
-    ungroup()
+  props |>
+    filter(phaseNum == .env$phase, condition %in% conditions) |>
+    mutate(condition = factor(as.character(condition), levels = conditions))
+}
+
+# The H3c comparison: final Phase 1 descriptions in the social conditions
+final_phase1_properties <- function(props, conditions = SOCIAL_CONDITIONS) {
+  final_phase_properties(props, phase = 1, conditions = conditions)
 }
 
 # One row per description, reshaped for a binomial H3c model: `k` successes
@@ -874,18 +680,30 @@ binomial_measure <- function(props, numerator) {
     )
 }
 
-# The H3c comparison: final Phase 1 descriptions in the social conditions
-final_phase1_properties <- function(
-  desc_props,
-  lex_uniq,
-  games,
-  conditions = SOCIAL_CONDITIONS
-) {
-  final_phase_properties(
-    desc_props,
-    lex_uniq,
-    games,
-    phase = 1,
-    conditions = conditions
-  )
+# One row per content word, for the H3c models.
+#
+# `binomial_measure()` above gives k successes out of n per description;
+# this expands that to the n individual binary observations, so the model is
+# literally "is this content word concrete?" rather than a count. The two are
+# the same likelihood -- a binomial on (k, n-k) with a per-description
+# intercept is exactly n Bernoulli draws with a by-description random effect,
+# and they return identical estimates and standard errors (verified in
+# analysis/tests/test_prepare.R). The word-level form is the one we fit
+# because it states the outcome plainly; the aggregated form remains
+# available and is much faster if the expanded frame ever becomes unwieldy.
+#
+# Which words are 1 and which are 0 is not recorded, only how many of each,
+# because nothing in the model distinguishes them. An analysis that needs the
+# tokens themselves should recompute from the utterances.
+word_level_measure <- function(props, numerator, outcome = "is_target") {
+  counts <- binomial_measure(props, numerator)
+  if (!has_rows(counts)) {
+    return(tibble())
+  }
+  hits <- counts |> filter(k > 0) |> tidyr::uncount(k)
+  hits[[outcome]] <- 1L
+  misses <- counts |> filter(n_minus_k > 0) |> tidyr::uncount(n_minus_k)
+  misses[[outcome]] <- 0L
+  bind_rows(hits, misses) |>
+    select(-any_of(c("k", "n_minus_k")))
 }

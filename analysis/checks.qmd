@@ -108,7 +108,7 @@ cat(sprintf(
 High and stable accuracy is also informative; an increase is not mandatory.
 
 Referential accuracy is a binary listener-trial outcome under the
-response-opportunity rule (`code_accuracy()`: a correct answer received by the
+response-opportunity rule (coded by the pipeline: a correct answer received by the
 scoring cutoff is 1; an incorrect answer, timeout, or late arrival is 0;
 trials without an opportunity leave the denominator), so the trend is fit as
 a logistic mixed model on listener trials:

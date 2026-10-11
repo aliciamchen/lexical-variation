@@ -14,7 +14,6 @@ source(here::here("analysis", "config.R"))
 list2env(load_tables(), envir = globalenv())
 
 has_pairwise <- has_rows(pairwise_sim)
-has_block_pairwise <- has_rows(block_pairwise_sim)
 if (!has_pairwise) {
   cat("WARNING: pairwise_similarities.csv not found. Run compute_derived.py first.\n")
   cat("Most analyses in this notebook will be skipped.\n")
@@ -366,11 +365,11 @@ requires at least two games per condition in its analysis subset. The
 block-3 estimate does not depend on the trajectory in other blocks.
 
 ```{r h3b-convergence}
-if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
-  cat("Skipping H3b: block_pairwise_similarities.csv not found. Run compute_derived.py first.\n")
+if (!has_rows(within_group_means)) {
+  cat("Skipping H3b: within_group_block_means.csv not found. Run build_frames.py first.\n")
 } else {
   h3b <- fit_h3b(within_group_block_means(
-    block_pairwise_sim, games, phase = 1, conditions = SOCIAL_CONDITIONS
+    within_group_means, phase = 1, conditions = SOCIAL_CONDITIONS
   ))
   p1_within_social <- h3b$data
   m_h3b <- h3b$model
@@ -478,11 +477,11 @@ given those. In each case the fit is equivalent to the same model without the
 zero terms, and the estimate and standard error are those of that model.
 
 ```{r h3c-description-properties}
-if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
-  cat("Missing H3c data files. Run compute_description_properties() and compute_lexical_uniqueness() first.\n")
+if (!has_rows(final_props)) {
+  cat("Missing H3c frame: final_phase_properties.csv not found. Run build_frames.py first.\n")
 } else {
   # Each speaker's final Phase 1 description of each tangram, social conditions
-  p1_final_social <- final_phase1_properties(desc_props, lex_uniq, games, SOCIAL_CONDITIONS)
+  p1_final_social <- final_phase1_properties(final_props, SOCIAL_CONDITIONS)
 
   if (nrow(p1_final_social) > 0 && n_distinct(p1_final_social$condition) >= 2) {
     # Concreteness: is this content word a concrete term?
@@ -679,10 +678,10 @@ listener's interpretation and the quality of the speaker's description.
 Contrast: `social_mixed > social_first` (lower ref accuracy expected in social_first).
 
 ```{r h4b-ref-accuracy}
-# One speaker per (game, round, group): the group key is required because a
-# roundId is shared across all groups in a game
+# Each listener trial carries its speaker and the in-group flag; attach_speaker()
+# makes the flag the factor the model uses
 p2_listener_social <- listener_trials(trials, games, phase = 2, conditions = SOCIAL_CONDITIONS) |>
-  attach_speaker(trials)
+  attach_speaker()
 
 if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 0) {
   m_h4b <- fit_progressively(
@@ -1074,14 +1073,11 @@ if (!has_rows(pairwise_sim_jaccard)) {
 ```
 
 ```{r robustness-jaccard-h3b}
-if (!has_rows(block_pairwise_sim_jaccard)) {
-  cat(sprintf(
-    "Skipping H3b on Jaccard similarity: %s not found.\n",
-    block_pairwise_file("jaccard")
-  ))
+if (!has_rows(within_group_means_jaccard)) {
+  cat("Skipping H3b on Jaccard similarity: within_group_block_means_jaccard.csv not found.\n")
 } else {
   h3b_jaccard <- fit_h3b(within_group_block_means(
-    block_pairwise_sim_jaccard, games, phase = 1, conditions = SOCIAL_CONDITIONS
+    within_group_means_jaccard, phase = 1, conditions = SOCIAL_CONDITIONS
   ))
   if (is.null(h3b_jaccard$model)) {
     cat("H3b on Jaccard similarity skipped:", h3b_jaccard$note, "\n")

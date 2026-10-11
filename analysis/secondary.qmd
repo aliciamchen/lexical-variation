@@ -248,11 +248,11 @@ amplifies it. Both reach the manuscript as macros (`secondaryIngroupAdv*`,
 
 ```{r model-ingroup}
 # Phase 2 listener trials in the social conditions, each with its speaker and
-# in-group status (attach_speaker() joins on the listener's current group, since
-# a roundId is shared by all groups in a game). The condition factor keeps only
-# the two social levels so the random slope has no empty-level columns.
+# in-group status from the trial row (attach_speaker() makes the flag a factor).
+# The condition factor keeps only the two social levels so the random slope has
+# no empty-level columns.
 social_listener <- listener_trials(trials, games, phase = 2, conditions = SOCIAL_CONDITIONS) |>
-  attach_speaker(trials) |>
+  attach_speaker() |>
   filter(!is.na(inGroupSpeaker))
 
 if (nrow(social_listener) > 0 && n_distinct(social_listener$condition) >= 2) {
@@ -260,7 +260,7 @@ if (nrow(social_listener) > 0 && n_distinct(social_listener$condition) >= 2) {
   # form: one score per listener, which collapses the within-listener
   # dimension into the outcome and leaves an estimable between-listener
   # model. See ingroup_advantage() in analysis/R/prepare.R.
-  adv <- ingroup_advantage(social_listener)
+  adv <- ingroup_advantage(ingroup_adv, SOCIAL_CONDITIONS)
   cat(sprintf(
     "In-group advantage scores: %d listeners in %d games (median %d in-group and %d out-group trials each)\n",
     nrow(adv), n_distinct(adv$gameId), median(adv$n_in), median(adv$n_out)
@@ -283,7 +283,7 @@ if (nrow(social_listener) > 0 && n_distinct(social_listener$condition) >= 2) {
     ))
     print(summary(ct_adv, infer = c(TRUE, TRUE)))
     # Thin cells are noisier; rerun on listeners with at least five each.
-    adv5 <- ingroup_advantage(social_listener, min_trials = 5L)
+    adv5 <- ingroup_advantage(ingroup_adv, SOCIAL_CONDITIONS, min_trials = 5L)
     if (nrow(adv5) >= 4 && n_distinct(adv5$condition) >= 2) {
       m_adv5 <- fit_progressively(advantage ~ condition + (1 | gameId), data = adv5,
                                   verbose = FALSE)
@@ -490,11 +490,11 @@ PROPERTY_NUMERATORS <- list(concreteness = "n_concrete",
                             uniqueness = "n_unique_words",
                             mean_zipf_freq = NULL)
 
-if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
-  cat("Skipping: description_properties.csv or lexical_uniqueness.csv not found.\n")
+if (!has_rows(final_props)) {
+  cat("Skipping: final_phase_properties.csv not found. Run build_frames.py first.\n")
 } else {
   for (ph in c(1, 2)) {
-    props <- final_phase_properties(desc_props, lex_uniq, games, phase = ph)
+    props <- final_phase_properties(final_props, phase = ph)
     if (nrow(props) == 0 || n_distinct(props$condition) < 2) {
       cat(sprintf("Phase %d: not enough conditions with data.\n", ph))
       next

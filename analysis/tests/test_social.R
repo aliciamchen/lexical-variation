@@ -40,15 +40,12 @@ soc_guesses <- tibble(
   socialTimeout = c(FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE),
   lateSocialGuess = FALSE,
   responseOpportunity = TRUE,
+  correct = c(1, 1, 0, 1, 0, 0, NA, 1),
+  onTime = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, TRUE),
   excluded = c(rep(FALSE, 6), TRUE, FALSE),
   exclusionReason = c(rep("", 6), "bot-like responses", "")
 )
-no_exclusions <- technical_exclusions(tempdir())
-soc_frame <- social_guess_trials(
-  soc_guesses,
-  soc_games,
-  exclusions = no_exclusions
-)
+soc_frame <- social_guess_trials(soc_guesses, soc_games)
 comp <- social_identification_components(soc_frame)
 sm <- comp |> filter(condition == "social_mixed")
 sf <- comp |> filter(condition == "social_first")
@@ -122,9 +119,12 @@ check(
   )
 )
 check(
-  "the components need the coded opportunity frame",
+  "the components need the coded outcome on the frame",
   inherits(
-    try(social_identification_components(soc_guesses), silent = TRUE),
+    try(
+      social_identification_components(soc_guesses |> select(-correct, -onTime)),
+      silent = TRUE
+    ),
     "try-error"
   )
 )

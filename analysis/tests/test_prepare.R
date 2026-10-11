@@ -15,25 +15,24 @@ games <- tibble(
   phase1Blocks = c(6, 6)
 )
 
-# Round r1 in g1: current groups X and Y, each with one speaker and two listeners.
-# The `phase` column is the stage name, as in the real table; it must not be
-# confused with the `phase` argument of listener_trials().
-#
-# Every listener here had a response opportunity and clicked on time, so the
-# denominator rule does not remove or recode anything; the rule itself is
-# tested in test_accuracy_denominator.R.
+# Round r1 in g1: current groups X and Y, each with one speaker and two
+# listeners. The `phase` column is the stage name, as in the real table; it
+# must not be confused with the `phase` argument of listener_trials(). The
+# coded outcome, the speaker and the in-group flag are on the rows, as the
+# pipeline writes them; the denominator rule itself is tested in
+# test_accuracy_denominator.R.
 trials <- tribble(
-  ~gameId , ~roundId , ~playerId , ~originalGroup , ~currentGroup , ~role      , ~phaseNum , ~blockNum , ~target , ~clicked , ~clickedCorrect , ~phase    ,
-  "g1"    , "r1"     , "s1"      , "A"            , "X"           , "speaker"  ,         2 ,         0 , "t1"    , NA       , NA              , "refgame" ,
-  "g1"    , "r1"     , "l1"      , "A"            , "X"           , "listener" ,         2 ,         0 , "t1"    , "t1"     , "true"          , "refgame" ,
-  "g1"    , "r1"     , "l2"      , "B"            , "X"           , "listener" ,         2 ,         0 , "t1"    , "t2"     , "false"         , "refgame" ,
-  "g1"    , "r1"     , "s2"      , "C"            , "Y"           , "speaker"  ,         2 ,         0 , "t1"    , NA       , NA              , "refgame" ,
-  "g1"    , "r1"     , "l3"      , "C"            , "Y"           , "listener" ,         2 ,         0 , "t1"    , "t1"     , "true"          , "refgame" ,
-  "g1"    , "r1"     , "l4"      , "A"            , "Y"           , "listener" ,         2 ,         0 , "t1"    , "t2"     , "false"         , "refgame" ,
-  "g1"    , "p1"     , "l1"      , "A"            , "A"           , "listener" ,         1 ,         0 , "t2"    , "t2"     , "true"          , "refgame" ,
-  "g1"    , "p1"     , "l4"      , "A"            , "A"           , "listener" ,         1 ,         0 , "t2"    , "t1"     , "false"         , "refgame" ,
-  "g2"    , "r9"     , "s3"      , "B"            , "B"           , "speaker"  ,         2 ,         3 , "t1"    , NA       , NA              , "refgame" ,
-  "g2"    , "r9"     , "l5"      , "B"            , "B"           , "listener" ,         2 ,         3 , "t1"    , "t1"     , "true"          , "refgame"
+  ~gameId , ~roundId , ~playerId , ~originalGroup , ~currentGroup , ~role      , ~phaseNum , ~blockNum , ~target , ~clicked , ~clickedCorrect , ~phase    , ~correct , ~onTime , ~speakerId , ~inGroupSpeaker ,
+  "g1"    , "r1"     , "s1"      , "A"            , "X"           , "speaker"  ,         2 ,         0 , "t1"    , NA       , NA              , "refgame" , NA       , NA      , "s1"       , NA              ,
+  "g1"    , "r1"     , "l1"      , "A"            , "X"           , "listener" ,         2 ,         0 , "t1"    , "t1"     , "true"          , "refgame" ,        1 , TRUE    , "s1"       , TRUE            ,
+  "g1"    , "r1"     , "l2"      , "B"            , "X"           , "listener" ,         2 ,         0 , "t1"    , "t2"     , "false"         , "refgame" ,        0 , TRUE    , "s1"       , FALSE           ,
+  "g1"    , "r1"     , "s2"      , "C"            , "Y"           , "speaker"  ,         2 ,         0 , "t1"    , NA       , NA              , "refgame" , NA       , NA      , "s2"       , NA              ,
+  "g1"    , "r1"     , "l3"      , "C"            , "Y"           , "listener" ,         2 ,         0 , "t1"    , "t1"     , "true"          , "refgame" ,        1 , TRUE    , "s2"       , TRUE            ,
+  "g1"    , "r1"     , "l4"      , "A"            , "Y"           , "listener" ,         2 ,         0 , "t1"    , "t2"     , "false"         , "refgame" ,        0 , TRUE    , "s2"       , FALSE           ,
+  "g1"    , "p1"     , "l1"      , "A"            , "A"           , "listener" ,         1 ,         0 , "t2"    , "t2"     , "true"          , "refgame" ,        1 , TRUE    , "s9"       , TRUE            ,
+  "g1"    , "p1"     , "l4"      , "A"            , "A"           , "listener" ,         1 ,         0 , "t2"    , "t1"     , "false"         , "refgame" ,        0 , TRUE    , "s9"       , TRUE            ,
+  "g2"    , "r9"     , "s3"      , "B"            , "B"           , "speaker"  ,         2 ,         3 , "t1"    , NA       , NA              , "refgame" , NA       , NA      , "s3"       , NA              ,
+  "g2"    , "r9"     , "l5"      , "B"            , "B"           , "listener" ,         2 ,         3 , "t1"    , "t1"     , "true"          , "refgame" ,        1 , TRUE    , "s3"       , TRUE
 ) |>
   mutate(
     lateClick = FALSE,
@@ -41,32 +40,43 @@ trials <- tribble(
     responseOpportunity = role == "listener"
   )
 
-check(
-  "as_correct handles logical and string booleans and keeps NA",
-  identical(as_correct(c(TRUE, "true", FALSE, "false", NA)), c(1, 1, 0, 0, NA))
-)
-
 # ── attach_speaker ───────────────────────────────────────────────────────────
 
-p2 <- listener_trials(trials, games, phase = 2) |> attach_speaker(trials)
+p2 <- listener_trials(trials, games, phase = 2) |> attach_speaker()
 check(
-  "every Phase 2 listener trial gets exactly one speaker",
+  "every Phase 2 listener trial carries its speaker",
   nrow(p2) == 5 && all(!is.na(p2$speakerId))
 )
 check(
-  "the speaker is the one from the listener's current group in that round",
+  "the speaker is the one on the listener's row",
   p2$speakerId[p2$playerId == "l1"] == "s1" &&
     p2$speakerId[p2$playerId == "l3"] == "s2"
 )
 check(
-  "in-group status compares original groups, not current groups",
-  p2$inGroupSpeaker[p2$playerId == "l1"] == "in_group" && # l1 is A, s1 is A
-    p2$inGroupSpeaker[p2$playerId == "l2"] == "out_group" && # l2 is B, s1 is A
+  "the in-group flag becomes the factor the models use",
+  p2$inGroupSpeaker[p2$playerId == "l1"] == "in_group" &&
+    p2$inGroupSpeaker[p2$playerId == "l2"] == "out_group" &&
     p2$inGroupSpeaker[p2$playerId == "l4"] == "out_group"
-) # l4 is A, s2 is C
+)
 check(
   "in-group is a factor with out_group as the reference level",
   identical(levels(p2$inGroupSpeaker), c("out_group", "in_group"))
+)
+check("the flag written as text by a CSV round trip is read too", {
+  txt <- attach_speaker(
+    p2 |> mutate(inGroupSpeaker = c("True", "False", "True", "False", "True"))
+  )
+  identical(
+    as.character(txt$inGroupSpeaker),
+    c("in_group", "out_group", "in_group", "out_group", "in_group")
+  )
+})
+check(
+  "a table without the speaker columns is an error, not a silent result",
+  inherits(
+    try(attach_speaker(p2 |> select(-speakerId)), silent = TRUE),
+    "try-error"
+  )
 )
 
 # ── listener_trials ──────────────────────────────────────────────────────────
@@ -139,7 +149,9 @@ check_trials <- check_utts |>
     clickedCorrect = FALSE,
     lateClick = FALSE,
     hasSpeakerMessage = TRUE,
-    responseOpportunity = TRUE
+    responseOpportunity = TRUE,
+    correct = 0,
+    onTime = TRUE
   )
 check_adjacent <- check_utts |> mutate(simAdjacent = 0.1)
 convention_data <- convention_check_data(
@@ -268,11 +280,13 @@ sg <- tibble(
   socialGuessCorrect = c("true", FALSE),
   socialTimeout = FALSE,
   lateSocialGuess = FALSE,
-  responseOpportunity = TRUE
+  responseOpportunity = TRUE,
+  correct = c(1, 0),
+  onTime = TRUE
 )
 sgt <- social_guess_trials(sg, games)
 check(
-  "social_guess_trials keeps the social conditions only and recodes correct",
+  "social_guess_trials keeps the social conditions only and carries the outcome",
   nrow(sgt) == 1 && sgt$correct == 1 && sgt$gameId == "g1"
 )
 check(
@@ -280,30 +294,32 @@ check(
   nrow(social_guess_trials(tibble(), games)) == 0
 )
 
-# ── final_phase_properties ───────────────────────────────────────────────────
+# ── final_phase_properties: the frame, restricted to a phase and conditions ──
 
 props <- tibble(
-  gameId = c("g1", "g1", "g1", "g2"),
-  playerId = c("s1", "s1", "s1", "s3"),
-  originalGroup = c("A", "A", "A", "B"),
+  gameId = c("g1", "g1", "g2"),
+  playerId = c("s1", "s1", "s3"),
+  originalGroup = c("A", "A", "B"),
   target = "t1",
-  phaseNum = c(1, 1, 2, 2),
-  blockNum = c(2, 4, 5, 3),
-  phase = "refgame",
-  concreteness = c(0.5, 0.25, 0.1, 0.6),
-  mean_zipf_freq = c(5, 4, 3, 4.5)
+  phaseNum = c(1, 2, 2),
+  blockNum = c(4, 5, 3),
+  block = blockNum + 1,
+  condition = c("social_mixed", "social_mixed", "refer_separated"),
+  group = c("g1 A", "g1 A", "g2 B"),
+  n_content_words = c(4, 3, 5),
+  n_concrete = c(1, 0, 3),
+  concreteness = c(0.25, 0, 0.6),
+  mean_zipf_freq = c(4, 3, 4.5),
+  uniqueness = c(0.2, 0.9, 0.4),
+  n_unique_words = c(1, 3, 2)
 )
-uniq <- props |>
-  select(gameId, playerId, target, blockNum, phaseNum) |>
-  mutate(uniqueness = c(0.1, 0.2, 0.9, 0.4))
-p1 <- final_phase_properties(props, uniq, games, phase = 1)
+p1 <- final_phase_properties(props, phase = 1)
 check(
-  "final_phase_properties keeps each speaker's last description of the phase",
-  nrow(p1) == 1 && p1$blockNum == 4 && p1$uniqueness == 0.2 && p1$gameId == "g1"
-)
-check(
-  "final_phase_properties carries the game-qualified group id for the group intercept",
-  "group" %in% names(p1) && p1$group == "g1 A"
+  "final_phase_properties keeps the requested phase with the frame's group id",
+  nrow(p1) == 1 &&
+    p1$blockNum == 4 &&
+    p1$uniqueness == 0.2 &&
+    p1$group == "g1 A"
 )
 check(
   "phase2_utterances carries the game-qualified group id",
@@ -311,71 +327,69 @@ check(
     names(phase2_utterances(utts, games)) &&
     phase2_utterances(utts, games)$group == "g1 A"
 )
-p2 <- final_phase_properties(props, uniq, games, phase = 2)
+p2props <- final_phase_properties(props, phase = 2)
 check(
   "phase 2 covers every condition by default",
-  nrow(p2) == 2 && identical(levels(p2$condition), CONDITION_ORDER)
+  nrow(p2props) == 2 && identical(levels(p2props$condition), CONDITION_ORDER)
 )
 check(
   "final_phase1_properties is the social-conditions Phase 1 case",
-  nrow(final_phase1_properties(props, uniq, games)) == 1 &&
+  nrow(final_phase1_properties(props)) == 1 &&
     identical(
-      levels(final_phase1_properties(props, uniq, games)$condition),
+      levels(final_phase1_properties(props)$condition),
       SOCIAL_CONDITIONS
     )
 )
-
-# ── speaker_description_coverage ─────────────────────────────────────────────
-
-cov_trials <- tribble(
-  ~gameId, ~playerId, ~role,      ~phaseNum, ~blockNum, ~target, ~hasSpeakerMessage, ~excluded,
-  "g1",    "s1",      "speaker",  1,         0,         "t1",    TRUE,               FALSE, # described
-  "g1",    "s1",      "speaker",  1,         1,         "t1",    FALSE,              FALSE, # silent
-  "g1",    "s2",      "speaker",  1,         0,         "t2",    TRUE,               TRUE,  # excluded
-  "g1",    "s3",      "speaker",  2,         0,         "t3",    TRUE,               FALSE, # non-referential only
-  "g1",    "l1",      "listener", 1,         0,         "t1",    TRUE,               FALSE
-)
-cov_utts <- tibble(
-  gameId = "g1", playerId = "s1", phaseNum = 1, blockNum = 0, target = "t1",
-  utterance = "a", uttLength = 1
-)
-cov <- speaker_description_coverage(cov_trials, cov_utts, games)
-cov_p1 <- cov |> filter(phaseNum == 1)
-cov_p2 <- cov |> filter(phaseNum == 2)
 check(
-  "speaker_description_coverage counts speaker trials without an analyzable description by reason",
-  nrow(cov) == 2 && cov_p1$speaker_trials == 3 && cov_p1$with_description == 1 &&
-    cov_p1$without_description == 2 && abs(cov_p1$prop_without - 2 / 3) < 1e-12 &&
-    cov_p1$silent == 1 && cov_p1$excluded == 1 && cov_p1$non_referential_only == 0 &&
-    cov_p2$non_referential_only == 1 && cov_p2$prop_without == 1 &&
-    all(as.character(cov$condition) == "social_mixed")
-)
-check(
-  "speaker_description_coverage works without the exclusion column",
-  {
-    c2 <- speaker_description_coverage(cov_trials |> select(-excluded), cov_utts, games)
-    sum(c2$excluded) == 0 && sum(c2$non_referential_only) == 2
-  }
-)
-check(
-  "speaker_description_coverage is empty without speaker trials",
-  nrow(speaker_description_coverage(cov_trials |> filter(role == "listener"), cov_utts, games)) == 0
+  "a frame missing a column is an error, and no rows in gives no rows out",
+  inherits(
+    try(final_phase_properties(props |> select(-group)), silent = TRUE),
+    "try-error"
+  ) &&
+    nrow(final_phase_properties(tibble())) == 0
 )
 
-# ── add_global_block ─────────────────────────────────────────────────────────
-# One-indexed and continuous across the phase boundary, because every block
-# number in the manuscript counts from 1 while the export counts from 0.
-local({
-  games <- data.frame(gameId = "g1", phase1Blocks = 6)
-  df <- data.frame(
-    gameId = "g1",
-    phaseNum = c(1, 1, 2, 2),
-    blockNum = c(0, 5, 0, 5)
-  )
-  out <- add_global_block(df, games)
-  check("globalBlock is one-indexed and continuous across the phases",
-        identical(out$globalBlock, c(1, 6, 7, 12)))
-})
+# ── within_group_block_means: the frame, restricted to a phase and conditions ─
+
+means <- tibble(
+  gameId = c("g1", "g1", "g1", "g2", "g3"),
+  condition = c(
+    "social_mixed",
+    "social_mixed",
+    "social_mixed",
+    "social_first",
+    "refer_mixed"
+  ),
+  group = c("g1_A", "g1_A", "g1_A", "g2_A", "g3_A"),
+  target = "t1",
+  phaseNum = c(1, 1, 2, 1, 1),
+  blockNum = c(1, 2, 2, 2, 2),
+  block = blockNum + 1,
+  similarity = c(0.3, 0.6, 0.7, 0.9, 0.6),
+  n_pairs = c(1, 2, 1, 1, 1)
+)
+wg <- within_group_block_means(means)
+check(
+  "within_group_block_means keeps Phase 1 rows of the social conditions with integer blocks",
+  nrow(wg) == 3 &&
+    all(wg$gameId %in% c("g1", "g2")) &&
+    is.integer(wg$block) &&
+    identical(levels(wg$condition), SOCIAL_CONDITIONS) &&
+    "group_target" %in% names(wg)
+)
+check(
+  "another phase or condition set can be asked for",
+  nrow(within_group_block_means(means, phase = 2)) == 1 &&
+    nrow(within_group_block_means(means, conditions = CONDITION_ORDER)) == 4
+)
+check(
+  "a frame missing a column is an error, and no rows in gives no rows out",
+  inherits(
+    try(within_group_block_means(means |> select(-n_pairs)), silent = TRUE),
+    "try-error"
+  ) &&
+    nrow(within_group_block_means(tibble())) == 0
+)
 
 # ── binomial_measure ─────────────────────────────────────────────────────────
 # H3c fits concreteness and lexical uniqueness as binomial counts rather than
@@ -411,8 +425,10 @@ local({
   check(
     "missing counts are an error, not a silently empty model frame",
     inherits(
-      try(binomial_measure(props |> select(-n_concrete), "n_concrete"),
-          silent = TRUE),
+      try(
+        binomial_measure(props |> select(-n_concrete), "n_concrete"),
+        silent = TRUE
+      ),
       "try-error"
     )
   )
@@ -464,53 +480,47 @@ local({
   )
 })
 
-# ── ingroup_advantage ────────────────────────────────────────────────────────
+# ── ingroup_advantage: the frame, restricted to conditions and cell sizes ───
 # The paired form of the in-group contrast: one difference score per listener,
-# which is what makes the within-listener comparison estimable at all.
+# computed by pipeline/build_frames.py; here the frame is restricted.
 local({
-  sl <- tibble(
-    gameId = "g1",
-    condition = factor("social_mixed", levels = SOCIAL_CONDITIONS),
-    playerId = c(rep("p1", 4), rep("p2", 4), rep("p3", 2)),
-    inGroupSpeaker = factor(
-      c("in_group", "in_group", "out_group", "out_group",
-        "in_group", "in_group", "out_group", "out_group",
-        "in_group", "in_group"),
-      levels = c("out_group", "in_group")
-    ),
-    #  p1: 2/2 in-group, 1/2 out-group  -> advantage 0.5
-    #  p2: 1/2 in-group, 1/2 out-group  -> advantage 0.0
-    #  p3: in-group only                -> no score
-    correct = c(1, 1, 1, 0, 1, 0, 1, 0, 1, 1)
+  adv <- tibble(
+    gameId = c("g1", "g1", "g3"),
+    condition = c("social_mixed", "social_mixed", "refer_mixed"),
+    playerId = c("p1", "p2", "p9"),
+    acc_in = c(1, 0.5, 0.8),
+    acc_out = c(0.5, 0.5, 0.2),
+    n_in = c(2L, 2L, 5L),
+    n_out = c(2L, 1L, 5L),
+    advantage = c(0.5, 0, 0.6)
   )
-  out <- ingroup_advantage(sl)
+  out <- ingroup_advantage(adv)
   check(
-    "one row per listener with both cells observed",
-    nrow(out) == 2L && setequal(out$playerId, c("p1", "p2"))
+    "one row per listener of the social conditions, with the factor levels set",
+    nrow(out) == 2L &&
+      setequal(out$playerId, c("p1", "p2")) &&
+      identical(levels(out$condition), SOCIAL_CONDITIONS)
   )
   check(
-    "a listener with only in-group trials gets no advantage score",
-    !"p3" %in% out$playerId
-  )
-  check(
-    "advantage is in-group accuracy minus out-group accuracy",
-    isTRUE(all.equal(
-      out$advantage[out$playerId == "p1"], 0.5
-    )) &&
-      isTRUE(all.equal(out$advantage[out$playerId == "p2"], 0))
-  )
-  check(
-    "cell sizes come back so coverage and precision can be reported",
-    all(out$n_in == 2) && all(out$n_out == 2)
+    "advantage and the cell sizes come through for coverage and precision",
+    out$advantage[out$playerId == "p1"] == 0.5 && all(out$n_in == 2)
   )
   check(
     "min_trials drops thin cells for the sensitivity check",
-    nrow(ingroup_advantage(sl, min_trials = 3L)) == 0L
+    identical(ingroup_advantage(adv, min_trials = 2L)$playerId, "p1")
   )
   check(
-    "a table without the speaker join is an error, not an empty result",
+    "another condition set can be asked for",
+    nrow(ingroup_advantage(
+      adv,
+      conditions = c("refer_mixed", SOCIAL_CONDITIONS)
+    )) ==
+      3L
+  )
+  check(
+    "a frame without the advantage columns is an error, not an empty result",
     inherits(
-      try(ingroup_advantage(sl |> select(-inGroupSpeaker)), silent = TRUE),
+      try(ingroup_advantage(adv |> select(-advantage)), silent = TRUE),
       "try-error"
     )
   )
@@ -527,8 +537,11 @@ local({
 # expansion is wrong.
 local({
   props <- tibble(
-    gameId = "g1", playerId = c("p1", "p2"), target = c("t1", "t1"),
-    n_content_words = c(4L, 3L), n_concrete = c(3L, 0L),
+    gameId = "g1",
+    playerId = c("p1", "p2"),
+    target = c("t1", "t1"),
+    n_content_words = c(4L, 3L),
+    n_concrete = c(3L, 0L),
     concreteness = c(0.75, 0)
   )
   out <- word_level_measure(props, "n_concrete", "is_concrete")
