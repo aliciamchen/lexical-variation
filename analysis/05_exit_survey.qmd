@@ -59,7 +59,7 @@ The two 7-point items (1 = not at all, 7 = very much). Descriptive by
 condition with a Kruskal-Wallis test across conditions; the paper treats these
 as a manipulation check, not a hypothesis test.
 
-```{r likert-items, fig.width=8, fig.height=4}
+```{r likert-items}
 likert_items <- c(groupIdentification = "Sense of being part of the Phase 1 group",
                   groupCloseness = "Closeness to the Phase 1 group")
 present <- names(likert_items)[vapply(names(likert_items), function(f) has_field(survey, f), logical(1))]
@@ -72,19 +72,6 @@ if (length(present) == 0) {
     d <- survey |> filter(!is.na(.data[[item]]))
     if (n_distinct(d$condition) >= 2) print(kruskal.test(d[[item]] ~ d$condition))
   }
-  long <- survey |>
-    select(condition, respondent, all_of(present)) |>
-    pivot_longer(all_of(present), names_to = "item", values_to = "rating") |>
-    filter(!is.na(rating)) |>
-    mutate(item = likert_items[item])
-  ggplot(long, aes(x = condition, y = rating, color = condition)) +
-    geom_jitter(width = 0.15, height = 0.1, alpha = 0.4, size = 1.5) +
-    stat_summary(fun.data = mean_cl_normal, color = "black", size = 0.6) +
-    facet_wrap(~item) +
-    scale_color_condition() +
-    scale_y_continuous(breaks = 1:7, limits = c(0.8, 7.2)) +
-    labs(x = "Condition", y = "Rating (1-7)") +
-    theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1))
 }
 ```
 

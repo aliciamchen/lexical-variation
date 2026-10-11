@@ -1,10 +1,10 @@
 # Shared configuration for the Quarto analysis notebooks.
 #
 # Sourcing this file is the whole setup a notebook needs: it resolves the
-# active dataset's paths, defines the constants and palettes, sets the ggplot
-# theme, and sources every helper file in analysis/R/ (data preparation, model
-# fitting, group specificity, contrasts, Bayes factors, stats-to-LaTeX,
-# plotting).
+# active dataset's paths, defines the constants, and sources every helper
+# file in analysis/R/ (data preparation, model fitting, group specificity,
+# contrasts, Bayes factors, stats-to-LaTeX). The notebooks draw nothing;
+# the article's figures are made in Python (analysis/plot_style.py).
 #
 # Usage (in each .qmd setup chunk):
 #   source(here::here("analysis", "config.R"))
@@ -187,7 +187,7 @@ WINDOW_LABELS <- c(
   phase2_final = "Phase 2 final"
 )
 
-# Blocks are 1-indexed in plots: Phase 1 = 1-6, Phase 2 = 7-12
+# Blocks are 1-indexed in the paper: Phase 1 = 1-6, Phase 2 = 7-12
 PHASE_BOUNDARY <- 6.5
 PHASE2_OFFSET <- 6
 
@@ -195,37 +195,6 @@ PHASE2_OFFSET <- 6
 # "auto" computes them only when a contrast has p >= .05, "always" computes
 # them for every planned contrast, "never" skips them (fast renders).
 BAYES_FACTORS <- Sys.getenv("BAYES_FACTORS", unset = "auto")
-
-# ── Color palettes (match analysis/plot_style.py) ────────────
-
-CONDITION_COLORS <- c(
-  refer_separated = "#016E4A",
-  refer_mixed = "#029E73",
-  social_mixed = "#DE8F05",
-  social_first = "#A86B04"
-)
-
-CONDITION_LABELS <- c(
-  refer_separated = "Refer separated",
-  refer_mixed = "Refer mixed",
-  social_mixed = "Social mixed",
-  social_first = "Social-first"
-)
-
-GROUP_COLORS <- c(A = "#ce3045", B = "#27689e", C = "#edc35d")
-
-# ── Global ggplot theme ───────────────────────────────────
-
-theme_set(
-  theme_classic(base_size = 18) +
-    theme(
-      strip.background = element_blank(),
-      text = element_text(family = "Arial Nova"),
-      panel.spacing = unit(1, "lines"),
-      strip.text = element_text(size = 18),
-      legend.key = element_blank()
-    )
-)
 
 set.seed(67)
 

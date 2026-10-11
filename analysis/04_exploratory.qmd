@@ -7,8 +7,6 @@ format:
 ---
 
 ```{r setup, message=FALSE, warning=FALSE}
-library(tidyboot)
-library(patchwork)
 source(here::here("analysis", "config.R"))
 list2env(load_tables(), envir = globalenv())
 
@@ -45,82 +43,14 @@ if (has_adjacent) {
 
 # 1. Temporal dynamics: full game
 
-```{r plot-full-temporal, fig.width=10, fig.height=10}
-phase_boundary <- games$phase1Blocks[1] - 0.5
+The trajectories of description length, referential accuracy and adjacent
+similarity over all twelve blocks are drawn outside this notebook from the
+tables prepared above; the endpoint macros below summarize them.
 
-# Plot 15: Description length over ALL blocks by condition
-length_all <- utts_with_condition |>
-  filter(!is.na(uttLength)) |>
-  group_by(condition, globalBlock) |>
-  tidyboot_mean(uttLength, nboot = 1000)
+# 2. UMAP projections
 
-p_length <- ggplot(length_all, aes(x = globalBlock, y = empirical_stat, color = condition)) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
-              alpha = 0.12, color = NA) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 2) +
-  geom_vline(xintercept = phase_boundary, linetype = "dashed", alpha = 0.5) +
-  annotate("text", x = phase_boundary, y = Inf,
-           label = "Phase 1 | Phase 2", vjust = 1.5, size = 3, alpha = 0.5) +
-  labs(x = "Block", y = "Mean word count", title = "(a) Description length") +
-  scale_color_condition() +
-  scale_fill_condition() +
-  theme(legend.position = "bottom")
-
-# Plot 16a: Referential accuracy over all blocks
-acc_all <- listeners_with_condition |>
-  filter(!is.na(correct)) |>
-  group_by(condition, globalBlock) |>
-  tidyboot_mean(correct, nboot = 1000)
-
-p_acc <- ggplot(acc_all, aes(x = globalBlock, y = empirical_stat, color = condition)) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
-              alpha = 0.12, color = NA) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 2) +
-  geom_hline(yintercept = 1/16, linetype = "dotted", color = "gray50") +
-  geom_vline(xintercept = phase_boundary, linetype = "dashed", alpha = 0.5) +
-  labs(x = "Block", y = "Proportion correct", title = "(b) Referential accuracy") +
-  scale_y_continuous(limits = c(0, 1)) +
-  scale_color_condition() +
-  scale_fill_condition() +
-  theme(legend.position = "bottom")
-
-# Plot 16b: Adjacent similarity over all blocks
-if (exists("adj_with_condition")) {
-  adj_all <- adj_with_condition |>
-    filter(!is.na(simAdjacent)) |>
-    group_by(condition, globalBlock) |>
-    tidyboot_mean(simAdjacent, nboot = 1000)
-
-  p_sim <- ggplot(adj_all, aes(x = globalBlock, y = empirical_stat, color = condition)) +
-    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
-                alpha = 0.12, color = NA) +
-    geom_line(linewidth = 1) +
-    geom_point(size = 2) +
-    geom_vline(xintercept = phase_boundary, linetype = "dashed", alpha = 0.5) +
-    labs(x = "Block", y = "Cosine similarity (adjacent)", title = "(c) Convention stability") +
-    scale_color_condition() +
-    scale_fill_condition() +
-    theme(legend.position = "bottom")
-}
-
-# Plot 16: Combined temporal dynamics panel
-if (exists("p_sim")) {
-  p_length / p_acc / p_sim +
-    plot_layout(guides = "collect") &
-    theme(legend.position = "bottom")
-} else {
-  p_length / p_acc +
-    plot_layout(guides = "collect") &
-    theme(legend.position = "bottom")
-}
-```
-
-# 2. UMAP visualization
-
-```{r plot-umap, fig.width=12, fig.height=8}
-# Plot 17: UMAP embedding space
+```{r umap-projections}
+# The UMAP projections of the speaker descriptions, drawn outside this notebook
 umap_file <- file.path(derived_dir, "umap_projections.csv")
 has_umap <- file.exists(umap_file)
 
@@ -139,49 +69,9 @@ if (has_umap) {
       phase_label = ifelse(phaseNum == 1, "Phase 1", "Phase 2")
     )
 
-  ggplot(umap_data, aes(x = umap_x, y = umap_y, color = originalGroup)) +
-    geom_point(alpha = 0.5, size = 1.5) +
-    facet_grid(phase_label ~ condition) +
-    labs(
-      x = "UMAP 1",
-      y = "UMAP 2",
-      color = "Original group",
-      title = "UMAP projections of speaker descriptions"
-    ) +
-    scale_color_group() +
-    theme(legend.position = "bottom")
+  cat(sprintf("%d projected descriptions in %d games\n", nrow(umap_data), n_distinct(umap_data$gameId)))
 } else {
   cat("No UMAP projections file found. Run compute_derived.py first.\n")
-}
-```
-
-```{r plot-umap-example, fig.width=14, fig.height=8}
-# Plot 18: Example game trajectory
-if (has_umap && exists("umap_data")) {
-  example_game <- umap_data |>
-    count(gameId) |>
-    filter(n >= 20) |>
-    slice(1) |>
-    pull(gameId)
-
-  if (length(example_game) > 0) {
-    example_data <- umap_data |>
-      filter(gameId == example_game) |>
-      mutate(globalBlock = ifelse(phaseNum == 1, blockNum,
-                                   blockNum + games$phase1Blocks[1]))
-
-    ggplot(example_data, aes(x = umap_x, y = umap_y, color = originalGroup)) +
-      geom_point(size = 2, alpha = 0.7) +
-      facet_wrap(~globalBlock, ncol = 4) +
-      labs(
-        x = "UMAP 1",
-        y = "UMAP 2",
-        color = "Original group",
-        title = paste("Example game trajectory:", example_game)
-      ) +
-      scale_color_group() +
-      theme(legend.position = "bottom")
-  }
 }
 ```
 
@@ -195,7 +85,7 @@ four conditions side by side. This section does, descriptively: the game-level
 Phase 1 endpoint estimates and the length of final Phase 1 descriptions, by
 condition. Nothing here is a test.
 
-```{r phase1-all-conditions, fig.width=7, fig.height=5}
+```{r phase1-all-conditions}
 if (has_rows(pairwise_sim)) {
   gs_p1_all <- game_specificity_table(pairwise_sim, games, windows = "phase1_final") |>
     filter(estimable)
@@ -205,21 +95,6 @@ if (has_rows(pairwise_sim)) {
     filter(games > 0)
   print(knitr::kable(p1_gs_by_condition, digits = 3,
                      caption = "Final Phase 1 group-specificity by condition (game-level estimates)"))
-  print(
-    ggplot(gs_p1_all, aes(x = condition, y = coefficient, color = condition)) +
-      geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
-      geom_jitter(width = 0.12, size = 2.5, alpha = 0.7) +
-      stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.6) +
-      scale_color_condition() +
-      scale_x_discrete(labels = CONDITION_LABELS) +
-      labs(
-        x = "Condition",
-        y = "Group-specificity coefficient (Phase 1 final)",
-        title = "Phase 1 group-specificity by condition",
-        caption = "Points are games; black points and bars are bootstrap 95% CIs of the mean."
-      ) +
-      theme(legend.position = "none")
-  )
 }
 
 # Final Phase 1 descriptions (each game's last three Phase 1 blocks): words per

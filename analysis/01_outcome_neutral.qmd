@@ -11,7 +11,7 @@ preservation of established group-specific conventions. Trend models pool
 Phase 1 data from `refer_separated`, `refer_mixed`, and `social_mixed`, whose
 Phase 2 manipulations have not yet been disclosed. `social_first` is excluded
 from those models because its manipulation precedes Phase 1, but remains in
-the condition-specific descriptive plots and game-level summaries.
+the condition-specific game-level summaries.
 
 No trend, permutation p-value, or proportion of significant games determines
 whether primary analyses are run or reported. If initial differentiation is
@@ -22,9 +22,8 @@ to mixing or failure of social incentives to preserve conventions. The checks
 do not gate H3/H4, trigger recruitment, or change primary-analysis eligibility.
 The separate eligibility and robustness-analysis rules remain unchanged.
 
-Gray trajectories below show individual game means; bold trajectories show
-the arithmetic mean across available games in each condition and block.
-These descriptive plots have no inferential pass/fail threshold.
+The descriptive trajectories are drawn outside this notebook from the same
+tables; nothing here has a pass/fail threshold.
 
 ```{r setup, message=FALSE, warning=FALSE}
 library(lme4)
@@ -66,7 +65,7 @@ Report the estimate and uncertainty; significance is not required to proceed.
 
 Word counts in this task are heavy-tailed, so length is log-transformed, as
 in Hawkins et al. (2023); the block coefficient is a proportional change per
-block. Untransformed means are plotted below.
+block.
 
 No game term. In Phase 1 the three groups of a game never interact -- every
 trial has `currentGroup == originalGroup` -- so the group is the conversing
@@ -101,32 +100,6 @@ cat(sprintf(
   exp(fixef(m_length)[["blockNum_c"]]),
   100 * (exp(fixef(m_length)[["blockNum_c"]]) - 1)
 ))
-```
-
-```{r plot-utt-length, fig.width=11, fig.height=7}
-length_by_game <- p1_utts_all |>
-  filter(is.finite(uttLength)) |>
-  group_by(gameId, condition, blockNum) |>
-  summarise(mean_length = mean(uttLength, na.rm = TRUE), .groups = "drop")
-
-length_by_block <- length_by_game |>
-  group_by(condition, blockNum) |>
-  summarise(mean_length = mean(mean_length), .groups = "drop")
-
-ggplot(length_by_block, aes(x = blockNum + 1, y = mean_length)) +
-  geom_line(data = length_by_game,
-            aes(group = gameId),
-            color = "gray70", alpha = 0.5, linewidth = 0.4) +
-  geom_line(color = "black", linewidth = 1) +
-  geom_point(color = "black", size = 2) +
-  facet_wrap(~condition, ncol = 2, labeller = as_labeller(CONDITION_LABELS)) +
-  labs(
-    x = "Block",
-    y = "Mean word count",
-    title = "Phase 1 description length by condition",
-    subtitle = "Social-first is descriptive here, not part of the shared-Phase-1 trend model."
-  ) +
-  scale_x_continuous(breaks = 1:6)
 ```
 
 # 2. Listener accuracy increases over blocks
@@ -177,36 +150,6 @@ cat(sprintf(
 ))
 ```
 
-```{r plot-accuracy, fig.width=11, fig.height=7}
-acc_by_game <- p1_ref_accuracy_all |>
-  filter(is.finite(ref_accuracy)) |>
-  group_by(gameId, condition, blockNum) |>
-  summarise(mean_acc = mean(ref_accuracy, na.rm = TRUE), .groups = "drop")
-
-acc_by_block <- acc_by_game |>
-  group_by(condition, blockNum) |>
-  summarise(mean_acc = mean(mean_acc), .groups = "drop")
-
-ggplot(acc_by_block, aes(x = blockNum + 1, y = mean_acc)) +
-  geom_line(data = acc_by_game,
-            aes(group = gameId),
-            color = "gray70", alpha = 0.5, linewidth = 0.4) +
-  geom_line(color = "black", linewidth = 1) +
-  geom_point(color = "black", size = 2) +
-  facet_wrap(~condition, ncol = 2, labeller = as_labeller(CONDITION_LABELS)) +
-  geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
-  annotate("text", x = 6, y = 1/16 + 0.02,
-           label = "Blind-grid baseline (1/16)", hjust = 1, color = "gray50", size = 3) +
-  labs(
-    x = "Block",
-    y = "Proportion correct",
-    title = "Phase 1 referential accuracy by condition",
-    subtitle = "Social-first is descriptive here, not part of the shared-Phase-1 trend model."
-  ) +
-  scale_x_continuous(breaks = 1:6) +
-  scale_y_continuous(limits = c(0, 1))
-```
-
 # 3. Conventions are stable (increasing adjacent similarity)
 
 **Expected pattern:** A positive block effect in the shared Phase 1 procedure.
@@ -236,34 +179,6 @@ if (has_rows(p1_adjacent)) {
   report_effect_sizes(m_adjacent)
 } else {
   cat("Skipping: no shared-Phase-1 adjacent similarity observations.\n")
-}
-```
-
-```{r plot-adjacent-sim, fig.width=11, fig.height=7}
-if (has_rows(p1_adjacent_all)) {
-  sim_by_game <- p1_adjacent_all |>
-    filter(is.finite(simAdjacent)) |>
-    group_by(gameId, condition, blockNum) |>
-    summarise(mean_sim = mean(simAdjacent, na.rm = TRUE), .groups = "drop")
-
-  sim_by_block <- sim_by_game |>
-    group_by(condition, blockNum) |>
-    summarise(mean_sim = mean(mean_sim), .groups = "drop")
-
-  ggplot(sim_by_block, aes(x = blockNum + 1, y = mean_sim)) +
-    geom_line(data = sim_by_game,
-              aes(group = gameId),
-              color = "gray70", alpha = 0.5, linewidth = 0.4) +
-    geom_line(color = "black", linewidth = 1) +
-    geom_point(color = "black", size = 2) +
-    facet_wrap(~condition, ncol = 2, labeller = as_labeller(CONDITION_LABELS)) +
-    labs(
-      x = "Block",
-      y = "Cosine similarity (adjacent descriptions)",
-      title = "Phase 1 adjacent-description similarity by condition",
-      subtitle = "Social-first is descriptive here, not part of the shared-Phase-1 trend model."
-    ) +
-    scale_x_continuous(breaks = 1:6)
 }
 ```
 
@@ -361,44 +276,6 @@ if (nrow(p1_pairwise) > 0) {
   cat("No Phase 1 pairwise similarity data available.\n")
 }
 } # end has_pairwise
-```
-
-```{r plot-permutation, fig.width=10, fig.height=6}
-# Plot 4: Permutation test histograms
-if (exists("perm_results") && nrow(perm_results) > 0) {
-  perm_plot_data <- perm_results |>
-    unnest(perm_coefs) |>
-    rename(perm_coef = perm_coefs)
-
-  ggplot(perm_plot_data, aes(x = perm_coef)) +
-    geom_histogram(bins = 40, fill = "gray70", color = "white") +
-    geom_vline(aes(xintercept = obs_coefficient), color = "red", linewidth = 1) +
-    facet_wrap(~gameId, scales = "free_y") +
-    labs(
-      x = "Group-specificity coefficient (permuted)",
-      y = "Count",
-      title = "Permutation test: observed vs. permuted group-specificity"
-    )
-}
-```
-
-```{r plot-group-specificity-summary, fig.width=9, fig.height=5}
-# Plot 5: Group-specificity summary dot plot
-if (exists("gs_by_game") && any(is.finite(gs_by_game$coefficient))) {
-  gs_with_condition <- gs_by_game |> filter(is.finite(coefficient))
-
-  ggplot(gs_with_condition, aes(x = condition, y = coefficient)) +
-    geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
-    geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
-    stat_summary(fun = mean, geom = "point", color = "black", size = 4) +
-    scale_x_discrete(labels = CONDITION_LABELS) +
-    labs(
-      x = "Condition",
-      y = "Group-specificity coefficient",
-      title = "Group-specificity by condition (Phase 1)",
-      caption = "Each small point is one game; large points are condition means.\nSocial-first is not part of the pooled starting-state check."
-    )
-}
 ```
 
 # Summary of convention-formation checks

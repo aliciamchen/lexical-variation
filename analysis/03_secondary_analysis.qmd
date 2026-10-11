@@ -122,24 +122,6 @@ if (has_phase_change && nrow(phase_change) > 0) {
 }
 ```
 
-```{r plot-semantic-change, fig.width=7, fig.height=5}
-if (has_phase_change && nrow(phase_change) > 0) {
-# Plot 10: Semantic change by condition
-ggplot(phase_change, aes(x = condition, y = simPhase1Phase2, fill = condition)) +
-  geom_violin(alpha = 0.3) +
-  geom_jitter(width = 0.15, size = 1.5, alpha = 0.4) +
-  stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
-  scale_fill_condition() +
-  labs(
-    x = "Condition",
-    y = "Cosine similarity (Phase 1 final → Phase 2 final)",
-    title = "Semantic change across phases by condition",
-    subtitle = "Higher = less change from Phase 1 to Phase 2"
-  ) +
-  theme(legend.position = "none")
-}
-```
-
 # 2. Referential accuracy in Phase 2
 
 **Predictions:** Above chance (1/16), main effect of `blockNum`, ordered: separated > mixed > social_mixed.
@@ -218,32 +200,6 @@ if (inherits(m_ref_accuracy, "glmerMod") && "condition" %in% all.vars(formula(m_
 } else {
   cat("Preregistered accuracy tests need the condition-by-block mixed model.\n")
 }
-```
-
-```{r plot-accuracy, fig.width=8, fig.height=5}
-# Plot 11: Referential accuracy over Phase 2 blocks by condition
-acc_by_block <- p2_listener |>
-  filter(!is.na(correct)) |>
-  group_by(condition, blockNum) |>
-  tidyboot_mean(correct, nboot = 1000)
-
-ggplot(acc_by_block, aes(x = blockNum, y = empirical_stat, color = condition)) +
-  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
-              alpha = 0.15, color = NA) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 2) +
-  geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
-  annotate("text", x = max(acc_by_block$blockNum), y = 1/16 + 0.02,
-           label = "Chance (1/16)", hjust = 1, color = "gray50", size = 3) +
-  labs(
-    x = "Block number",
-    y = "Proportion correct",
-    color = "Condition",
-    title = "Referential accuracy in Phase 2"
-  ) +
-  scale_y_continuous(limits = c(0, 1)) +
-  scale_color_condition() +
-  scale_fill_condition()
 ```
 
 # 3. In-group vs out-group listener accuracy (social conditions)
@@ -357,31 +313,6 @@ if (nrow(social_listener) > 0 && n_distinct(social_listener$condition) >= 2) {
 }
 ```
 
-```{r plot-ingroup-by-condition, fig.width=8, fig.height=5}
-if (exists("social_listener") && nrow(social_listener) > 0 &&
-    "inGroupSpeaker" %in% names(social_listener) &&
-    n_distinct(social_listener$condition) >= 2) {
-  ingroup_by_cond <- social_listener |>
-    filter(!is.na(correct), !is.na(inGroupSpeaker)) |>
-    mutate(speaker_type = ifelse(inGroupSpeaker == "in_group", "In-group", "Out-group")) |>
-    group_by(condition, speaker_type) |>
-    tidyboot_mean(correct, nboot = 1000)
-
-  ggplot(ingroup_by_cond, aes(x = speaker_type, y = empirical_stat, fill = speaker_type)) +
-    geom_col(alpha = 0.7, width = 0.6) +
-    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
-    facet_wrap(~condition) +
-    geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
-    labs(
-      x = "Speaker type",
-      y = "Mean listener accuracy",
-      title = "In-group vs out-group accuracy by condition"
-    ) +
-    scale_y_continuous(limits = c(0, 1)) +
-    theme(legend.position = "none")
-}
-```
-
 # 4. Group-specificity vs social accuracy
 
 Do games with higher Phase 2 social-identification accuracy also have more
@@ -458,24 +389,6 @@ if (!has_pairwise || nrow(pairwise_sim) == 0) {
 }
 ```
 
-```{r plot-gs-social, fig.width=7, fig.height=5}
-# Plot 13: Social accuracy vs group-specificity scatter
-if (exists("gs_social_fit") && nrow(gs_social_fit$data) >= 3) {
-  ggplot(gs_social_fit$data, aes(x = social_accuracy, y = gs_phase2, color = condition)) +
-    geom_point(size = 3) +
-    geom_smooth(aes(group = 1), method = "lm", se = TRUE, alpha = 0.2, color = "gray40") +
-    scale_color_condition() +
-    labs(
-      x = "Mean social-identification accuracy (Phase 2)",
-      y = "Phase 2 group-specificity",
-      color = "Condition",
-      title = "Social accuracy vs group-specificity (social conditions)"
-    )
-} else {
-  cat("Not enough data points for scatter plot.\n")
-}
-```
-
 # 5. Social-signaling accuracy over repetitions
 
 Does social identification improve over blocks?
@@ -504,64 +417,6 @@ if (nrow(social_guesses) > 0) {
   cat(sprintf("Chance level: 50%%\n"))
 } else {
   cat("No social guess data.\n")
-}
-```
-
-```{r plot-social-accuracy, fig.width=7, fig.height=4}
-# Plot 14: Social-signaling accuracy over blocks (pooled), over eligible
-# response opportunities (code_accuracy() via social_guess_trials())
-if (nrow(social_guesses) > 0) {
-  social_by_block <- social_guess_trials(social_guesses, games) |>
-    filter(!is.na(correct)) |>
-    group_by(blockNum) |>
-    tidyboot_mean(correct, nboot = 1000)
-
-  ggplot(social_by_block, aes(x = blockNum, y = empirical_stat)) +
-    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper),
-                alpha = 0.2, fill = "black") +
-    geom_line(color = "black", linewidth = 1) +
-    geom_point(color = "black", size = 2) +
-    geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
-    annotate("text", x = max(social_by_block$blockNum), y = 0.52,
-             label = "Chance (50%)", hjust = 1, color = "gray50", size = 3) +
-    labs(
-      x = "Block number",
-      y = "Proportion correct social guesses",
-      title = "Social-signaling accuracy over Phase 2 blocks"
-    ) +
-    scale_y_continuous(limits = c(0, 1))
-}
-```
-
-```{r plot-social-accuracy-by-condition, fig.width=8, fig.height=5}
-# Social accuracy trajectories by condition (paper: compare across social
-# conditions), over eligible response opportunities
-if (nrow(social_guesses) > 0) {
-  social_with_cond <- social_guess_trials(social_guesses, games, SOCIAL_CONDITIONS)
-
-  if (n_distinct(social_with_cond$condition) >= 2) {
-    social_by_block_cond <- social_with_cond |>
-      filter(!is.na(correct)) |>
-      group_by(condition, blockNum) |>
-      tidyboot_mean(correct, nboot = 1000)
-
-    ggplot(social_by_block_cond, aes(x = blockNum, y = empirical_stat,
-                                     color = condition)) +
-      geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
-                  alpha = 0.15, color = NA) +
-      geom_line(linewidth = 1) +
-      geom_point(size = 2) +
-      geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
-      scale_color_condition() +
-      scale_fill_condition() +
-      labs(
-        x = "Block number",
-        y = "Proportion correct social guesses",
-        color = "Condition",
-        title = "Social-signaling accuracy trajectories by condition"
-      ) +
-      scale_y_continuous(limits = c(0, 1))
-  }
 }
 ```
 
@@ -613,29 +468,6 @@ if (n_cond >= 2 && inherits(m_p2_length, "merMod")) {
 }
 ```
 
-```{r plot-utt-length-phase2, fig.width=8, fig.height=5}
-if (nrow(p2_utts) > 0) {
-  length_by_block_cond <- p2_utts |>
-    group_by(condition, blockNum) |>
-    tidyboot_mean(uttLength, nboot = 1000)
-
-  ggplot(length_by_block_cond, aes(x = blockNum, y = empirical_stat,
-                                   color = condition)) +
-    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
-                alpha = 0.15, color = NA) +
-    geom_line(linewidth = 1) +
-    geom_point(size = 2) +
-    scale_color_condition() +
-    scale_fill_condition() +
-    labs(
-      x = "Block number",
-      y = "Mean word count",
-      color = "Condition",
-      title = "Description length over Phase 2 blocks by condition"
-    )
-}
-```
-
 # 7. Utterance properties across the four conditions
 
 The paper's "Utterance properties" paragraph: the H3c measures (concreteness,
@@ -661,7 +493,6 @@ PROPERTY_NUMERATORS <- list(concreteness = "n_concrete",
 if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
   cat("Skipping: description_properties.csv or lexical_uniqueness.csv not found.\n")
 } else {
-  property_summaries <- list()
   for (ph in c(1, 2)) {
     props <- final_phase_properties(desc_props, lex_uniq, games, phase = ph)
     if (nrow(props) == 0 || n_distinct(props$condition) < 2) {
@@ -692,19 +523,7 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
       } else {
         emmeans(m, "condition", type = "response")
       }
-      # A response-scale binomial grid calls the estimate `prob`; a linear one
-      # calls it `emmean`. Normalize so the two stack into one plot.
-      # Likewise the interval columns: `lower.CL`/`upper.CL` with Satterthwaite
-      # or Kenward-Roger degrees of freedom, `asymp.LCL`/`asymp.UCL` when emmeans
-      # falls back to asymptotic intervals (binomial fits, or a linear fit on
-      # more observations than `lmerTest.limit`, which the full sample exceeds).
-      em_df <- as.data.frame(summary(em))
-      est_col <- intersect(c("emmean", "prob", "response"), names(em_df))[1]
-      lo_col <- intersect(c("lower.CL", "asymp.LCL"), names(em_df))[1]
-      hi_col <- intersect(c("upper.CL", "asymp.UCL"), names(em_df))[1]
-      property_summaries[[length(property_summaries) + 1]] <- em_df |>
-        rename(estimate = all_of(est_col), lower = all_of(lo_col), upper = all_of(hi_col)) |>
-        mutate(phase = paste("Phase", ph), measure = PROPERTY_LABELS[[measure]])
+      print(summary(em))
       lv <- levels(droplevels(d$condition))
       if (all(c("refer_separated", "social_mixed") %in% lv)) {
         cat("Passive vs active maintenance (refer_separated minus social_mixed):\n")
@@ -714,17 +533,6 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
       cat("All pairwise comparisons (Tukey):\n")
       print(summary(pairs(em)))
     }
-  }
-  if (length(property_summaries)) {
-    property_plot <- bind_rows(property_summaries)
-    print(
-      ggplot(property_plot, aes(x = condition, y = estimate, color = condition)) +
-        geom_pointrange(aes(ymin = lower, ymax = upper)) +
-        facet_grid(measure ~ phase, scales = "free_y") +
-        scale_color_condition() +
-        labs(x = "Condition", y = "Estimated marginal mean (95% CI)") +
-        theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1))
-    )
   }
 }
 ```

@@ -10,8 +10,6 @@ format:
 library(lme4)
 library(lmerTest)
 library(emmeans)
-library(tidyboot)
-library(patchwork)
 source(here::here("analysis", "config.R"))
 list2env(load_tables(), envir = globalenv())
 
@@ -149,8 +147,7 @@ Restricted to the three conditions that share the same Phase 1 procedure
 (`refer_separated`, `refer_mixed`, `social_mixed`). In `social_first` the
 manipulation precedes Phase 1, so its Phase 1 group-specificity is an outcome
 (H3a) rather than a pre-manipulation baseline, and pooling it into the common
-covariate slope could bias the H1 and H2 contrasts. `social_first` is kept in
-the descriptive plots below.
+covariate slope could bias the H1 and H2 contrasts.
 
 ```{r ols-model}
 if (!exists("gs_combined")) {
@@ -273,115 +270,6 @@ if (!is.null(contrasts)) {
 }
 ```
 
-# Plots
-
-```{r plot-gs-paired, fig.width=8, fig.height=5}
-if (!exists("gs_combined")) {
-  cat("Skipping plot: no group-specificity data.\n")
-} else {
-# Plot 6: Group-specificity Phase 1 vs Phase 2 by condition
-gs_long <- gs_combined |>
-  pivot_longer(
-    cols = c(gs_phase1, gs_phase2),
-    names_to = "phase",
-    values_to = "group_specificity"
-  ) |>
-  filter(!is.na(group_specificity)) |>
-  mutate(phase = ifelse(phase == "gs_phase1", "Phase 1", "Phase 2"))
-
-ggplot(gs_long, aes(x = phase, y = group_specificity, group = gameId)) +
-  geom_line(alpha = 0.5, color = "gray50") +
-  geom_point(aes(color = condition), size = 3) +
-  facet_wrap(~condition) +
-  scale_color_condition() +
-  labs(
-    x = "Phase",
-    y = "Group-specificity coefficient",
-    title = "Group-specificity across phases by condition"
-  ) +
-  theme(legend.position = "none")
-}
-```
-
-```{r plot-gs-phase2, fig.width=7, fig.height=5}
-if (!exists("gs_combined")) {
-  cat("Skipping plot: no group-specificity data.\n")
-} else {
-# Plot 7: Phase 2 group-specificity by condition (primary result)
-ggplot(gs_combined |> filter(!is.na(gs_phase2)), aes(x = condition, y = gs_phase2, fill = condition)) +
-  geom_violin(alpha = 0.3) +
-  geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
-  stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
-  scale_fill_condition() +
-  labs(
-    x = "Condition",
-    y = "Phase 2 group-specificity",
-    title = "Group-specificity in Phase 2 by condition"
-  ) +
-  theme(legend.position = "none")
-}
-```
-
-```{r plot-ols-forest, fig.width=7, fig.height=4}
-# Plot 8: OLS coefficient forest plot
-if (exists("ols_model") && !is.null(ols_model)) {
-  ols_coefs <- broom::tidy(ols_model, conf.int = TRUE) |>
-    filter(term != "(Intercept)")
-
-  ggplot(ols_coefs, aes(x = estimate, y = term)) +
-    geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
-    geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +
-    geom_point(size = 3) +
-    labs(
-      x = "Coefficient estimate",
-      y = "",
-      title = "H1/H2 OLS model coefficients"
-    )
-} else {
-  cat("OLS model not fitted (insufficient conditions).\n")
-}
-```
-
-```{r plot-within-between, fig.width=10, fig.height=5}
-if (!has_pairwise || nrow(pairwise_sim) == 0) {
-  cat("Skipping plot: no pairwise similarity data.\n")
-} else {
-# Plot 9: Within- vs between-group similarity by condition. All three
-# windows are shown separately; phase2_early is descriptive and is not part
-# of the H1/H2 comparison, which uses the two final windows.
-pw_summary <- pairwise_sim |>
-  left_join(games |> select(gameId, condition), by = "gameId") |>
-  label_window() |>
-  mutate(groupType = ifelse(sameGroup == 1, "Within-group", "Between-group"))
-
-pw_means <- pw_summary |>
-  group_by(condition, window_label, groupType) |>
-  summarise(
-    mean_sim = mean(similarity, na.rm = TRUE),
-    se_sim = sd(similarity, na.rm = TRUE) / sqrt(n()),
-    .groups = "drop"
-  )
-
-ggplot(pw_means, aes(x = condition, y = mean_sim, fill = groupType)) +
-  geom_col(position = position_dodge(0.8), width = 0.7, alpha = 0.8) +
-  geom_errorbar(
-    aes(ymin = mean_sim - se_sim, ymax = mean_sim + se_sim),
-    position = position_dodge(0.8), width = 0.2
-  ) +
-  facet_wrap(~window_label) +
-  scale_fill_brewer(palette = "Pastel1") +
-  labs(
-    x = "Condition",
-    y = "Mean cosine similarity",
-    fill = "Group type",
-    title = "Within- vs between-group similarity by condition and phase"
-  ) +
-  theme(axis.text.x = element_text(angle = 20, hjust = 1))
-}
-```
-
-
 # H3: Effect of anticipated social goal on Phase 1 conventions
 
 Restricted to `social_mixed` vs `social_first`. Tests whether anticipating
@@ -438,23 +326,6 @@ if (!exists("gs_combined")) {
     cat("Insufficient data for H3a (need both social conditions with at least two games each):",
         if (!is.null(h3a$note)) h3a$note else "", "\n")
   }
-}
-```
-
-```{r plot-h3a, fig.width=6, fig.height=5}
-if (exists("gs_social") && nrow(gs_social) > 0) {
-  ggplot(gs_social, aes(x = condition, y = gs_phase1, fill = condition)) +
-    geom_violin(alpha = 0.3) +
-    geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
-    stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
-    geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
-    scale_fill_condition() +
-    labs(
-      x = "Condition",
-      y = "Phase 1 group-specificity",
-      title = "H3a: Phase 1 group-specificity by social condition"
-    ) +
-    theme(legend.position = "none")
 }
 ```
 
@@ -525,48 +396,6 @@ if (!has_block_pairwise || nrow(block_pairwise_sim) == 0) {
   } else {
     cat("H3b alignment inference skipped:", h3b$block_note, "\n")
   }
-}
-```
-
-```{r plot-h3b, fig.width=8, fig.height=5}
-if (exists("p1_within_social") && nrow(p1_within_social) > 0) {
-  # Bootstrap game means, not the overlapping pairs or groups within a game.
-  conv_games <- p1_within_social |>
-    group_by(condition, gameId, group, block) |>
-    summarise(similarity = mean(similarity), .groups = "drop") |>
-    group_by(condition, gameId, block) |>
-    summarise(similarity = mean(similarity), .groups = "drop")
-  conv_by_block <- conv_games |>
-    group_by(condition, block) |>
-    group_modify(function(d, keys) {
-      if (nrow(d) < 2L) {
-        return(tibble(empirical_stat = mean(d$similarity),
-                      ci_lower = NA_real_, ci_upper = NA_real_))
-      }
-      tidyboot_mean(d, similarity, nboot = 1000) |>
-        select(empirical_stat, ci_lower, ci_upper)
-    })
-
-  ggplot(conv_by_block, aes(x = block, y = empirical_stat, color = condition)) +
-    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = condition),
-                alpha = 0.15, color = NA) +
-    geom_line(linewidth = 1) +
-    geom_point(size = 2) +
-    scale_color_condition() +
-    scale_fill_condition() +
-    scale_x_continuous(breaks = 1:6, limits = c(1, 6)) +
-    labs(
-      x = "Phase 1 block (1-indexed)",
-      y = "Within-group cosine similarity",
-      color = "Condition",
-      title = "H3b: within-group convergence and early alignment",
-      subtitle = "H3b predicts a steeper slope and greater block-3 alignment in social-first.",
-      caption = if (DATASET == DEFAULT_DATASET) {
-        "Intervals resample games; a single pilot game per condition cannot estimate between-game uncertainty."
-      } else {
-        "Intervals are bootstrap 95% CIs over games."
-      }
-    )
 }
 ```
 
@@ -704,50 +533,6 @@ if (!has_rows(desc_props) || !has_rows(lex_uniq)) {
 }
 ```
 
-```{r plot-h3c, fig.width=14, fig.height=4.5}
-if (exists("p1_final_social") && "concreteness" %in% names(p1_final_social)) {
-  p1_h3c <- p1_final_social |>
-    filter(!is.na(concreteness), !is.na(uniqueness))
-
-  p_concrete <- ggplot(p1_h3c, aes(x = condition, y = concreteness, fill = condition)) +
-    geom_violin(alpha = 0.3) +
-    geom_jitter(width = 0.15, size = 1.2, alpha = 0.3) +
-    stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
-    scale_fill_condition() +
-    scale_x_discrete(labels = function(x) format_condition(x)) +
-    labs(x = NULL, y = "Proportion", title = "Concrete terms") +
-    theme(legend.position = "none")
-
-  p_unique <- ggplot(p1_h3c, aes(x = condition, y = uniqueness, fill = condition)) +
-    geom_violin(alpha = 0.3) +
-    geom_jitter(width = 0.15, size = 1.2, alpha = 0.3) +
-    stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
-    scale_fill_condition() +
-    scale_x_discrete(labels = function(x) format_condition(x)) +
-    labs(x = NULL, y = "Proportion", title = "Lexical uniqueness") +
-    theme(legend.position = "none")
-
-  p_freq <- ggplot(p1_h3c |> filter(!is.na(mean_zipf_freq)),
-                   aes(x = condition, y = mean_zipf_freq, fill = condition)) +
-    geom_violin(alpha = 0.3) +
-    geom_jitter(width = 0.15, size = 1.2, alpha = 0.3) +
-    stat_summary(fun.data = mean_cl_boot, color = "black", size = 0.8) +
-    scale_fill_condition() +
-    scale_x_discrete(labels = function(x) format_condition(x)) +
-    labs(x = NULL, y = "Mean Zipf frequency", title = "Word frequency") +
-    theme(legend.position = "none")
-
-  fig_h3c <- patchwork::wrap_plots(p_concrete, p_unique, p_freq) +
-    plot_annotation(
-      title = "H3c: Description properties in final Phase 1 utterances",
-      tag_levels = "a"
-    ) &
-    TAG_THEME
-
-  print(fig_h3c)
-}
-```
-
 # H4: Downstream trade-off (social-first vs social-mixed)
 
 Restricted to `social_mixed` vs `social_first` in Phase 2. Tests whether
@@ -882,28 +667,6 @@ if (nrow(social_guesses) > 0) {
 }
 ```
 
-```{r plot-h4a, fig.width=6, fig.height=5}
-if (exists("social_h4") && nrow(social_h4) > 0) {
-  h4a_summary <- social_h4 |>
-    filter(!is.na(correct)) |>
-    group_by(condition) |>
-    tidyboot_mean(correct, nboot = 1000)
-
-  ggplot(h4a_summary, aes(x = condition, y = empirical_stat, fill = condition)) +
-    geom_col(alpha = 0.7, width = 0.6) +
-    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
-    geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
-    scale_fill_condition() +
-    labs(
-      x = "Condition",
-      y = "Proportion correct social guesses",
-      title = "H4a: Social-identification accuracy by condition"
-    ) +
-    scale_y_continuous(limits = c(0, 1)) +
-    theme(legend.position = "none")
-}
-```
-
 ## H4b: Referential accuracy
 
 `glmer(ref_correct ~ condition + block_num + (1 | game) + (1 | listener) + (1 | speaker) + (1 | tangram), family = binomial)`
@@ -943,28 +706,6 @@ if (n_distinct(p2_listener_social$condition) >= 2 && nrow(p2_listener_social) > 
   }
 } else {
   cat("Insufficient data for H4b (need both social conditions with Phase 2 listener trials).\n")
-}
-```
-
-```{r plot-h4b, fig.width=6, fig.height=5}
-if (exists("p2_listener_social") && nrow(p2_listener_social) > 0) {
-  h4b_summary <- p2_listener_social |>
-    filter(!is.na(correct)) |>
-    group_by(condition) |>
-    tidyboot_mean(correct, nboot = 1000)
-
-  ggplot(h4b_summary, aes(x = condition, y = empirical_stat, fill = condition)) +
-    geom_col(alpha = 0.7, width = 0.6) +
-    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
-    geom_hline(yintercept = 1/16, linetype = "dashed", color = "gray50") +
-    scale_fill_condition() +
-    labs(
-      x = "Condition",
-      y = "Proportion correct",
-      title = "H4b: Referential accuracy by social condition (Phase 2)"
-    ) +
-    scale_y_continuous(limits = c(0, 1)) +
-    theme(legend.position = "none")
 }
 ```
 
