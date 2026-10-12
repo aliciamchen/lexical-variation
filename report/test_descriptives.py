@@ -18,13 +18,17 @@ from report.descriptives import (
     endpoint_macros,
     exit_survey_responses,
     felt_human_flags,
+    final_words_by_condition,
     game_status,
     group_attrition,
+    listener_accuracy_by_speaker_group,
     phase1_final_words_by_condition,
     phase1_specificity_by_condition,
+    phase_specificity_change_by_condition,
     player_attrition,
     response_opportunities,
     response_opportunity_macros,
+    session_minutes_macros,
 )
 
 GAMES = pd.DataFrame(
@@ -210,3 +214,74 @@ def test_exit_survey_responses_recode_and_flag_as_the_r_helpers_do():
     assert by.loc["p8", "understood"] == "yes" and by.loc["p3", "groupIdentification"] == 7.0
     assert pd.isna(by.loc["p1", "age"]) and by.loc["p0", "age"] == 31.0
     assert len(felt_human_flags(survey)) == 2 and len(felt_human_flags(survey, level="group")) == 2
+
+
+def test_phase_specificity_change_pairs_games_within_condition():
+    gs = pd.DataFrame(
+        {
+            "gameId": ["g1", "g1", "g2", "g2", "g3", "g4", "g4"],
+            "condition": ["refer_mixed"] * 4 + ["refer_mixed"] + ["social_mixed"] * 2,
+            "window": ["phase1_final", "phase2_final"] * 2 + ["phase1_final", "phase1_final", "phase2_final"],
+            "coefficient": [0.4, 0.2, 0.6, 0.3, 0.5, 0.4, 0.4],
+            "estimable": [True] * 6 + [False],
+        }
+    )
+    out = phase_specificity_change_by_condition(gs)
+    out = out.set_index(out["condition"].astype(str))
+    rm = out.loc["refer_mixed"]
+    assert rm["games_phase1"] == 3 and rm["games_phase2"] == 2 and rm["games_paired"] == 2
+    assert abs(rm["mean_phase1"] - 0.5) < 1e-12, "the Phase 1 mean uses every estimable Phase 1 game"
+    assert abs(rm["change"] - (-0.25)) < 1e-12, "the change averages the paired differences"
+    assert abs(rm["ratio"] - 0.5) < 1e-12, "the ratio compares the paired means"
+    assert rm["change_lower"] <= rm["change"] <= rm["change_upper"]
+    sm = out.loc["social_mixed"]
+    assert sm["games_phase2"] == 0 and np.isnan(sm["change"]), "an inestimable endpoint gives no change"
+    assert list(out.index) == ["refer_mixed", "social_mixed"]
+
+
+def test_listener_accuracy_by_speaker_group_averages_listeners_with_game_intervals():
+    advantage = pd.DataFrame(
+        {
+            "gameId": ["g1", "g1", "g2", "g3"],
+            "condition": ["social_mixed", "social_mixed", "social_mixed", "refer_mixed"],
+            "playerId": ["p1", "p2", "p3", "p4"],
+            "acc_in": [1.0, 0.8, 0.9, 1.0],
+            "acc_out": [0.5, 0.7, np.nan, 0.8],
+        }
+    )
+    out = listener_accuracy_by_speaker_group(advantage)
+    by = out.set_index([out["condition"].astype(str), "listener_type"])
+    assert abs(by.loc[("social_mixed", "in_group"), "accuracy"] - 0.9) < 1e-12
+    assert by.loc[("social_mixed", "in_group"), "listeners"] == 3
+    assert abs(by.loc[("social_mixed", "out_group"), "accuracy"] - 0.6) < 1e-12, "a missing accuracy is dropped"
+    assert by.loc[("social_mixed", "out_group"), "listeners"] == 2
+    assert ("refer_mixed", "in_group") not in by.index, "one listener cannot be bootstrapped"
+    assert list(out["condition"].astype(str).unique()) == ["social_mixed"]
+
+
+def test_final_words_by_condition_takes_each_phase_separately():
+    utts = pd.DataFrame(
+        {
+            "gameId": ["g1"] * 5,
+            "condition": ["social_first"] * 5,
+            "phaseNum": [1, 1, 2, 2, 2],
+            "blockNum": [4, 5, 0, 1, 5],
+            "uttLength": [6, 4, 10, 8, 2],
+        }
+    )
+    p1 = final_words_by_condition(utts, phase=1)
+    p1 = p1.set_index(p1["condition"].astype(str))
+    p2 = final_words_by_condition(utts, phase=2)
+    p2 = p2.set_index(p2["condition"].astype(str))
+    assert p1.loc["social_first", "mean_words"] == 5.0
+    assert p2.loc["social_first", "mean_words"] == 2.0, "Phase 2 blocks 0 and 1 are more than two before block 5"
+    assert phase1_final_words_by_condition(utts).equals(final_words_by_condition(utts, phase=1))
+
+
+def test_session_minutes_macros_take_real_games_only():
+    players = PLAYERS.assign(minutesSpent=[40, 10, 50, 12, 48, 52, 30, 31, 55, 99])
+    out = session_minutes_macros(players, GAMES)
+    assert out["overviewMinutesN"] == "9", "the test game g0 is left out"
+    assert out["overviewMinutesMedian"] == "40"
+    assert out["overviewMinutesLowerDecile"] < out["overviewMinutesMedian"] < out["overviewMinutesUpperDecile"]
+    assert session_minutes_macros(players.drop(columns=["minutesSpent"]), GAMES) == {}

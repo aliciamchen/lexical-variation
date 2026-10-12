@@ -98,6 +98,8 @@ def load_tables(dirs) -> dict:
         "phase_change": pd.read_csv(measures / "phase_change_similarities.csv")
         if (measures / "phase_change_similarities.csv").exists() else pd.DataFrame(),
         "gs_by_game": pd.read_csv(gs_path) if gs_path.exists() else pd.DataFrame(),
+        "ingroup_advantage": pd.read_csv(dirs.model_inputs / "ingroup_advantage.csv")
+        if (dirs.model_inputs / "ingroup_advantage.csv").exists() else pd.DataFrame(),
     }
     return tables
 
@@ -347,8 +349,27 @@ def overview_macros(t: dict) -> dict:
         "overviewNGamesComplete": int(status["complete_nine"].sum()),
         "overviewNGamesRanToCompletion": int(status["ran_to_completion"].sum()),
         "overviewNDropouts": len(t["dropouts"]),
+        **session_minutes_macros(t["players"], t["games"]),
         "overviewNQuizFailed": quiz_failures(t["dropouts"]),
         "overviewNNoOpportunity": int((~_true(listeners["responseOpportunity"])).sum()),
+    }
+
+
+def session_minutes_macros(players: pd.DataFrame, games: pd.DataFrame) -> dict:
+    """The median time in the game, in whole minutes, with the 10th and 90th
+    percentiles, over the players of real games who have a recorded duration
+    (players who finished and players removed early alike)."""
+    if "minutesSpent" not in players.columns:
+        return {}
+    real = games[games["condition"].notna()][["gameId"]]
+    minutes = pd.to_numeric(players.merge(real, on="gameId", how="inner")["minutesSpent"], errors="coerce").dropna()
+    if minutes.empty:
+        return {}
+    return {
+        "overviewMinutesN": fmt_count(len(minutes)),
+        "overviewMinutesMedian": fmt_count(round(minutes.median())),
+        "overviewMinutesLowerDecile": fmt_count(round(minutes.quantile(0.1))),
+        "overviewMinutesUpperDecile": fmt_count(round(minutes.quantile(0.9))),
     }
 
 
@@ -391,9 +412,81 @@ def phase1_specificity_by_condition(gs_by_game: pd.DataFrame) -> pd.DataFrame:
 
 def phase1_final_words_by_condition(speaker_utts: pd.DataFrame) -> pd.DataFrame:
     """Words per description in each game's final three Phase 1 blocks, averaged within game first, by condition."""
-    p1 = in_conditions(speaker_utts[pd.to_numeric(speaker_utts["phaseNum"]) == 1]).copy()
-    p1["blockNum"] = pd.to_numeric(p1["blockNum"])
-    last_three = p1[p1["blockNum"] >= p1.groupby("gameId")["blockNum"].transform("max") - 2]
+    return final_words_by_condition(speaker_utts, phase=1)
+
+
+def phase_specificity_change_by_condition(gs_by_game: pd.DataFrame) -> pd.DataFrame:
+    """Group specificity at the end of each phase, by condition: the estimable
+    games and their mean at each endpoint, and over the games estimable at both
+    endpoints the mean Phase 2 minus Phase 1 change with a game-level bootstrap
+    interval and the ratio of the paired Phase 2 mean to the paired Phase 1 mean.
+
+    The change and ratio describe what the primary H1 and H2 contrasts test:
+    descriptive summaries of how much specificity moved in each condition,
+    beside the model-based contrasts, which compare conditions only.
+    """
+    cols = ["condition", "games_phase1", "mean_phase1", "games_phase2", "mean_phase2", "sd_phase2",
+            "games_paired", "change", "change_lower", "change_upper", "ratio"]
+    if gs_by_game.empty:
+        return pd.DataFrame(columns=cols)
+    gs = in_conditions(gs_by_game[_true(gs_by_game["estimable"])])
+    wide = gs.pivot_table(index=["gameId", "condition"], columns="window", values="coefficient").reset_index()
+    for w in ("phase1_final", "phase2_final"):
+        if w not in wide:
+            wide[w] = np.nan
+    rows = []
+    for cond, d in wide.groupby("condition", observed=True):
+        paired = d.dropna(subset=["phase1_final", "phase2_final"]).copy()
+        row = {
+            "condition": cond,
+            "games_phase1": int(d["phase1_final"].notna().sum()),
+            "mean_phase1": d["phase1_final"].mean(),
+            "games_phase2": int(d["phase2_final"].notna().sum()),
+            "mean_phase2": d["phase2_final"].mean(),
+            "sd_phase2": d["phase2_final"].std(ddof=1),
+            "games_paired": len(paired),
+            "change": np.nan, "change_lower": np.nan, "change_upper": np.nan, "ratio": np.nan,
+        }
+        if len(paired) >= 2:
+            paired["change"] = paired["phase2_final"] - paired["phase1_final"]
+            est = bootstrap_mean(paired, "change")
+            row.update(change=est.mean, change_lower=est.lower, change_upper=est.upper,
+                       ratio=paired["phase2_final"].mean() / paired["phase1_final"].mean())
+        rows.append(row)
+    out = pd.DataFrame(rows, columns=cols)
+    out["condition"] = pd.Categorical(out["condition"], CONDITION_ORDER, ordered=True)
+    return out.sort_values("condition").reset_index(drop=True)
+
+
+def listener_accuracy_by_speaker_group(ingroup_advantage: pd.DataFrame) -> pd.DataFrame:
+    """Phase 2 referential accuracy of listeners hearing a speaker from their own
+    original group and from another group, by mixed condition: the mean over
+    listeners with a game-level bootstrap interval, from the per-listener table
+    the in-group advantage model is fit to. The separated condition has no
+    out-group speakers and is not in the table.
+    """
+    cols = ["condition", "listener_type", "listeners", "accuracy", "lower", "upper"]
+    if ingroup_advantage.empty:
+        return pd.DataFrame(columns=cols)
+    rows = []
+    for cond, d in in_conditions(ingroup_advantage).groupby("condition", observed=True):
+        for col, label in (("acc_in", "in_group"), ("acc_out", "out_group")):
+            valid = d.dropna(subset=[col])
+            if len(valid) < 2:
+                continue
+            est = bootstrap_mean(valid, col)
+            rows.append({"condition": cond, "listener_type": label, "listeners": est.n_obs,
+                         "accuracy": est.mean, "lower": est.lower, "upper": est.upper})
+    out = pd.DataFrame(rows, columns=cols)
+    out["condition"] = pd.Categorical(out["condition"], CONDITION_ORDER, ordered=True)
+    return out.sort_values(["condition", "listener_type"]).reset_index(drop=True)
+
+
+def final_words_by_condition(speaker_utts: pd.DataFrame, phase: int) -> pd.DataFrame:
+    """Words per description in each game's final three blocks of `phase`, averaged within game first, by condition."""
+    utts = in_conditions(speaker_utts[pd.to_numeric(speaker_utts["phaseNum"]) == phase]).copy()
+    utts["blockNum"] = pd.to_numeric(utts["blockNum"])
+    last_three = utts[utts["blockNum"] >= utts.groupby("gameId")["blockNum"].transform("max") - 2]
     per_game = last_three.groupby(["condition", "gameId"])["uttLength"].mean().reset_index(name="words")
     out = per_game.groupby("condition")["words"].agg(games="size", mean_words="mean", sd="std").reset_index()
     out["condition"] = pd.Categorical(out["condition"], CONDITION_ORDER, ordered=True)
@@ -435,6 +528,25 @@ def exploratory_macros(t: dict) -> dict:
         macros[f"exploratoryPhaseOneGs{cond}SD"] = fmt_stat(row["sd"])
     for _, row in phase1_final_words_by_condition(utts).iterrows():
         macros[f"exploratoryPhaseOneWords{condition_macro_name(str(row['condition']))}"] = fmt_stat(row["mean_words"], 2)
+    for _, row in final_words_by_condition(utts, phase=2).iterrows():
+        macros[f"exploratoryPhaseTwoWords{condition_macro_name(str(row['condition']))}"] = fmt_stat(row["mean_words"], 2)
+    for _, row in phase_specificity_change_by_condition(t["gs_by_game"]).iterrows():
+        cond = condition_macro_name(str(row["condition"]))
+        macros[f"exploratoryPhaseTwoGs{cond}N"] = int(row["games_phase2"])
+        macros[f"exploratoryPhaseTwoGs{cond}Mean"] = fmt_stat(row["mean_phase2"])
+        macros[f"exploratoryPhaseTwoGs{cond}SD"] = fmt_stat(row["sd_phase2"])
+        macros[f"exploratoryGsChange{cond}N"] = int(row["games_paired"])
+        macros[f"exploratoryGsChange{cond}Mean"] = fmt_stat(row["change"])
+        macros[f"exploratoryGsChange{cond}Lo"] = fmt_stat(row["change_lower"])
+        macros[f"exploratoryGsChange{cond}Hi"] = fmt_stat(row["change_upper"])
+        macros[f"exploratoryGsRatio{cond}"] = fmt_stat(row["ratio"], 2)
+    for _, row in listener_accuracy_by_speaker_group(t.get("ingroup_advantage", pd.DataFrame())).iterrows():
+        cond = condition_macro_name(str(row["condition"]))
+        kind = "InGroup" if row["listener_type"] == "in_group" else "OutGroup"
+        macros[f"exploratoryAcc{kind}{cond}"] = fmt_stat(row["accuracy"])
+        macros[f"exploratoryAcc{kind}{cond}Lo"] = fmt_stat(row["lower"])
+        macros[f"exploratoryAcc{kind}{cond}Hi"] = fmt_stat(row["upper"])
+        macros[f"exploratoryAcc{kind}{cond}Listeners"] = fmt_count(row["listeners"])
     macros.update(semantic_drift_macros(t["phase_change"]))
     return macros
 
