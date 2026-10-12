@@ -1277,37 +1277,30 @@ class TestScoringConsistency:
         """Speaker score should equal 2 * (correct listeners / total listeners)
         for each round.
         """
-        for gid in game_ids:
-            game_trials = trials[trials["gameId"] == gid]
-            # Group by round and currentGroup
-            for rid in game_trials["roundId"].unique():
-                round_data = game_trials[game_trials["roundId"] == rid]
-                for grp in round_data["currentGroup"].unique():
-                    group_round = round_data[round_data["currentGroup"] == grp]
-                    speaker = group_round[group_round["role"] == "speaker"]
-                    listeners = group_round[group_round["role"] == "listener"]
-
-                    if len(speaker) == 0 or len(listeners) == 0:
-                        continue
-
-                    speaker_score = speaker.iloc[0]["roundScore"]
-                    scored_listeners = listeners[listeners["clickedCorrect"].notna()]
-                    if len(scored_listeners) == 0:
-                        continue
-
-                    correct_count = scored_listeners["clickedCorrect"].sum()
-                    total_listeners = len(scored_listeners)
-                    expected_score = (
-                        SPEAKER_MAX_POINTS_PER_ROUND
-                        * correct_count
-                        / total_listeners
-                    )
-                    assert abs(speaker_score - expected_score) < 0.01, (
-                        f"Game {gid}, round {rid}, group {grp}: "
-                        f"speaker score {speaker_score} != expected "
-                        f"{expected_score} ({correct_count}/{total_listeners} "
-                        f"correct)"
-                    )
+        # One row per game, round and current group that has a speaker and at
+        # least one listener with a scored click, with the first speaker row's
+        # score.
+        keys = ["gameId", "roundId", "currentGroup"]
+        rounds = trials[trials["gameId"].isin(game_ids)].dropna(subset=keys)
+        speakers = rounds[rounds["role"] == "speaker"].drop_duplicates(keys)
+        scored_listeners = rounds[
+            (rounds["role"] == "listener") & rounds["clickedCorrect"].notna()
+        ]
+        accuracy = (
+            scored_listeners.groupby(keys)["clickedCorrect"]
+            .agg(correct="sum", listeners="size")
+            .reset_index()
+        )
+        scores = speakers[keys + ["roundScore"]].merge(accuracy, on=keys)
+        scores["expected"] = (
+            SPEAKER_MAX_POINTS_PER_ROUND * scores["correct"] / scores["listeners"]
+        )
+        wrong = scores[~((scores["roundScore"] - scores["expected"]).abs() < 0.01)]
+        assert wrong.empty, (
+            f"{len(wrong)} speaker round scores differ from "
+            f"{SPEAKER_MAX_POINTS_PER_ROUND} * correct / scored listeners:\n"
+            f"{wrong.head(10).to_string(index=False)}"
+        )
 
     def test_cumulative_scores_are_nonnegative(self, active_players):
         """All player cumulative scores should be non-negative."""
@@ -2086,21 +2079,17 @@ class TestCrossFileConsistency:
         """Players in speaker_utterances should be speakers in the
         corresponding trial.
         """
-        for _, utt in speaker_utterances.iterrows():
-            matching = trials[
-                (trials["gameId"] == utt["gameId"])
-                & (trials["playerId"] == utt["playerId"])
-                & (trials["blockNum"] == utt["blockNum"])
-                & (trials["phaseNum"] == utt["phaseNum"])
-                & (trials["target"] == utt["target"])
-            ]
-            if len(matching) > 0:
-                role = matching.iloc[0]["role"]
-                assert role == "speaker", (
-                    f"Speaker utterance player {utt['playerId']} has role "
-                    f"'{role}' in trials for block {utt['blockNum']}, "
-                    f"target {utt['target']}"
-                )
+        # The role on a player's first trial row for the utterance's game,
+        # block, phase and target; an utterance with no such row is not checked.
+        keys = ["gameId", "playerId", "blockNum", "phaseNum", "target"]
+        roles = trials.dropna(subset=keys).drop_duplicates(keys)[keys + ["role"]]
+        matched = speaker_utterances.dropna(subset=keys).merge(roles, on=keys)
+        wrong = matched[matched["role"] != "speaker"]
+        assert wrong.empty, (
+            f"{len(wrong)} speaker utterances come from a player whose role "
+            f"in that trial is not speaker:\n"
+            f"{wrong[keys + ['role']].head(10).to_string(index=False)}"
+        )
 
     def test_social_guesses_game_is_social_condition(
         self, social_guesses, game_condition_map
