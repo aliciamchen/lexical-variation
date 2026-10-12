@@ -19,6 +19,38 @@ commit_re="(^|[[:space:];&|(\`/])git([[:space:]]+($git_opt))*[[:space:]]+commit(
 [[ "$command" =~ $commit_re ]] || exit 0
 
 project_dir="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}"
+
+# A commit in explore/, the author's private exploration workspace, goes to
+# that folder's own local git repository, which these checks do not cover. The
+# commit runs in the directory of the last `cd` before it (else the shell's
+# working directory), moved by each `git -C <dir>` in turn, as git does.
+explore_repo=$(cd "$project_dir/explore" 2>/dev/null && pwd -P)
+if [ -n "$explore_repo" ]; then
+  [[ "$command" =~ $commit_re ]]
+  commit_call=${BASH_REMATCH[0]}
+  commit_dir=$(printf '%s' "$input" | jq -r '.cwd // ""')
+  [ -n "$commit_dir" ] || commit_dir="$project_dir"
+  move() {
+    local dir=${1//[\"\']/}
+    dir=${dir/#\~/$HOME}
+    if [[ "$dir" == /* ]]; then commit_dir="$dir"; else commit_dir="$commit_dir/$dir"; fi
+  }
+  cd_re='.*(^|[;&|])[[:space:]]*cd[[:space:]]+([^[:space:];&|]+)'
+  if [[ "${command%%"$commit_call"*}" =~ $cd_re ]]; then
+    move "${BASH_REMATCH[2]}"
+  fi
+  rest=$commit_call
+  c_re="[[:space:]]-C[[:space:]]+$git_arg(.*)"
+  while [[ "$rest" =~ $c_re ]]; do
+    move "${BASH_REMATCH[1]}"
+    rest=${BASH_REMATCH[2]}
+  done
+  commit_repo=$(git -C "$commit_dir" rev-parse --show-toplevel 2>/dev/null)
+  if [ -n "$commit_repo" ] && [ "$(cd "$commit_repo" && pwd -P)" = "$explore_repo" ]; then
+    exit 0
+  fi
+fi
+
 cd "$project_dir" 2>/dev/null || exit 0
 
 # Where .githooks is the installed hooks directory, git runs the same checks

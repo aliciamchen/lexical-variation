@@ -27,6 +27,8 @@ backups/
 *.tar.zst
 .zed
 reviews/
+# The author's private exploratory analyses, kept in their own local git repository
+explore/
 # Old raw-export layout
 /data/raw/
 # Writing projects (each an Overleaf project mirrored through Dropbox)
