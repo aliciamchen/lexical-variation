@@ -13,8 +13,11 @@
 # 2. Server unit tests, when staged files touch experiment/server/src/ or
 #    experiment/shared/ (vitest, seconds).
 # 3. R tests, when staged files touch stats/.
-# 4. Data integrity and Python unit tests, when staged files touch
-#    preprocessing/, report/, operations/, data/<dataset>/ or results/.
+# 4. Python unit tests, when staged files touch preprocessing/, report/,
+#    operations/, data/<dataset>/ or results/, and the data integrity suite
+#    as well when they touch preprocessing/ or data/<dataset>/. The integrity
+#    suite checks the local, uncommitted tables in data/<dataset>/, which
+#    nothing else a commit stages can change, and takes minutes.
 #
 # Playwright end-to-end tests are deliberately not run here; they take many
 # minutes. Pass STAGED_FILES (newline separated) to check a given list instead
@@ -79,8 +82,12 @@ fi
 # ── 4. Data integrity and Python unit tests ─────────────────
 if printf '%s\n' "$staged" | grep -qE '^(preprocessing/|report/|data/[^/]+/|results/|operations/)'; then
   if command -v uv >/dev/null 2>&1; then
-    uv run pytest -q >/tmp/precommit-py.log 2>&1 \
-      || fail "Commit blocked: Python tests failed (uv run pytest).
+    pytest_args=(-q)
+    if ! printf '%s\n' "$staged" | grep -qE '^(preprocessing/|data/[^/]+/)'; then
+      pytest_args+=(--ignore=preprocessing/test_data_integrity.py)
+    fi
+    uv run pytest "${pytest_args[@]}" >/tmp/precommit-py.log 2>&1 \
+      || fail "Commit blocked: Python tests failed (uv run pytest ${pytest_args[*]}).
 $(tail -n 60 /tmp/precommit-py.log)"
   fi
 fi

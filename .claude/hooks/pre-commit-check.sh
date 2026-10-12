@@ -19,6 +19,19 @@ esac
 project_dir="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}"
 cd "$project_dir" 2>/dev/null || exit 0
 
+# Where .githooks is the installed hooks directory, git runs the same checks
+# during the commit, so they run here only when the command can skip git's
+# hook: --no-verify (or an abbreviation of it, or -n) or a core.hooksPath
+# override.
+hooks_dir=$(git rev-parse --git-path hooks 2>/dev/null)
+lowered=$(printf '%s' "$command" | tr '[:upper:]' '[:lower:]')
+if [ -x .githooks/pre-commit ] \
+  && [ "$(cd "$hooks_dir" 2>/dev/null && pwd -P)" = "$(cd .githooks && pwd -P)" ] \
+  && [[ "$lowered" != *"--no-v"* && "$lowered" != *"hookspath"* ]] \
+  && ! [[ "$command" =~ (^|[[:space:]])-[a-zA-Z]*n ]]; then
+  exit 0
+fi
+
 deny() {
   jq -n --arg reason "$1" '{
     hookSpecificOutput: {
