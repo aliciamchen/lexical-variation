@@ -11,10 +11,12 @@ set -o pipefail
 input=$(cat)
 command=$(printf '%s' "$input" | jq -r '.tool_input.command // ""')
 
-case "$command" in
-  *"git commit"*) ;;
-  *) exit 0 ;;
-esac
+# A commit, including one with git's global options before the subcommand
+# (`git -c core.hooksPath=... commit`, `git -C <dir> commit`).
+git_arg="(\"[^\"]*\"|'[^']*'|[^[:space:]]+)"
+git_opt="(-[cC]|--(git-dir|work-tree|namespace|config-env|attr-source))[[:space:]]+$git_arg|-[^[:space:]]+"
+commit_re="(^|[[:space:];&|(\`/])git([[:space:]]+($git_opt))*[[:space:]]+commit([[:space:]]|$)"
+[[ "$command" =~ $commit_re ]] || exit 0
 
 project_dir="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}"
 cd "$project_dir" 2>/dev/null || exit 0
