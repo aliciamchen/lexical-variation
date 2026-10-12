@@ -1541,7 +1541,7 @@ def build_social_guesses(
     for guesses that arrived by the Selection deadline, so it is empty both
     for a nonresponse and for a late guess. Which of those a row is comes from
     socialTimeout and lateSocialGuess, and the 0/1 outcome is built from them
-    in the analysis (stats/R/prepare.R) rather than here.
+    by code_social_outcomes() rather than here.
     """
     pr = drop_last_changed_cols(player_round_df)
     pr = pr[pr["phase"] == "refgame"].copy()

@@ -1,5 +1,5 @@
-# Social-identification components (preregistration, "Social-identification
-# components and opportunities").
+# Social-identification components (preregistration, "Social-signaling
+# accuracy": distinguishing components of social-identification accuracy).
 #
 # Overall social-identification accuracy over eligible response opportunities
 # is the primary H4a outcome. These descriptive summaries break it into its
@@ -63,8 +63,10 @@ speaker_same_group <- function(guesses, trials = NULL) {
 
 # One row per `by` group (condition by default). Rates are over scored
 # opportunities (excluded observations are counted in `excluded` and left out
-# of every rate); the hit and false-alarm rates are over on-time answers, as
-# the preregistration specifies. A rate with an empty denominator is NA.
+# of every rate); the hit and false-alarm rates are over on-time answers, the
+# reading taken of the preregistration's "social-identification responses"
+# (a late guess is coded 0 and has no recorded answer to classify). A rate with
+# an empty denominator is NA.
 social_identification_components <- function(
   guesses,
   trials = NULL,

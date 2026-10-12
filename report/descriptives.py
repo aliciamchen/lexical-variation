@@ -157,8 +157,8 @@ def quiz_failures(dropouts: pd.DataFrame) -> int:
 DESCRIPTION_KEYS = ["gameId", "playerId", "phaseNum", "blockNum", "target"]
 
 
-def description_coverage(trials: pd.DataFrame, speaker_utts: pd.DataFrame) -> tuple[int, int]:
-    """Speaker trials of the four conditions without an analyzable description, and all speaker trials.
+def described_speaker_trials(trials: pd.DataFrame, speaker_utts: pd.DataFrame) -> pd.DataFrame:
+    """The speaker trials of the four conditions, each with whether it has an analyzable description.
 
     A description is analyzable when the speaker's trial has a row in the
     utterance table: a speaker who said nothing, an excluded participant or a
@@ -170,8 +170,146 @@ def description_coverage(trials: pd.DataFrame, speaker_utts: pd.DataFrame) -> tu
         speakers[key] = pd.to_numeric(speakers[key], errors="coerce")
         described[key] = pd.to_numeric(described[key], errors="coerce")
     merged = speakers.merge(described, on=DESCRIPTION_KEYS, how="left")
-    without = int((~merged["has_description"].fillna(False).astype(bool)).sum())
-    return without, len(merged)
+    merged["has_description"] = merged["has_description"].fillna(False).astype(bool)
+    return merged
+
+
+def description_coverage(trials: pd.DataFrame, speaker_utts: pd.DataFrame) -> tuple[int, int]:
+    """Speaker trials of the four conditions without an analyzable description, and all speaker trials."""
+    merged = described_speaker_trials(trials, speaker_utts)
+    return int((~merged["has_description"]).sum()), len(merged)
+
+
+def description_coverage_by_condition(trials: pd.DataFrame, speaker_utts: pd.DataFrame) -> pd.DataFrame:
+    """Per condition: speaker trials, those without an analyzable description, and their proportion."""
+    merged = described_speaker_trials(trials, speaker_utts)
+    out = (
+        merged.groupby("condition")["has_description"]
+        .agg(speaker_trials="size", without=lambda d: int((~d).sum()))
+        .reset_index()
+    )
+    out["prop_without"] = out["without"] / out["speaker_trials"]
+    out["condition"] = pd.Categorical(out["condition"], CONDITION_ORDER, ordered=True)
+    return out.sort_values("condition").reset_index(drop=True)
+
+
+# ── Response opportunities ───────────────────────────────────
+
+TASK_MACRO_NAMES = {"referential": "Ref", "social": "Social"}
+PHASE_MACRO_NAMES = {1: "PhaseOne", 2: "PhaseTwo"}
+
+
+def response_opportunities(trials: pd.DataFrame, social_guesses: pd.DataFrame) -> pd.DataFrame:
+    """Per task, phase and condition: the response opportunities and what became of them.
+
+    The opportunities are the rows the accuracy models use, as preprocessing.py
+    coded them: listener rows of trials.csv with `responseOpportunity`, and
+    the eligible listener rows of social_guesses.csv. `scored` leaves out the
+    observations a participant exclusion or a documented technical failure
+    made missing. The on-time rate, the accuracy, the accuracy among on-time
+    answers and the late arrivals are over the scored opportunities. A late
+    answer is coded 0, so it counts against accuracy and is not an on-time
+    answer.
+    """
+    frames = []
+    ref = trials[(trials["role"] == "listener") & _true(trials["responseOpportunity"])]
+    frames.append(ref.assign(task="referential", late=_true(ref["lateClick"])))
+    if not social_guesses.empty:
+        soc = social_guesses[_true(social_guesses["responseOpportunity"])]
+        frames.append(soc.assign(task="social", late=_true(soc["lateSocialGuess"])))
+    rows = []
+    for df in frames:
+        df = in_conditions(df).copy()
+        df["correct"] = pd.to_numeric(df["correct"], errors="coerce")
+        df["phaseNum"] = pd.to_numeric(df["phaseNum"], errors="coerce").astype(int)
+        df["scored"] = df["correct"].notna()
+        df["answered"] = df["scored"] & _true(df["onTime"])
+        for (task, phase, condition), part in df.groupby(["task", "phaseNum", "condition"]):
+            scored = part[part["scored"]]
+            answered = part[part["answered"]]
+            rows.append({
+                "task": task,
+                "phaseNum": int(phase),
+                "condition": condition,
+                "opportunities": len(part),
+                "scored": len(scored),
+                "on_time": len(answered),
+                "on_time_rate": len(answered) / len(scored) if len(scored) else np.nan,
+                "accuracy": scored["correct"].mean() if len(scored) else np.nan,
+                "accuracy_on_time": answered["correct"].mean() if len(answered) else np.nan,
+                "late": int(scored["late"].sum()),
+                "late_rate": scored["late"].mean() if len(scored) else np.nan,
+            })
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return out
+    out["condition"] = pd.Categorical(out["condition"], CONDITION_ORDER, ordered=True)
+    return out.sort_values(["task", "phaseNum", "condition"]).reset_index(drop=True)
+
+
+def response_opportunity_macros(table: pd.DataFrame) -> dict:
+    """One macro family per task, phase and condition, e.g. overviewRefPhaseOneReferSeparatedAccuracy."""
+    macros = {}
+    for _, r in table.iterrows():
+        prefix = (
+            f"overview{TASK_MACRO_NAMES[r['task']]}{PHASE_MACRO_NAMES[int(r['phaseNum'])]}"
+            f"{condition_macro_name(str(r['condition']))}"
+        )
+        macros.update({
+            f"{prefix}Opportunities": fmt_count(r["opportunities"]),
+            f"{prefix}Scored": fmt_count(r["scored"]),
+            f"{prefix}OnTimeRate": fmt_stat(r["on_time_rate"]),
+            f"{prefix}Accuracy": fmt_stat(r["accuracy"]),
+            f"{prefix}AccuracyOnTime": fmt_stat(r["accuracy_on_time"]),
+            f"{prefix}Late": fmt_count(r["late"]),
+            f"{prefix}LateRate": fmt_stat(r["late_rate"]),
+        })
+    return macros
+
+
+# ── Games, attrition and exclusions by condition ─────────────
+
+
+def condition_counts(t: dict) -> pd.DataFrame:
+    """Per condition: games started, run to completion and complete with nine players; players, players
+    removed (and removed through no fault of their own), original groups lost, and excluded participants."""
+    games, players = t["games"], t["players"]
+    status = game_status(players, games)
+    pa = player_attrition(players, games)
+    ga = group_attrition(players, games)
+    excluded = pa[pa["playerId"].isin(t["participant_exclusions"]["playerId"])] if not t["participant_exclusions"].empty else pa.iloc[0:0]
+    out = pd.DataFrame({"condition": CONDITION_ORDER})
+    out["games"] = out["condition"].map(status.groupby("condition").size())
+    out["games_ran_to_completion"] = out["condition"].map(status.groupby("condition")["ran_to_completion"].sum())
+    out["games_complete"] = out["condition"].map(status.groupby("condition")["complete_nine"].sum())
+    out["players"] = out["condition"].map(pa.groupby("condition").size())
+    out["removed"] = out["condition"].map(pa.groupby("condition")["removed"].sum())
+    out["removed_no_fault"] = out["condition"].map(pa.groupby("condition")["no_fault"].sum())
+    out["groups_lost"] = out["condition"].map(ga.groupby("condition")["lost"].sum())
+    out["excluded_participants"] = out["condition"].map(excluded.groupby("condition").size())
+    count_cols = [c for c in out.columns if c != "condition"]
+    out[count_cols] = out[count_cols].fillna(0).astype(int)
+    return out[out["games"] > 0].reset_index(drop=True)
+
+
+def condition_count_macros(counts: pd.DataFrame) -> dict:
+    """The per-condition counts as macros, e.g. overviewNGamesCompleteSocialMixed."""
+    names = {
+        "games": "NGames",
+        "games_ran_to_completion": "NGamesRanToCompletion",
+        "games_complete": "NGamesComplete",
+        "players": "NPlayers",
+        "removed": "NRemoved",
+        "removed_no_fault": "NRemovedNoFault",
+        "groups_lost": "NGroupsLost",
+        "excluded_participants": "NExcludedParticipants",
+    }
+    macros = {}
+    for _, r in counts.iterrows():
+        cond = condition_macro_name(str(r["condition"]))
+        for column, name in names.items():
+            macros[f"overview{name}{cond}"] = int(r[column])
+    return macros
 
 
 # ── Macros ───────────────────────────────────────────────────
@@ -186,7 +324,14 @@ def overview_macros(t: dict) -> dict:
     excluded_rows = excluded_rows[_true(excluded_rows["excluded"])] if "excluded" in trials.columns else excluded_rows.iloc[0:0]
     without, speaker_trials = description_coverage(trials, t["speaker_utts"])
     listeners = trials[trials["role"] == "listener"]
-    return {
+    by_condition = {}
+    for _, r in description_coverage_by_condition(trials, t["speaker_utts"]).iterrows():
+        cond = condition_macro_name(str(r["condition"]))
+        by_condition[f"overviewNNoDescription{cond}"] = fmt_count(r["without"])
+        by_condition[f"overviewPropNoDescription{cond}"] = fmt_stat(r["prop_without"], 3)
+    by_condition.update(condition_count_macros(condition_counts(t)))
+    by_condition.update(response_opportunity_macros(response_opportunities(trials, t["social_guesses"])))
+    return by_condition | {
         "overviewNExcludedParticipants": len(t["participant_exclusions"]),
         "overviewNExcludedTrialRows": len(excluded_rows),
         "overviewNTechnicalExclusions": len(t["technical_exclusions"]),

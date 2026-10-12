@@ -9,7 +9,10 @@ if (!exists("check")) {
 
 tidy_df <- tibble(
   gameId = paste0("m", 1:9),
-  condition = rep(c("refer_separated", "refer_mixed", "social_mixed"), each = 3),
+  condition = rep(
+    c("refer_separated", "refer_mixed", "social_mixed"),
+    each = 3
+  ),
   gs_phase1 = c(0.1, 0.2, 0.3, 0.1, 0.25, 0.3, 0.12, 0.2, 0.31),
   gs_phase2 = c(0.5, 0.6, 0.7, 0.1, 0.2, 0.3, 0.4, 0.5, 0.55)
 )
@@ -28,7 +31,8 @@ check(
 )
 check(
   "a NULL contrast gives no rows",
-  nrow(tidy_contrasts(NULL, "x")) == 0 && nrow(tidy_contrast_table(NULL, "x")) == 0
+  nrow(tidy_contrasts(NULL, "x")) == 0 &&
+    nrow(tidy_contrast_table(NULL, "x")) == 0
 )
 tab_rows <- tidy_contrast_table(contrast_table(fit$contrasts, "label"), "h1_h2")
 check(
@@ -53,7 +57,10 @@ check(
     nrow(tidy_coefficients(fit$model, "x", terms = "not_there")) == 0 &&
     nrow(tidy_coefficients(NULL, "x")) == 0
 )
-logit <- glm(c(0, 1, 0, 1, 1, 0, 1, 1) ~ c(1, 2, 3, 4, 1, 2, 3, 4), family = binomial)
+logit <- glm(
+  c(0, 1, 0, 1, 1, 0, 1, 1) ~ c(1, 2, 3, 4, 1, 2, 3, 4),
+  family = binomial
+)
 lrows <- tidy_coefficients(logit, "logit")
 or <- odds_ratio_table(logit)
 check(
@@ -71,7 +78,72 @@ check(
     abs(trow$statistic - unname(chi$statistic)) < 1e-12 &&
     identical(trow$df, 1L) &&
     abs(trow$p_value - chi$p.value) < 1e-12 &&
-    is.na(frow$statistic) && is.na(frow$df) &&
+    is.na(frow$statistic) &&
+    is.na(frow$df) &&
     abs(frow$p_value - fisher$p.value) < 1e-12 &&
     nrow(tidy_htest(NULL, "x")) == 0
+)
+
+ci_lm <- stats::confint(fit$model)
+check(
+  "an lm coefficient carries its t interval on the residual degrees of freedom",
+  all(coefs$df == stats::df.residual(fit$model)) &&
+    all(abs(coefs$lower - ci_lm[, 1]) < 1e-12) &&
+    all(abs(coefs$upper - ci_lm[, 2]) < 1e-12)
+)
+check(
+  "a logistic coefficient carries the Wald interval whose exponent is the odds-ratio interval",
+  all(abs(exp(lrows$lower) - lrows$or_lower) < 1e-12) &&
+    all(abs(exp(lrows$upper) - lrows$or_upper) < 1e-12) &&
+    all(is.na(lrows$df))
+)
+sleep <- lme4::sleepstudy
+m_sat <- lmerTest::lmer(Reaction ~ Days + (1 | Subject), data = sleep)
+srows <- tidy_coefficients(m_sat, "sleep", terms = "Days")
+ssum <- coef(summary(m_sat))
+check(
+  "an lmer coefficient carries its t interval on the Satterthwaite degrees of freedom",
+  abs(srows$df - ssum["Days", "df"]) < 1e-9 &&
+    abs(
+      srows$lower -
+        (ssum["Days", "Estimate"] -
+          stats::qt(0.975, ssum["Days", "df"]) * ssum["Days", "Std. Error"])
+    ) <
+      1e-9
+)
+
+# A condition-by-slope model whose groups have known, different slopes: the
+# averaged slope is the mean of the three, not the reference group's.
+trend_df <- tibble(
+  g = factor(rep(c("a", "b", "c"), each = 20)),
+  x = rep(1:20, 3)
+) |>
+  mutate(
+    y = c(a = 1, b = 2, c = 6)[as.character(g)] *
+      x +
+      rep(c(0.3, -0.2, 0.1, -0.4, 0.2), 12)
+  )
+m_trend <- lm(y ~ g * x, data = trend_df)
+overall <- tidy_trends(
+  emmeans::emtrends(m_trend, ~1, var = "x"),
+  "slope",
+  n_games = 3L
+)
+by_group <- tidy_trends(emmeans::emtrends(m_trend, ~g, var = "x"), "slope")
+check(
+  "tidy_trends gives the averaged slope as one row named for the variable, with its interval and test",
+  nrow(overall) == 1 &&
+    overall$kind == "trend" &&
+    overall$term == "x" &&
+    abs(overall$estimate - mean(by_group$estimate)) < 1e-9 &&
+    abs(overall$estimate - coef(m_trend)[["x"]]) > 1 &&
+    overall$lower < overall$estimate &&
+    overall$upper > overall$estimate &&
+    is.finite(overall$p_value) &&
+    overall$n_games == 3L
+)
+check(
+  "tidy_trends gives one row per level, named by the level and the variable",
+  identical(by_group$term, c("a x", "b x", "c x")) &&
+    nrow(tidy_trends(NULL, "x")) == 0
 )

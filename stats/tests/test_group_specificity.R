@@ -110,20 +110,40 @@ check(
   "game_specificity_table has one row per game and window with condition and coverage flags",
   nrow(tab) == 4 &&
     all(
-      c("gameId", "window", "coefficient", "std_error", "condition",
-        "eligible", "estimable", "note", "n_groups_two_speakers") %in%
+      c(
+        "gameId",
+        "window",
+        "coefficient",
+        "std_error",
+        "condition",
+        "eligible",
+        "estimable",
+        "note",
+        "n_groups_two_speakers"
+      ) %in%
         names(tab)
     ) &&
-    is.factor(tab$condition) && all(tab$eligible) && all(tab$estimable) &&
-    all(is.na(tab$note)) && all(tab$n_groups_two_speakers == 3)
+    is.factor(tab$condition) &&
+    all(tab$eligible) &&
+    all(tab$estimable) &&
+    all(is.na(tab$note)) &&
+    all(tab$n_groups_two_speakers == 3)
 )
 wide <- gs_wide(tab)
 check(
   "gs_wide has one row per game with both phases and the inverse-variance weights",
   nrow(wide) == 2 &&
     all(
-      c("gs_phase1", "se_phase1", "gs_phase2", "se_phase2", "weight",
-        "weight_p1", "condition", "both_endpoints") %in%
+      c(
+        "gs_phase1",
+        "se_phase1",
+        "gs_phase2",
+        "se_phase2",
+        "weight",
+        "weight_p1",
+        "condition",
+        "both_endpoints"
+      ) %in%
         names(wide)
     ) &&
     isTRUE(all.equal(wide$weight, 1 / wide$se_phase2^2)) &&
@@ -137,32 +157,45 @@ check(
   "a window with no pairs is an ineligible row with a reason, not a missing row",
   nrow(tab_p1) == 4 &&
     all(!tab_p1$eligible[tab_p1$window == "phase2_final"]) &&
-    all(grepl("no analyzable pairs", tab_p1$note[tab_p1$window == "phase2_final"])) &&
+    all(grepl(
+      "no analyzable pairs",
+      tab_p1$note[tab_p1$window == "phase2_final"]
+    )) &&
     all(tab_p1$eligible[tab_p1$window == "phase1_final"])
 )
 wide_p1 <- gs_wide(tab_p1)
 check(
   "gs_wide keeps a game that lacks a window, with NA for that endpoint",
-  nrow(wide_p1) == 2 && all(is.na(wide_p1$gs_phase2)) &&
-    all(is.finite(wide_p1$gs_phase1)) && !any(wide_p1$both_endpoints) &&
-    all(wide_p1$eligible_phase1) && !any(wide_p1$eligible_phase2)
+  nrow(wide_p1) == 2 &&
+    all(is.na(wide_p1$gs_phase2)) &&
+    all(is.finite(wide_p1$gs_phase1)) &&
+    !any(wide_p1$both_endpoints) &&
+    all(wide_p1$eligible_phase1) &&
+    !any(wide_p1$eligible_phase2)
 )
 
 # The endpoint rule: at least two original groups with at least two speakers
 # each, and both sameGroup levels present.
 one_group_two <- pw_effect |>
-  filter(speaker1 %in% c("g_effect_p1", "g_effect_p2", "g_effect_p4", "g_effect_p7"),
-         speaker2 %in% c("g_effect_p1", "g_effect_p2", "g_effect_p4", "g_effect_p7"))
+  filter(
+    speaker1 %in% c("g_effect_p1", "g_effect_p2", "g_effect_p4", "g_effect_p7"),
+    speaker2 %in% c("g_effect_p1", "g_effect_p2", "g_effect_p4", "g_effect_p7")
+  )
 cov_one <- endpoint_coverage(one_group_two, games, "phase1_final")
 check(
   "a window where only one group has two speakers is ineligible with the reason recorded",
   !cov_one$eligible[cov_one$gameId == "g_effect"] &&
     cov_one$n_groups_two_speakers[cov_one$gameId == "g_effect"] == 1 &&
-    grepl("fewer than two original groups", cov_one$coverage_note[cov_one$gameId == "g_effect"])
+    grepl(
+      "fewer than two original groups",
+      cov_one$coverage_note[cov_one$gameId == "g_effect"]
+    )
 )
 two_groups_two <- pw_effect |>
-  filter(speaker1 %in% c("g_effect_p1", "g_effect_p2", "g_effect_p4", "g_effect_p5"),
-         speaker2 %in% c("g_effect_p1", "g_effect_p2", "g_effect_p4", "g_effect_p5"))
+  filter(
+    speaker1 %in% c("g_effect_p1", "g_effect_p2", "g_effect_p4", "g_effect_p5"),
+    speaker2 %in% c("g_effect_p1", "g_effect_p2", "g_effect_p4", "g_effect_p5")
+  )
 cov_two <- endpoint_coverage(two_groups_two, games, "phase1_final")
 check(
   "two groups with two speakers each and both pair types is the minimum eligible window",
@@ -174,13 +207,19 @@ cov_within <- endpoint_coverage(within_only, games, "phase1_final")
 check(
   "a window without between-group pairs is ineligible",
   !cov_within$eligible[cov_within$gameId == "g_effect"] &&
-    grepl("within-group or between-group", cov_within$coverage_note[cov_within$gameId == "g_effect"])
+    grepl(
+      "within-group or between-group",
+      cov_within$coverage_note[cov_within$gameId == "g_effect"]
+    )
 )
 tab_min <- game_specificity_table(two_groups_two, games)
 check(
   "ineligible game-windows are reported with NA estimates rather than fit",
-  nrow(tab_min) == 4 && sum(tab_min$estimable) == 1 &&
-    is.finite(tab_min$coefficient[tab_min$gameId == "g_effect" & tab_min$window == "phase1_final"]) &&
+  nrow(tab_min) == 4 &&
+    sum(tab_min$estimable) == 1 &&
+    is.finite(tab_min$coefficient[
+      tab_min$gameId == "g_effect" & tab_min$window == "phase1_final"
+    ]) &&
     sum(!is.na(tab_min$note)) == 3
 )
 
@@ -194,12 +233,23 @@ check(
 cov_summary <- endpoint_coverage_summary(tab_min)
 check(
   "the coverage summary counts games, eligible and estimable windows, and lists reasons by condition",
-  all(c("window", "condition", "games", "eligible", "estimable", "reasons") %in% names(cov_summary)) &&
+  all(
+    c("window", "condition", "games", "eligible", "estimable", "reasons") %in%
+      names(cov_summary)
+  ) &&
     nrow(cov_summary) == 4 &&
-    cov_summary$estimable[cov_summary$window == "phase1_final" &
-                            cov_summary$condition == "refer_separated"] == 1 &&
-    grepl("no analyzable pairs", cov_summary$reasons[cov_summary$window == "phase2_final" &
-                                                        cov_summary$condition == "refer_mixed"])
+    cov_summary$estimable[
+      cov_summary$window == "phase1_final" &
+        cov_summary$condition == "refer_separated"
+    ] ==
+      1 &&
+    grepl(
+      "no analyzable pairs",
+      cov_summary$reasons[
+        cov_summary$window == "phase2_final" &
+          cov_summary$condition == "refer_mixed"
+      ]
+    )
 )
 
 check(
@@ -210,24 +260,44 @@ check(
 )
 check(
   "empty input gives empty output",
-  nrow(game_specificity_table(tibble(), games)) == 0 && nrow(gs_wide(tibble())) == 0
+  nrow(game_specificity_table(tibble(), games)) == 0 &&
+    nrow(gs_wide(tibble())) == 0
 )
 
 # ── similarity_coverage (the Jaccard robustness check omits pairs without content words) ──
 
-cov_games <- tibble(gameId = c("j1", "j2"), condition = c("refer_mixed", "social_mixed"))
+cov_games <- tibble(
+  gameId = c("j1", "j2"),
+  condition = c("refer_mixed", "social_mixed")
+)
 cov_pairs <- tibble(
   gameId = c("j1", "j1", "j1", "j2", "j2"),
-  window = c("phase1_final", "phase1_final", "phase2_final", "phase1_final", "phase1_final"),
+  window = c(
+    "phase1_final",
+    "phase1_final",
+    "phase2_final",
+    "phase1_final",
+    "phase1_final"
+  ),
   similarity = c(0.5, NA, 0.2, NaN, 1)
 )
 cov <- similarity_coverage(cov_pairs, cov_games)
 check(
   "similarity_coverage counts pairs with and without a similarity by window and condition",
   nrow(cov) == 3 &&
-    cov$pairs[cov$window == "phase1_final" & cov$condition == "refer_mixed"] == 2 &&
-    cov$omitted[cov$window == "phase1_final" & cov$condition == "refer_mixed"] == 1 &&
-    abs(cov$prop_omitted[cov$window == "phase1_final" & cov$condition == "social_mixed"] - 0.5) < 1e-12 &&
+    cov$pairs[cov$window == "phase1_final" & cov$condition == "refer_mixed"] ==
+      2 &&
+    cov$omitted[
+      cov$window == "phase1_final" & cov$condition == "refer_mixed"
+    ] ==
+      1 &&
+    abs(
+      cov$prop_omitted[
+        cov$window == "phase1_final" & cov$condition == "social_mixed"
+      ] -
+        0.5
+    ) <
+      1e-12 &&
     cov$omitted[cov$window == "phase2_final"] == 0
 )
 check(
@@ -239,7 +309,10 @@ check(
 
 check(
   "every fitted game carries a logical singular-fit flag",
-  "singular" %in% names(fit) && is.logical(fit$singular) && all(!is.na(fit$singular))
+  "singular" %in%
+    names(fit) &&
+    is.logical(fit$singular) &&
+    all(!is.na(fit$singular))
 )
 gs_tab_flag <- game_specificity_table(bind_rows(pw_effect, pw_null), games)
 ss <- singular_fit_summary(gs_tab_flag)
@@ -252,4 +325,54 @@ check(
 check(
   "the per-game fits print no lme4 boundary messages",
   length(capture.output(fit_group_specificity(pw_null), type = "message")) == 0
+)
+
+# ── block_specificity_table ─────────────────────────────────────────────────
+
+# Two blocks of one phase: block 0 fails the start rule everywhere, block 1
+# passes it for every tangram, and block 2 passes it for a single tangram
+block_pairs <- bind_rows(
+  simulate_pairs("g_effect", effect = 0.4) |>
+    mutate(phaseNum = 1, blockNum = 0, allGroupsPaired = 0),
+  simulate_pairs("g_effect", effect = 0.4) |>
+    mutate(phaseNum = 1, blockNum = 1, allGroupsPaired = 1),
+  simulate_pairs("g_effect", effect = 0.4) |>
+    mutate(
+      phaseNum = 1,
+      blockNum = 2,
+      allGroupsPaired = as.integer(target == "t1")
+    ),
+  simulate_pairs("g_null", effect = 0) |>
+    mutate(phaseNum = 2, blockNum = 1, allGroupsPaired = 1)
+) |>
+  select(-window)
+traj <- block_specificity_table(block_pairs)
+one_cell <- fit_group_specificity(
+  block_pairs |> filter(gameId == "g_effect", blockNum == 1)
+)
+check(
+  "the trajectory has one row per game, phase and block from the start rule on",
+  nrow(traj) == 3 &&
+    !any(traj$blockNum == 0) &&
+    identical(
+      sort(paste(traj$gameId, traj$phaseNum, traj$blockNum)),
+      c("g_effect 1 1", "g_effect 1 2", "g_null 2 1")
+    )
+)
+check(
+  "each cell's estimate is the per-game model fit to that cell's eligible pairs",
+  abs(
+    traj$coefficient[traj$gameId == "g_effect" & traj$blockNum == 1] -
+      one_cell$coefficient
+  ) <
+    1e-12 &&
+    abs(traj$coefficient[traj$gameId == "g_null"]) < 0.05 &&
+    all(traj$n_targets[traj$blockNum == 1] == 6)
+)
+check(
+  "a cell whose model cannot be fit keeps its row, with the reason",
+  with(
+    traj[traj$blockNum == 2, ],
+    !estimable && n_targets == 1 && grepl("^model not fit", note)
+  )
 )

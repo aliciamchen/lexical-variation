@@ -151,6 +151,7 @@ ESTIMATES = \
   $(ESTIMATES_DIR)/checks/convention_trends.csv \
   $(ESTIMATES_DIR)/checks/phase1_group_specificity.csv \
   $(ESTIMATES_DIR)/checks/dropout_and_survey.csv \
+  $(ESTIMATES_DIR)/checks/specificity_trajectory.csv \
   $(ESTIMATES_DIR)/primary/group_specificity.csv \
   $(ESTIMATES_DIR)/primary/h1_h2.csv \
   $(ESTIMATES_DIR)/primary/h3a.csv \
@@ -179,6 +180,7 @@ FINAL_PROPERTIES = $(MODEL_INPUTS_DIR)/final_phase_properties.csv
 $(ESTIMATES_DIR)/checks/convention_trends.csv: $(UTTERANCES) $(TRIALS) $(GAMES) $(MEASURES_DIR)/adjacent_similarities.csv
 $(ESTIMATES_DIR)/checks/phase1_group_specificity.csv: $(MEASURES_DIR)/pairwise_similarities.csv $(GAMES)
 $(ESTIMATES_DIR)/checks/dropout_and_survey.csv: $(PLAYERS) $(GAMES)
+$(ESTIMATES_DIR)/checks/specificity_trajectory.csv: $(MEASURES_DIR)/block_pairwise_similarities.csv $(TRIALS) $(GAMES)
 $(ESTIMATES_DIR)/primary/group_specificity.csv: $(PAIRWISE) $(GAMES)
 $(ESTIMATES_DIR)/primary/h1_h2.csv: $(ESTIMATES_DIR)/primary/group_specificity.csv
 $(ESTIMATES_DIR)/primary/h3a.csv: $(ESTIMATES_DIR)/primary/group_specificity.csv

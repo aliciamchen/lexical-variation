@@ -1,5 +1,7 @@
-# Secondary analysis 5: does social identification improve over Phase 2
-# blocks? Social-guess opportunities of the two social conditions, modeled as
+# An addition to the preregistered analyses, which track accuracy over blocks
+# descriptively but specify no model of social accuracy over time: does
+# social identification improve over Phase 2 blocks? Social-guess
+# opportunities of the two social conditions, modeled as
 #
 #   correct ~ blockNum_c + (1 | gameId) + (1 | playerId) + (1 | target)
 #
@@ -29,12 +31,22 @@ print(summary(m_social_acc))
 report_effect_sizes(m_social_acc)
 mean_correct <- mean(social_guesses_model$correct, na.rm = TRUE)
 n_scored <- sum(!is.na(social_guesses_model$correct))
-cat(sprintf("\nOverall social accuracy: %.1f%% over %d scored opportunities (chance 50%%)\n",
-            100 * mean_correct, n_scored))
+cat(sprintf(
+  "\nOverall social accuracy: %.1f%% over %d scored opportunities (chance 50%%)\n",
+  100 * mean_correct,
+  n_scored
+))
 
 rows <- tidy_coefficients(
-  m_social_acc, "social_accuracy_trend", terms = "blockNum_c",
+  m_social_acc,
+  "social_accuracy_trend",
+  terms = "blockNum_c",
   n_games = n_distinct(social_guesses_model$gameId),
-  outcome_mean = mean_correct, n_scored = n_scored
+  outcome_mean = mean_correct,
+  n_scored = n_scored
 )
-write_estimates(rows, "secondary/social_accuracy_trend", source = "stats/secondary/social_accuracy_trend.R")
+write_estimates(
+  rows,
+  "secondary/social_accuracy_trend",
+  source = "stats/secondary/social_accuracy_trend.R"
+)

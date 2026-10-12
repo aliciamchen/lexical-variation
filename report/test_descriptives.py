@@ -11,7 +11,10 @@ import numpy as np
 import pandas as pd
 
 from report.descriptives import (
+    condition_count_macros,
+    condition_counts,
     description_coverage,
+    description_coverage_by_condition,
     endpoint_macros,
     exit_survey_responses,
     felt_human_flags,
@@ -20,6 +23,8 @@ from report.descriptives import (
     phase1_final_words_by_condition,
     phase1_specificity_by_condition,
     player_attrition,
+    response_opportunities,
+    response_opportunity_macros,
 )
 
 GAMES = pd.DataFrame(
@@ -86,6 +91,59 @@ def test_description_coverage_counts_speaker_trials_without_an_utterance():
         {"gameId": ["g1", "g1"], "playerId": ["p0", "p0"], "phaseNum": [1, 1], "blockNum": [0, 1], "target": ["t1", "t2"]}
     )
     assert description_coverage(trials, utts) == (1, 3)
+    by = description_coverage_by_condition(trials, utts)
+    assert list(by["condition"].astype(str)) == ["social_mixed"], "the test game's trials are left out"
+    assert by.loc[0, "speaker_trials"] == 3 and by.loc[0, "without"] == 1
+    assert abs(by.loc[0, "prop_without"] - 1 / 3) < 1e-12
+
+
+def test_response_opportunities_count_what_became_of_each_opportunity():
+    trials = pd.DataFrame(
+        {
+            "gameId": ["g1"] * 6,
+            "role": ["listener"] * 5 + ["speaker"],
+            "phaseNum": [1.0, 1.0, 1.0, 1.0, 2.0, 1.0],
+            "condition": ["social_mixed"] * 6,
+            "responseOpportunity": [True, True, True, True, False, True],
+            # correct on time, a timeout, a late correct answer (coded 0), an excluded row
+            "correct": [1, 0, 0, np.nan, np.nan, np.nan],
+            "onTime": [True, False, False, True, np.nan, np.nan],
+            "lateClick": [False, False, True, False, False, False],
+        }
+    )
+    guesses = pd.DataFrame(
+        {
+            "gameId": ["g1"] * 2,
+            "phaseNum": [2, 2],
+            "condition": ["social_mixed"] * 2,
+            "responseOpportunity": [True, True],
+            "correct": [1, 0],
+            "onTime": [True, True],
+            "lateSocialGuess": [False, False],
+        }
+    )
+    out = response_opportunities(trials, guesses)
+    ref = out[out["task"] == "referential"].iloc[0]
+    assert len(out) == 2 and ref["phaseNum"] == 1, "a row that is no opportunity, or a speaker's, is not counted"
+    assert ref["opportunities"] == 4 and ref["scored"] == 3 and ref["on_time"] == 1
+    assert abs(ref["accuracy"] - 1 / 3) < 1e-12 and ref["accuracy_on_time"] == 1.0
+    assert ref["late"] == 1 and abs(ref["late_rate"] - 1 / 3) < 1e-12
+    m = response_opportunity_macros(out)
+    assert m["overviewRefPhaseOneSocialMixedOpportunities"] == "4"
+    assert m["overviewRefPhaseOneSocialMixedAccuracy"] == "0.333"
+    assert m["overviewSocialPhaseTwoSocialMixedOnTimeRate"] == "1.000"
+
+
+def test_condition_counts_follow_the_attrition_definitions():
+    t = {"games": GAMES, "players": PLAYERS, "participant_exclusions": pd.DataFrame({"playerId": ["p1"], "reason": ["x"]})}
+    counts = condition_counts(t).set_index("condition")
+    assert list(counts.index) == ["refer_separated", "social_mixed"], "conditions with no games are left out"
+    assert counts.loc["social_mixed", "games"] == 1 and counts.loc["social_mixed", "games_ran_to_completion"] == 1
+    assert counts.loc["social_mixed", "removed"] == 2 and counts.loc["social_mixed", "removed_no_fault"] == 1
+    assert counts.loc["social_mixed", "groups_lost"] == 2 and counts.loc["social_mixed", "excluded_participants"] == 1
+    assert counts.loc["refer_separated", "games_ran_to_completion"] == 0
+    m = condition_count_macros(condition_counts(t))
+    assert m["overviewNGamesCompleteSocialMixed"] == 0 and m["overviewNExcludedParticipantsReferSeparated"] == 0
 
 
 def test_endpoint_macros_report_the_first_and_last_observed_block():

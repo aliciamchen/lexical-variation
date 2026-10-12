@@ -17,6 +17,7 @@ from report.inferential import (
     coef_macros,
     contrast_macros,
     htest_macros,
+    interval_macros,
     or_macros,
     pick_row,
     primary_macros,
@@ -61,13 +62,17 @@ def test_macro_families_format_as_the_manuscript_expects():
         "checksAccuracyOR": "2.289", "checksAccuracyORLo": "2.189", "checksAccuracyORHi": "2.394",
     }
     assert or_macros("x", pd.Series({"odds_ratio": float("nan")})) == {}
-    chi = pd.Series({"statistic": 2.33383, "df": 3.0, "p_value": 0.50607})
+    assert interval_macros("primaryHThreeCFreq", pd.Series({"lower": -0.02707, "upper": 0.14098})) == {
+        "primaryHThreeCFreqLo": "-0.027", "primaryHThreeCFreqHi": "0.141",
+    }
+    assert interval_macros("x", pd.Series({"lower": float("nan"), "upper": float("nan")})) == {}
+    chi =pd.Series({"statistic": 2.33383, "df": 3.0, "p_value": 0.50607})
     assert htest_macros("checksDropoutPlayers", chi) == {
         "checksDropoutPlayersStat": "2.33", "checksDropoutPlayersDf": 3, "checksDropoutPlayersP": ".506",
     }
     fisher = pd.Series({"statistic": float("nan"), "df": float("nan"), "p_value": 0.62051})
     assert htest_macros("checksDropoutGames", fisher) == {"checksDropoutGamesP": ".621"}
-    for family in (contrast_macros, coef_macros, or_macros, htest_macros, bf_macro):
+    for family in (contrast_macros, coef_macros, interval_macros, or_macros, htest_macros, bf_macro):
         assert family("x", None) == {}
 
 
@@ -128,7 +133,17 @@ def test_the_three_files_are_built_from_the_tables_and_skip_what_is_missing(tmp_
         "restriction": ["complete_games", "three_groups"], "estimate": [0.347, 1.13], "lower": [0.308, 0.90],
         "upper": [0.386, 1.42], "p_value": [1e-21, 0.28], "n_games": [48, 43],
     }))
+    write(tmp_path, "primary/h3c", pd.DataFrame({
+        "analysis": ["h3c_concreteness", "h3c_word_frequency"], "estimate": [0.09998, 0.05695],
+        "std_error": [0.07246, 0.04195], "statistic": [1.3797, 1.3577], "p_value": [0.168, 0.180],
+        "lower": [-0.04205, -0.02705], "upper": [0.24201, 0.14096],
+        "odds_ratio": [1.10514, float("nan")], "or_lower": [0.95882, float("nan")], "or_upper": [1.27380, float("nan")],
+    }))
     primary = primary_macros(est)
+    assert primary["primaryHThreeCConcreteLo"] == "-0.042" and primary["primaryHThreeCConcreteHi"] == "0.242"
+    assert primary["primaryHThreeCConcreteOR"] == "1.105" and primary["primaryHThreeCConcreteORHi"] == "1.274"
+    assert primary["primaryHThreeCFreqLo"] == "-0.027" and "primaryHThreeCFreqOR" not in primary
+    assert "primaryHThreeCUniqueEst" not in primary, "a model without a row contributes no macro"
     assert primary["primaryNGamesBothEndpoints"] == 1 and primary["primaryNGamesPhaseOneEndpoint"] == 2
     assert primary["primaryNGameWindows"] == 4 and primary["primaryNGameWindowsSingular"] == 1
     assert primary["primaryNGamesHOneTwo"] == 86 and primary["primaryHTwoHi"] == "0.180"
@@ -149,7 +164,19 @@ def test_the_three_files_are_built_from_the_tables_and_skip_what_is_missing(tmp_
         "analysis": ["social_accuracy_trend"], "estimate": [0.082], "std_error": [0.015], "statistic": [5.55],
         "p_value": [1e-8], "outcome_mean": [0.8091], "n_scored": [10885],
     }))
+    write(tmp_path, "secondary/phase2_accuracy", pd.DataFrame({
+        "analysis": ["phase2_accuracy_ordering", "phase2_accuracy_block"], "kind": ["contrast", "trend"],
+        "term": ["sep_gt_mixed", "blockNum_c"], "estimate": [1.992, 0.2531], "std_error": [0.1575, 0.0420],
+        "statistic": [12.65, 6.03], "lower": [1.683, 0.1708], "upper": [2.301, 0.3354], "p_value": [1e-36, 1.7e-9],
+    }))
+    write(tmp_path, "secondary/phase2_length", pd.DataFrame({
+        "analysis": ["phase2_length_block"], "kind": ["trend"], "term": ["blockNum_c"], "estimate": [-0.0679],
+        "std_error": [0.0041], "statistic": [-16.6], "lower": [-0.0760], "upper": [-0.0598], "p_value": [1e-30],
+    }))
     secondary = secondary_macros(est)
+    assert secondary["secondaryAccBlockEst"] == "0.253" and secondary["secondaryAccBlockLo"] == "0.171"
+    assert secondary["secondaryAccSepVsMixedEst"] == "1.992"
+    assert secondary["secondaryLengthBlockEst"] == "-0.068" and secondary["secondaryLengthBlockHi"] == "-0.060"
     assert secondary["secondarySwitchedReferSeparated"] == "0.139" and secondary["secondarySwitchedSocialFirst"] == "0.075"
     assert secondary["secondarySocialAccBlockStat"] == "5.55"
     assert secondary["secondarySocialAccMean"] == "0.809" and secondary["secondarySocialAccN"] == "10{,}885"

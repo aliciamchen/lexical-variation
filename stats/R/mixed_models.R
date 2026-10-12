@@ -1,8 +1,8 @@
 # Mixed-effects model fitting with the preregistered simplification procedure.
 #
-# The preregistration (writing/preregistration/main.tex, "Analysis plan") commits to the maximal
-# random-effects structure supported by the design, simplified only when a
-# model fails to converge: first by removing the correlations between random
+# The preregistration (writing/preregistration/main.tex, "Analysis plan") commits to the
+# random-effects structure it writes out for each model, simplified only when a
+# model does not fit cleanly: first by removing the correlations between random
 # effects, then by removing random slopes starting with the smallest variance
 # component (Barr et al., 2013). `fit_progressively()` implements exactly that
 # sequence for a single maximal formula and records every step it took, so a
@@ -20,11 +20,10 @@
 #     slope for each level be dropped on its own.
 #   - Slopes are dropped one at a time, always the one with the smallest
 #     estimated variance in the last fit that produced variance estimates.
-#   - Random intercepts are never dropped. The preregistration specifies game
-#     and original-group intercepts in several models and commits to retaining
-#     them during simplification; here every intercept term in the maximal
-#     formula (for any grouping factor) survives every step, because the
-#     procedure only removes correlations and slopes. A grouping factor that
+#   - Random intercepts are never dropped. The preregistered procedure
+#     removes correlations and then slopes and names no other step, so every
+#     intercept term in the maximal formula (for any grouping factor)
+#     survives every step. A grouping factor that
 #     appears with slopes but without an intercept, `(0 + x | g)`, keeps that
 #     form and loses only the slope.
 #   - The random-intercepts-only model is the end of the procedure: it is
@@ -402,7 +401,11 @@ zero_variance_components <- function(model, tol = 1e-4) {
     return(character(0))
   }
   vc <- as.data.frame(lme4::VarCorr(model))
-  vc <- vc[vc$grp != "Residual" & !is.na(vc$var1) & is.na(vc$var2), , drop = FALSE]
+  vc <- vc[
+    vc$grp != "Residual" & !is.na(vc$var1) & is.na(vc$var2),
+    ,
+    drop = FALSE
+  ]
   zero <- vc[vc$sdcor < tol, , drop = FALSE]
   paste0(zero$grp, " ", zero$var1)
 }

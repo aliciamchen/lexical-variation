@@ -19,6 +19,9 @@
 #   gs <- gs_wide(gs_table)
 #   # one row per game: gs_phase1, se_phase1, gs_phase2, se_phase2 (NA where an
 #   # endpoint is not estimable), weight, weight_p1, both_endpoints, condition
+#   trajectory <- block_specificity_table(block_pairwise_sim)
+#   # one row per game, phase and block from the start rule on: coefficient,
+#   # std_error, singular, n_pairs, n_targets, estimable, note
 #
 # Tests: stats/tests/test_group_specificity.R
 
@@ -457,11 +460,12 @@ singular_fit_summary <- function(gs) {
 
 # ── Endpoint coverage and per-game estimates for the game-level analyses ──────
 #
-# The preregistration's endpoint rule: a game-window estimate requires
-# analyzable descriptions from at least two speakers in each of at least two
-# original groups within that window, and valid within-group and between-group
-# comparisons (both sameGroup levels present) from which to estimate the
-# same-group coefficient. H1/H2 require both endpoints; H3a requires the Phase 1
+# The endpoint rule, an implementation rule (the preregistration specifies the
+# windows and the model but no minimum coverage): a game-window estimate
+# requires analyzable descriptions from at least two speakers in each of at
+# least two original groups within that window, and valid within-group and
+# between-group comparisons (both sameGroup levels present) from which to
+# estimate the same-group coefficient. H1/H2 require both endpoints; H3a requires the Phase 1
 # endpoint only. Missing endpoints are never replaced from another window.
 
 # The similarity file for a measure: SBERT cosine (the primary measure) or
@@ -688,7 +692,8 @@ gs_wide <- function(gs_table) {
 # Coverage of a similarity table by window and condition: how many pairs there
 # are and how many carry a similarity. In the Jaccard table a pair in which
 # either description has no content words has NA similarity and is omitted
-# from the robustness check, as the preregistration specifies; the SBERT table
+# from the robustness check (the overlap is undefined there, a case the
+# preregistration does not address); the SBERT table
 # has a similarity for every pair. Callers drop the NA rows before fitting and
 # report this table beside the result.
 similarity_coverage <- function(
@@ -710,4 +715,59 @@ similarity_coverage <- function(
       prop_omitted = omitted / pairs,
       .groups = "drop"
     )
+}
+
+# ── Group specificity block by block ─────────────────────────────────────────
+#
+# The trajectory beside the two endpoints: group specificity for each
+# speaker's most recent description of a tangram at each block, resetting at
+# the phase boundary (block_pairwise_similarities.csv is built that way), and
+# starting for a tangram at the block in which every original group with a
+# description of it has two describers (`allGroupsPaired`, the rows
+# specificity_eligible() keeps). Each game, phase and block gets the per-game
+# model of the endpoints, fit by fit_group_specificity() to that cell's
+# eligible pairs. One row per cell with eligible pairs: the coefficient, its
+# standard error, whether the fit was singular, the pairs and tangrams it
+# rests on, and a note where no estimate could be made.
+block_specificity_table <- function(
+  block_pairwise_sim,
+  speaker_structure = "pair"
+) {
+  d <- specificity_eligible(block_pairwise_sim)
+  if (!has_rows(d)) {
+    return(tibble())
+  }
+  d <- d |>
+    mutate(
+      gameId = as.character(gameId),
+      phaseNum = as.integer(phaseNum),
+      blockNum = as.integer(blockNum)
+    )
+  cells <- d |>
+    group_by(gameId, phaseNum, blockNum) |>
+    summarise(
+      n_pairs = n(),
+      n_targets = n_distinct(target),
+      both_levels = n_distinct(sameGroup) == 2,
+      .groups = "drop"
+    )
+  fits <- d |>
+    group_by(phaseNum, blockNum) |>
+    group_modify(function(x, key) {
+      fit_group_specificity(x, speaker_structure = speaker_structure)
+    }) |>
+    ungroup()
+  cells |>
+    left_join(fits, by = c("gameId", "phaseNum", "blockNum")) |>
+    mutate(
+      estimable = is.finite(coefficient),
+      note = case_when(
+        estimable ~ NA_character_,
+        !is.na(note) ~ paste("model not fit:", note),
+        !both_levels ~ "within-group or between-group pairs missing",
+        TRUE ~ "fewer than five pairs"
+      )
+    ) |>
+    select(-both_levels) |>
+    arrange(gameId, phaseNum, blockNum)
 }

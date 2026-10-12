@@ -10,7 +10,10 @@ names the manuscript uses:
 
     <prefix>Est, <prefix>Lo, <prefix>Hi, <prefix>P    a planned contrast with
                                                       its 95% interval
-    <prefix>Est, <prefix>SE, <prefix>Stat, <prefix>P  a model coefficient
+    <prefix>Est, <prefix>SE, <prefix>Stat, <prefix>P  a model coefficient or a
+                                                      slope, with <prefix>Lo and
+                                                      <prefix>Hi where the
+                                                      interval is quoted
     <prefix>OR, <prefix>ORLo, <prefix>ORHi            a logistic coefficient's
                                                       odds ratio
     <prefix>Stat, <prefix>Df, <prefix>P               a classical test
@@ -139,6 +142,13 @@ def coef_macros(prefix: str, r: pd.Series | None, digits: int = 3) -> dict:
     }
 
 
+def interval_macros(prefix: str, r: pd.Series | None, digits: int = 3) -> dict:
+    """Lo and Hi of a row's 95% interval; nothing for a missing row or an interval not estimated."""
+    if r is None or pd.isna(r.get("lower")) or pd.isna(r.get("upper")):
+        return {}
+    return {f"{prefix}Lo": fmt_stat(r["lower"], digits), f"{prefix}Hi": fmt_stat(r["upper"], digits)}
+
+
 def or_macros(prefix: str, r: pd.Series | None) -> dict:
     """OR, ORLo and ORHi of a logistic coefficient row."""
     if r is None or pd.isna(r.get("odds_ratio")):
@@ -261,9 +271,17 @@ def primary_macros(est: Estimates) -> dict:
     m.update(contrast_macros("primaryHThreeBBlockThree", est.row("primary/h3b", analysis="h3b_block3", measure="sbert")))
 
     # H3c: the three description properties (social_first minus social_mixed)
-    m.update(coef_macros("primaryHThreeCConcrete", est.row("primary/h3c", analysis="h3c_concreteness")))
-    m.update(coef_macros("primaryHThreeCUnique", est.row("primary/h3c", analysis="h3c_uniqueness")))
-    m.update(coef_macros("primaryHThreeCFreq", est.row("primary/h3c", analysis="h3c_word_frequency")))
+    # Each with its 95% interval (Wald on the log-odds scale for the two
+    # logistic models, which also get the odds ratio and its interval)
+    for prefix, analysis in (
+        ("primaryHThreeCConcrete", "h3c_concreteness"),
+        ("primaryHThreeCUnique", "h3c_uniqueness"),
+        ("primaryHThreeCFreq", "h3c_word_frequency"),
+    ):
+        r = est.row("primary/h3c", analysis=analysis)
+        m.update(coef_macros(prefix, r))
+        m.update(interval_macros(prefix, r))
+        m.update(or_macros(prefix, r))
 
     # H4a and H4b: odds-ratio contrasts with their Bayes factors
     h4a = est.row("primary/h4", analysis="h4a")
@@ -332,7 +350,10 @@ def secondary_macros(est: Estimates) -> dict:
         for _, r in ordering[ordering["analysis"] == "phase2_accuracy_ordering"].iterrows():
             if r["term"] in prefixes:
                 m.update(contrast_macros(prefixes[r["term"]], r))
-    m.update(coef_macros("secondaryAccBlock", pick_row(ordering, analysis="phase2_accuracy", term="blockNum_c")))
+    # The block slope averaged over the four conditions (log odds per block)
+    block = pick_row(ordering, analysis="phase2_accuracy_block")
+    m.update(coef_macros("secondaryAccBlock", block))
+    m.update(interval_macros("secondaryAccBlock", block))
 
     adv = est.row("secondary/ingroup_advantage", analysis="ingroup_advantage")
     if adv is not None:
@@ -366,7 +387,10 @@ def secondary_macros(est: Estimates) -> dict:
         m["secondarySocialAccMean"] = fmt_stat(trend["outcome_mean"])
         m["secondarySocialAccN"] = fmt_count(trend["n_scored"])
 
-    m.update(coef_macros("secondaryLengthBlock", est.row("secondary/phase2_length", analysis="phase2_length", term="blockNum_c")))
+    # The block slope averaged over the four conditions (log words per block)
+    length_block = est.row("secondary/phase2_length", analysis="phase2_length_block")
+    m.update(coef_macros("secondaryLengthBlock", length_block))
+    m.update(interval_macros("secondaryLengthBlock", length_block))
 
     # The share of speaker-tangram observations whose Phase 2 description
     # moved away from the Phase 1 one, by condition

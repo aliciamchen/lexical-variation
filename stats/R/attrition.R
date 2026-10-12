@@ -1,9 +1,11 @@
 # Attrition: who was removed, which games ran to completion, and whether
 # dropout differs across conditions.
 #
-# The preregistration commits to reporting attrition rates by condition,
-# testing whether dropout is differential across conditions, and rerunning the
-# Phase 2 analyses on complete nine-player games (see robustness_rerun()).
+# The preregistration commits to reporting attrition and exclusions by
+# condition and to rerunning the Phase 2 analyses on the games that kept all
+# three original groups. The tests of whether dropout differs across
+# conditions and the rerun on complete nine-player games (see
+# robustness_rerun()) are additions to it.
 #
 # Definitions (from the server's callbacks and the players table):
 #   removed          isActive is FALSE: the player was taken out of the game

@@ -145,9 +145,10 @@ def jaccard_similarity(row1, row2) -> float:
     """Jaccard overlap of two descriptions' content-word sets.
 
     |A ∩ B| / |A ∪ B|. When either description has no content words the
-    preregistration omits the pair from the overlap check; the pair keeps its
-    row here (so the table lines up with the SBERT one) with NaN similarity,
-    and the analysis drops those rows and reports the coverage.
+    overlap is undefined, so the pair is left out of the overlap check (the
+    preregistration does not address the case); the pair keeps its row here
+    (so the table lines up with the SBERT one) with NaN similarity, and the
+    analysis drops those rows and reports the coverage.
     """
     words1 = content_word_set(row1.get("utterance"))
     words2 = content_word_set(row2.get("utterance"))

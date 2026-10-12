@@ -16,8 +16,8 @@
 # matrix Zt holds two nonzero entries per observation instead of one. So the
 # model is built through lme4's modular interface (lFormula -> mkLmerDevfun ->
 # optimizeLmer -> mkMerMod), replacing that one block of Zt and leaving
-# Lambdat, Lind, theta, and the bounds untouched. Fitting is by REML, as the
-# preregistration specifies.
+# Lambdat, Lind, theta, and the bounds untouched. Fitting is by REML, lmer's
+# default and what the per-game models of the analysis use.
 #
 # The GitHub-only lmerMultiMember package does the same thing in general form.
 # It is deliberately not a dependency here: the analysis has to be
