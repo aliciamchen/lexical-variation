@@ -2,27 +2,29 @@
 # commits to them: whenever a contrast is non-significant, to distinguish
 # evidence for the null from insufficient power, the model is refit in brms
 # with a Cauchy(0, sqrt(2)/2) prior on the standardized effect and BF10 is
-# the ratio of marginal likelihoods of the full model and the null that
-# removes exactly that contrast, estimated by bridge sampling. Preregistered
-# for H1, H2, H3a, H4a and H4b only. stats/R/bayes_factors.R holds the
-# models and priors.
+# the Savage-Dickey density ratio for that contrast, its prior density at
+# zero over its posterior density at zero, which compares the full model
+# with the null that fixes exactly that contrast at zero. Preregistered for
+# H1, H2, H3a, H4a and H4b only. stats/R/bayes_factors.R holds the models,
+# the priors and the ratio.
 #
-# The game-level fits are quick; the trial-level H4 fits took about twenty
-# minutes on the full sample, so brms caches every fit in
+# The game-level fits are quick; the trial-level H4 fits take minutes to
+# tens of minutes on the full sample, so brms caches every fit in
 # data/<dataset>/cache/bayes_factors/ keyed by its data and formula and a run
 # on unchanged data loads them. BAYES_FACTORS controls the script: "auto"
 # (the default) computes a Bayes factor for each contrast with p >= .05,
 # "always" for every contrast, and "never" leaves without writing, so the
 # estimates of the last real run stay in place for the formatter.
 #
-# A bridgesampling warning that the marginal likelihood could not be
-# estimated within its iteration limit means the Bayes factor printed after
-# it is unreliable; the warnings are recorded beside each result and the
-# formatter refuses to write a macro for a Bayes factor that carries one.
+# A warning raised while fitting or while estimating the posterior density
+# at zero (a sampling problem, or a kernel estimate and a normal
+# approximation that disagree by more than a fifth) means the Bayes factor
+# beside it is unreliable; the warnings are recorded with each result and
+# the formatter refuses to write a macro for a Bayes factor that carries one.
 #
 # Writes results/estimates/primary/bayes_factors.csv: one row per
-# hypothesis with the p-value that decided whether to compute it, BF10, its
-# interpretation and any warnings.
+# hypothesis with the p-value that decided whether to compute it, BF10, the
+# normal-approximation check beside it, its interpretation and any warnings.
 
 source(here::here("stats", "config.R"))
 if (BAYES_FACTORS == "never") {
@@ -43,13 +45,12 @@ h4_p <- function(analysis) {
 }
 
 rows <- tibble()
-# Run one Bayes factor under the preregistered rule, with its own seed so
-# bridge sampling reproduces, recording the warnings it raised.
+# Run one Bayes factor under the preregistered rule, recording the warnings
+# it raised.
 run_bf <- function(hypothesis, contrast_label, p_value, fit) {
   warnings <- character()
   result <- NULL
   if (!is.na(p_value)) {
-    set.seed(67)
     result <- withCallingHandlers(
       maybe_bayes_factor(p_value, contrast_label, fit),
       warning = function(w) {
@@ -81,8 +82,9 @@ run_bf <- function(hypothesis, contrast_label, p_value, fit) {
       "not computed"
     },
     bf10 = if (computed) result$bf10 else NA_real_,
+    bf10_normal = if (computed) result$bf10_normal else NA_real_,
     interpretation = if (computed) result$interpretation else NA_character_,
-    method = "bridge sampling",
+    method = "Savage-Dickey",
     warnings = if (length(warnings)) paste(unique(warnings), collapse = " | ") else NA_character_
   ))
   invisible(result)
@@ -119,7 +121,8 @@ if (!is.null(h3a$contrasts) && nrow(h3a$data) >= 4) {
 }
 
 # ── H4a and H4b: the logistic models that converged, refit in brms ────────
-# The null drops the fixed effect of condition and keeps the random effects.
+# The Bayes factor is for the one condition coefficient; the random effects
+# stay as they converged in the frequentist fit.
 social_h4 <- social_guess_trials(social_guesses, games, SOCIAL_CONDITIONS)
 m_h4a <- load_fit("h4a", "stats/primary/h4.R")
 run_bf("H4a", "H4a social_first vs social_mixed", h4_p("h4a"), function() {
@@ -132,7 +135,7 @@ run_bf("H4b", "H4b social_mixed vs social_first", h4_p("h4b"), function() {
   bf_glmm_condition(p2_listener_social, formula(m_h4b), levels = SOCIAL_CONDITIONS, name = "H4b")
 })
 
-print(knitr::kable(rows |> select(hypothesis, p_value, computed, bf10, interpretation, reason), digits = 4))
+print(knitr::kable(rows |> select(hypothesis, p_value, computed, bf10, bf10_normal, interpretation, reason), digits = 4))
 if (any(!is.na(rows$warnings))) {
   cat("\nWarnings raised while computing:\n")
   for (i in which(!is.na(rows$warnings))) cat(sprintf("  %s: %s\n", rows$hypothesis[i], rows$warnings[i]))

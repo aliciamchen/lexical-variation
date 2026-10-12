@@ -20,11 +20,12 @@ names the manuscript uses:
 A comparison the dataset could not support has no row in its table and so
 contributes no macro, which makes an unavailable number fail loudly in LaTeX
 rather than read as a result. A Bayes factor whose computation raised a
-warning (bridge sampling that did not converge) is likewise left out, with a
-note, because the number is not reliable whatever its size. Formatting every
-number here, after the models have run, means a change of rounding or wording
-costs seconds rather than a refit; the formatting rules themselves are in
-report/stats_tex.py.
+warning (a sampling problem, or a posterior density at zero that the kernel
+estimate and the normal approximation disagree on) is likewise left out,
+with a note, because the number is not reliable whatever its size. Formatting
+every number here, after the models have run, means a change of rounding or
+wording costs seconds rather than a refit; the formatting rules themselves are
+in report/stats_tex.py.
 
 Usage:
     uv run python -m report.inferential --dataset full

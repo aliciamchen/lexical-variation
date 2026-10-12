@@ -76,7 +76,7 @@ def test_a_bayes_factor_is_written_only_when_computed_without_a_warning(capsys):
     assert bf_macro("primaryHThreeA", ok) == {"primaryHThreeABF": "0.37"}
     skipped = pd.Series({"computed": False, "bf10": float("nan"), "warnings": float("nan")})
     assert bf_macro("primaryHOne", skipped) == {}
-    warned = pd.Series({"computed": True, "bf10": 2.6e-07, "warnings": "logml could not be estimated within maxiter"})
+    warned = pd.Series({"computed": True, "bf10": 2.6e-07, "warnings": "the posterior density at zero is poorly determined"})
     assert bf_macro("primaryHFourA", warned) == {}
     assert "primaryHFourABF is not written" in capsys.readouterr().out
 

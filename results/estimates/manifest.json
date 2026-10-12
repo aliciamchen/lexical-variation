@@ -71,11 +71,12 @@
       "computed",
       "reason",
       "bf10",
+      "bf10_normal",
       "interpretation",
       "method",
       "warnings"
     ],
-    "commit": "ccb1742-dirty"
+    "commit": "a865674-dirty"
   },
   "primary/group_specificity": {
     "file": "primary/group_specificity.csv",

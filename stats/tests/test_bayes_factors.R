@@ -1,4 +1,5 @@
-# Check the actual model specification without running Bayesian sampling.
+# Check the Bayes-factor model specification and the Savage-Dickey density
+# ratio without running Bayesian sampling.
 if (!exists("bf_game_level_specification")) {
   source(here::here("stats", "config.R"))
 }
@@ -17,12 +18,12 @@ bf_h2 <- c("social_mixed", "refer_mixed")
 spec <- bf_game_level_specification(
   bf_data, "outcome", "condition", bf_levels, bf_h2, "baseline"
 )
-full_matrix <- model.matrix(spec$formula_full, spec$data)
-null_matrix <- model.matrix(spec$formula_null, spec$data)
+design <- model.matrix(spec$formula, spec$data)
+nuisance_columns <- setdiff(colnames(design), spec$coef)
 
-check("the BF full model preserves the adjusted OLS contrast", {
+check("the BF model preserves the adjusted OLS contrast", {
   original <- lm(outcome ~ condition + baseline, data = spec$data)
-  explicit <- lm(spec$formula_full, data = spec$data)
+  explicit <- lm(spec$formula, data = spec$data)
   em <- emmeans::emmeans(original, "condition")
   ct <- emmeans::contrast(em, list(H2 = pairwise_weights(
     as.character(as.data.frame(em)$condition), bf_h2[1], bf_h2[2]
@@ -30,28 +31,25 @@ check("the BF full model preserves the adjusted OLS contrast", {
   abs(coef(explicit)[["bf_contrast"]] - as.data.frame(ct)$estimate) < 1e-12 &&
     max(abs(fitted(original) - fitted(explicit))) < 1e-12
 })
-check("the null removes only the tested contrast, even with unequal sample sizes", {
-  isTRUE(all.equal(full_matrix[, colnames(null_matrix), drop = FALSE],
-                   null_matrix, check.attributes = FALSE)) &&
-    identical(setdiff(colnames(full_matrix), colnames(null_matrix)), "bf_contrast")
+check("the tested contrast is one named column and everything else is nuisance", {
+  identical(spec$coef, "bf_contrast") &&
+    identical(nuisance_columns, c("bf_intercept", "bf_other_1", "baseline"))
 })
-check("the null equates the tested conditions and retains the third condition", {
+check("fixing the contrast at zero equates the tested conditions and keeps the third", {
   equal_covariates <- spec$data
   equal_covariates$baseline <- 0
-  mm <- model.matrix(spec$formula_null, equal_covariates)
+  mm <- model.matrix(spec$formula, equal_covariates)[, nuisance_columns]
   a <- mm[which(equal_covariates$condition == bf_h2[1])[1], ]
   b <- mm[which(equal_covariates$condition == bf_h2[2])[1], ]
   other <- mm[which(equal_covariates$condition == "refer_separated")[1], ]
   identical(unname(a), unname(b)) && !identical(unname(a), unname(other))
 })
-check("the direct contrast has exactly the stated prior and all nuisance priors match", {
-  full <- as.data.frame(spec$priors_full)
-  null <- as.data.frame(spec$priors_null)
-  target <- full$coef == "bf_contrast"
-  nuisance <- full[!target, , drop = FALSE]
-  rownames(nuisance) <- rownames(null) <- NULL
-  sum(target) == 1L && full$prior[target] == EFFECT_SIZE_PRIOR &&
-    full$class[target] == "b" && identical(nuisance, null)
+check("the tested contrast has exactly the stated prior and the nuisance terms do not", {
+  pr <- as.data.frame(spec$priors)
+  target <- pr$coef == "bf_contrast"
+  sum(target) == 1L && pr$prior[target] == EFFECT_SIZE_PRIOR &&
+    pr$class[target] == "b" && all(pr$coef[!target] == "") &&
+    !any(grepl("cauchy", pr$prior[!target], fixed = TRUE))
 })
 check("condition level order cannot change the BF design or priors", {
   reordered <- bf_data
@@ -59,34 +57,76 @@ check("condition level order cannot change the BF design or priors", {
   other <- bf_game_level_specification(
     reordered, "outcome", "condition", rev(bf_levels), bf_h2, "baseline"
   )
-  identical(model.matrix(other$formula_full, other$data), full_matrix) &&
-    identical(other$priors_full, spec$priors_full)
+  identical(model.matrix(other$formula, other$data), design) &&
+    identical(other$priors, spec$priors)
 })
 check("reversing the contrast reverses only its coefficient column", {
   reverse <- bf_game_level_specification(
     bf_data, "outcome", "condition", bf_levels, rev(bf_h2), "baseline"
   )
-  mm <- model.matrix(reverse$formula_full, reverse$data)
-  identical(mm[, "bf_contrast"], -full_matrix[, "bf_contrast"]) &&
-    isTRUE(all.equal(mm[, colnames(null_matrix)], null_matrix,
+  mm <- model.matrix(reverse$formula, reverse$data)
+  identical(mm[, "bf_contrast"], -design[, "bf_contrast"]) &&
+    isTRUE(all.equal(mm[, nuisance_columns], design[, nuisance_columns],
                      check.attributes = FALSE))
 })
-check("two-condition models retain a common intercept under the null", {
+check("two-condition models have a common intercept and no other-condition column", {
   d <- bf_data[bf_data$condition %in% bf_h2, ]
   two <- bf_game_level_specification(d, "outcome", "condition", bf_h2, bf_h2)
-  mm <- model.matrix(two$formula_null, two$data)
-  identical(colnames(mm), "bf_intercept") && all(mm == 1) &&
-    !any(grepl("bf_other", names(two$data)))
+  mm <- model.matrix(two$formula, two$data)
+  identical(colnames(mm), c("bf_intercept", "bf_contrast")) &&
+    all(mm[, "bf_intercept"] == 1) && !any(grepl("bf_other", names(two$data)))
 })
-check("brms accepts both specifications with proper priors and no centered intercept", {
-  codes <- lapply(c("full", "null"), function(which) {
-    brms::make_stancode(
-      spec[[paste0("formula_", which)]], data = spec$data,
-      family = stats::gaussian(), prior = spec[[paste0("priors_", which)]]
-    )
+check("brms accepts the specification with proper priors and no centered intercept", {
+  code <- brms::make_stancode(
+    spec$formula, data = spec$data, family = stats::gaussian(), prior = spec$priors
+  )
+  !grepl("real Intercept;", code, fixed = TRUE) && grepl("cauchy_lpdf", code, fixed = TRUE)
+})
+check("a trial-level model with more than one condition coefficient is refused", {
+  d <- data.frame(
+    correct = rbinom(60, 1, 0.5),
+    condition = rep(c("refer_mixed", "social_mixed", "social_first"), 20),
+    gameId = rep(sprintf("g%d", 1:6), 10)
+  )
+  tryCatch(
+    {
+      bf_glmm_condition(d, correct ~ condition + (1 | gameId),
+                        levels = unique(d$condition), cache_dir = NULL)
+      FALSE
+    },
+    error = function(e) grepl("one condition coefficient", conditionMessage(e), fixed = TRUE)
+  )
+})
+
+# ── The density ratio ─────────────────────────────────────────────────────
+quietly <- function(expr) {
+  warned <- character()
+  value <- withCallingHandlers(expr, warning = function(w) {
+    warned <<- c(warned, conditionMessage(w))
+    invokeRestart("muffleWarning")
   })
-  all(vapply(codes, function(code) !grepl("real Intercept;", code, fixed = TRUE),
-             logical(1))) &&
-    grepl("cauchy_lpdf", codes[[1]], fixed = TRUE) &&
-    !grepl("cauchy_lpdf", codes[[2]], fixed = TRUE)
+  list(value = value, warnings = warned)
+}
+check("the Savage-Dickey ratio recovers the exact value for normal draws", {
+  exact <- dcauchy(0, 0, EFFECT_SIZE_PRIOR_SCALE) / dnorm(0, 0.2, 0.5)
+  r <- quietly(savage_dickey_ratio(rnorm(40000, 0.2, 0.5), EFFECT_SIZE_PRIOR_SCALE))
+  length(r$warnings) == 0 &&
+    abs(r$value$bf10 / exact - 1) < 0.05 && abs(r$value$bf10_normal / exact - 1) < 0.05
+})
+check("a posterior concentrated at zero is strong evidence for the null", {
+  wide <- savage_dickey_ratio(rnorm(40000, 0, 1), EFFECT_SIZE_PRIOR_SCALE)$bf10
+  narrow <- savage_dickey_ratio(rnorm(40000, 0, 0.05), EFFECT_SIZE_PRIOR_SCALE)$bf10
+  narrow < wide && interpret_bf(narrow) == "strong evidence for the null" &&
+    interpret_bf(wide) == "inconclusive"
+})
+check("a posterior the normal approximation misdescribes keeps its value but warns", {
+  skewed <- exp(rnorm(40000)) - 1
+  r <- quietly(savage_dickey_ratio(skewed, EFFECT_SIZE_PRIOR_SCALE))
+  is.finite(r$value$bf10) && length(r$warnings) == 1 &&
+    grepl("poorly determined", r$warnings, fixed = TRUE)
+})
+check("a posterior with no draws near zero gives no Bayes factor and warns", {
+  r <- quietly(savage_dickey_ratio(rnorm(40000, 50, 0.1), EFFECT_SIZE_PRIOR_SCALE))
+  is.na(r$value$bf10) && length(r$warnings) == 1 &&
+    interpret_bf(r$value$bf10) == "not computed"
 })

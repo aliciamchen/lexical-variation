@@ -9,28 +9,30 @@
 # inconclusive.
 #
 # Implementation notes
-# - BF10 is the ratio of marginal likelihoods of a full and a null model,
-#   estimated by bridge sampling (bridgesampling::bf). The null removes
-#   exactly the planned contrast and nothing else.
+# - BF10 compares the full model with the null that fixes exactly the planned
+#   contrast at zero and changes nothing else. Because the null is nested in
+#   the full model that way, the Bayes factor is the Savage-Dickey density
+#   ratio: the prior density of the contrast at zero divided by its posterior
+#   density at zero, both from the one fit of the full model. The prior
+#   density is the Cauchy density, known exactly; the posterior density is a
+#   kernel estimate from the coefficient's draws, and a normal approximation
+#   to the same draws is kept beside it as a check (savage_dickey_ratio()).
 # - Game-level regressions (H1, H2, H3a): the full model is the primary
 #   equal-weight OLS model refit in brms with every condition of that model
-#   (three for H1/H2, two for H3a) and the same covariates, unweighted; the
-#   null equates the two contrasted conditions. The outcome and continuous
-#   covariates are z-scored. Each tested difference is a single coefficient
-#   with a Cauchy(0, sqrt(2)/2) prior (two-sided), in outcome SD units. The
-#   intercept, other conditions, and covariates have identical nuisance
-#   parameterizations and priors in the full and null models.
+#   (three for H1/H2, two for H3a) and the same covariates, unweighted. The
+#   outcome and continuous covariates are z-scored. The tested difference is
+#   a single coefficient with a Cauchy(0, sqrt(2)/2) prior (two-sided), in
+#   outcome SD units; the intercept, the other conditions and the covariates
+#   are nuisance terms with weakly informative priors.
 # - Bayes factors are computed for the primary hypotheses H1, H2, H3a, H4a,
 #   and H4b only; H3b, H3c, and the secondary analyses report frequentist
 #   results without Bayes factors.
 # - Trial-level logistic mixed models: the Cauchy prior is placed on the
-#   condition coefficients only, rescaled to the log-odds scale by pi/sqrt(3)
+#   condition coefficient only, rescaled to the log-odds scale by pi/sqrt(3)
 #   to express the effect in latent logistic SD units (see
-#   EFFECT_SIZE_PRIOR_LOGODDS). Other population-level
-#   coefficients are nuisance terms with a weakly informative prior. The
-#   random-effects structure is the one that converged in the frequentist
-#   fit, and is kept identical in the full and null models so the BF concerns
-#   the condition effect only.
+#   EFFECT_SIZE_PRIOR_LOGODDS). Other population-level coefficients are
+#   nuisance terms with a weakly informative prior, and the random-effects
+#   structure is the one that converged in the frequentist fit.
 # - Fits are cached as RDS files keyed by a hash of the data and formula, so
 #   a changed dataset never reuses an old fit.
 #
@@ -38,13 +40,10 @@
 # p >= .05), "always", or "never" (skip; stats/primary/bayes_factors.R then
 # leaves its earlier estimates in place).
 
-# brms and bridgesampling are attached on first use, not when this file is
-# sourced, so scripts that never compute a Bayes factor do not pay for them.
+# brms is attached on first use, not when this file is sourced, so scripts
+# that never compute a Bayes factor do not pay for it.
 .load_bf_packages <- function() {
-  suppressPackageStartupMessages({
-    library(brms)
-    library(bridgesampling)
-  })
+  suppressPackageStartupMessages(library(brms))
 }
 
 bf_cache_dir <- function() file.path(cache_dir, "bayes_factors")
@@ -75,7 +74,10 @@ maybe_bayes_factor <- function(p_values, label, fit) {
   }
 }
 
-EFFECT_SIZE_PRIOR <- "cauchy(0, 0.7071068)" # sqrt(2)/2
+# The preregistered prior on the standardized effect, Cauchy(0, sqrt(2)/2),
+# as the scale the density ratio needs and as the string brms takes.
+EFFECT_SIZE_PRIOR_SCALE <- sqrt(2) / 2
+EFFECT_SIZE_PRIOR <- sprintf("cauchy(0, %.7f)", EFFECT_SIZE_PRIOR_SCALE)
 
 # The same prior, expressed on the log-odds scale for the logistic models.
 #
@@ -94,17 +96,15 @@ EFFECT_SIZE_PRIOR <- "cauchy(0, 0.7071068)" # sqrt(2)/2
 # prior on b. With s = sqrt(2)/2 that scale is 1.2825. Placing the original
 # 0.7071 on the log odds instead would imply a prior on d with scale 0.39,
 # roughly half as wide as intended.
-EFFECT_SIZE_PRIOR_LOGODDS <- sprintf(
-  "cauchy(0, %.7f)",
-  (sqrt(2) / 2) * (pi / sqrt(3))
-)
+EFFECT_SIZE_PRIOR_SCALE_LOGODDS <- EFFECT_SIZE_PRIOR_SCALE * pi / sqrt(3)
+EFFECT_SIZE_PRIOR_LOGODDS <- sprintf("cauchy(0, %.7f)", EFFECT_SIZE_PRIOR_SCALE_LOGODDS)
 
 # Coefficients other than the tested contrast are nuisance terms (block
 # number, and the other conditions in a three-condition model). They are not
 # standardized on the logistic scale and the plan says nothing about them, so
-# they get a weakly informative prior rather than the effect-size prior. They
-# are identical in the full and null models. Their choice can still affect
-# the Bayes factor, but only the tested contrast is removed under the null.
+# they get a weakly informative prior rather than the effect-size prior.
+# Their choice can still affect the Bayes factor, but only the tested
+# contrast is fixed at zero under the null.
 NUISANCE_PRIOR_LOGODDS <- "normal(0, 2.5)"
 
 interpret_bf <- function(bf10) {
@@ -137,13 +137,44 @@ bf_cache_path <- function(cache_dir, name, ...) {
   )
 }
 
-fit_bf_pair <- function(
-  formula_full,
-  formula_null,
+# The Savage-Dickey density ratio for posterior draws of a coefficient whose
+# prior is Cauchy(0, prior_scale): BF10 is the prior density at zero over the
+# posterior density at zero. The posterior density is a kernel estimate from
+# the draws; a normal approximation from their mean and SD is returned beside
+# it, and a warning is raised when the two disagree by more than a fifth,
+# because then the draws near zero are too sparse to pin the ratio down and
+# the Bayes factor should not be reported as it stands.
+savage_dickey_ratio <- function(draws, prior_scale) {
+  prior_at_zero <- stats::dcauchy(0, 0, prior_scale)
+  kernel <- stats::density(draws, n = 8192)
+  posterior_at_zero <- stats::approx(kernel$x, kernel$y, xout = 0)$y
+  bf10 <- prior_at_zero / posterior_at_zero
+  bf10_normal <- prior_at_zero / stats::dnorm(0, mean(draws), stats::sd(draws))
+  if (is.na(bf10) || abs(bf10 - bf10_normal) > 0.2 * bf10_normal) {
+    warning(sprintf(
+      "the posterior density at zero is poorly determined: kernel BF10 %s, normal approximation %s",
+      fmt_bf(bf10), fmt_bf(bf10_normal)
+    ))
+  }
+  list(bf10 = bf10, bf10_normal = bf10_normal)
+}
+
+# The ratio for one coefficient of a fitted brms model, with its reading.
+savage_dickey <- function(fit, coef, prior_scale) {
+  draws <- as.vector(as_draws_matrix(fit, variable = paste0("b_", coef)))
+  ratio <- savage_dickey_ratio(draws, prior_scale)
+  c(ratio, list(interpretation = interpret_bf(ratio$bf10), fit = fit))
+}
+
+# Fit the full model in brms, or load the cached fit of the same data,
+# formula and priors, and return the Savage-Dickey Bayes factor of `coef`.
+fit_bf_model <- function(
+  formula,
   data,
   family,
-  priors_full,
-  priors_null,
+  priors,
+  coef,
+  prior_scale,
   name,
   cache_dir,
   iter,
@@ -151,51 +182,38 @@ fit_bf_pair <- function(
   chains,
   seed
 ) {
-  fit <- function(f, priors, tag) {
-    brm(
-      f,
-      data = data,
-      family = family,
-      prior = priors,
-      save_pars = save_pars(all = TRUE),
-      iter = iter,
-      warmup = warmup,
-      chains = chains,
-      cores = min(chains, 4),
-      seed = seed,
-      refresh = 0,
-      silent = 2,
-      control = list(adapt_delta = 0.95), # fewer divergent transitions in the hierarchical fits
-      file = bf_cache_path(
-        cache_dir,
-        paste(name, tag, sep = "_"),
-        data,
-        deparse(f),
-        priors,
-        iter,
-        seed
-      ),
-      file_refit = "on_change"
-    )
-  }
-  full <- fit(formula_full, priors_full, "full")
-  null <- fit(formula_null, priors_null, "null")
-  ml_full <- bridge_sampler(full, silent = TRUE)
-  ml_null <- bridge_sampler(null, silent = TRUE)
-  bf10 <- bridgesampling::bf(ml_full, ml_null)$bf
-  list(
-    bf10 = bf10,
-    interpretation = interpret_bf(bf10),
-    full = full,
-    null = null
+  fit <- brm(
+    formula,
+    data = data,
+    family = family,
+    prior = priors,
+    iter = iter,
+    warmup = warmup,
+    chains = chains,
+    cores = min(chains, 4),
+    seed = seed,
+    refresh = 0,
+    silent = 2,
+    control = list(adapt_delta = 0.95), # fewer divergent transitions in the hierarchical fits
+    file = bf_cache_path(
+      cache_dir,
+      paste(name, "full", sep = "_"),
+      data,
+      deparse(formula),
+      priors,
+      iter,
+      seed
+    ),
+    file_refit = "on_change"
   )
+  savage_dickey(fit, coef, prior_scale)
 }
 
 # Build an explicit contrast parameterization without sampling. For A minus
 # B, +/- 1/2 coding makes the coefficient exactly the adjusted A-B difference.
 # Other conditions are offsets from the A/B midpoint. An explicit constant
-# prevents brms from centering the intercept differently under the null,
-# including when the two conditions have unequal sample sizes.
+# keeps the intercept's meaning fixed whatever the two conditions' sample
+# sizes.
 bf_game_level_specification <- function(
   data, outcome, condition, levels, contrast, covariates = character()
 ) {
@@ -217,27 +235,24 @@ bf_game_level_specification <- function(
     other_terms <- c(other_terms, term)
   }
   nuisance_terms <- c("bf_intercept", other_terms, covariates)
-  make_formula <- function(terms) {
-    stats::reformulate(terms, response = outcome, intercept = FALSE)
-  }
   nuisance_priors <- c(
     brms::set_prior("normal(0, 1)", class = "b"),
     brms::set_prior("exponential(1)", class = "sigma")
   )
   list(
     data = d,
-    formula_full = make_formula(c(nuisance_terms, "bf_contrast")),
-    formula_null = make_formula(nuisance_terms),
-    priors_full = c(nuisance_priors,
-                   brms::set_prior(EFFECT_SIZE_PRIOR, class = "b",
-                                   coef = "bf_contrast")),
-    priors_null = nuisance_priors
+    formula = stats::reformulate(c(nuisance_terms, "bf_contrast"),
+                                 response = outcome, intercept = FALSE),
+    priors = c(nuisance_priors,
+               brms::set_prior(EFFECT_SIZE_PRIOR, class = "b",
+                               coef = "bf_contrast")),
+    coef = "bf_contrast"
   )
 }
 
 # Bayes factor for one planned contrast of a game-level regression. Retain
 # all conditions of the primary model and the same covariates, with equal
-# weight per game. Only the tested contrast is removed under the null.
+# weight per game. Only the tested contrast is fixed at zero under the null.
 #
 # `contrast = c(a, b)` tests a minus b. The outcome and continuous covariates
 # are z-scored; the Cauchy prior is on this single difference in outcome SD
@@ -271,13 +286,13 @@ bf_game_level_contrast <- function(
   spec <- bf_game_level_specification(
     d, outcome, condition, levels, contrast, covariates
   )
-  fit_bf_pair(
-    spec$formula_full,
-    spec$formula_null,
+  fit_bf_model(
+    spec$formula,
     spec$data,
     gaussian(),
-    spec$priors_full,
-    spec$priors_null,
+    spec$priors,
+    spec$coef,
+    EFFECT_SIZE_PRIOR_SCALE,
     name,
     cache_dir,
     iter,
@@ -288,9 +303,10 @@ bf_game_level_contrast <- function(
 }
 
 # Bayes factor for the condition effect in a trial-level logistic mixed
-# model. `formula_full` should be the formula that converged in the
-# frequentist analysis (e.g. formula(m_h4a)); the null drops the fixed effect
-# of `condition` and keeps the random-effects structure.
+# model with two conditions. `formula_full` should be the formula that
+# converged in the frequentist analysis (e.g. formula(m_h4a)); the
+# random-effects structure is kept as it is and the Bayes factor concerns
+# the one condition coefficient.
 bf_glmm_condition <- function(
   data,
   formula_full,
@@ -312,64 +328,50 @@ bf_glmm_condition <- function(
     ))
   }
   d[[condition]] <- factor(d[[condition]], levels = levels)
-  f_full <- .re_nobars(formula_full)
+  f_fixed <- .re_nobars(formula_full)
   re_terms <- vapply(
     .re_findbars(formula_full),
     function(t) paste0("(", deparse(t), ")"),
     character(1)
   )
-  fixed_full <- attr(terms(f_full), "term.labels")
-  fixed_null <- setdiff(fixed_full, condition)
-  rhs <- function(fixed) {
-    paste(c(if (length(fixed)) fixed else "1", re_terms), collapse = " + ")
-  }
-  lhs <- deparse(f_full[[2]])
-  formula_full_b <- as.formula(sprintf("%s ~ %s", lhs, rhs(fixed_full)))
-  formula_null_b <- as.formula(sprintf("%s ~ %s", lhs, rhs(fixed_null)))
-  # Build priors from the classes each model actually has (a "cor" prior only
-  # when there are random slopes, a "b" prior only when there are population-
-  # level coefficients), so brms does not reject an unused prior.
+  fixed <- attr(terms(f_fixed), "term.labels")
+  formula_b <- as.formula(sprintf(
+    "%s ~ %s", deparse(f_fixed[[2]]), paste(c(fixed, re_terms), collapse = " + ")
+  ))
+  # Build the priors from the classes the model actually has (a "cor" prior
+  # only when there are random slopes), so brms does not reject an unused
+  # prior.
   #
-  # The effect-size prior goes on the condition coefficients alone, converted
+  # The effect-size prior goes on the condition coefficient alone, converted
   # to the log-odds scale (EFFECT_SIZE_PRIOR_LOGODDS); every other
   # population-level coefficient is a nuisance term and gets the weakly
   # informative prior. The default for class "b" covers any coefficient not
   # named explicitly, so a term added to the formula later cannot silently
   # inherit an effect-size prior.
-  build_priors <- function(f) {
-    gp <- get_prior(f, data = d, family = bernoulli())
-    classes <- unique(gp$class)
-    pr <- c(
-      set_prior("normal(0, 1.5)", class = "Intercept"),
-      set_prior("exponential(1)", class = "sd")
-    )
-    if ("b" %in% classes) {
-      pr <- c(pr, set_prior(NUISANCE_PRIOR_LOGODDS, class = "b"))
-      # The dummy columns brms builds for the condition factor, if this model
-      # has the condition term at all (the null model does not).
-      cond_coefs <- setdiff(
-        gp$coef[gp$class == "b" & startsWith(gp$coef, condition)],
-        ""
-      )
-      for (cf in cond_coefs) {
-        pr <- c(
-          pr,
-          set_prior(EFFECT_SIZE_PRIOR_LOGODDS, class = "b", coef = cf)
-        )
-      }
-    }
-    if ("cor" %in% classes) {
-      pr <- c(pr, set_prior("lkj(2)", class = "cor"))
-    }
-    pr
+  gp <- get_prior(formula_b, data = d, family = bernoulli())
+  cond_coefs <- setdiff(gp$coef[gp$class == "b" & startsWith(gp$coef, condition)], "")
+  if (length(cond_coefs) != 1) {
+    stop(sprintf(
+      "%s: the Savage-Dickey ratio here is for one condition coefficient; the model has %d (%s)",
+      name, length(cond_coefs), paste(cond_coefs, collapse = ", ")
+    ))
   }
-  fit_bf_pair(
-    formula_full_b,
-    formula_null_b,
+  priors <- c(
+    set_prior("normal(0, 1.5)", class = "Intercept"),
+    set_prior("exponential(1)", class = "sd"),
+    set_prior(NUISANCE_PRIOR_LOGODDS, class = "b"),
+    set_prior(EFFECT_SIZE_PRIOR_LOGODDS, class = "b", coef = cond_coefs)
+  )
+  if ("cor" %in% gp$class) {
+    priors <- c(priors, set_prior("lkj(2)", class = "cor"))
+  }
+  fit_bf_model(
+    formula_b,
     d,
     bernoulli(),
-    build_priors(formula_full_b),
-    build_priors(formula_null_b),
+    priors,
+    cond_coefs,
+    EFFECT_SIZE_PRIOR_SCALE_LOGODDS,
     name,
     cache_dir,
     iter,
@@ -404,14 +406,11 @@ fmt_bf <- function(bf10) {
 
 report_bf <- function(result, label) {
   cat(sprintf(
-    "%s: BF10 = %s (%s)\n",
+    "%s: BF10 = %s (%s)%s\n",
     label,
-    if (is.na(result$bf10)) {
-      "NA"
-    } else {
-      fmt_bf(result$bf10)
-    },
-    result$interpretation
+    fmt_bf(result$bf10),
+    result$interpretation,
+    if (is.null(result$bf10_normal)) "" else sprintf("; normal approximation %s", fmt_bf(result$bf10_normal))
   ))
   invisible(result)
 }
