@@ -2,7 +2,7 @@
 Statistics as LaTeX macros.
 
 Numbers reach the manuscript only as `\\newcommand` macros in the files of
-results/stats/, which `make sync` copies into the Overleaf project
+results/macros/, which `make sync` copies into the Overleaf project
 where main.tex reads them with `\\input`. Two writers produce them:
 report/inferential.py formats the model estimates (checks, primary and
 secondary) and report/descriptives.py the descriptive statistics (overview,
@@ -37,7 +37,7 @@ MACRO_PATTERN = re.compile(r"\\newcommand\{\\([A-Za-z]+)\}")
 
 
 def stats_file(name: str, dirs=None) -> Path:
-    """Where a stats file goes: results/stats/<name>.tex.
+    """Where a stats file goes: results/macros/<name>.tex.
 
     The stem is the file's macro prefix, letters only, so the file name and
     the macro names agree. `dirs` is the dataset's DatasetDirs; the active
@@ -45,7 +45,7 @@ def stats_file(name: str, dirs=None) -> Path:
     """
     if not NAME_PATTERN.match(name):
         raise ValueError(f"a stats file stem is letters only, not {name!r}")
-    return (dirs or dataset_dirs()).stats / f"{name}.tex"
+    return (dirs or dataset_dirs()).macros / f"{name}.tex"
 
 
 def _is_missing(x) -> bool:
@@ -105,7 +105,7 @@ def check_unique_names(stats_dir: Path | str | None = None) -> dict[str, list[st
     files; empty when the files can be \\input together. The active dataset's
     directory when none is given.
     """
-    stats_dir = Path(stats_dir) if stats_dir is not None else dataset_dirs().stats
+    stats_dir = Path(stats_dir) if stats_dir is not None else dataset_dirs().macros
     where: dict[str, list[str]] = {}
     for path in sorted(stats_dir.glob("*.tex")):
         for name in stats_tex_names(path):

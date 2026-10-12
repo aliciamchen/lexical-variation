@@ -306,7 +306,7 @@ def build_block_pairwise_table(utterances: pd.DataFrame, similarity) -> pd.DataF
     original groups with a description, or there is no between-group pair to
     compare against: a group that has described a tangram twice before any
     other group has is not eligible. Consumers that need the contrast filter on the flag
-    (`specificity_eligible()` in models/R/prepare.R); the descriptive
+    (`specificity_eligible()` in stats/R/prepare.R); the descriptive
     within-vs-between panel plots every pair."""
     df = utterances.copy()
     if df.empty:

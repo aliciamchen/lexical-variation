@@ -1740,7 +1740,7 @@ class TestAnalysisColumns:
 
 
 class TestCodedOutcomes:
-    """The same cases as models/tests/test_accuracy_denominator.R: one listener
+    """The same cases as stats/tests/test_accuracy_denominator.R: one listener
     of each kind, so the Python column and the R helper agree by construction."""
 
     def trials(self):

@@ -3,7 +3,7 @@
 # Everything is keyed by a dataset name (DATASET, default full). The data
 # tree holds what the pipeline makes from the exports and the results tree
 # what the models and the report layer make from the data (the layout is
-# defined in preprocessing/dataset_paths.py and mirrored in models/config.R):
+# defined in preprocessing/dataset_paths.py and mirrored in stats/config.R):
 #   data/<name>/                 the hand-written inputs: runs.txt and the exclusion files
 #   data/<name>/raw/             the anonymized raw Empirica tables (combine)
 #   data/<name>/tables/          the analysis-ready tables (process)
@@ -12,26 +12,26 @@
 #   data/<name>/model_inputs/    the aggregated tables the models are fit to (model-inputs)
 #   data/<name>/cache/           fitted objects kept between model runs (never committed)
 #   results/estimates/           one tidy estimates table per model script (models)
-#   results/stats/               the LaTeX macro files (stats)
+#   results/macros/               the LaTeX macro files (macros)
 #   results/figures/             the figures, each with the table it plots, and the hand-made ones in manual/ (figures)
 #
 # The verbs, in the order the work runs:
 #   make data           # extract, combine and process the exports into data/<name>/ (private
 #                       # inputs: the raw exports and Vertex AI credit for the message filter)
 #   make test           # the integrity suite on the dataset, the Python unit tests and the R tests
-#   make models         # fit every model script in models/ whose estimates are out of date
+#   make estimates         # fit every model script in stats/ whose estimates are out of date
 #   make report         # the macros (inferential and descriptive) and the figures from the estimates
-#   make sync           # copy results/stats and figures into writing/manuscript/
-# `make all` runs data, test, models and report in that order.
+#   make sync           # copy results/macros and figures into writing/manuscript/
+# `make all` runs data, test, estimates and report in that order.
 #
 # Reproducing from the processed tables alone (no raw exports): with a
 # dataset's tables/, classifier/ and measures/ under data/full/,
-#   make model-inputs models report
+#   make model-inputs estimates report
 # rebuilds everything downstream; `make measures` regenerates the measures first.
 #
-# The model scripts are real Make targets: results/estimates/<family>/<name>.csv
-# is built by models/<family>/<name>.R and depends on the data it reads, the
-# shared R code and the estimates of earlier scripts, so `make models` reruns
+# The analysis scripts are real Make targets: results/estimates/<family>/<name>.csv
+# is built by stats/<family>/<name>.R and depends on the data it reads, the
+# shared R code and the estimates of earlier scripts, so `make estimates` reruns
 # only what changed. The Bayes factors (minutes to tens of minutes, cached by
 # brms) honor BAYES_FACTORS: auto (default; only for non-significant planned
 # contrasts), always, or never (skip, keeping the previous estimates).
@@ -72,7 +72,7 @@ MODEL_INPUTS_DIR = $(DATA_DIR)/model_inputs
 # The full sample's results are results/; any other dataset keeps its results inside its own data directory
 RESULTS_DIR = $(if $(filter full,$(DATASET)),results,$(DATA_DIR)/results)
 ESTIMATES_DIR = $(RESULTS_DIR)/estimates
-STATS_DIR = $(RESULTS_DIR)/stats
+MACROS_DIR = $(RESULTS_DIR)/macros
 FIGURES_DIR = $(RESULTS_DIR)/figures
 MANUSCRIPT_DIR = writing/manuscript
 RUNS_FILE = $(DATA_DIR)/runs.txt
@@ -85,22 +85,22 @@ zip_for_run = $(or $(firstword $(wildcard experiment/data/$(1)/empirica-export-$
 ZIPS = $(foreach run,$(RUNS),$(call zip_for_run,$(run)))
 
 PY = uv run python
-R_COMMON = models/config.R $(wildcard models/R/*.R)
+R_COMMON = stats/config.R $(wildcard stats/R/*.R)
 
-.PHONY: all data models report sync extract combine process process-no-filter measures model-inputs bayes-factors stats inferential descriptives figures payments sync-blocklist tally final-exports test test-unit test-ops smoke runs help
+.PHONY: all data estimates report sync extract combine process process-no-filter measures model-inputs bayes-factors macros inferential descriptives figures payments sync-blocklist tally final-exports test test-unit test-ops smoke runs help
 
 # ── The verbs ───────────────────────────────────────────────
 
-all: data test models report  ## Everything from the export zips to the article's macros and figures
+all: data test estimates report  ## Everything from the export zips to the article's macros and figures
 
 data: extract combine process  ## Build data/<name>/ from the exports listed in runs.txt (extract, combine, process)
 
-report: stats figures  ## Write the macros and the figures from the estimates and the tables
+report: macros figures  ## Write the macros and the figures from the estimates and the tables
 
-sync: ## Copy results/stats/*.tex and results/figures/*.pdf, the hand-made ones in manual/ included, into writing/manuscript/, where Overleaf reads them
-	@mkdir -p $(MANUSCRIPT_DIR)/stats $(MANUSCRIPT_DIR)/figures
-	cp $(STATS_DIR)/*.tex $(MANUSCRIPT_DIR)/stats/
-	@n=0; for f in $(FIGURES_DIR)/*.pdf $(FIGURES_DIR)/manual/*.pdf; do [ -e "$$f" ] && cp "$$f" $(MANUSCRIPT_DIR)/figures/ && n=$$((n+1)); done; echo "Synced $$(ls $(STATS_DIR)/*.tex | wc -l | tr -d ' ') stats files and $$n figures from $(RESULTS_DIR)/ to $(MANUSCRIPT_DIR)/"
+sync: ## Copy results/macros/*.tex and results/figures/*.pdf, the hand-made ones in manual/ included, into writing/manuscript/, where Overleaf reads them
+	@mkdir -p $(MANUSCRIPT_DIR)/macros $(MANUSCRIPT_DIR)/figures
+	cp $(MACROS_DIR)/*.tex $(MANUSCRIPT_DIR)/macros/
+	@n=0; for f in $(FIGURES_DIR)/*.pdf $(FIGURES_DIR)/manual/*.pdf; do [ -e "$$f" ] && cp "$$f" $(MANUSCRIPT_DIR)/figures/ && n=$$((n+1)); done; echo "Synced $$(ls $(MACROS_DIR)/*.tex | wc -l | tr -d ' ') macro files and $$n figures from $(RESULTS_DIR)/ to $(MANUSCRIPT_DIR)/"
 
 # ── Pipeline steps ──────────────────────────────────────────
 
@@ -195,10 +195,10 @@ $(ESTIMATES_DIR)/secondary/social_accuracy_trend.csv: $(SOCIAL_GUESSES) $(GAMES)
 $(ESTIMATES_DIR)/secondary/phase2_length.csv: $(UTTERANCES) $(GAMES)
 $(ESTIMATES_DIR)/secondary/utterance_properties.csv: $(FINAL_PROPERTIES)
 
-$(ESTIMATES_DIR)/%.csv: models/%.R $(R_COMMON)
+$(ESTIMATES_DIR)/%.csv: stats/%.R $(R_COMMON)
 	Rscript $<
 
-models: $(ESTIMATES)  ## Fit the model scripts whose estimates are out of date (results/estimates/)
+estimates: $(ESTIMATES)  ## Fit the analysis scripts whose estimates are out of date (results/estimates/)
 
 # A data file a model needs but the dataset does not have yet
 $(TABLES_DIR)/%.csv $(MEASURES_DIR)/%.csv $(MODEL_INPUTS_DIR)/%.csv:
@@ -208,7 +208,7 @@ bayes-factors: $(ESTIMATES_DIR)/primary/bayes_factors.csv  ## Only the Bayes fac
 
 # ── The report layer ─────────────────────────────────────────
 
-stats: inferential descriptives  ## Both macro writers
+macros: inferential descriptives  ## Both macro writers
 
 inferential: ## The inferential macros (checks, primary, secondary) from results/estimates/
 	$(PY) -m report.inferential --dataset $(DATASET)
@@ -223,7 +223,7 @@ figures: ## The article's figures, each with its plotted table → results/figur
 
 test: ## Every test: the integrity suite on the active dataset, the Python unit tests and the R tests
 	uv run pytest -q
-	Rscript models/tests/run_all.R
+	Rscript stats/tests/run_all.R
 
 test-unit: ## The Python unit tests only (no processed data needed)
 	uv run pytest -q --ignore=preprocessing/test_data_integrity.py

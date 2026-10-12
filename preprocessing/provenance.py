@@ -5,7 +5,7 @@ Every results file records the git commit of the working tree that wrote it,
 so a number in the manuscript can be traced to the code that computed it. The
 commit is the short hash, with `-dirty` appended when tracked files had
 uncommitted changes at the time, and `unknown` when git is unavailable. The
-R side (models/R/results.R) writes the same string into the estimates
+R side (stats/R/results.R) writes the same string into the estimates
 manifest.
 
     from preprocessing.provenance import git_commit

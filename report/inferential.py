@@ -2,9 +2,9 @@
 The inferential macros: checks.tex, primary.tex and secondary.tex from the
 estimates tables the model scripts wrote.
 
-The R scripts in models/ fit the models and write tidy estimates tables to
+The R scripts in stats/ fit the models and write tidy estimates tables to
 results/estimates/ (one row per estimated quantity; the shape is
-described in models/R/tidy.R). This module reads those tables and writes the
+described in stats/R/tidy.R). This module reads those tables and writes the
 three inferential macro files, one per preregistered family, with the macro
 names the manuscript uses:
 
@@ -385,13 +385,13 @@ def main():
     args = parser.parse_args()
     dirs = dataset_dirs(args.dataset)
     if not dirs.estimates.is_dir():
-        raise SystemExit(f"Error: no estimates for dataset '{dirs.name}' at {dirs.estimates}; run `make models` first")
+        raise SystemExit(f"Error: no estimates for dataset '{dirs.name}' at {dirs.estimates}; run `make estimates` first")
     if dirs.name != "full":
-        print(f"Dataset '{dirs.name}' is not the full sample: the macros written to {dirs.stats} are not results.")
+        print(f"Dataset '{dirs.name}' is not the full sample: the macros written to {dirs.macros} are not results.")
     est = Estimates(dirs.estimates)
     for family, build in FAMILIES.items():
         write_stats_tex(build(est), stats_file(family, dirs), source=SOURCE, dataset=dirs.name)
-    duplicates = check_unique_names(dirs.stats)
+    duplicates = check_unique_names(dirs.macros)
     if duplicates:
         raise SystemExit(f"Error: macro names defined in more than one stats file: {duplicates}")
 

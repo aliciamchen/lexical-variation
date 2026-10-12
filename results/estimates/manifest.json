@@ -1,7 +1,7 @@
 {
   "checks/convention_trends": {
     "file": "checks/convention_trends.csv",
-    "source": "models/checks/convention_trends.R",
+    "source": "stats/checks/convention_trends.R",
     "rows": 3,
     "columns": [
       "analysis",
@@ -26,7 +26,7 @@
   },
   "checks/dropout_and_survey": {
     "file": "checks/dropout_and_survey.csv",
-    "source": "models/checks/dropout_and_survey.R",
+    "source": "stats/checks/dropout_and_survey.R",
     "rows": 5,
     "columns": [
       "analysis",
@@ -41,11 +41,11 @@
       "p_value",
       "n"
     ],
-    "commit": "af8ccdc-dirty"
+    "commit": "08f10d3-dirty"
   },
   "checks/phase1_group_specificity": {
     "file": "checks/phase1_group_specificity.csv",
-    "source": "models/checks/phase1_group_specificity.R",
+    "source": "stats/checks/phase1_group_specificity.R",
     "rows": 120,
     "columns": [
       "gameId",
@@ -62,7 +62,7 @@
   },
   "primary/bayes_factors": {
     "file": "primary/bayes_factors.csv",
-    "source": "models/primary/bayes_factors.R",
+    "source": "stats/primary/bayes_factors.R",
     "rows": 5,
     "columns": [
       "hypothesis",
@@ -79,7 +79,7 @@
   },
   "primary/group_specificity": {
     "file": "primary/group_specificity.csv",
-    "source": "models/primary/group_specificity.R",
+    "source": "stats/primary/group_specificity.R",
     "rows": 240,
     "columns": [
       "gameId",
@@ -102,7 +102,7 @@
   },
   "primary/group_specificity_jaccard": {
     "file": "primary/group_specificity_jaccard.csv",
-    "source": "models/primary/group_specificity.R",
+    "source": "stats/primary/group_specificity.R",
     "rows": 240,
     "columns": [
       "gameId",
@@ -125,7 +125,7 @@
   },
   "primary/group_specificity_jaccard_coverage": {
     "file": "primary/group_specificity_jaccard_coverage.csv",
-    "source": "models/primary/group_specificity.R",
+    "source": "stats/primary/group_specificity.R",
     "rows": 12,
     "columns": [
       "window",
@@ -139,7 +139,7 @@
   },
   "primary/group_specificity_length_adjusted": {
     "file": "primary/group_specificity_length_adjusted.csv",
-    "source": "models/primary/group_specificity.R",
+    "source": "stats/primary/group_specificity.R",
     "rows": 240,
     "columns": [
       "gameId",
@@ -162,7 +162,7 @@
   },
   "primary/h1_h2": {
     "file": "primary/h1_h2.csv",
-    "source": "models/primary/h1_h2.R",
+    "source": "stats/primary/h1_h2.R",
     "rows": 6,
     "columns": [
       "analysis",
@@ -182,7 +182,7 @@
   },
   "primary/h1_h2_coefficients": {
     "file": "primary/h1_h2_coefficients.csv",
-    "source": "models/primary/h1_h2.R",
+    "source": "stats/primary/h1_h2.R",
     "rows": 8,
     "columns": [
       "analysis",
@@ -206,7 +206,7 @@
   },
   "primary/h1_h2_effect_sizes": {
     "file": "primary/h1_h2_effect_sizes.csv",
-    "source": "models/primary/h1_h2.R",
+    "source": "stats/primary/h1_h2.R",
     "rows": 2,
     "columns": [
       "analysis",
@@ -221,7 +221,7 @@
   },
   "primary/h3a": {
     "file": "primary/h3a.csv",
-    "source": "models/primary/h3a.R",
+    "source": "stats/primary/h3a.R",
     "rows": 3,
     "columns": [
       "analysis",
@@ -241,7 +241,7 @@
   },
   "primary/h3a_coefficients": {
     "file": "primary/h3a_coefficients.csv",
-    "source": "models/primary/h3a.R",
+    "source": "stats/primary/h3a.R",
     "rows": 4,
     "columns": [
       "analysis",
@@ -265,7 +265,7 @@
   },
   "primary/h3a_effect_sizes": {
     "file": "primary/h3a_effect_sizes.csv",
-    "source": "models/primary/h3a.R",
+    "source": "stats/primary/h3a.R",
     "rows": 1,
     "columns": [
       "analysis",
@@ -280,7 +280,7 @@
   },
   "primary/h3b": {
     "file": "primary/h3b.csv",
-    "source": "models/primary/h3b.R",
+    "source": "stats/primary/h3b.R",
     "rows": 4,
     "columns": [
       "analysis",
@@ -303,7 +303,7 @@
   },
   "primary/h3c": {
     "file": "primary/h3c.csv",
-    "source": "models/primary/h3c.R",
+    "source": "stats/primary/h3c.R",
     "rows": 3,
     "columns": [
       "analysis",
@@ -328,7 +328,7 @@
   },
   "primary/h4": {
     "file": "primary/h4.csv",
-    "source": "models/primary/h4.R",
+    "source": "stats/primary/h4.R",
     "rows": 2,
     "columns": [
       "analysis",
@@ -350,7 +350,7 @@
   },
   "primary/h4_coefficients": {
     "file": "primary/h4_coefficients.csv",
-    "source": "models/primary/h4.R",
+    "source": "stats/primary/h4.R",
     "rows": 6,
     "columns": [
       "analysis",
@@ -373,7 +373,7 @@
   },
   "primary/h4_response_opportunities": {
     "file": "primary/h4_response_opportunities.csv",
-    "source": "models/primary/h4.R",
+    "source": "stats/primary/h4.R",
     "rows": 4,
     "columns": [
       "outcome",
@@ -392,7 +392,7 @@
   },
   "primary/h4_social_components": {
     "file": "primary/h4_social_components.csv",
-    "source": "models/primary/h4.R",
+    "source": "stats/primary/h4.R",
     "rows": 2,
     "columns": [
       "condition",
@@ -416,7 +416,7 @@
   },
   "primary/robustness": {
     "file": "primary/robustness.csv",
-    "source": "models/primary/robustness.R",
+    "source": "stats/primary/robustness.R",
     "rows": 20,
     "columns": [
       "analysis",
@@ -438,7 +438,7 @@
   },
   "primary/robustness_restrictions": {
     "file": "primary/robustness_restrictions.csv",
-    "source": "models/primary/robustness.R",
+    "source": "stats/primary/robustness.R",
     "rows": 6,
     "columns": [
       "restriction",
@@ -450,7 +450,7 @@
   },
   "secondary/ingroup_advantage": {
     "file": "secondary/ingroup_advantage.csv",
-    "source": "models/secondary/ingroup_advantage.R",
+    "source": "stats/secondary/ingroup_advantage.R",
     "rows": 3,
     "columns": [
       "analysis",
@@ -475,7 +475,7 @@
   },
   "secondary/ingroup_advantage_by_condition": {
     "file": "secondary/ingroup_advantage_by_condition.csv",
-    "source": "models/secondary/ingroup_advantage.R",
+    "source": "stats/secondary/ingroup_advantage.R",
     "rows": 4,
     "columns": [
       "condition",
@@ -487,7 +487,7 @@
   },
   "secondary/phase2_accuracy": {
     "file": "secondary/phase2_accuracy.csv",
-    "source": "models/secondary/phase2_accuracy.R",
+    "source": "stats/secondary/phase2_accuracy.R",
     "rows": 4,
     "columns": [
       "analysis",
@@ -512,7 +512,7 @@
   },
   "secondary/phase2_accuracy_by_condition": {
     "file": "secondary/phase2_accuracy_by_condition.csv",
-    "source": "models/secondary/phase2_accuracy.R",
+    "source": "stats/secondary/phase2_accuracy.R",
     "rows": 4,
     "columns": [
       "condition",
@@ -528,7 +528,7 @@
   },
   "secondary/phase2_accuracy_coefficients": {
     "file": "secondary/phase2_accuracy_coefficients.csv",
-    "source": "models/secondary/phase2_accuracy.R",
+    "source": "stats/secondary/phase2_accuracy.R",
     "rows": 8,
     "columns": [
       "analysis",
@@ -552,7 +552,7 @@
   },
   "secondary/phase2_length": {
     "file": "secondary/phase2_length.csv",
-    "source": "models/secondary/phase2_length.R",
+    "source": "stats/secondary/phase2_length.R",
     "rows": 1,
     "columns": [
       "analysis",
@@ -576,7 +576,7 @@
   },
   "secondary/phase2_length_by_condition": {
     "file": "secondary/phase2_length_by_condition.csv",
-    "source": "models/secondary/phase2_length.R",
+    "source": "stats/secondary/phase2_length.R",
     "rows": 4,
     "columns": [
       "condition",
@@ -593,7 +593,7 @@
   },
   "secondary/phase2_length_coefficients": {
     "file": "secondary/phase2_length_coefficients.csv",
-    "source": "models/secondary/phase2_length.R",
+    "source": "stats/secondary/phase2_length.R",
     "rows": 8,
     "columns": [
       "analysis",
@@ -617,7 +617,7 @@
   },
   "secondary/semantic_change": {
     "file": "secondary/semantic_change.csv",
-    "source": "models/secondary/semantic_change.R",
+    "source": "stats/secondary/semantic_change.R",
     "rows": 2,
     "columns": [
       "analysis",
@@ -638,7 +638,7 @@
   },
   "secondary/semantic_change_coefficients": {
     "file": "secondary/semantic_change_coefficients.csv",
-    "source": "models/secondary/semantic_change.R",
+    "source": "stats/secondary/semantic_change.R",
     "rows": 4,
     "columns": [
       "analysis",
@@ -662,7 +662,7 @@
   },
   "secondary/semantic_change_switched": {
     "file": "secondary/semantic_change_switched.csv",
-    "source": "models/secondary/semantic_change.R",
+    "source": "stats/secondary/semantic_change.R",
     "rows": 4,
     "columns": [
       "condition",
@@ -677,7 +677,7 @@
   },
   "secondary/social_accuracy_trend": {
     "file": "secondary/social_accuracy_trend.csv",
-    "source": "models/secondary/social_accuracy_trend.R",
+    "source": "stats/secondary/social_accuracy_trend.R",
     "rows": 1,
     "columns": [
       "analysis",
@@ -703,7 +703,7 @@
   },
   "secondary/specificity_vs_social_accuracy": {
     "file": "secondary/specificity_vs_social_accuracy.csv",
-    "source": "models/secondary/specificity_vs_social_accuracy.R",
+    "source": "stats/secondary/specificity_vs_social_accuracy.R",
     "rows": 2,
     "columns": [
       "analysis",
@@ -727,7 +727,7 @@
   },
   "secondary/utterance_properties": {
     "file": "secondary/utterance_properties.csv",
-    "source": "models/secondary/utterance_properties.R",
+    "source": "stats/secondary/utterance_properties.R",
     "rows": 42,
     "columns": [
       "analysis",
@@ -750,7 +750,7 @@
   },
   "secondary/utterance_properties_by_condition": {
     "file": "secondary/utterance_properties_by_condition.csv",
-    "source": "models/secondary/utterance_properties.R",
+    "source": "stats/secondary/utterance_properties.R",
     "rows": 24,
     "columns": [
       "phase",

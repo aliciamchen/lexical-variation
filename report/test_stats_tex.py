@@ -53,8 +53,8 @@ def test_names_are_letters_only(tmp_path):
     with pytest.raises(ValueError, match="letters only"):
         stats_file("overview2")
     dirs = dataset_dirs("smoke")
-    assert stats_file("overview", dirs) == dirs.stats / "overview.tex"
-    assert stats_file("overview").parent == dataset_dirs().stats
+    assert stats_file("overview", dirs) == dirs.macros / "overview.tex"
+    assert stats_file("overview").parent == dataset_dirs().macros
 
 
 def test_missing_values_become_empty_macros(tmp_path):
@@ -100,7 +100,7 @@ def test_duplicate_names_are_found_across_files(tmp_path):
 def test_the_results_stats_files_define_each_macro_once():
     """The six files are \\input together, so a name defined twice is an error
     whichever writer produced it. Skipped where the results tree is absent."""
-    stats_dir = dataset_dirs().stats
+    stats_dir = dataset_dirs().macros
     if not stats_dir.is_dir() or not any(stats_dir.glob("*.tex")):
         pytest.skip("no stats directory for the active dataset in this checkout")
     assert check_unique_names(stats_dir) == {}

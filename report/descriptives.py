@@ -2,9 +2,9 @@
 The descriptive statistics the article quotes, written as LaTeX macros.
 
 Reads the processed tables, the measures and the per-game group-specificity
-estimates models/primary/group_specificity.R wrote, computes the descriptive
+estimates stats/primary/group_specificity.R wrote, computes the descriptive
 summaries (counts, attrition, endpoint means, survey responses) and writes
-them as macros to results/stats/overview.tex, exploratory.tex and
+them as macros to results/macros/overview.tex, exploratory.tex and
 survey.tex. Nothing here fits a model; report/inferential.py writes the
 inferential files (checks, primary, secondary) from the estimates tables.
 
@@ -384,11 +384,11 @@ def main():
     if not (dirs.tables / "trials.csv").exists():
         raise SystemExit(f"Error: no processed data for dataset '{dirs.name}' at {dirs.tables}")
     if dirs.name != "full":
-        print(f"Dataset '{dirs.name}' is not the full sample: the macros written to {dirs.stats} are not results.")
+        print(f"Dataset '{dirs.name}' is not the full sample: the macros written to {dirs.macros} are not results.")
     t = load_tables(dirs)
     if t["gs_by_game"].empty:
         print(f"  note: {dirs.estimates / 'primary' / 'group_specificity.csv'} is missing; run "
-              "`Rscript models/primary/group_specificity.R` (or `make models`) first for the "
+              "`Rscript stats/primary/group_specificity.R` (or `make estimates`) first for the "
               "Phase 1 group-specificity macros")
     write_stats_tex(overview_macros(t), stats_file("overview", dirs), source=SOURCE, dataset=dirs.name)
     write_stats_tex(exploratory_macros(t), stats_file("exploratory", dirs), source=SOURCE, dataset=dirs.name)

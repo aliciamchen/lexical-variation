@@ -12,7 +12,7 @@
 #    committed by accident; this makes that a hard stop.
 # 2. Server unit tests, when staged files touch experiment/server/src/ or
 #    experiment/shared/ (vitest, seconds).
-# 3. R tests, when staged files touch models/.
+# 3. R tests, when staged files touch stats/.
 # 4. Data integrity and Python unit tests, when staged files touch
 #    preprocessing/, report/, operations/, data/<dataset>/ or results/.
 #
@@ -68,10 +68,10 @@ $(tail -n 60 /tmp/precommit-unit.log)"
 fi
 
 # ── 3. R helper tests ───────────────────────────────────────
-if printf '%s\n' "$staged" | grep -qE '^models/'; then
+if printf '%s\n' "$staged" | grep -qE '^stats/'; then
   if command -v Rscript >/dev/null 2>&1; then
-    Rscript models/tests/run_all.R >/tmp/precommit-r.log 2>&1 \
-      || fail "Commit blocked: R helper tests failed (Rscript models/tests/run_all.R).
+    Rscript stats/tests/run_all.R >/tmp/precommit-r.log 2>&1 \
+      || fail "Commit blocked: R helper tests failed (Rscript stats/tests/run_all.R).
 $(tail -n 30 /tmp/precommit-r.log)"
   fi
 fi

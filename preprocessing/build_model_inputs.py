@@ -116,7 +116,7 @@ def ingroup_advantage(trials: pd.DataFrame) -> pd.DataFrame:
 
     The in-group status of the speaker varies within every listener, which is
     why the contrast is taken as a paired difference per listener rather than
-    modeled at the trial level (see models/R/prepare.R). The table has one
+    modeled at the trial level (see stats/R/prepare.R). The table has one
     row per listener who has both cells, with the two accuracies and the two
     cell sizes so coverage and a minimum-trials sensitivity check can be
     applied when the model is fit. Accuracy is the coded outcome `correct`

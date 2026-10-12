@@ -31,8 +31,8 @@ the data:
                                  fits the robustness and Bayes-factor scripts
                                  reuse); never committed
     results/estimates/           the tidy estimates tables each model script
-                                 writes, with a manifest.json (models/)
-    results/stats/               the LaTeX macro files the manuscript reads
+                                 writes, with a manifest.json (stats/)
+    results/macros/               the LaTeX macro files the manuscript reads
                                  (report/inferential.py, report/descriptives.py)
     results/figures/             the article's figures, each with the table it
                                  plots beside it (report/figures/), and in
@@ -46,7 +46,7 @@ touches it. `make sync` copies the stats and figures into the manuscript's
 Overleaf project.
 
 Per-run extracts are dataset-agnostic and go to data/runs/<timestamp>/.
-`models/config.R` mirrors this layout for the R model scripts; keep the two
+`stats/config.R` mirrors this layout for the R model scripts; keep the two
 in sync.
 
 The active dataset is, in order of precedence, an explicit `--dataset`
@@ -113,7 +113,7 @@ class DatasetDirs:
         # The full sample's results are results/; any other dataset keeps its results inside its own data directory.
         self.results = PROJECT_ROOT / "results" if name == DEFAULT_DATASET else self.data / "results"
         self.estimates = self.results / "estimates"
-        self.stats = self.results / "stats"
+        self.macros = self.results / "macros"
         self.figures = self.results / "figures"
 
     def read_runs(self) -> list[str]:
